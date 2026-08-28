@@ -7,15 +7,15 @@
 ---
 
 ## Phase 1: Projekt-Setup & PWA-Basis
-- [ ] **1.1 Next.js Initialisierung**
-  - [ ] Next.js 14+ mit App Router, TypeScript & Tailwind CSS initialisieren
-  - [ ] `lucide-react`, `clsx`, `tailwind-merge`, `canvas-confetti` installieren
-  - [ ] `next.config.js` auf `output: 'standalone'` setzen
-- [ ] **1.2 PWA & Manifest Konfiguration**
-  - [ ] `@ducanh2912/next-pwa` (oder `@serwist/next`) installieren und konfigurieren
-  - [ ] `public/manifest.json` erstellen (Name, Icons 192x192 / 512x512, standalone, theme_color `#0f172a`)
-  - [ ] Service Worker Caching-Strategien (Stale-While-Revalidate für UI, Network-Only für KI-API) definieren
-  - [ ] PWA Meta-Tags in `app/layout.tsx` hinterlegen (apple-touch-icon, viewport, theme-color)
+- [x] **1.1 Next.js Initialisierung**
+  - [x] Next.js 14+ mit App Router, TypeScript & Tailwind CSS initialisieren
+  - [x] `lucide-react`, `clsx`, `tailwind-merge`, `canvas-confetti` installieren
+  - [x] `next.config.js` auf `output: 'standalone'` setzen
+- [x] **1.2 PWA & Manifest Konfiguration**
+  - [x] `@ducanh2912/next-pwa` (oder `@serwist/next`) installieren und konfigurieren
+  - [x] `public/manifest.json` erstellen (Name, Icons 192x192 / 512x512, standalone, theme_color `#0f172a`)
+  - [x] Service Worker Caching-Strategien (Stale-While-Revalidate für UI, Network-Only für KI-API) definieren
+  - [x] PWA Meta-Tags in `app/layout.tsx` hinterlegen (apple-touch-icon, viewport, theme-color)
 
 ---
 
