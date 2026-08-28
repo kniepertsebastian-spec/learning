@@ -64,7 +64,7 @@
         completely unaware of the new backend
 - [x] **3. AI model integration** — (Phase 14, Phase 15) — went through three
       providers: Claude (`@anthropic-ai/sdk`) → OpenAI (`openai`,
-      `gpt-5.4-mini`) → **Google Gemini** (`@google/genai`, `gemini-2.5-flash`,
+      `gpt-5.4-mini`) → **Google Gemini** (`@google/genai`, `gemini-3.6-flash`,
       current). Reason for the last switch: OpenAI's API has no free tier at all
       (confirmed via web search — `gpt-5.4-mini` being "free" is true only
       inside the ChatGPT *app*, not the developer API) and the account had a
@@ -87,12 +87,17 @@
       matching the new normalized `objectives`/`sections` tables rather than the
       old embedded-array Dexie shape. Schemas for lessons/questions/exams follow
       alongside their own generators (steps 6, 7, 12), not built ahead of need.
-- [ ] **5. Curriculum generator** — (Phase 4) — code path built and wired
-      end-to-end (`scripts/generate-curriculum-draft.ts`, idempotent per domain,
-      persists `objectives` + `sections` in a transaction), now on Gemini's free
-      tier so no billing blocker remains. **Not yet actually run successfully**
-      only because it hasn't been re-attempted since the provider switch — next
-      action is just running `npm run content:draft-curriculum` again.
+- [x] **5. Curriculum generator** — (Phase 4) — `npm run content:draft-curriculum`
+      run successfully against the live Postgres, for real, at zero cost (Gemini
+      free tier). One model hiccup along the way: `gemini-2.5-flash` returned a
+      live `404` telling new accounts to use `gemini-3.6-flash` instead — that
+      became the actual default (more reliable than guessing from docs). Result,
+      independently verified via `psql` (not just script log output): **23
+      objectives, 82 sections** across all 5 Security+ domains. Spot-checked
+      content quality is genuinely solid — e.g. objective 1.1 correctly covers
+      "Technical/Managerial/Operational/Physical" control categories and 1.2
+      correctly covers the CIA triad/AAA/Zero Trust, matching the real SY0-701
+      structure, with natural-reading bilingual (DE/EN) section titles.
 - [ ] **6. Lesson generator** — (Phase 5) — persist into `lessons`, ahead-of-time,
       versioned.
 - [ ] **7. Question generator** — (Phase 6, Phase 7) — persist into

@@ -40,7 +40,7 @@
 ## Phase 3: KI-API-Integration (Backend Routes)
 > **Update-Historie:** Ursprünglich mit `@anthropic-ai/sdk` (Claude) umgesetzt,
 > dann auf OpenAI (`openai`-Package, `gpt-5.4-mini` über die Chat Completions API)
-> migriert, dann auf **Google Gemini** (`@google/genai`-Package, `gemini-2.5-flash`)
+> migriert, dann auf **Google Gemini** (`@google/genai`-Package, `gemini-3.6-flash`)
 > migriert — Grund: OpenAI's API hat keine kostenlose Stufe (`insufficient_quota`
 > ohne Guthaben), Geminis Free-Tier (kostenlos, keine Kreditkarte, siehe
 > roadmap2.md Dev-Order Schritt 3) passte besser. Aktuell: `lib/gemini.ts`
