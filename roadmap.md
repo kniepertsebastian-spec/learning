@@ -61,17 +61,18 @@
 ---
 
 ## Phase 4: Frontend UI & User Flows
-- [ ] **4.1 Layout & Theme**
-  - [ ] Dark/Light Mode Switcher & Responsive Shell mit Navigation
-  - [ ] Globaler Header mit App-Titel ("CertStudy AI") & Status-Badge
-- [ ] **4.2 Dashboard (`app/page.tsx`)**
-  - [ ] Übersichtskarten aller aktiven Zertifikate (Titel, Fortschritt in %, Nächste Lektion)
-  - [ ] Button: `+ Neues Zertifikat hinzufügen`
-  - [ ] Empty-State für Erstnutzer
-- [ ] **4.3 Modal "Zertifikat anlegen" (`components/AddCertModal.tsx`)**
-  - [ ] Eingabefelder: Zertifikatsname (z. B. "CompTIA Security+ SY0-701"), Zieldauer in Tagen
-  - [ ] Loading-Screen mit animiertem Status während Claude den Lehrplan generiert
-  - [ ] Speicherung in IndexedDB & Redirect zur Detailansicht
+- [x] **4.1 Layout & Theme**
+  - [x] Dark/Light Mode Switcher & Responsive Shell mit Navigation
+  - [x] Globaler Header mit App-Titel ("CertStudy AI") & Status-Badge
+  - [x] Sprachumschalter DE/EN (persistiert, wirkt auf alle bilingualen Inhalte)
+- [x] **4.2 Dashboard (`app/page.tsx`)**
+  - [x] Übersichtskarten aller aktiven Zertifikate (Titel, Fortschritt in %, Nächste Lektion)
+  - [x] Button: `+ Neues Zertifikat hinzufügen`
+  - [x] Empty-State für Erstnutzer
+- [x] **4.3 Modal "Zertifikat anlegen" (`components/AddCertModal.tsx`)**
+  - [x] Eingabefelder: Zertifikatsname (z. B. "CompTIA Security+ SY0-701"), Zieldauer in Tagen
+  - [x] Loading-Screen mit animiertem Status während Claude den Lehrplan generiert
+  - [x] Speicherung in IndexedDB & Redirect zur Detailansicht
 - [ ] **4.4 Zertifikats-Detailseite (`app/cert/[id]/page.tsx`)**
   - [ ] Roadmap-Timeline / Tagesübersicht (Tag 1 bis Tag N)
   - [ ] Status-Icons (Abgeschlossen, Aktiv, Gesperrt/Offen)

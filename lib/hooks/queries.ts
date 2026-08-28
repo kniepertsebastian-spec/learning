@@ -29,3 +29,11 @@ export function useCertificateDetail(certId: string | undefined): CertificateDet
     return { certificate, modules, quizzes, mockExams };
   }, [certId]);
 }
+
+/** Liefert das nächste offene Modul (niedrigster Tag, nicht abgeschlossen) eines Zertifikats. */
+export function useNextModule(certId: string): Module | undefined {
+  return useLiveQuery(async () => {
+    const modules = await db.modules.where({ certId }).sortBy("day");
+    return modules.find((m) => !m.isCompleted);
+  }, [certId]);
+}
