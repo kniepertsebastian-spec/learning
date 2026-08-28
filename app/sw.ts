@@ -11,7 +11,7 @@ declare const self: ServiceWorkerGlobalScope;
 
 const runtimeCaching: RuntimeCaching[] = [
   {
-    // Claude-API-Aufrufe niemals aus dem Cache bedienen.
+    // KI-API-Aufrufe niemals aus dem Cache bedienen.
     matcher: ({ url }) => url.pathname.startsWith("/api/generate"),
     handler: new NetworkOnly(),
   },

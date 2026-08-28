@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { ClaudeConfigError } from "@/lib/claude";
+import { OpenAIConfigError } from "@/lib/openai";
 import { AIGenerationError } from "./generate";
 
 /** Wandelt Fehler aus Request-Validierung und KI-Generierung in aussagekräftige HTTP-Antworten um. */
@@ -17,28 +17,28 @@ export function toErrorResponse(error: unknown): NextResponse {
     return NextResponse.json({ error: error.message }, { status: 502 });
   }
 
-  if (error instanceof ClaudeConfigError || error instanceof Anthropic.AuthenticationError) {
+  if (error instanceof OpenAIConfigError || error instanceof OpenAI.AuthenticationError) {
     return NextResponse.json(
-      { error: "Server ist nicht korrekt konfiguriert (ANTHROPIC_API_KEY)." },
+      { error: "Server ist nicht korrekt konfiguriert (OPENAI_API_KEY)." },
       { status: 500 },
     );
   }
 
-  if (error instanceof Anthropic.RateLimitError) {
+  if (error instanceof OpenAI.RateLimitError) {
     return NextResponse.json(
       { error: "Rate-Limit der KI-API erreicht. Bitte später erneut versuchen." },
       { status: 429 },
     );
   }
 
-  if (error instanceof Anthropic.APIConnectionError) {
+  if (error instanceof OpenAI.APIConnectionError) {
     return NextResponse.json(
       { error: "KI-API war nicht erreichbar." },
       { status: 502 },
     );
   }
 
-  if (error instanceof Anthropic.APIError) {
+  if (error instanceof OpenAI.APIError) {
     return NextResponse.json({ error: error.message }, { status: 502 });
   }
 

@@ -1,10 +1,74 @@
 services:
+  # Postgres für das v2-Backend (Certification/Objective-Datenmodell, Auth.js).
+  # Kein Host-Port-Publish: Port 5432 ist auf diesem Server bereits durch einen
+  # anderen Container belegt (finance_postgres), und nur learning-pwa muss diese
+  # DB erreichen — über das interne Docker-Netzwerk als `postgres:5432`.
+  postgres:
+    image: postgres:17-alpine
+    # env_file (nicht environment/${VAR}) aus demselben Grund wie bei
+    # learning-pwa/cloudflared unten: `docker compose up` liest `${VAR}` nur aus
+    # einer Datei namens `.env`, nicht aus `.env.local`. env_file injiziert
+    # POSTGRES_USER/PASSWORD/DB direkt, das offizielle postgres-Image liest sie
+    # selbst aus seiner Prozessumgebung.
+    env_file:
+      - .env.local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      # $$ (nicht ${...}): muss von der Shell IM Container zur Laufzeit expandiert
+      # werden, nicht von Compose beim Parsen des Compose-Files (da würde es aus
+      # `.env` statt `.env.local` gelesen und wäre leer - derselbe Bug wie oben).
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
   learning-pwa:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    # Kein Host-Port-Publish: cloudflared erreicht den Container über das
+    # interne Docker-Netzwerk (learning-pwa:3000). Port 3000 ist auf diesem
+    # Server bereits durch einen anderen Container belegt (finance_backend).
+    #
+    # env_file statt environment/${VAR}-Substitution: `docker compose up` liest
+    # standardmäßig nur eine Datei namens `.env`, NICHT `.env.local` (Next.js
+    # Konvention). Mit env_file wird `.env.local` direkt in den Container
+    # injiziert, unabhängig davon, ob Compose sie für Variablen-Substitution
+    # im Compose-File selbst kennt.
+    env_file:
+      - .env.local
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - internal
+
+  # Cloudflare Tunnel: verbindet learning.pwa-tree.de (Zero Trust) mit dem
+  # learning-pwa-Container, ohne Port 3000 öffentlich exponieren zu müssen.
+  # Token kommt aus Zero Trust: Networks -> Tunnels -> Tunnel erstellen
+  # (Typ "Cloudflared") -> der Install-Befehl enthält den Token. Muss ein
+  # eigener, dedizierter Tunnel sein (siehe Phase 6 Hinweis in roadmap.md).
+  # Als "Service" beim Public Hostname im Dashboard eintragen:
+  #   Type: HTTP, URL: learning-pwa:3000
+  # Erwartet die Variable TUNNEL_TOKEN (in .env.local unter diesem Namen).
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    env_file:
+      - .env.local
+    restart: unless-stopped
+    depends_on:
+      - learning-pwa
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  postgres_data:

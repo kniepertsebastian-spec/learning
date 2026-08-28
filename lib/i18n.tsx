@@ -65,7 +65,7 @@ export const uiStrings = {
       totalDaysLabel: "Zieldauer in Tagen",
       cancel: "Abbrechen",
       submit: "Lehrplan generieren",
-      loading: "Claude erstellt deinen Lehrplan …",
+      loading: "ChatGPT erstellt deinen Lehrplan …",
       error: "Der Lehrplan konnte nicht erstellt werden.",
     },
     certDetail: {
@@ -90,7 +90,7 @@ export const uiStrings = {
       quizComplete: "Quiz abgeschlossen",
       score: "Ergebnis",
       backToCert: "Zurück zum Zertifikat",
-      generating: "Claude erstellt den Lerninhalt …",
+      generating: "ChatGPT erstellt den Lerninhalt …",
       loadError: "Der Lerninhalt konnte nicht erstellt werden.",
     },
     exam: {
@@ -113,7 +113,7 @@ export const uiStrings = {
       yourScore: "Deine Punktzahl",
       passingScore: "Bestehensquote",
       weakAreas: "Schwachstellenanalyse",
-      generating: "Claude erstellt die Probeprüfung …",
+      generating: "ChatGPT erstellt die Probeprüfung …",
       loadError: "Die Probeprüfung konnte nicht erstellt werden.",
       confirmSubmit: "Prüfung wirklich abgeben?",
     },
@@ -150,7 +150,7 @@ export const uiStrings = {
       totalDaysLabel: "Target duration in days",
       cancel: "Cancel",
       submit: "Generate study plan",
-      loading: "Claude is generating your study plan …",
+      loading: "ChatGPT is generating your study plan …",
       error: "The study plan could not be created.",
     },
     certDetail: {
@@ -175,7 +175,7 @@ export const uiStrings = {
       quizComplete: "Quiz complete",
       score: "Score",
       backToCert: "Back to certificate",
-      generating: "Claude is generating the lesson content …",
+      generating: "ChatGPT is generating the lesson content …",
       loadError: "The lesson content could not be created.",
     },
     exam: {
@@ -198,7 +198,7 @@ export const uiStrings = {
       yourScore: "Your score",
       passingScore: "Passing score",
       weakAreas: "Weak area analysis",
-      generating: "Claude is generating the mock exam …",
+      generating: "ChatGPT is generating the mock exam …",
       loadError: "The mock exam could not be created.",
       confirmSubmit: "Really submit the exam?",
     },

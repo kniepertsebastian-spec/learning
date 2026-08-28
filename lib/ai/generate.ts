@@ -1,5 +1,5 @@
 import type { ZodType } from "zod";
-import { CLAUDE_MODEL, getClaudeClient } from "@/lib/claude";
+import { OPENAI_MODEL, getOpenAIClient } from "@/lib/openai";
 
 export class AIGenerationError extends Error {
   constructor(
@@ -19,26 +19,29 @@ function extractJson(text: string): string {
 }
 
 async function requestJson(systemPrompt: string, userPrompt: string): Promise<string> {
-  const client = getClaudeClient();
-  const response = await client.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 16000,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+  const client = getOpenAIClient();
+  const response = await client.chat.completions.create({
+    model: OPENAI_MODEL,
+    max_completion_tokens: 16000,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
   });
 
-  const textBlock = response.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new AIGenerationError("Claude hat keine Textantwort zurückgegeben.");
+  const text = response.choices[0]?.message?.content;
+  if (!text) {
+    throw new AIGenerationError("ChatGPT hat keine Textantwort zurückgegeben.");
   }
-  return textBlock.text;
+  return text;
 }
 
 const JSON_ONLY_INSTRUCTION =
   "\n\nAntworte AUSSCHLIESSLICH mit validem JSON, ohne Markdown-Codeblöcke und ohne Erklärtext davor oder danach.";
 
 /**
- * Fordert von Claude striktes JSON an und validiert es gegen ein Zod-Schema.
+ * Fordert von ChatGPT striktes JSON an und validiert es gegen ein Zod-Schema.
  * Bei fehlerhafter Ausgabe (kein valides JSON oder Schema-Verstoß) wird einmal
  * eine Reparatur-Anfrage gestellt, bevor endgültig ein AIGenerationError geworfen wird.
  */

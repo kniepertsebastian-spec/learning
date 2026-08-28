@@ -1,7 +1,7 @@
 # Roadmap & Implementation Tracker: CertStudy AI (PWA)
 
 > **Deployment Target:** `https://learning.pwa-tree.de`  
-> **Tech Stack:** Next.js (App Router, TypeScript), Tailwind CSS, Lucide-react, Dexie.js (IndexedDB), `@anthropic-ai/sdk`, Docker, Multi-Stage Build, Reverse Proxy (Caddy/Nginx)  
+> **Tech Stack:** Next.js (App Router, TypeScript), Tailwind CSS, Lucide-react, Dexie.js (IndexedDB), `openai` (Chat Completions API), Docker, Multi-Stage Build, Reverse Proxy (Caddy/Nginx)  
 > **Status-Konvention:** `- [ ]` Offen | `- [/]` In Arbeit | `- [x]` Abgeschlossen
 
 ---
@@ -37,11 +37,16 @@
 
 ---
 
-## Phase 3: Claude API Integration (Backend Routes)
-- [x] **3.1 Anthropic Client & Environment**
-  - [x] `@anthropic-ai/sdk` & `zod` installieren
-  - [x] `.env.local` Vorlage anlegen (`ANTHROPIC_API_KEY=...`) (als `.env.example`, da `.env.local` bewusst nicht versioniert wird)
-  - [x] API-Client Singleton in `lib/claude.ts` erstellen
+## Phase 3: KI-API-Integration (Backend Routes)
+> **Update:** Ursprünglich mit `@anthropic-ai/sdk` (Claude) umgesetzt, später auf
+> OpenAI (`openai`-Package, ChatGPT/`gpt-4o` über die Chat Completions API mit
+> `response_format: json_object`) migriert. Betroffen: `lib/openai.ts` (vormals
+> `lib/claude.ts`), `lib/ai/generate.ts`, `lib/ai/http.ts` sowie alle
+> `OPENAI_API_KEY`-Referenzen in `.env.example`/`.env.local`/`docker-compose.yml`.
+- [x] **3.1 OpenAI Client & Environment**
+  - [x] `openai` & `zod` installieren
+  - [x] `.env.local` Vorlage anlegen (`OPENAI_API_KEY=...`) (als `.env.example`, da `.env.local` bewusst nicht versioniert wird)
+  - [x] API-Client Singleton in `lib/openai.ts` erstellen
 - [x] **3.2 Route Handler & Validierung**
   - [x] `POST /api/generate/curriculum`:
     - Eingabe: `{ certName: string, totalDays: number }`
@@ -71,7 +76,7 @@
   - [x] Empty-State für Erstnutzer
 - [x] **4.3 Modal "Zertifikat anlegen" (`components/AddCertModal.tsx`)**
   - [x] Eingabefelder: Zertifikatsname (z. B. "CompTIA Security+ SY0-701"), Zieldauer in Tagen
-  - [x] Loading-Screen mit animiertem Status während Claude den Lehrplan generiert
+  - [x] Loading-Screen mit animiertem Status während ChatGPT den Lehrplan generiert
   - [x] Speicherung in IndexedDB & Redirect zur Detailansicht
 - [x] **4.4 Zertifikats-Detailseite (`app/cert/[id]/page.tsx`)**
   - [x] Roadmap-Timeline / Tagesübersicht (Tag 1 bis Tag N)
@@ -100,7 +105,7 @@
 - [x] **5.2 `docker-compose.yml`**
   - [x] Service `learning-pwa` definieren
   - [x] Port-Mapping `3000:3000` (lokal für Reverse Proxy)
-  - [x] Environment Injection für `ANTHROPIC_API_KEY`
+  - [x] Environment Injection für `OPENAI_API_KEY`
   - [x] Restart Policy: `unless-stopped`
 - [x] **5.3 `.dockerignore`**
   - [x] `node_modules`, `.next`, `.git`, `.env*.local` ausschließen
@@ -108,25 +113,63 @@
 ---
 
 ## Phase 6: Subdomain-Routing & Deployment (`learning.pwa-tree.de`)
-> Diese Phase erfordert Zugriff auf den echten Zielserver/DNS und kann nicht aus der
-> Sandbox-Umgebung heraus ausgeführt werden. Vorbereitet: `deploy/Caddyfile` und
-> `deploy/nginx.conf.example` als fertige Reverse-Proxy-Konfiguration für
-> `learning.pwa-tree.de` -> `127.0.0.1:3000` (inkl. Streaming-Header). Auf dem Server
-> müssen nur noch die konkreten Schritte unten ausgeführt werden.
-- [ ] **6.1 DNS-Konfiguration**
-  - [ ] Subdomain `learning.pwa-tree.de` (A/CNAME-Record) auf Server-IP bzw. Tunnel routen
-- [ ] **6.2 Reverse Proxy Konfiguration (Caddy / Nginx)**
-  - [ ] Reverse Proxy auf `localhost:3000` einrichten (Vorlage: `deploy/Caddyfile` bzw. `deploy/nginx.conf.example`)
-  - [ ] Automatisches Let's Encrypt SSL-Zertifikat aktivieren (HTTPS-Zwang für PWA)
-  - [ ] Websocket / Streaming Support Header setzen (falls Server-Sent Events genutzt werden)
-- [ ] **6.3 Deployment & Start**
-  - [ ] Container via `docker compose up -d --build` starten
-  - [ ] Container-Logs prüfen (`docker logs -f learning-pwa`)
+> Diese Phase erfordert Zugriff auf den echten Zielserver/Cloudflare-Account und kann
+> nicht aus der Sandbox-Umgebung heraus ausgeführt werden.
+>
+> **Entscheidung:** Deployment über Cloudflare Tunnel + Zero Trust (nicht über
+> öffentlichen Port + klassischen Reverse Proxy). `docker-compose.yml` enthält dafür
+> bereits einen `cloudflared`-Sidecar-Service im internen Docker-Netzwerk. TLS,
+> Routing und Zugriff laufen komplett über Cloudflare — Port 3000 muss auf dem Server
+> nicht mehr öffentlich exponiert werden.
+>
+> `deploy/Caddyfile` und `deploy/nginx.conf.example` bleiben als Alternative erhalten,
+> falls stattdessen klassisch (öffentlicher Port + eigener Reverse Proxy + Let's
+> Encrypt) deployt werden soll — für den Tunnel-Weg werden sie nicht gebraucht.
+>
+> **Wichtig:** Es muss ein **eigener, dedizierter Tunnel** für `learning.pwa-tree.de`
+> sein, nicht der bestehende gemeinsame Tunnel mit den 2 anderen Subdomains. Der
+> bestehende Tunnel ist *remotely-managed* — jeder Connector, der sich mit dessen
+> Token authentifiziert, bekommt die komplette Ingress-Liste (alle Hostnames) und
+> muss alle zugehörigen Origins erreichen können. Unser `cloudflared`-Container läuft
+> im internen Docker-Netzwerk dieses Repos und kann nur `learning-pwa:3000`
+> erreichen — als zusätzliche Replica am bestehenden Tunnel würde er gelegentlich
+> auch für die beiden anderen (produktiven) Subdomains angefragt und dort mit 502
+> fehlschlagen. Ein separater Tunnel mit eigenem Token vermeidet das komplett.
+- [x] **6.1 Cloudflare Tunnel anlegen (Zero Trust Dashboard)**
+  - [x] `learning.pwa-tree.de` Public Hostname vom bestehenden/geteilten Tunnel wieder entfernen
+  - [x] Neuen, dedizierten Tunnel erstellen (Name `learning`, ID `6b19995b-f8a8-4524-95d3-441ed47fbddf`), Connector-Typ „Cloudflared"
+  - [x] Tunnel-Token als `TUNNEL_TOKEN` in `.env.local` auf dem Server eingetragen
+  - [x] Public Hostname auf dem neuen Tunnel hinzugefügt: `learning.pwa-tree.de`
+  - [x] Service eingetragen: Type `HTTP`, URL `learning-pwa:3000`
+  - [x] DNS-Eintrag automatisch von Cloudflare gesetzt
+- [ ] **6.2 Zero Trust Access Policy (optional, falls Login-Schutz gewünscht)**
+  - [ ] Access -> Applications -> Self-hosted Application für `learning.pwa-tree.de` anlegen, falls die App nicht öffentlich ohne Login erreichbar sein soll
+- [x] **6.3 Deployment & Start**
+  - [x] `.env.local` auf dem Server mit `OPENAI_API_KEY` und `TUNNEL_TOKEN` befüllt
+  - [x] Container via `docker compose up -d --build` gestartet (`learning-pwa` + `cloudflared`, beide healthy)
+  - [x] Container-Logs geprüft
+  - [x] Tunnel-Status im Zero Trust Dashboard geprüft (Connector „Connected")
+  - [x] `https://learning.pwa-tree.de/api/health` und `/` liefern konsistent `200`
+
+> **Troubleshooting-Notiz:** Nach dem ersten Start gab es zwei Probleme, die beide
+> gelöst wurden:
+> 1. `docker compose up` liest standardmäßig nur eine Datei namens `.env`, nicht
+>    `.env.local` -> `${VAR}`-Substitution im Compose-File blieb leer. Fix: beide
+>    Services nutzen jetzt `env_file: .env.local` statt `environment: - X=${X}`.
+> 2. Ein zweiter `cloudflared`-Connector lief zusätzlich auf `pwa01` (dem Mini-PC,
+>    der die anderen 2 PWAs hostet) mit demselben Tunnel-Token -> Cloudflare hat
+>    Traffic abwechselnd an beide Connectors verteilt, `pwa01` konnte
+>    `learning-pwa:3000` aber nicht erreichen (502 bei ca. der Hälfte der
+>    Requests). Fix: `cloudflared`-Service auf `pwa01` gestoppt, sodass nur noch
+>    der Connector in diesem `docker-compose.yml` (hier auf `adnb0441`) läuft.
+>    **Entscheidung:** `learning.pwa-tree.de` bleibt dauerhaft auf diesem Server
+>    (`adnb0441`), nicht auf `pwa01` — Updates per `git pull` + `docker compose up
+>    -d --build` auf diesem Server zum Testen.
 
 ---
 
 ## Phase 7: Qualitätskontrolle & Offline-Test
-> 7.2/7.3 (Flugmodus-Test auf echtem Gerät, End-to-End mit echtem ANTHROPIC_API_KEY)
+> 7.2/7.3 (Flugmodus-Test auf echtem Gerät, End-to-End mit echtem OPENAI_API_KEY)
 > erfordern eine reale Umgebung/Gerät und konnten nicht aus der Sandbox heraus
 > durchgeführt werden.
 - [x] **7.1 PWA Audit**
