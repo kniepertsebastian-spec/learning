@@ -11,11 +11,45 @@ export class AIGenerationError extends Error {
   }
 }
 
+/**
+ * Extrahiert das erste vollständige, balancierte JSON-Objekt aus der Antwort.
+ * Ein naives indexOf("{")-bis-lastIndexOf("}") bricht, sobald die KI nach dem
+ * eigentlichen JSON noch irgendetwas anhängt (z. B. bei längerem,
+ * inhaltsreicherem Output wie Lesson-Content) - dann landet zusätzlicher Text
+ * in der "extrahierten" Zeichenkette und JSON.parse schlägt fehl. Zählt daher
+ * die Klammerntiefe und ignoriert Klammern innerhalb von String-Literalen.
+ */
 function extractJson(text: string): string {
   const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1 || end < start) return text;
-  return text.slice(start, end + 1);
+  if (start === -1) return text;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  return text.slice(start);
 }
 
 async function requestJson(systemPrompt: string, userPrompt: string): Promise<string> {

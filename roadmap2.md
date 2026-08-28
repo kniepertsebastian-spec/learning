@@ -98,10 +98,39 @@
       "Technical/Managerial/Operational/Physical" control categories and 1.2
       correctly covers the CIA triad/AAA/Zero Trust, matching the real SY0-701
       structure, with natural-reading bilingual (DE/EN) section titles.
-- [ ] **6. Lesson generator** — (Phase 5) — persist into `lessons`, ahead-of-time,
-      versioned.
+- [/] **6. Lesson generator** — (Phase 5) — persist into `lessons`, ahead-of-time,
+      versioned. Code built (`lib/server/ai/service.ts`
+      `generateLessonsAndQuestionsForObjective()`, `scripts/generate-lessons-and-questions.ts`,
+      `npm run content:draft-lessons`) and **partially run**: 2 of 23 objectives
+      done (23 lessons, 14 questions persisted and verified). Two real bugs found
+      and fixed along the way:
+      1. `extractJson()` in `lib/ai/generate.ts` naively sliced first-`{`-to-last-`}`,
+         which broke once responses got long enough to include trailing content
+         after the real JSON object — replaced with a proper brace-depth scanner
+         that respects string literals and stops at the first balanced object.
+      2. Gemini returned `content`/`keyTakeaways`/`examFocusPoints` as plain
+         strings/arrays instead of the required bilingual `{de,en}` objects until
+         the prompt included a literal example of the exact expected JSON shape —
+         prose instructions alone weren't enough for these longer fields (short
+         fields like objective/section titles worked fine without an example).
+      **Blocked on Gemini's free-tier daily quota**, not a code issue: hit a hard
+      `429 RESOURCE_EXHAUSTED` — confirmed via the live error to be
+      `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `quotaValue: 20` (20
+      requests/day, per model). Combined lesson+question generation into one call
+      per objective (was two) to roughly halve the calls needed (23 instead of 46
+      for all objectives). Tried `gemini-3.7-flash` as an alternate model (the
+      quota is scoped per-model, so it has its own separate bucket) but it's
+      independently returning `503 UNAVAILABLE` ("high demand") right now — a
+      genuinely new, popular model being overloaded, not something retrying fixes.
+      Script is fully idempotent (skips objectives that already have both lessons
+      and questions), so resuming — either once today's `gemini-3.6-flash` quota
+      resets, or once `gemini-3.7-flash`'s overload clears — just means re-running
+      `npm run content:draft-lessons`.
 - [ ] **7. Question generator** — (Phase 6, Phase 7) — persist into
-      `questions`/`question_options`, deduplicated, human-readable IDs.
+      `questions`/`question_options`, deduplicated, human-readable IDs
+      (`SEC-<code>-Q<seq>`). Built and generating correctly (see step 6 above —
+      same script produces both together now); not marked done until all 23
+      objectives actually have a question pool, same quota blocker as step 6.
 - [ ] **8. Quiz UI** — (Phase 23) — rewire `app/cert/**` off Dexie onto the new
       backend + session-scoped data. This is the point where the existing
       deployed frontend actually starts changing.

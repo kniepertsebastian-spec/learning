@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { localizedStringSchema } from "@/lib/ai/schemas";
+import { localizedStringArraySchema, localizedStringSchema } from "@/lib/ai/schemas";
 
 /**
  * Struktur für einen KI-Entwurf von Objectives + Sections EINER Domain
@@ -29,4 +29,53 @@ export const draftObjectiveSchema = z.object({
 
 export const curriculumDraftForDomainResponseSchema = z.object({
   objectives: z.array(draftObjectiveSchema).min(1).max(10),
+});
+
+/**
+ * Lesson- und Question-Generierung (roadmap2.md Dev-Order Schritt 6-7), gebatcht
+ * pro Objective (alle Sections dieses Objectives in einem Call) statt pro
+ * einzelner Section - weniger API-Calls, robuster gegenüber Free-Tier-Rate-Limits,
+ * siehe Phase 20/21 (Cost Optimization / Caching).
+ */
+export const draftLessonSchema = z.object({
+  /** Muss `sections.orderNum` der Ziel-Section entsprechen. */
+  sectionOrderNum: z.number().int().min(1),
+  content: localizedStringSchema,
+  keyTakeaways: localizedStringArraySchema,
+  examFocusPoints: localizedStringArraySchema,
+});
+
+export const draftQuestionOptionSchema = z.object({
+  text: localizedStringSchema,
+  isCorrect: z.boolean(),
+});
+
+export const draftQuestionSchema = z
+  .object({
+    difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+    type: z.enum([
+      "knowledge",
+      "comprehension",
+      "application",
+      "scenario",
+      "troubleshooting",
+    ]),
+    question: localizedStringSchema,
+    options: z.array(draftQuestionOptionSchema).length(4),
+    explanation: localizedStringSchema,
+  })
+  .refine((q) => q.options.filter((o) => o.isCorrect).length === 1, {
+    message: "Exakt eine Option muss isCorrect=true sein.",
+  });
+
+/**
+ * Lessons + Questions in EINEM Call statt zwei (Dev-Order Schritt 6+7 kombiniert)
+ * - Gemini's Free-Tier hat ein hartes Limit von 20 Requests/Tag pro Modell,
+ * gemessen live über einen 429 "RESOURCE_EXHAUSTED" (Metric
+ * `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, quotaValue 20). Halbiert
+ * die Anzahl nötiger Calls (23 statt 46 für alle Objectives).
+ */
+export const lessonsAndQuestionsForObjectiveResponseSchema = z.object({
+  lessons: z.array(draftLessonSchema).min(1),
+  questions: z.array(draftQuestionSchema).min(5).max(10),
 });

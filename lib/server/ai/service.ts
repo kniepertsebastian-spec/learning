@@ -1,18 +1,27 @@
 import { generateStructured } from "@/lib/ai/generate";
 import {
   curriculumDraftForDomainResponseSchema,
+  lessonsAndQuestionsForObjectiveResponseSchema,
   type draftObjectiveSchema,
+  type draftLessonSchema,
+  type draftQuestionSchema,
 } from "./schemas";
 import type { z } from "zod";
 
 export type DraftObjective = z.infer<typeof draftObjectiveSchema>;
+export type DraftLesson = z.infer<typeof draftLessonSchema>;
+export type DraftQuestion = z.infer<typeof draftQuestionSchema>;
+export interface LessonsAndQuestions {
+  lessons: DraftLesson[];
+  questions: DraftQuestion[];
+}
 
 /**
- * AIService (roadmap2.md Phase 15) - bislang nur die eine Methode, die
- * tatsächlich gebraucht wird (Dev-Order Schritt 3-5). Weitere Methoden
- * (generateLesson, generateQuiz, evaluateQuiz, generateRemediation, ...)
- * kommen erst mit ihren jeweiligen Dev-Order-Schritten dazu (6, 7, 9, 11-13) -
- * kein Grund, jetzt schon leere Platzhalter dafür anzulegen.
+ * AIService (roadmap2.md Phase 15) - nur die Methoden, die tatsächlich
+ * gebraucht werden (Dev-Order Schritt 3-7 bislang). Weitere Methoden
+ * (generateQuiz, evaluateQuiz, generateRemediation, ...) kommen erst mit
+ * ihren jeweiligen Dev-Order-Schritten dazu (9, 11-13) - kein Grund, jetzt
+ * schon leere Platzhalter dafür anzulegen.
  */
 export async function generateCurriculumDraftForDomain(
   certificationName: string,
@@ -44,4 +53,71 @@ export async function generateCurriculumDraftForDomain(
     curriculumDraftForDomainResponseSchema,
   );
   return result.objectives;
+}
+
+/**
+ * Generiert Lerninhalt (alle Sections) UND den Fragen-Pool EINES Objectives in
+ * einem einzigen Call (Dev-Order Schritt 6+7 kombiniert). Ursprünglich zwei
+ * getrennte Calls - zusammengelegt, nachdem Geminis Free-Tier live ein hartes
+ * Limit von 20 Requests/Tag pro Modell zeigte (429 RESOURCE_EXHAUSTED,
+ * `GenerateRequestsPerDayPerProjectPerModel-FreeTier`). Halbiert die nötigen
+ * Calls für alle 23 Objectives von 46 auf 23.
+ */
+export async function generateLessonsAndQuestionsForObjective(
+  certificationName: string,
+  objectiveTitle: string,
+  objectiveDescription: string,
+  sections: { orderNum: number; titleEn: string; estimatedMinutes: number; difficulty: string }[],
+): Promise<LessonsAndQuestions> {
+  const systemPrompt = [
+    `Du bist Dozent und Prüfungsfragen-Autor für die Zertifizierung "${certificationName}",`,
+    `Objective "${objectiveTitle}" - ${objectiveDescription}.`,
+    "",
+    "TEIL 1 - Lerninhalt: Erstelle didaktischen Markdown-Lerninhalt für JEDE der folgenden Sections:",
+    ...sections.map(
+      (s) =>
+        `- sectionOrderNum ${s.orderNum}: "${s.titleEn}" (~${s.estimatedMinutes} Min, ${s.difficulty})`,
+    ),
+    "Jede Lesson enthält: Einführung, Kernkonzepte, Beispiele, häufige Fehler, prüfungsrelevante Punkte.",
+    "Länge von `content` passend zur angegebenen Dauer.",
+    "",
+    "TEIL 2 - Fragen: Erstelle 6-8 Multiple-Choice-Fragen zu diesem Objective, Mischung aus",
+    "knowledge, comprehension, application, scenario, troubleshooting.",
+    "NICHT nur Faktenabfrage - bevorzugt szenariobasierte Fragen, die Verständnis testen",
+    '(z. B. statt "Wofür steht CIA?" eher eine Situationsbeschreibung, die CIA anwendet).',
+    "Genau 4 Antwortoptionen pro Frage, genau EINE davon korrekt. Schwierigkeitsgrade realistisch mischen.",
+    "",
+    "WICHTIG - jedes bilinguale Feld ist ein OBJEKT mit genau den Keys `de` und `en`,",
+    "NIEMALS ein einzelner String oder ein Array direkt. Exaktes Ausgabeformat:",
+    "```json",
+    "{",
+    '  "lessons": [',
+    "    {",
+    '      "sectionOrderNum": 1,',
+    '      "content": { "de": "... Markdown auf Deutsch ...", "en": "... Markdown in English ..." },',
+    '      "keyTakeaways": { "de": ["Punkt 1", "Punkt 2"], "en": ["Point 1", "Point 2"] },',
+    '      "examFocusPoints": { "de": ["Punkt 1", "Punkt 2"], "en": ["Point 1", "Point 2"] }',
+    "    }",
+    "  ],",
+    '  "questions": [',
+    "    {",
+    '      "difficulty": "intermediate",',
+    '      "type": "scenario",',
+    '      "question": { "de": "... Frage auf Deutsch ...", "en": "... Question in English ..." },',
+    '      "options": [',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": false },',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": true },',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": false },',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": false }',
+    "      ],",
+    '      "explanation": { "de": "...", "en": "..." }',
+    "    }",
+    "  ]",
+    "}",
+    "```",
+  ].join("\n");
+
+  const userPrompt = `Generiere Lerninhalt + Fragen-Pool für Objective "${objectiveTitle}".`;
+
+  return generateStructured(systemPrompt, userPrompt, lessonsAndQuestionsForObjectiveResponseSchema);
 }
