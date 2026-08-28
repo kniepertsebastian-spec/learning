@@ -108,10 +108,15 @@
 ---
 
 ## Phase 6: Subdomain-Routing & Deployment (`learning.pwa-tree.de`)
+> Diese Phase erfordert Zugriff auf den echten Zielserver/DNS und kann nicht aus der
+> Sandbox-Umgebung heraus ausgeführt werden. Vorbereitet: `deploy/Caddyfile` und
+> `deploy/nginx.conf.example` als fertige Reverse-Proxy-Konfiguration für
+> `learning.pwa-tree.de` -> `127.0.0.1:3000` (inkl. Streaming-Header). Auf dem Server
+> müssen nur noch die konkreten Schritte unten ausgeführt werden.
 - [ ] **6.1 DNS-Konfiguration**
   - [ ] Subdomain `learning.pwa-tree.de` (A/CNAME-Record) auf Server-IP bzw. Tunnel routen
 - [ ] **6.2 Reverse Proxy Konfiguration (Caddy / Nginx)**
-  - [ ] Reverse Proxy auf `localhost:3000` einrichten
+  - [ ] Reverse Proxy auf `localhost:3000` einrichten (Vorlage: `deploy/Caddyfile` bzw. `deploy/nginx.conf.example`)
   - [ ] Automatisches Let's Encrypt SSL-Zertifikat aktivieren (HTTPS-Zwang für PWA)
   - [ ] Websocket / Streaming Support Header setzen (falls Server-Sent Events genutzt werden)
 - [ ] **6.3 Deployment & Start**
@@ -121,9 +126,12 @@
 ---
 
 ## Phase 7: Qualitätskontrolle & Offline-Test
-- [ ] **7.1 PWA Audit**
-  - [ ] Lighthouse Audit durchführen (PWA-Kriterien, Performance > 90)
-  - [ ] Installation auf Smartphone / Desktop testen (A2HS - Add to Home Screen)
+> 7.2/7.3 (Flugmodus-Test auf echtem Gerät, End-to-End mit echtem ANTHROPIC_API_KEY)
+> erfordern eine reale Umgebung/Gerät und konnten nicht aus der Sandbox heraus
+> durchgeführt werden.
+- [x] **7.1 PWA Audit**
+  - [x] Lighthouse Audit durchführen (Performance > 90) - Ergebnis gegen lokalen Production-Build (`node .next/standalone/server.js`): Performance 100, Accessibility 100, Best Practices 100, SEO 100. Im Zuge dessen zwei A11y-Findings behoben (`maximumScale` entfernt, das Sprachumschalter-Label enthielt den sichtbaren Text nicht)
+  - [ ] Installation auf Smartphone / Desktop testen (A2HS - Add to Home Screen) - benötigt echtes Gerät/Deployment
 - [ ] **7.2 Offline-Fähigkeit prüfen**
   - [ ] Flugmodus aktivieren: Bereits generierte Lektionen & Prüfungen müssen aus IndexedDB abrufbar sein
 - [ ] **7.3 End-to-End Testfall**

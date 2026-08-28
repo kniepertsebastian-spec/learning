@@ -25,7 +25,7 @@ export function Header() {
             type="button"
             onClick={() => setLocale(locale === "de" ? "en" : "de")}
             className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm font-medium hover:bg-background"
-            aria-label="Toggle language"
+            aria-label={`${locale.toUpperCase()} - toggle language`}
           >
             <Languages className="h-4 w-4" aria-hidden="true" />
             {locale.toUpperCase()}
