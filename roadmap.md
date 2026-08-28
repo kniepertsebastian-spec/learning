@@ -20,20 +20,20 @@
 ---
 
 ## Phase 2: Lokale Datenbankschicht (IndexedDB / Dexie.js)
-- [ ] **2.1 Schema & Typdefinitionen (`lib/db.ts`)**
-  - [ ] `dexie` & `dexie-react-hooks` installieren
-  - [ ] TypeScript Interfaces definieren: `Certificate`, `Module`, `QuizQuestion`, `MockExam`, `ExamResult`
-  - [ ] Dexie DB-Instanz mit Tabellen aufsetzen:
+- [x] **2.1 Schema & Typdefinitionen (`lib/db.ts`)**
+  - [x] `dexie` & `dexie-react-hooks` installieren
+  - [x] TypeScript Interfaces definieren: `Certificate`, `Module`, `QuizQuestion`, `MockExam`, `ExamResult`
+  - [x] Dexie DB-Instanz mit Tabellen aufsetzen:
     - `certificates`: `id, title, totalDays, targetDate, createdAt, progress`
     - `modules`: `id, certId, day, title, summary, isCompleted, contentMarkdown`
     - `quizzes`: `id, certId, moduleId, questions, score, completedAt`
     - `mockExams`: `id, certId, questions, score, passed, completedAt, durationSeconds`
-- [ ] **2.2 Data-Access-Layer & Hooks (`lib/hooks/`)**
-  - [ ] Helper: `createCertificateWithCurriculum(certData, modules)`
-  - [ ] Helper: `saveModuleContent(moduleId, markdown, quizData)`
-  - [ ] Helper: `markModuleCompleted(moduleId, score)`
-  - [ ] Helper: `saveExamResult(certId, examData)`
-  - [ ] Hook: `useCertificates()` & `useCertificateDetail(certId)`
+- [x] **2.2 Data-Access-Layer & Hooks (`lib/hooks/`)**
+  - [x] Helper: `createCertificateWithCurriculum(certData, modules)`
+  - [x] Helper: `saveModuleContent(moduleId, markdown, quizData)`
+  - [x] Helper: `markModuleCompleted(moduleId, score)`
+  - [x] Helper: `saveExamResult(certId, examData)`
+  - [x] Hook: `useCertificates()` & `useCertificateDetail(certId)`
 
 ---
 
