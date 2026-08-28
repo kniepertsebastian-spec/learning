@@ -1,5 +1,5 @@
 import type { ZodType } from "zod";
-import { OPENAI_MODEL, getOpenAIClient } from "@/lib/openai";
+import { GEMINI_MODEL, getGeminiClient } from "@/lib/gemini";
 
 export class AIGenerationError extends Error {
   constructor(
@@ -19,20 +19,20 @@ function extractJson(text: string): string {
 }
 
 async function requestJson(systemPrompt: string, userPrompt: string): Promise<string> {
-  const client = getOpenAIClient();
-  const response = await client.chat.completions.create({
-    model: OPENAI_MODEL,
-    max_completion_tokens: 16000,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
+  const client = getGeminiClient();
+  const response = await client.models.generateContent({
+    model: GEMINI_MODEL,
+    contents: userPrompt,
+    config: {
+      systemInstruction: systemPrompt,
+      responseMimeType: "application/json",
+      maxOutputTokens: 16000,
+    },
   });
 
-  const text = response.choices[0]?.message?.content;
+  const text = response.text;
   if (!text) {
-    throw new AIGenerationError("ChatGPT hat keine Textantwort zurückgegeben.");
+    throw new AIGenerationError("Gemini hat keine Textantwort zurückgegeben.");
   }
   return text;
 }
@@ -41,7 +41,7 @@ const JSON_ONLY_INSTRUCTION =
   "\n\nAntworte AUSSCHLIESSLICH mit validem JSON, ohne Markdown-Codeblöcke und ohne Erklärtext davor oder danach.";
 
 /**
- * Fordert von ChatGPT striktes JSON an und validiert es gegen ein Zod-Schema.
+ * Fordert von Gemini striktes JSON an und validiert es gegen ein Zod-Schema.
  * Bei fehlerhafter Ausgabe (kein valides JSON oder Schema-Verstoß) wird einmal
  * eine Reparatur-Anfrage gestellt, bevor endgültig ein AIGenerationError geworfen wird.
  */

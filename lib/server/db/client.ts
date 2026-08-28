@@ -5,7 +5,7 @@ import * as schema from "./schema";
 let client: PostgresJsDatabase<typeof schema> | null = null;
 
 /**
- * Lazy wie getOpenAIClient() (lib/openai.ts): DATABASE_URL erst beim
+ * Lazy wie getGeminiClient() (lib/gemini.ts): DATABASE_URL erst beim
  * tatsächlichen Zugriff prüfen, nicht beim Modul-Import. Sonst bricht
  * `next build` im Docker-Build ab, da `.env.local` dort bewusst nicht
  * verfügbar ist (.dockerignore) und Next.js Route-Module beim Build lädt,

@@ -1,7 +1,7 @@
 # Roadmap & Implementation Tracker: CertStudy AI (PWA)
 
 > **Deployment Target:** `https://learning.pwa-tree.de`  
-> **Tech Stack:** Next.js (App Router, TypeScript), Tailwind CSS, Lucide-react, Dexie.js (IndexedDB), `openai` (Chat Completions API), Docker, Multi-Stage Build, Reverse Proxy (Caddy/Nginx)  
+> **Tech Stack:** Next.js (App Router, TypeScript), Tailwind CSS, Lucide-react, Dexie.js (IndexedDB), `@google/genai` (Gemini API), Docker, Multi-Stage Build, Reverse Proxy (Caddy/Nginx)  
 > **Status-Konvention:** `- [ ]` Offen | `- [/]` In Arbeit | `- [x]` Abgeschlossen
 
 ---
@@ -38,15 +38,19 @@
 ---
 
 ## Phase 3: KI-API-Integration (Backend Routes)
-> **Update:** Ursprünglich mit `@anthropic-ai/sdk` (Claude) umgesetzt, später auf
-> OpenAI (`openai`-Package, ChatGPT/`gpt-4o` über die Chat Completions API mit
-> `response_format: json_object`) migriert. Betroffen: `lib/openai.ts` (vormals
-> `lib/claude.ts`), `lib/ai/generate.ts`, `lib/ai/http.ts` sowie alle
-> `OPENAI_API_KEY`-Referenzen in `.env.example`/`.env.local`/`docker-compose.yml`.
-- [x] **3.1 OpenAI Client & Environment**
-  - [x] `openai` & `zod` installieren
-  - [x] `.env.local` Vorlage anlegen (`OPENAI_API_KEY=...`) (als `.env.example`, da `.env.local` bewusst nicht versioniert wird)
-  - [x] API-Client Singleton in `lib/openai.ts` erstellen
+> **Update-Historie:** Ursprünglich mit `@anthropic-ai/sdk` (Claude) umgesetzt,
+> dann auf OpenAI (`openai`-Package, `gpt-5.4-mini` über die Chat Completions API)
+> migriert, dann auf **Google Gemini** (`@google/genai`-Package, `gemini-2.5-flash`)
+> migriert — Grund: OpenAI's API hat keine kostenlose Stufe (`insufficient_quota`
+> ohne Guthaben), Geminis Free-Tier (kostenlos, keine Kreditkarte, siehe
+> roadmap2.md Dev-Order Schritt 3) passte besser. Aktuell: `lib/gemini.ts`
+> (vormals `lib/claude.ts` -> `lib/openai.ts`), `lib/ai/generate.ts`,
+> `lib/ai/http.ts` sowie alle `GEMINI_API_KEY`-Referenzen in
+> `.env.example`/`.env.local`/`docker-compose.yml`.
+- [x] **3.1 Gemini Client & Environment**
+  - [x] `@google/genai` & `zod` installieren
+  - [x] `.env.local` Vorlage anlegen (`GEMINI_API_KEY=...`) (als `.env.example`, da `.env.local` bewusst nicht versioniert wird)
+  - [x] API-Client Singleton in `lib/gemini.ts` erstellen
 - [x] **3.2 Route Handler & Validierung**
   - [x] `POST /api/generate/curriculum`:
     - Eingabe: `{ certName: string, totalDays: number }`
@@ -76,7 +80,7 @@
   - [x] Empty-State für Erstnutzer
 - [x] **4.3 Modal "Zertifikat anlegen" (`components/AddCertModal.tsx`)**
   - [x] Eingabefelder: Zertifikatsname (z. B. "CompTIA Security+ SY0-701"), Zieldauer in Tagen
-  - [x] Loading-Screen mit animiertem Status während ChatGPT den Lehrplan generiert
+  - [x] Loading-Screen mit animiertem Status während Gemini den Lehrplan generiert
   - [x] Speicherung in IndexedDB & Redirect zur Detailansicht
 - [x] **4.4 Zertifikats-Detailseite (`app/cert/[id]/page.tsx`)**
   - [x] Roadmap-Timeline / Tagesübersicht (Tag 1 bis Tag N)
@@ -105,7 +109,7 @@
 - [x] **5.2 `docker-compose.yml`**
   - [x] Service `learning-pwa` definieren
   - [x] Port-Mapping `3000:3000` (lokal für Reverse Proxy)
-  - [x] Environment Injection für `OPENAI_API_KEY`
+  - [x] Environment Injection für `GEMINI_API_KEY`
   - [x] Restart Policy: `unless-stopped`
 - [x] **5.3 `.dockerignore`**
   - [x] `node_modules`, `.next`, `.git`, `.env*.local` ausschließen
@@ -145,7 +149,7 @@
 - [ ] **6.2 Zero Trust Access Policy (optional, falls Login-Schutz gewünscht)**
   - [ ] Access -> Applications -> Self-hosted Application für `learning.pwa-tree.de` anlegen, falls die App nicht öffentlich ohne Login erreichbar sein soll
 - [x] **6.3 Deployment & Start**
-  - [x] `.env.local` auf dem Server mit `OPENAI_API_KEY` und `TUNNEL_TOKEN` befüllt
+  - [x] `.env.local` auf dem Server mit `GEMINI_API_KEY` und `TUNNEL_TOKEN` befüllt
   - [x] Container via `docker compose up -d --build` gestartet (`learning-pwa` + `cloudflared`, beide healthy)
   - [x] Container-Logs geprüft
   - [x] Tunnel-Status im Zero Trust Dashboard geprüft (Connector „Connected")
@@ -169,7 +173,7 @@
 ---
 
 ## Phase 7: Qualitätskontrolle & Offline-Test
-> 7.2/7.3 (Flugmodus-Test auf echtem Gerät, End-to-End mit echtem OPENAI_API_KEY)
+> 7.2/7.3 (Flugmodus-Test auf echtem Gerät, End-to-End mit echtem GEMINI_API_KEY)
 > erfordern eine reale Umgebung/Gerät und konnten nicht aus der Sandbox heraus
 > durchgeführt werden.
 - [x] **7.1 PWA Audit**

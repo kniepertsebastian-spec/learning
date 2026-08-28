@@ -1,10 +1,15 @@
-import OpenAI from "openai";
+import { ApiError } from "@google/genai";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { OpenAIConfigError } from "@/lib/openai";
+import { GeminiConfigError } from "@/lib/gemini";
 import { AIGenerationError } from "./generate";
 
-/** Wandelt Fehler aus Request-Validierung und KI-Generierung in aussagekräftige HTTP-Antworten um. */
+/**
+ * Wandelt Fehler aus Request-Validierung und KI-Generierung in aussagekräftige
+ * HTTP-Antworten um. Gemini's SDK (anders als die OpenAI-SDK) hat keine
+ * getrennten Error-Klassen pro Fehlerart, nur die eine `ApiError` mit einem
+ * HTTP-`status`-Feld - daher hier die Unterscheidung per Statuscode.
+ */
 export function toErrorResponse(error: unknown): NextResponse {
   if (error instanceof ZodError) {
     return NextResponse.json(
@@ -17,28 +22,26 @@ export function toErrorResponse(error: unknown): NextResponse {
     return NextResponse.json({ error: error.message }, { status: 502 });
   }
 
-  if (error instanceof OpenAIConfigError || error instanceof OpenAI.AuthenticationError) {
+  if (error instanceof GeminiConfigError) {
     return NextResponse.json(
-      { error: "Server ist nicht korrekt konfiguriert (OPENAI_API_KEY)." },
+      { error: "Server ist nicht korrekt konfiguriert (GEMINI_API_KEY)." },
       { status: 500 },
     );
   }
 
-  if (error instanceof OpenAI.RateLimitError) {
-    return NextResponse.json(
-      { error: "Rate-Limit der KI-API erreicht. Bitte später erneut versuchen." },
-      { status: 429 },
-    );
-  }
-
-  if (error instanceof OpenAI.APIConnectionError) {
-    return NextResponse.json(
-      { error: "KI-API war nicht erreichbar." },
-      { status: 502 },
-    );
-  }
-
-  if (error instanceof OpenAI.APIError) {
+  if (error instanceof ApiError) {
+    if (error.status === 401 || error.status === 403) {
+      return NextResponse.json(
+        { error: "Server ist nicht korrekt konfiguriert (GEMINI_API_KEY)." },
+        { status: 500 },
+      );
+    }
+    if (error.status === 429) {
+      return NextResponse.json(
+        { error: "Rate-Limit der KI-API erreicht. Bitte später erneut versuchen." },
+        { status: 429 },
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 502 });
   }
 

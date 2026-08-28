@@ -62,17 +62,37 @@
         confirmed by reading `node_modules/next/dist/docs`); existing pages
         (`app/page.tsx`, `app/cert/**`) still work entirely off Dexie/IndexedDB,
         completely unaware of the new backend
-- [ ] **3. GPT-5.4 Mini integration** — (Phase 14, Phase 15) — existing
-      `lib/openai.ts` / `lib/ai/generate.ts` already call OpenAI (currently
-      `gpt-4o`, configurable via `OPENAI_MODEL`) but write nowhere — no
-      persistence into the new schema, no per-user scoping. Rewiring generation to
-      persist into `lessons`/`questions`/`question_options` is open.
-- [ ] **4. Structured output schemas** — (Phase 16) — existing `lib/ai/schemas.ts`
-      zod schemas match the *old* Dexie shape (embedded `QuizQuestion[]`), not the
-      new normalized `questions`/`question_options` tables. Need new schemas (or
-      a mapping layer) for the richer entity model.
-- [ ] **5. Curriculum generator** — (Phase 4) — generate persisted `sections` under
-      real `objectives`, not ad-hoc `modules` from an AI-invented structure.
+- [x] **3. AI model integration** — (Phase 14, Phase 15) — went through three
+      providers: Claude (`@anthropic-ai/sdk`) → OpenAI (`openai`,
+      `gpt-5.4-mini`) → **Google Gemini** (`@google/genai`, `gemini-2.5-flash`,
+      current). Reason for the last switch: OpenAI's API has no free tier at all
+      (confirmed via web search — `gpt-5.4-mini` being "free" is true only
+      inside the ChatGPT *app*, not the developer API) and the account had a
+      $0 credit balance; a $5 minimum purchase is required for any OpenAI API
+      usage with no way around it. Gemini genuinely has a free API tier (no
+      card required). `lib/gemini.ts` (client, was `lib/claude.ts` →
+      `lib/openai.ts`), `lib/ai/generate.ts`, `lib/ai/http.ts` (Gemini's SDK
+      has one `ApiError` with an HTTP-status field rather than OpenAI's
+      per-error-type classes) all updated; verified against the real
+      `@google/genai` type definitions (not just docs prose) before writing
+      the integration. Added `lib/server/ai/service.ts` as the actual
+      `AIService` layer (Phase 15) — currently one real method,
+      `generateCurriculumDraftForDomain()`; the other methods Phase 15 lists
+      (`generateLesson`, `generateQuiz`, `evaluateQuiz`, `generateRemediation`,
+      `generateExamBlueprint`, `generateFinalExam`, `evaluateFinalExam`) are
+      intentionally **not** stubbed out yet — they get added with their own
+      dev-order steps (6, 7, 9, 11-13), not as empty placeholders now.
+- [x] **4. Structured output schemas** — (Phase 16) — `lib/server/ai/schemas.ts`
+      added (`draftObjectiveSchema`/`curriculumDraftForDomainResponseSchema`),
+      matching the new normalized `objectives`/`sections` tables rather than the
+      old embedded-array Dexie shape. Schemas for lessons/questions/exams follow
+      alongside their own generators (steps 6, 7, 12), not built ahead of need.
+- [ ] **5. Curriculum generator** — (Phase 4) — code path built and wired
+      end-to-end (`scripts/generate-curriculum-draft.ts`, idempotent per domain,
+      persists `objectives` + `sections` in a transaction), now on Gemini's free
+      tier so no billing blocker remains. **Not yet actually run successfully**
+      only because it hasn't been re-attempted since the provider switch — next
+      action is just running `npm run content:draft-curriculum` again.
 - [ ] **6. Lesson generator** — (Phase 5) — persist into `lessons`, ahead-of-time,
       versioned.
 - [ ] **7. Question generator** — (Phase 6, Phase 7) — persist into
