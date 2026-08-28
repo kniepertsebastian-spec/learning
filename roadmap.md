@@ -38,25 +38,25 @@
 ---
 
 ## Phase 3: Claude API Integration (Backend Routes)
-- [ ] **3.1 Anthropic Client & Environment**
-  - [ ] `@anthropic-ai/sdk` & `zod` installieren
-  - [ ] `.env.local` Vorlage anlegen (`ANTHROPIC_API_KEY=...`)
-  - [ ] API-Client Singleton in `lib/claude.ts` erstellen
-- [ ] **3.2 Route Handler & Validierung**
-  - [ ] `POST /api/generate/curriculum`:
+- [x] **3.1 Anthropic Client & Environment**
+  - [x] `@anthropic-ai/sdk` & `zod` installieren
+  - [x] `.env.local` Vorlage anlegen (`ANTHROPIC_API_KEY=...`) (als `.env.example`, da `.env.local` bewusst nicht versioniert wird)
+  - [x] API-Client Singleton in `lib/claude.ts` erstellen
+- [x] **3.2 Route Handler & Validierung**
+  - [x] `POST /api/generate/curriculum`:
     - Eingabe: `{ certName: string, totalDays: number }`
-    - Prompt: 30-Tage (bzw. n-Tage) Curriculum als striktes JSON
+    - Prompt: n-Tage-Curriculum als striktes JSON, Titel/Zusammenfassung bilingual (DE+EN)
     - Zod Schema-Validierung & Fehlerbehandlung
-  - [ ] `POST /api/generate/chapter`:
-    - Eingabe: `{ certName: string, day: number, moduleTitle: string }`
-    - Prompt: Didaktischer Markdown-Lerntext + 5 szenariobasierte Multiple-Choice-Fragen mit Erklärungen
+  - [x] `POST /api/generate/chapter`:
+    - Eingabe: `{ certName: string, day: number, moduleTitle: { de: string, en: string } }` (bilingual statt reinem `string`, siehe Bilingual-Anforderung oben)
+    - Prompt: Didaktischer Markdown-Lerntext + 5 szenariobasierte Multiple-Choice-Fragen mit Erklärungen, jeweils bilingual (DE+EN)
     - JSON-Schema-Rückgabe
-  - [ ] `POST /api/generate/mock-exam`:
+  - [x] `POST /api/generate/mock-exam`:
     - Eingabe: `{ certName: string, questionCount: number, focusAreas?: string[] }`
-    - Prompt: Prüfungsnahe PBQ-/Szenario-Fragen im Prüfungsformat
-- [ ] **3.3 Fallback & Rate-Limit Handling**
-  - [ ] JSON-Parsing Fallback & Reparatur bei fehlerhafter KI-Ausgabe
-  - [ ] Fehler-Responses mit aussagekräftigen Statuscodes
+    - Prompt: Prüfungsnahe Szenario-Fragen im Prüfungsformat, bilingual (DE+EN)
+- [x] **3.3 Fallback & Rate-Limit Handling**
+  - [x] JSON-Parsing Fallback & Reparatur bei fehlerhafter KI-Ausgabe
+  - [x] Fehler-Responses mit aussagekräftigen Statuscodes
 
 ---
 
