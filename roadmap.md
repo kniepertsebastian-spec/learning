@@ -92,18 +92,18 @@
 ---
 
 ## Phase 5: Dockerization & Container-Setup
-- [ ] **5.1 Multi-Stage Dockerfile**
-  - [ ] Stage 1 (`deps`): Alpine Node 20 + Clean Install
-  - [ ] Stage 2 (`builder`): Build Next.js App (`output: 'standalone'`)
-  - [ ] Stage 3 (`runner`): Minimal Alpine User, Copy `.next/standalone`, `.next/static`, `public`
-  - [ ] Healthcheck Endpoint `/api/health` integrieren
-- [ ] **5.2 `docker-compose.yml`**
-  - [ ] Service `learning-pwa` definieren
-  - [ ] Port-Mapping `3000:3000` (lokal für Reverse Proxy)
-  - [ ] Environment Injection für `ANTHROPIC_API_KEY`
-  - [ ] Restart Policy: `unless-stopped`
-- [ ] **5.3 `.dockerignore`**
-  - [ ] `node_modules`, `.next`, `.git`, `.env*.local` ausschließen
+- [x] **5.1 Multi-Stage Dockerfile**
+  - [x] Stage 1 (`deps`): Alpine Node 20 + Clean Install
+  - [x] Stage 2 (`builder`): Build Next.js App (`output: 'standalone'`)
+  - [x] Stage 3 (`runner`): Minimal Alpine User, Copy `.next/standalone`, `.next/static`, `public`
+  - [x] Healthcheck Endpoint `/api/health` integrieren
+- [x] **5.2 `docker-compose.yml`**
+  - [x] Service `learning-pwa` definieren
+  - [x] Port-Mapping `3000:3000` (lokal für Reverse Proxy)
+  - [x] Environment Injection für `ANTHROPIC_API_KEY`
+  - [x] Restart Policy: `unless-stopped`
+- [x] **5.3 `.dockerignore`**
+  - [x] `node_modules`, `.next`, `.git`, `.env*.local` ausschließen
 
 ---
 
