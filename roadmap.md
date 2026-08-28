@@ -84,10 +84,10 @@
   - [x] "Lektion als gelesen markieren" Trigger
   - [x] 5-Fragen Multiple-Choice-Komponente mit direkter Validierung (Grün/Rot) & Erklärungs-Box
   - [x] Konfetti-Animation bei bestandenem Tagesquiz
-- [ ] **4.6 Prüfungssimulator (`app/cert/[id]/exam/page.tsx`)**
-  - [ ] Countdown-Timer (z. B. 90 Minuten für 50 Fragen)
-  - [ ] Fragen-Navigator (Flaggen, Unbeantwortet, Beantwortet)
-  - [ ] Prüfungs-Auswertung: Score, Bestehensquote (z. B. >= 75%), Schwachstellenanalyse
+- [x] **4.6 Prüfungssimulator (`app/cert/[id]/exam/page.tsx`)**
+  - [x] Countdown-Timer (90 Minuten für 50 Fragen, proportional skaliert zur gewählten Fragenanzahl)
+  - [x] Fragen-Navigator (Flaggen, Unbeantwortet, Beantwortet)
+  - [x] Prüfungs-Auswertung: Score, Bestehensquote (>= 75%), Schwachstellenanalyse (Review der falsch beantworteten Fragen)
 
 ---
 
