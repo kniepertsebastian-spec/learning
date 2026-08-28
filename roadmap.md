@@ -73,17 +73,17 @@
   - [x] Eingabefelder: Zertifikatsname (z. B. "CompTIA Security+ SY0-701"), Zieldauer in Tagen
   - [x] Loading-Screen mit animiertem Status während Claude den Lehrplan generiert
   - [x] Speicherung in IndexedDB & Redirect zur Detailansicht
-- [ ] **4.4 Zertifikats-Detailseite (`app/cert/[id]/page.tsx`)**
-  - [ ] Roadmap-Timeline / Tagesübersicht (Tag 1 bis Tag N)
-  - [ ] Status-Icons (Abgeschlossen, Aktiv, Gesperrt/Offen)
-  - [ ] Schnellstart-Button: "Heutige Lektion fortsetzen"
-  - [ ] Button: "Simulierte Probeprüfung starten"
-- [ ] **4.5 Lektion & Tages-Quiz (`app/cert/[id]/day/[day]/page.tsx`)**
-  - [ ] Markdown-Renderer mit `@tailwindcss/typography` (`react-markdown` + Prism/Highlighting)
-  - [ ] Sticky Header mit Modultitel und Tag-Nummer
-  - [ ] "Lektion als gelesen markieren" Trigger
-  - [ ] 5-Fragen Multiple-Choice-Komponente mit direkter Validierung (Grün/Rot) & Erklärungs-Box
-  - [ ] Konfetti-Animation bei bestandenem Tagesquiz
+- [x] **4.4 Zertifikats-Detailseite (`app/cert/[id]/page.tsx`)**
+  - [x] Roadmap-Timeline / Tagesübersicht (Tag 1 bis Tag N)
+  - [x] Status-Icons (Abgeschlossen, Aktiv, Gesperrt/Offen)
+  - [x] Schnellstart-Button: "Heutige Lektion fortsetzen"
+  - [x] Button: "Simulierte Probeprüfung starten"
+- [x] **4.5 Lektion & Tages-Quiz (`app/cert/[id]/day/[day]/page.tsx`)**
+  - [x] Markdown-Renderer mit `@tailwindcss/typography` (`react-markdown` + Highlighting via `rehype-highlight`)
+  - [x] Sticky Header mit Modultitel und Tag-Nummer
+  - [x] "Lektion als gelesen markieren" Trigger
+  - [x] 5-Fragen Multiple-Choice-Komponente mit direkter Validierung (Grün/Rot) & Erklärungs-Box
+  - [x] Konfetti-Animation bei bestandenem Tagesquiz
 - [ ] **4.6 Prüfungssimulator (`app/cert/[id]/exam/page.tsx`)**
   - [ ] Countdown-Timer (z. B. 90 Minuten für 50 Fragen)
   - [ ] Fragen-Navigator (Flaggen, Unbeantwortet, Beantwortet)

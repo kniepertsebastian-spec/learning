@@ -37,3 +37,21 @@ export function useNextModule(certId: string): Module | undefined {
     return modules.find((m) => !m.isCompleted);
   }, [certId]);
 }
+
+export interface ModuleWithQuiz {
+  certificate: Certificate | undefined;
+  module: Module | undefined;
+  quiz: Quiz | undefined;
+}
+
+/** Liefert Zertifikat, Modul und zugehöriges Quiz für einen bestimmten Tag. */
+export function useModuleByDay(certId: string, day: number): ModuleWithQuiz | undefined {
+  return useLiveQuery(async () => {
+    const [certificate, module] = await Promise.all([
+      db.certificates.get(certId),
+      db.modules.where({ certId, day }).first(),
+    ]);
+    const quiz = module ? await db.quizzes.where({ moduleId: module.id }).first() : undefined;
+    return { certificate, module, quiz };
+  }, [certId, day]);
+}
