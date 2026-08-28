@@ -1,0 +1,20 @@
+# Reverse-Proxy-Konfiguration für learning.pwa-tree.de
+#
+# Auf dem Zielserver (nicht im Container) mit Caddy 2 verwenden, z. B.
+# unter /etc/caddy/Caddyfile. Caddy holt und erneuert das Let's-Encrypt-
+# Zertifikat automatisch (HTTPS-Zwang inklusive).
+#
+# Voraussetzung: DNS A/CNAME-Record für learning.pwa-tree.de zeigt auf
+# diesen Server, und der learning-pwa-Container läuft lokal auf Port 3000
+# (siehe docker-compose.yml).
+
+learning.pwa-tree.de {
+	reverse_proxy 127.0.0.1:3000 {
+		# Header für Server-Sent Events / Streaming-Antworten durchreichen.
+		flush_interval -1
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+
+	encode gzip zstd
+}
