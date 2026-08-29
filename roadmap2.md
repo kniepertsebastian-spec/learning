@@ -161,7 +161,14 @@
       (objective details). Cert detail page now displays domain progress bars and
       objective mastery scores with color-coded indicators (green=STRONG, blue=OK,
       gray=LEARNING). Auto-updates after each quiz submission.
-- [ ] **11. Remediation engine** — (Phase 9) — `remediation_sessions`.
+- [x] **11. Remediation engine** — (Phase 9) — `remediation_sessions`.
+      RemediationService detects objectives with mastery < 60% (requires min 2 attempts to avoid
+      false positives) and generates AI-powered targeted lessons with different explanation approaches
+      and lists of common misconceptions. Auto-creates remediation_sessions records for tracking.
+      Three API endpoints: `/api/remediation/needed` (get list), `/api/remediation/[objectiveId]`
+      (fetch lesson + 3-5 practice questions), `/api/remediation/[objectiveId]/attempt` (submit
+      answers, calculate improvement). Improvement tracked as ≥10% score gain. Integration with
+      progress system automatic.
 - [ ] **12. Final exam generator** — (Phase 11, Phase 12) — `exams`/
       `exam_questions` + blueprint logic.
 - [ ] **13. Final exam scoring** — (Phase 13) — `exam_attempts`, readiness
