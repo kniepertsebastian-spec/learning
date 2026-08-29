@@ -150,8 +150,17 @@
       (evaluating correctness via `questionOptions.isCorrect`), and returns
       `{ score, results, attemptId }`. `SectionQuiz` calls this endpoint
       fire-and-forget after the final question.
-- [ ] **10. Objective-level progress tracking** — (Phase 10) — `objective_progress`
+- [x] **10. Objective-level progress tracking** — (Phase 10) — `objective_progress`
       write path + dashboard UI.
+      Implemented weighted mastery scoring based on quiz attempt history. Calculation
+      uses recency weighting (newer attempts count more) and difficulty weighting
+      (harder questions slightly boost score). Requires minimum 3 attempts for stable
+      rating; shows "LEARNING" status until threshold. Uses last 20 attempts per
+      objective. Three API endpoints: `/api/progress/[certId]` (overall %), 
+      `/api/progress/[certId]/domains` (domain mastery), `/api/progress/[certId]/objectives`
+      (objective details). Cert detail page now displays domain progress bars and
+      objective mastery scores with color-coded indicators (green=STRONG, blue=OK,
+      gray=LEARNING). Auto-updates after each quiz submission.
 - [ ] **11. Remediation engine** — (Phase 9) — `remediation_sessions`.
 - [ ] **12. Final exam generator** — (Phase 11, Phase 12) — `exams`/
       `exam_questions` + blueprint logic.
