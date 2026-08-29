@@ -35,6 +35,7 @@ function subscribe(callback: () => void): () => void {
 function persistLocale(next: Locale) {
   currentLocale = next;
   window.localStorage.setItem(STORAGE_KEY, next);
+  document.cookie = `certstudy-locale=${next}; path=/; max-age=31536000; SameSite=Lax`;
   for (const listener of listeners) listener();
 }
 

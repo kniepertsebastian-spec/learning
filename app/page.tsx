@@ -1,45 +1,80 @@
-"use client";
+export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import Link from "next/link";
 import { GraduationCap } from "lucide-react";
-import { AddCertModal } from "@/components/AddCertModal";
-import { CertificateCard } from "@/components/CertificateCard";
-import { useLocale } from "@/lib/i18n";
-import { useCertificates } from "@/lib/hooks/queries";
+import { auth } from "@/lib/server/auth";
+import { getDb } from "@/lib/server/db/client";
+import { certifications } from "@/lib/server/db/schema";
+import { logoutAction } from "@/app/actions/auth";
 
-export default function DashboardPage() {
-  const { t } = useLocale();
-  const certificates = useCertificates();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+export default async function DashboardPage() {
+  const db = getDb();
+  const [session, certs] = await Promise.all([
+    auth(),
+    db.select().from(certifications).orderBy(certifications.name),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t.dashboard.heading}</h1>
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          {t.dashboard.addCertificate}
-        </button>
+        <h1 className="text-2xl font-semibold">
+          {session?.user
+            ? `Welcome back, ${session.user.name ?? session.user.email}!`
+            : "Certifications"}
+        </h1>
+        <div className="flex items-center gap-2">
+          {session ? (
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-surface"
+              >
+                Sign out
+              </button>
+            </form>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              >
+                Register
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
-      {certificates === undefined ? null : certificates.length === 0 ? (
+      {certs.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
           <GraduationCap className="mb-4 h-12 w-12 text-foreground/40" aria-hidden="true" />
-          <h2 className="mb-2 text-lg font-medium">{t.dashboard.emptyTitle}</h2>
-          <p className="max-w-sm text-sm text-foreground/70">{t.dashboard.emptyBody}</p>
+          <h2 className="mb-2 text-lg font-medium">No certifications available yet</h2>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {certificates.map((certificate) => (
-            <CertificateCard key={certificate.id} certificate={certificate} />
+          {certs.map((cert) => (
+            <Link
+              key={cert.id}
+              href={`/cert/${cert.slug}`}
+              className="group rounded-xl border border-border bg-surface p-5 hover:border-accent"
+            >
+              <h2 className="mb-1 font-semibold group-hover:text-accent">{cert.name}</h2>
+              <p className="mb-4 text-sm text-foreground/60">
+                {cert.examName} {cert.examVersion}
+              </p>
+              <span className="inline-block rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
+                {session ? "Continue learning →" : "Start learning →"}
+              </span>
+            </Link>
           ))}
         </div>
       )}
-
-      {isModalOpen && <AddCertModal onClose={() => setIsModalOpen(false)} />}
     </div>
   );
 }

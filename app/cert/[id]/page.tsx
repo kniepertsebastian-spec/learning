@@ -1,33 +1,54 @@
-"use client";
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { ArrowLeft, FileCheck2, PlayCircle } from "lucide-react";
-import { useLocale } from "@/lib/i18n";
-import { useCertificateDetail } from "@/lib/hooks/queries";
-import { ModuleStatusIcon, type ModuleStatus } from "@/components/ModuleStatusIcon";
+import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { eq, inArray } from "drizzle-orm";
+import { auth } from "@/lib/server/auth";
+import { getDb } from "@/lib/server/db/client";
+import { certifications, domains, objectives, sections } from "@/lib/server/db/schema";
+import { getServerLocale } from "@/lib/server/locale";
 
-export default function CertificateDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const { locale, t } = useLocale();
-  const detail = useCertificateDetail(id);
+export default async function CertDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: slug } = await params;
+  const db = getDb();
 
-  if (detail === undefined) return null;
+  const certRows = await db
+    .select()
+    .from(certifications)
+    .where(eq(certifications.slug, slug))
+    .limit(1);
 
-  const { certificate, modules } = detail;
+  if (!certRows.length) notFound();
+  const cert = certRows[0];
 
-  if (!certificate) {
-    return <p className="text-foreground/70">{t.certDetail.notFound}</p>;
-  }
+  const allDomains = await db
+    .select()
+    .from(domains)
+    .where(eq(domains.certificationId, cert.id))
+    .orderBy(domains.orderNum);
 
-  const firstOpenIndex = modules.findIndex((m) => !m.isCompleted);
-  const activeModule = firstOpenIndex === -1 ? modules[modules.length - 1] : modules[firstOpenIndex];
+  const domainIds = allDomains.map((d) => d.id);
+  const allObjectives =
+    domainIds.length > 0
+      ? await db.select().from(objectives).where(inArray(objectives.domainId, domainIds))
+      : [];
 
-  function statusFor(index: number): ModuleStatus {
-    if (modules[index].isCompleted) return "completed";
-    if (index === firstOpenIndex || firstOpenIndex === -1) return "active";
-    return index < firstOpenIndex ? "completed" : "locked";
-  }
+  const objectiveIds = allObjectives.map((o) => o.id);
+  const allSections =
+    objectiveIds.length > 0
+      ? await db
+          .select()
+          .from(sections)
+          .where(inArray(sections.objectiveId, objectiveIds))
+          .orderBy(sections.orderNum)
+      : [];
+
+  const [session, locale] = await Promise.all([auth(), getServerLocale()]);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -36,74 +57,76 @@ export default function CertificateDetailPage() {
         className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {t.certDetail.back}
+        {locale === "de" ? "Zurück zum Dashboard" : "Back to dashboard"}
       </Link>
 
-      <h1 className="mb-1 text-2xl font-semibold">{certificate.title}</h1>
+      <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
       <p className="mb-6 text-sm text-foreground/70">
-        {certificate.progress}% - {certificate.totalDays} {t.dashboard.day.toLowerCase()}
-        {locale === "de" ? "e" : "s"}
+        {cert.examName} {cert.examVersion}
       </p>
 
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row">
-        {activeModule && (
+      {!session && (
+        <div className="mb-6 flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">
+          <p className="text-sm text-foreground/70">
+            {locale === "de"
+              ? "Melde dich an, um deinen Fortschritt zu speichern."
+              : "Sign in to save your progress."}
+          </p>
           <Link
-            href={`/cert/${certificate.id}/day/${activeModule.day}`}
-            className="flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+            href="/login"
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
           >
-            <PlayCircle className="h-4 w-4" aria-hidden="true" />
-            {t.certDetail.continueToday}
+            {locale === "de" ? "Anmelden" : "Sign in"}
           </Link>
-        )}
-        <Link
-          href={`/cert/${certificate.id}/exam`}
-          className="flex items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium hover:bg-surface"
-        >
-          <FileCheck2 className="h-4 w-4" aria-hidden="true" />
-          {t.certDetail.startExam}
-        </Link>
-      </div>
+        </div>
+      )}
 
-      <h2 className="mb-3 text-lg font-semibold">{t.certDetail.roadmap}</h2>
-      <ol className="flex flex-col gap-2">
-        {modules.map((module, index) => {
-          const status = statusFor(index);
-          const isLocked = status === "locked";
-
-          const content = (
-            <div
-              className={`flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 ${
-                isLocked ? "opacity-50" : "hover:border-accent"
-              }`}
-            >
-              <ModuleStatusIcon status={status} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
-                  {t.certDetail.dayLabel} {module.day} - {module.title[locale]}
-                </p>
-                <p className="truncate text-xs text-foreground/60">{module.summary[locale]}</p>
+      <div className="flex flex-col gap-8">
+        {allDomains.map((domain) => {
+          const domainObjectives = allObjectives.filter((o) => o.domainId === domain.id);
+          return (
+            <div key={domain.id}>
+              <h2 className="mb-4 text-lg font-semibold">
+                {domain.name}
+                {domain.weightPercent && (
+                  <span className="ml-2 text-sm font-normal text-foreground/60">
+                    ({domain.weightPercent}%)
+                  </span>
+                )}
+              </h2>
+              <div className="flex flex-col gap-4">
+                {domainObjectives.map((obj) => {
+                  const objSections = allSections.filter((s) => s.objectiveId === obj.id);
+                  return (
+                    <div key={obj.id} className="rounded-lg border border-border bg-surface p-4">
+                      <p className="mb-3 text-sm font-medium">
+                        <span className="mr-2 font-mono text-xs text-foreground/50">{obj.code}</span>
+                        {obj.title}
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {objSections.map((section) => (
+                          <Link
+                            key={section.id}
+                            href={`/cert/${slug}/section/${section.id}`}
+                            className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:border-accent hover:bg-background"
+                          >
+                            <span>{section.title[locale]}</span>
+                            {section.estimatedMinutes && (
+                              <span className="shrink-0 text-xs text-foreground/50">
+                                {section.estimatedMinutes} min
+                              </span>
+                            )}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <span className="shrink-0 text-xs text-foreground/50">
-                {status === "completed"
-                  ? t.certDetail.statusCompleted
-                  : status === "active"
-                    ? t.certDetail.statusActive
-                    : t.certDetail.statusLocked}
-              </span>
             </div>
           );
-
-          return (
-            <li key={module.id}>
-              {isLocked ? (
-                content
-              ) : (
-                <Link href={`/cert/${certificate.id}/day/${module.day}`}>{content}</Link>
-              )}
-            </li>
-          );
         })}
-      </ol>
+      </div>
     </div>
   );
 }

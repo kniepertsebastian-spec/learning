@@ -98,12 +98,11 @@
       "Technical/Managerial/Operational/Physical" control categories and 1.2
       correctly covers the CIA triad/AAA/Zero Trust, matching the real SY0-701
       structure, with natural-reading bilingual (DE/EN) section titles.
-- [/] **6. Lesson generator** — (Phase 5) — persist into `lessons`, ahead-of-time,
+- [x] **6. Lesson generator** — (Phase 5) — persist into `lessons`, ahead-of-time,
       versioned. Code built (`lib/server/ai/service.ts`
       `generateLessonsAndQuestionsForObjective()`, `scripts/generate-lessons-and-questions.ts`,
-      `npm run content:draft-lessons`) and **partially run**: 2 of 23 objectives
-      done (23 lessons, 14 questions persisted and verified). Two real bugs found
-      and fixed along the way:
+      `npm run content:draft-lessons`) and **fully run**: all 23 objectives done.
+      Two real bugs found and fixed along the way:
       1. `extractJson()` in `lib/ai/generate.ts` naively sliced first-`{`-to-last-`}`,
          which broke once responses got long enough to include trailing content
          after the real JSON object — replaced with a proper brace-depth scanner
@@ -113,28 +112,44 @@
          the prompt included a literal example of the exact expected JSON shape —
          prose instructions alone weren't enough for these longer fields (short
          fields like objective/section titles worked fine without an example).
-      **Blocked on Gemini's free-tier daily quota**, not a code issue: hit a hard
-      `429 RESOURCE_EXHAUSTED` — confirmed via the live error to be
-      `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `quotaValue: 20` (20
-      requests/day, per model). Combined lesson+question generation into one call
-      per objective (was two) to roughly halve the calls needed (23 instead of 46
-      for all objectives). Tried `gemini-3.7-flash` as an alternate model (the
-      quota is scoped per-model, so it has its own separate bucket) but it's
-      independently returning `503 UNAVAILABLE` ("high demand") right now — a
-      genuinely new, popular model being overloaded, not something retrying fixes.
+      Hit the free-tier 20 req/day cap during generation; resolved by adding
+      billing to the Gemini API key (removes the free-tier quota). `gemini-3.7-flash`
+      was tried as a fallback but consistently returned `503 UNAVAILABLE` (high
+      demand); `gemini-3.6-flash` with billing became the working default.
       Script is fully idempotent (skips objectives that already have both lessons
-      and questions), so resuming — either once today's `gemini-3.6-flash` quota
-      resets, or once `gemini-3.7-flash`'s overload clears — just means re-running
-      `npm run content:draft-lessons`.
-- [ ] **7. Question generator** — (Phase 6, Phase 7) — persist into
+      and questions). Note: the `DATABASE_URL` hostname `postgres` is only
+      resolvable inside the Docker internal network — run via:
+      `docker run --rm --network learning_internal --env-file .env.local -v $(pwd):/app -w /app node:20-alpine npx tsx scripts/generate-lessons-and-questions.ts`
+- [x] **7. Question generator** — (Phase 6, Phase 7) — persist into
       `questions`/`question_options`, deduplicated, human-readable IDs
-      (`SEC-<code>-Q<seq>`). Built and generating correctly (see step 6 above —
-      same script produces both together now); not marked done until all 23
-      objectives actually have a question pool, same quota blocker as step 6.
-- [ ] **8. Quiz UI** — (Phase 23) — rewire `app/cert/**` off Dexie onto the new
-      backend + session-scoped data. This is the point where the existing
-      deployed frontend actually starts changing.
-- [ ] **9. Quiz scoring** — (Phase 8) — `quiz_attempts`/`quiz_answers` write path.
+      (`SEC-<code>-Q<seq>`). Built and generating correctly (same script as step
+      6 — produces both together); all 23 objectives have a question pool,
+      verified live in Postgres.
+- [x] **8. Quiz UI** — (Phase 23) — rewired `app/cert/**` off Dexie onto the new
+      backend. `app/page.tsx` (dashboard) and `app/cert/[id]/page.tsx` are now
+      Server Components querying Postgres directly. New
+      `app/cert/[id]/section/[sectionId]/page.tsx` fetches pre-generated lessons
+      and questions and passes them to client components for rendering. Added
+      `proxy.ts` (Next.js 16 auth gate — `middleware.ts` renamed) protecting
+      `/cert/**` with a session-cookie check + redirect to `/login?from=…`.
+      Added `/app/login/page.tsx` and `/app/register/page.tsx` (login uses
+      `useActionState` + Auth.js `signIn` Server Action; register calls existing
+      `/api/register` route). `SectionContent` client component renders lesson
+      markdown (ReactMarkdown + remark-gfm + rehype-highlight) with key
+      takeaways and exam focus points; `SectionQuiz` client component shows
+      questions one-by-one using `QuizQuestionCard` and posts results to the
+      attempt API. Locale detected via cookie (`certstudy-locale`) in Server
+      Components — `persistLocale()` now also sets the cookie alongside
+      localStorage. Old Dexie-based `day/[day]` and `exam` pages remain but
+      are no longer linked.
+- [x] **9. Quiz scoring** — (Phase 8) — `quiz_attempts`/`quiz_answers` write
+      path implemented as part of step 8:
+      `app/api/sections/[id]/attempt/route.ts` (POST, auth-required) gets or
+      creates a `quizzes` record for the section, creates a `quiz_attempts`
+      row with the user ID, writes one `quiz_answers` row per answer
+      (evaluating correctness via `questionOptions.isCorrect`), and returns
+      `{ score, results, attemptId }`. `SectionQuiz` calls this endpoint
+      fire-and-forget after the final question.
 - [ ] **10. Objective-level progress tracking** — (Phase 10) — `objective_progress`
       write path + dashboard UI.
 - [ ] **11. Remediation engine** — (Phase 9) — `remediation_sessions`.

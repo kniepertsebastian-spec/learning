@@ -76,7 +76,7 @@ export default function LessonPage() {
   }
   const activeModule = mod;
 
-  function handleAnswered(isCorrect: boolean) {
+  function handleAnswered(isCorrect: boolean, _selectedIndex: number) {
     if (isCorrect) setCorrectCount((c) => c + 1);
     setHasAnsweredCurrent(true);
   }

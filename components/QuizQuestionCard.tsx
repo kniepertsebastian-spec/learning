@@ -7,7 +7,7 @@ import type { QuizQuestion } from "@/lib/types";
 
 interface QuizQuestionCardProps {
   question: QuizQuestion;
-  onAnswered: (isCorrect: boolean) => void;
+  onAnswered: (isCorrect: boolean, selectedIndex: number) => void;
 }
 
 export function QuizQuestionCard({ question, onAnswered }: QuizQuestionCardProps) {
@@ -17,7 +17,7 @@ export function QuizQuestionCard({ question, onAnswered }: QuizQuestionCardProps
   function handleSelect(index: number) {
     if (selected !== null) return;
     setSelected(index);
-    onAnswered(index === question.correctIndex);
+    onAnswered(index === question.correctIndex, index);
   }
 
   return (
