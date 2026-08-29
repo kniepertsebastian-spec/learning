@@ -2,6 +2,7 @@ import { generateStructured } from "@/lib/ai/generate";
 import {
   curriculumDraftForDomainResponseSchema,
   lessonsAndQuestionsForObjectiveResponseSchema,
+  remediationResponseSchema,
   type draftObjectiveSchema,
   type draftLessonSchema,
   type draftQuestionSchema,
@@ -11,6 +12,7 @@ import type { z } from "zod";
 export type DraftObjective = z.infer<typeof draftObjectiveSchema>;
 export type DraftLesson = z.infer<typeof draftLessonSchema>;
 export type DraftQuestion = z.infer<typeof draftQuestionSchema>;
+export type RemediationResponse = z.infer<typeof remediationResponseSchema>;
 export interface LessonsAndQuestions {
   lessons: DraftLesson[];
   questions: DraftQuestion[];
@@ -120,4 +122,57 @@ export async function generateLessonsAndQuestionsForObjective(
   const userPrompt = `Generiere Lerninhalt + Fragen-Pool für Objective "${objectiveTitle}".`;
 
   return generateStructured(systemPrompt, userPrompt, lessonsAndQuestionsForObjectiveResponseSchema);
+}
+
+/**
+ * Generiert Remediations-Inhalt für ein Objective, das der Lernende
+ * nicht gut verstanden hat (< 60% bei Quiz; Dev-Order Schritt 11).
+ * Kürzere, fokussierte Erklärung mit anderem Blickwinkel, häufigen
+ * Missverständnissen + 3-5 einfachere Übungsfragen zum Neu-Testen.
+ */
+export async function generateRemediationForObjective(
+  certificationName: string,
+  objectiveTitle: string,
+  objectiveDescription: string,
+): Promise<RemediationResponse> {
+  const systemPrompt = [
+    `Du bist ein Lern-Therapeut für die Zertifizierung "${certificationName}".`,
+    `Der Lernende hat Objective "${objectiveTitle}" nicht verstanden.`,
+    "",
+    "Erstelle eine KURZE Remediations-Lektion (2-3 Absätze, anders erklärt als die",
+    "Haupt-Lektion), fokussiert auf das Kern-Konzept und häufige Missverständnisse.",
+    "",
+    "Dann: 3-5 einfache Multiple-Choice-Fragen (beginner/intermediate, NICHT advanced),",
+    "um zu testen, ob der Lernende es jetzt besser versteht.",
+    "",
+    "Exaktes Ausgabeformat:",
+    "```json",
+    "{",
+    '  "lesson": {',
+    '    "title": { "de": "...", "en": "..." },',
+    '    "explanation": { "de": "... Markdown-Text ...", "en": "... Markdown text ..." },',
+    '    "keyPoints": { "de": ["Punkt 1", "Punkt 2"], "en": ["Point 1", "Point 2"] },',
+    '    "commonMisconceptions": { "de": ["Fehler 1", "Fehler 2"], "en": ["Misconception 1", "Misconception 2"] }',
+    "  },",
+    '  "questions": [',
+    "    {",
+    '      "difficulty": "beginner",',
+    '      "type": "knowledge",',
+    '      "question": { "de": "...", "en": "..." },',
+    '      "options": [',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": false },',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": true },',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": false },',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": false }',
+    "      ],",
+    '      "explanation": { "de": "...", "en": "..." }',
+    "    }",
+    "  ]",
+    "}",
+    "```",
+  ].join("\n");
+
+  const userPrompt = `Generiere Remediations-Lektion und Übungsfragen für "${objectiveTitle}".`;
+
+  return generateStructured(systemPrompt, userPrompt, remediationResponseSchema);
 }

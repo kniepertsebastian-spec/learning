@@ -79,3 +79,19 @@ export const lessonsAndQuestionsForObjectiveResponseSchema = z.object({
   lessons: z.array(draftLessonSchema).min(1),
   questions: z.array(draftQuestionSchema).min(5).max(10),
 });
+
+/**
+ * Remediation lesson (Dev-Order Schritt 11) - shorter, focused re-explanation
+ * targeting common misconceptions, plus 3-5 simple practice questions.
+ */
+export const remediationLessonSchema = z.object({
+  title: localizedStringSchema,
+  explanation: localizedStringSchema,
+  keyPoints: localizedStringArraySchema,
+  commonMisconceptions: localizedStringArraySchema,
+});
+
+export const remediationResponseSchema = z.object({
+  lesson: remediationLessonSchema,
+  questions: z.array(draftQuestionSchema).min(3).max(5),
+});
