@@ -12,6 +12,7 @@ import {
   quizAttempts,
   quizAnswers,
 } from "@/lib/server/db/schema";
+import { ObjectiveProgressService } from "@/lib/server/progress/service";
 
 interface AnswerPayload {
   questionId: string;
@@ -117,6 +118,9 @@ export async function POST(
     .update(quizAttempts)
     .set({ score: String(score) })
     .where(eq(quizAttempts.id, attemptId));
+
+  // Update objective progress
+  await ObjectiveProgressService.updateProgressForQuizAttempt(session.user.id, attemptId);
 
   return NextResponse.json({ score, results, attemptId });
 }
