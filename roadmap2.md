@@ -169,8 +169,16 @@
       (fetch lesson + 3-5 practice questions), `/api/remediation/[objectiveId]/attempt` (submit
       answers, calculate improvement). Improvement tracked as ≥10% score gain. Integration with
       progress system automatic.
-- [ ] **12. Final exam generator** — (Phase 11, Phase 12) — `exams`/
+- [x] **12. Final exam generator** — (Phase 11, Phase 12) — `exams`/
       `exam_questions` + blueprint logic.
+      Blueprint service builds proportional question distribution based on domain weights
+      (e.g., Domain 1: 15%, Domain 2: 25%), with fallback to equal distribution if no weights.
+      Exam generator selects random questions from bank, automatically excluding questions
+      learner already answered in quizzes. Creates exam record + exam_questions rows.
+      Three endpoints: POST to generate (90 questions default), GET to fetch exam with
+      all questions + options, POST to submit answers and get results. Results include
+      overall score + per-domain breakdown + readiness level (WELL_PREPARED/ADEQUATELY_PREPARED/
+      SOMEWHAT_PREPARED/NEEDS_PREPARATION based on score thresholds).
 - [ ] **13. Final exam scoring** — (Phase 13) — `exam_attempts`, readiness
       language ("practice readiness", not a pass guarantee).
 - [ ] **14. Admin/content review system** — (Phase 18, Phase 25).
