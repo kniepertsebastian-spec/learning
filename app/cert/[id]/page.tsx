@@ -114,10 +114,22 @@ export default async function CertDetailPage({
         {locale === "de" ? "Zurück zum Dashboard" : "Back to dashboard"}
       </Link>
 
-      <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
-      <p className="mb-6 text-sm text-foreground/70">
-        {cert.examName} {cert.examVersion}
-      </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
+          <p className="text-sm text-foreground/70">
+            {cert.examName} {cert.examVersion}
+          </p>
+        </div>
+        {session && (
+          <Link
+            href={`/cert/${slug}/final-exam`}
+            className="shrink-0 rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent/10"
+          >
+            {locale === "de" ? "Abschlussprüfung" : "Final practice exam"}
+          </Link>
+        )}
+      </div>
 
       {!session && (
         <div className="mb-6 flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">
