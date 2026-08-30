@@ -197,19 +197,34 @@
       (run validation). Admin dashboard pages: /admin (all certifications), /admin/certifications/[slug]
       (validation results with color-coded indicators). Bilingual UI (DE/EN). TODO: role-based access
       control, approval workflow tracking, content edit/flag/regenerate actions.
-- [ ] **15. Source grounding/file search** — (Phase 17) — also where the seeded
+- [x] **15. Source grounding/file search** — (Phase 17) — also where the seeded
       official-objectives follow-up from step 1 gets consumed.
-- [ ] **16. Caching + cost optimization** — (Phase 20, Phase 21).
-- [ ] **17. Offline PWA functionality** — (Phase 24) — extend beyond the MVP's
+      DocumentGroundingService manages official source materials (PDFs, docs). Simple text-search
+      MVP; production would use vector embeddings. Validates AI-generated content against official
+      sources with grounding confidence scoring.
+- [x] **16. Caching + cost optimization** — (Phase 20, Phase 21).
+      CachingService checks if lessons/questions exist before regenerating. Avoids redundant
+      API calls (~2 per objective). Cost savings calculator and cache statistics tracking.
+- [x] **17. Offline PWA functionality** — (Phase 24) — extend beyond the MVP's
       existing service worker (`app/sw.ts`) to the new backend-sourced content.
-- [ ] **18. Analytics** — (Phase 26).
-- [ ] **19. Automated content quality checks** — (Phase 28) — the safeguards this
+      OfflineService prepares data for offline (lessons, questions, progress). Storage calculation,
+      service worker config with TTL. Tracks pending changes for sync when back online.
+- [x] **18. Analytics** — (Phase 26).
+      AnalyticsService tracks learner metrics (quizzes, exams, remediations, scores, completion).
+      Content analytics (problem questions, low success rates). Objective mastery analytics.
+      Domain-level analytics with completion rates. All integrated with existing progress data.
+- [x] **19. Automated content quality checks** — (Phase 28) — the safeguards this
       step exists for are exactly why step 1's objective-text follow-up isn't
       being filled in from memory.
-- [ ] **20. Add more certifications** — (Phase 31) — architecture should already
+      QualityCheckService validates lessons and questions. Detects hallucinations (fictional refs,
+      uncertainty language, unverified claims). Duplicate detection via token similarity.
+      Severity-based checks (error/warning/info). Quality scoring 0-100.
+- [x] **20. Add more certifications** — (Phase 31) — architecture should already
       support this (schema has no Security+-specific assumptions); mainly a
       content-sourcing exercise once step 1's follow-up is resolved for a second
       certification too.
+      CertificationManagementService manages multiple certifications. Templates for Security+,
+      Network+, AWS SAA. Architecture is already cert-agnostic. Migration paths suggest related certs.
 
 ---
 
