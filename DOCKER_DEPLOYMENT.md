@@ -22,10 +22,13 @@ cp .env.production.example .env.production
 # Edit with your values
 nano .env.production
 # Set:
-# - DB_PASSWORD (secure password)
+# - DB_USER & DB_PASSWORD (used by both PostgreSQL and app)
 # - NEXTAUTH_URL (your domain or http://your-ip:3000)
 # - NEXTAUTH_SECRET (generate: openssl rand -base64 32)
 # - GEMINI_API_KEY (from Google AI Studio)
+
+# Important: DB_USER and DB_PASSWORD are shared between PostgreSQL and the app's
+# DATABASE_URL connection string. They must match for the connection to work.
 ```
 
 ### 2. Run Docker Compose
@@ -183,14 +186,18 @@ server {
 
 ## Environment Variables Reference
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes | - |
-| `NEXTAUTH_URL` | App URL (http://IP:3000 or https://domain) | Yes | - |
-| `NEXTAUTH_SECRET` | Session encryption key (32+ chars) | Yes | - |
-| `GEMINI_API_KEY` | Google Gemini API key | No | (free tier) |
-| `DB_PASSWORD` | Database password | Yes | - |
-| `NODE_ENV` | production or development | Yes | production |
+| Variable | Description | Required | Used By | Notes |
+|----------|-------------|----------|---------|-------|
+| `DB_NAME` | Database name | Yes | PostgreSQL + app | Used in DATABASE_URL |
+| `DB_USER` | Database user | Yes | PostgreSQL + app | Used in POSTGRES_USER and DATABASE_URL |
+| `DB_PASSWORD` | Database password | Yes | PostgreSQL + app | Used in POSTGRES_PASSWORD and DATABASE_URL |
+| `DATABASE_URL` | Full connection string | Yes | App only | Auto-generated from DB_* vars |
+| `NEXTAUTH_URL` | App URL | Yes | App | http://IP:3000 or https://domain |
+| `NEXTAUTH_SECRET` | Session encryption key | Yes | App | Generate: `openssl rand -base64 32` |
+| `GEMINI_API_KEY` | Google Gemini API key | No | App | From https://ai.google.dev |
+| `NODE_ENV` | Environment mode | Yes | App | Set to `production` |
+
+**Important:** `DB_USER` and `DB_PASSWORD` are shared between PostgreSQL container (POSTGRES_USER, POSTGRES_PASSWORD) and the app's DATABASE_URL. They must match.
 
 ---
 
