@@ -1,0 +1,167 @@
+export const dynamic = "force-dynamic";
+
+import Link from "next/link";
+import { ArrowLeft, CheckCircle, AlertCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import { eq } from "drizzle-orm";
+import { auth } from "@/lib/server/auth";
+import { getDb } from "@/lib/server/db/client";
+import { certifications } from "@/lib/server/db/schema";
+import { getServerLocale } from "@/lib/server/locale";
+import { ContentValidationService } from "@/lib/server/admin/validation";
+
+export default async function AdminCertificationPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const session = await auth();
+  const locale = await getServerLocale();
+  const db = getDb();
+
+  if (!session?.user?.id) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <p className="text-foreground/70">{locale === "de" ? "Nicht authentifiziert" : "Not authenticated"}</p>
+      </div>
+    );
+  }
+
+  // TODO: Add admin role verification
+
+  const certRows = await db
+    .select()
+    .from(certifications)
+    .where(eq(certifications.slug, slug))
+    .limit(1);
+
+  if (!certRows.length) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <Link
+          href="/admin"
+          className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
+        </Link>
+        <p className="text-foreground/70">{locale === "de" ? "Zertifizierung nicht gefunden" : "Certification not found"}</p>
+      </div>
+    );
+  }
+
+  const cert = certRows[0];
+
+  // Run validation
+  const validation = await ContentValidationService.validateCertificationContent(cert.id);
+
+  const errorIssues = validation.results.flatMap((r) => r.issues).filter((i) => i.severity === "error");
+  const warningIssues = validation.results.flatMap((r) => r.issues).filter((i) => i.severity === "warning");
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <Link
+        href="/admin"
+        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
+      </Link>
+
+      <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
+      <p className="mb-6 text-sm text-foreground/70">
+        {cert.examName} {cert.examVersion}
+      </p>
+
+      <div className="mb-6 flex gap-3">
+        <button className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90">
+          <RefreshCw className="h-4 w-4" />
+          {locale === "de" ? "Validierung aktualisieren" : "Refresh validation"}
+        </button>
+      </div>
+
+      <div className="grid gap-6">
+        {/* Validation Summary */}
+        <div className="grid grid-cols-4 gap-3">
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <p className="text-xs text-foreground/60">{locale === "de" ? "Gesamt" : "Total"}</p>
+            <p className="mt-1 text-xl font-semibold">{validation.totalContent}</p>
+          </div>
+          <div className="rounded-lg border border-green-200/50 bg-green-50 p-4">
+            <p className="text-xs text-green-700">{locale === "de" ? "Gültig" : "Valid"}</p>
+            <p className="mt-1 text-xl font-semibold text-green-700">{validation.validContent}</p>
+          </div>
+          <div className="rounded-lg border border-red-200/50 bg-red-50 p-4">
+            <p className="text-xs text-red-700">{locale === "de" ? "Fehler" : "Errors"}</p>
+            <p className="mt-1 text-xl font-semibold text-red-700">{validation.invalidContent}</p>
+          </div>
+          <div className="rounded-lg border border-yellow-200/50 bg-yellow-50 p-4">
+            <p className="text-xs text-yellow-700">{locale === "de" ? "Warnungen" : "Warnings"}</p>
+            <p className="mt-1 text-xl font-semibold text-yellow-700">{validation.warnings}</p>
+          </div>
+        </div>
+
+        {/* Issues by severity */}
+        {errorIssues.length > 0 && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertCircle className="h-5 w-5 text-red-700" />
+              <h3 className="font-semibold text-red-700">
+                {locale === "de" ? "Fehler" : "Errors"} ({errorIssues.length})
+              </h3>
+            </div>
+            <ul className="space-y-1 text-sm text-red-700">
+              {errorIssues.slice(0, 5).map((issue, i) => (
+                <li key={i}>• {issue.message}</li>
+              ))}
+              {errorIssues.length > 5 && <li>• {locale === "de" ? "Und" : "And"} {errorIssues.length - 5} {locale === "de" ? "weitere..." : "more..."}</li>}
+            </ul>
+          </div>
+        )}
+
+        {warningIssues.length > 0 && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-700" />
+              <h3 className="font-semibold text-yellow-700">
+                {locale === "de" ? "Warnungen" : "Warnings"} ({warningIssues.length})
+              </h3>
+            </div>
+            <ul className="space-y-1 text-sm text-yellow-700">
+              {warningIssues.slice(0, 5).map((issue, i) => (
+                <li key={i}>• {issue.message}</li>
+              ))}
+              {warningIssues.length > 5 && <li>• {locale === "de" ? "Und" : "And"} {warningIssues.length - 5} {locale === "de" ? "weitere..." : "more..."}</li>}
+            </ul>
+          </div>
+        )}
+
+        {errorIssues.length === 0 && warningIssues.length === 0 && (
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-700" />
+              <p className="font-semibold text-green-700">
+                {locale === "de" ? "Alle Inhalte validieren sich erfolgreich!" : "All content validates successfully!"}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Content review workflow info */}
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <h3 className="mb-3 font-medium">
+            {locale === "de" ? "Inhalts-Review-Workflow" : "Content Review Workflow"}
+          </h3>
+          <div className="space-y-2 text-sm text-foreground/70">
+            <p>{locale === "de" ? "Status:" : "Status:"} <span className="font-medium">Generated</span></p>
+            <p className="mt-2 text-xs">
+              {locale === "de"
+                ? "Inhalte durchlaufen: Generated → Pending Review → Approved → Published"
+                : "Content flows through: Generated → Pending Review → Approved → Published"}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
