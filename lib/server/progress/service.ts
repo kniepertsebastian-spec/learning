@@ -27,10 +27,14 @@ export class ObjectiveProgressService {
   }
 
   static calculateDifficultyWeight(difficulty: string | null): number {
-    // Slight boost for harder questions
-    if (difficulty === "hard") return 1.15;
-    if (difficulty === "medium") return 1.0;
-    if (difficulty === "easy") return 0.85;
+    // Slight boost for harder questions. Values match the actual difficulty
+    // enum used by generated questions (draftQuestionSchema in
+    // lib/server/ai/schemas.ts: beginner/intermediate/advanced) - this
+    // previously checked for "hard"/"medium"/"easy", which never matched
+    // anything, silently making difficulty weighting a no-op since step 10.
+    if (difficulty === "advanced") return 1.15;
+    if (difficulty === "intermediate") return 1.0;
+    if (difficulty === "beginner") return 0.85;
     return 1.0;
   }
 
