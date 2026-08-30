@@ -39,14 +39,19 @@ export async function buildExamBlueprint(
   }, 0);
 
   if (totalWeight === 0) {
-    // Fallback: equal distribution if no weights set
-    const questionsPerDomain = Math.floor(totalQuestions / allDomains.length);
+    // Fallback: equal distribution if no weights set. Math.floor can leave a
+    // remainder when totalQuestions doesn't divide evenly by domain count
+    // (e.g. 90/7 = 12.85 -> 12*7 = 84, 6 questions short) - redistribute it
+    // one at a time onto the first N domains rather than silently shipping
+    // fewer questions than requested.
+    const baseQuestionsPerDomain = Math.floor(totalQuestions / allDomains.length);
+    const remainder = totalQuestions - baseQuestionsPerDomain * allDomains.length;
     return {
       totalQuestions,
-      domainBreakdown: allDomains.map((domain) => ({
+      domainBreakdown: allDomains.map((domain, index) => ({
         domainId: domain.id,
         domainName: domain.name,
-        targetQuestions: questionsPerDomain,
+        targetQuestions: baseQuestionsPerDomain + (index < remainder ? 1 : 0),
         weightPercent: domain.weightPercent ? Number(domain.weightPercent) : 0,
       })),
     };

@@ -1,6 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { lessons, questions, questionOptions } from "@/lib/server/db/schema";
+import { lessons, questions, questionOptions, sections, objectives, domains } from "@/lib/server/db/schema";
 
 export interface ValidationIssue {
   type:
@@ -195,9 +195,32 @@ export class ContentValidationService {
   static async validateCertificationContent(certificationId: string) {
     const db = getDb();
 
-    // Get all lessons for this certification (via sections → objectives → domains)
-    const allLessons = await db.select().from(lessons);
-    const allQuestions = await db.select().from(questions);
+    const certObjectiveIds = (
+      await db
+        .select({ id: objectives.id })
+        .from(objectives)
+        .innerJoin(domains, eq(domains.id, objectives.domainId))
+        .where(eq(domains.certificationId, certificationId))
+    ).map((o) => o.id);
+
+    const certSectionIds =
+      certObjectiveIds.length > 0
+        ? (
+            await db
+              .select({ id: sections.id })
+              .from(sections)
+              .where(inArray(sections.objectiveId, certObjectiveIds))
+          ).map((s) => s.id)
+        : [];
+
+    const allLessons =
+      certSectionIds.length > 0
+        ? await db.select().from(lessons).where(inArray(lessons.sectionId, certSectionIds))
+        : [];
+    const allQuestions =
+      certObjectiveIds.length > 0
+        ? await db.select().from(questions).where(inArray(questions.objectiveId, certObjectiveIds))
+        : [];
 
     const lessonResults: ValidationResult[] = [];
     const questionResults: ValidationResult[] = [];

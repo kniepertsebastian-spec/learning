@@ -20,15 +20,16 @@ interface ObjectiveForRemediation {
 
 export class RemediationService {
   /**
-   * Finds objectives that need remediation (mastery < 60%) for a given user.
-   * Returns the objective details needed for AI generation.
+   * Finds objectives that need remediation (mastery < 60%) for a given user,
+   * across ALL certifications (not scoped to one) - callers that want a
+   * single certification's list filter the result themselves, see the cert
+   * detail page.
    */
   static async findObjectivesNeedingRemediation(
     userId: string,
   ): Promise<ObjectiveForRemediation[]> {
     const db = getDb();
 
-    // Get all objectives with progress < 60% (LEARNING status or poor performance)
     const needRemediationData = await db
       .select({
         objectiveId: objectives.id,
@@ -38,8 +39,7 @@ export class RemediationService {
       })
       .from(objectives)
       .innerJoin(domains, eq(domains.id, objectives.domainId))
-      .innerJoin(certifications, eq(certifications.id, domains.certificationId))
-      .where(eq(domains.certificationId, certifications.id)); // temp join for structure
+      .innerJoin(certifications, eq(certifications.id, domains.certificationId));
 
     // Now filter by checking progress service for each
     const result: ObjectiveForRemediation[] = [];
