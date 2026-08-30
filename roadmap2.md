@@ -179,8 +179,16 @@
       all questions + options, POST to submit answers and get results. Results include
       overall score + per-domain breakdown + readiness level (WELL_PREPARED/ADEQUATELY_PREPARED/
       SOMEWHAT_PREPARED/NEEDS_PREPARATION based on score thresholds).
-- [ ] **13. Final exam scoring** — (Phase 13) — `exam_attempts`, readiness
+- [x] **13. Final exam scoring** — (Phase 13) — `exam_attempts`, readiness
       language ("practice readiness", not a pass guarantee).
+      ExamScoringService provides comprehensive analysis: per-objective performance,
+      per-domain breakdown, weak objective identification, readiness confidence scoring
+      (0-1 scale). Readiness levels emphasize "practice readiness": WELL_PREPARED (≥80%),
+      ADEQUATELY_PREPARED (70-79%), SOMEWHAT_PREPARED (60-69%), NEEDS_PREPARATION (<60%).
+      Includes comparison to overall progress (ahead/aligned/behind) and trend
+      (improving/stable/declining). Auto-generates locale-aware recommendations (DE/EN).
+      Updated POST attempt endpoint returns full scoring result with analysis.
+      Added GET endpoint to fetch attempt results.
 - [ ] **14. Admin/content review system** — (Phase 18, Phase 25).
 - [ ] **15. Source grounding/file search** — (Phase 17) — also where the seeded
       official-objectives follow-up from step 1 gets consumed.
