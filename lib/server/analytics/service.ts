@@ -2,6 +2,7 @@ import { eq, inArray, and, desc } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   quizAttempts,
+  quizAnswers,
   examAttempts,
   remediationSessions,
   objectiveProgress,
@@ -76,9 +77,32 @@ export class AnalyticsService {
   static async getContentAnalytics(certificationId: string) {
     const db = getDb();
 
-    const allQuestions = await db.select().from(questions);
+    const certObjectiveIds = (
+      await db
+        .select({ id: objectives.id })
+        .from(objectives)
+        .innerJoin(domains, eq(domains.id, objectives.domainId))
+        .where(eq(domains.certificationId, certificationId))
+    ).map((o) => o.id);
 
-    // Collect problem questions (low success rate)
+    const allQuestions =
+      certObjectiveIds.length > 0
+        ? await db.select().from(questions).where(inArray(questions.objectiveId, certObjectiveIds))
+        : [];
+    const questionIds = allQuestions.map((q) => q.id);
+    const allAnswers =
+      questionIds.length > 0
+        ? await db.select().from(quizAnswers).where(inArray(quizAnswers.questionId, questionIds))
+        : [];
+
+    const answersByQuestion = new Map<string, { total: number; correct: number }>();
+    for (const answer of allAnswers) {
+      const stats = answersByQuestion.get(answer.questionId) ?? { total: 0, correct: 0 };
+      stats.total++;
+      if (answer.isCorrect) stats.correct++;
+      answersByQuestion.set(answer.questionId, stats);
+    }
+
     const questionStats: Array<{
       questionId: string;
       humanId: string;
@@ -89,25 +113,19 @@ export class AnalyticsService {
     }> = [];
 
     for (const question of allQuestions) {
-      // In production, would query actual attempt data
-      // For MVP, simulate based on difficulty
-      const totalAttempts = Math.floor(Math.random() * 50) + 10;
-      const successRate =
-        question.difficulty === "easy"
-          ? 0.8
-          : question.difficulty === "intermediate"
-            ? 0.6
-            : 0.4;
-      const correctAttempts = Math.floor(totalAttempts * successRate);
+      const stats = answersByQuestion.get(question.id);
+      // Require at least 3 real attempts before judging a question as
+      // "problematic" - otherwise one unlucky guess flags it unfairly.
+      if (!stats || stats.total < 3) continue;
 
+      const successRate = stats.correct / stats.total;
       if (successRate < 0.65) {
-        // Flag questions with success rate below 65%
         questionStats.push({
           questionId: question.id,
           humanId: question.humanId,
           difficulty: question.difficulty,
-          totalAttempts,
-          correctAttempts,
+          totalAttempts: stats.total,
+          correctAttempts: stats.correct,
           successRate: Math.round(successRate * 100),
         });
       }
@@ -116,10 +134,21 @@ export class AnalyticsService {
     // Sort by success rate (worst first)
     questionStats.sort((a, b) => a.successRate - b.successRate);
 
+    const questionsWithData = [...answersByQuestion.values()].filter((s) => s.total >= 3);
+    const avgSuccessRate =
+      questionsWithData.length > 0
+        ? Math.round(
+            (questionsWithData.reduce((sum, s) => sum + s.correct / s.total, 0) /
+              questionsWithData.length) *
+              100,
+          )
+        : 0;
+
     return {
       totalQuestions: allQuestions.length,
+      questionsWithEnoughData: questionsWithData.length,
       problemQuestions: questionStats.slice(0, 10),
-      avgSuccessRate: 65,
+      avgSuccessRate,
     };
   }
 
@@ -129,7 +158,12 @@ export class AnalyticsService {
   static async getObjectiveAnalytics(certificationId: string) {
     const db = getDb();
 
-    const allObjectives = await db.select().from(objectives);
+    const allObjectives = await db
+      .select()
+      .from(objectives)
+      .innerJoin(domains, eq(domains.id, objectives.domainId))
+      .where(eq(domains.certificationId, certificationId))
+      .then((rows) => rows.map((r) => r.objectives));
     const objectiveStats: Array<{
       objectiveId: string;
       code: string;

@@ -13,6 +13,7 @@ import {
   questionOptions,
 } from "../lib/server/db/schema";
 import { generateLessonsAndQuestionsForObjective } from "../lib/server/ai/service";
+import { QualityCheckService } from "../lib/server/admin/quality-checks";
 
 /**
  * Erzeugt Lesson-Inhalt (Dev-Order Schritt 6) und einen Fragen-Pool
@@ -120,12 +121,29 @@ async function main() {
       );
 
     const sectionByOrder = new Map(objSections.map((s) => [s.orderNum, s]));
+    let lessonsSaved = 0;
     for (const draft of draftLessons) {
       const section = sectionByOrder.get(draft.sectionOrderNum);
       if (!section) {
         console.warn(`  sectionOrderNum ${draft.sectionOrderNum} nicht gefunden, überspringe.`);
         continue;
       }
+
+      const quality = QualityCheckService.checkLessonQuality({
+        content: draft.content.en,
+        keyTakeaways: draft.keyTakeaways.en,
+        examFocusPoints: draft.examFocusPoints.en,
+      });
+      if (!quality.passed) {
+        console.warn(
+          `  Section ${draft.sectionOrderNum}: Qualitätsprüfung fehlgeschlagen (${quality.score}/100), überspringe. Fehler: ${quality.checks
+            .filter((c) => !c.passed && c.severity === "error")
+            .map((c) => c.message)
+            .join("; ")}`,
+        );
+        continue;
+      }
+
       await db.insert(lessons).values({
         sectionId: section.id,
         content: draft.content,
@@ -134,11 +152,30 @@ async function main() {
         promptVersion: "v2",
         modelVersion: process.env.GEMINI_MODEL || "gemini-3.6-flash",
       });
+      lessonsSaved++;
     }
 
+    let questionsSaved = 0;
     for (let i = 0; i < draftQuestions.length; i++) {
       const draft = draftQuestions[i];
-      const humanId = `${humanIdPrefix(cert.slug)}-${objective.code}-Q${String(i + 1).padStart(3, "0")}`;
+
+      const quality = QualityCheckService.checkQuestionQuality({
+        question: draft.question.en,
+        options: draft.options.map((o) => ({ text: o.text.en, isCorrect: o.isCorrect })),
+        explanation: draft.explanation.en,
+        difficulty: draft.difficulty,
+      });
+      if (!quality.passed) {
+        console.warn(
+          `  Frage ${i + 1}: Qualitätsprüfung fehlgeschlagen (${quality.score}/100), überspringe. Fehler: ${quality.checks
+            .filter((c) => !c.passed && c.severity === "error")
+            .map((c) => c.message)
+            .join("; ")}`,
+        );
+        continue;
+      }
+
+      const humanId = `${humanIdPrefix(cert.slug)}-${objective.code}-Q${String(questionsSaved + 1).padStart(3, "0")}`;
       const [question] = await db
         .insert(questions)
         .values({
@@ -159,11 +196,12 @@ async function main() {
           isCorrect: option.isCorrect,
         })),
       );
+      questionsSaved++;
     }
 
     done++;
     console.log(
-      `Objective ${objective.code}: ${draftLessons.length} Lessons, ${draftQuestions.length} Fragen gespeichert.`,
+      `Objective ${objective.code}: ${lessonsSaved}/${draftLessons.length} Lessons, ${questionsSaved}/${draftQuestions.length} Fragen gespeichert (Rest durch Qualitätsprüfung verworfen).`,
     );
   }
 

@@ -8,6 +8,7 @@ import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { ContentValidationService } from "@/lib/server/admin/validation";
+import { AnalyticsService } from "@/lib/server/analytics/service";
 
 export default async function AdminCertificationPage({
   params,
@@ -54,6 +55,12 @@ export default async function AdminCertificationPage({
 
   // Run validation
   const validation = await ContentValidationService.validateCertificationContent(cert.id);
+
+  const [domainAnalytics, objectiveAnalytics, contentAnalytics] = await Promise.all([
+    AnalyticsService.getDomainAnalytics(cert.id),
+    AnalyticsService.getObjectiveAnalytics(cert.id),
+    AnalyticsService.getContentAnalytics(cert.id),
+  ]);
 
   const errorIssues = validation.results.flatMap((r) => r.issues).filter((i) => i.severity === "error");
   const warningIssues = validation.results.flatMap((r) => r.issues).filter((i) => i.severity === "warning");
@@ -146,6 +153,69 @@ export default async function AdminCertificationPage({
             </div>
           </div>
         )}
+
+        {/* Analytics */}
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <h3 className="mb-3 font-medium">{locale === "de" ? "Domain-Mastery" : "Domain mastery"}</h3>
+          {domainAnalytics.domains.length === 0 ? (
+            <p className="text-sm text-foreground/60">
+              {locale === "de" ? "Noch keine Lerndaten." : "No learner data yet."}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {domainAnalytics.domains.map((d) => (
+                <div key={d.domainId} className="flex items-center justify-between text-sm">
+                  <span>{d.domainName}</span>
+                  <span className="text-foreground/70">
+                    {d.avgMastery}% {locale === "de" ? "Ø Mastery" : "avg mastery"} · {d.completionRate}%{" "}
+                    {locale === "de" ? "abgeschlossen" : "complete"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {objectiveAnalytics.problematicObjectives > 0 && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <h3 className="mb-3 font-medium text-red-700">
+              {locale === "de" ? "Objectives mit niedriger Mastery (< 60%)" : "Objectives with low mastery (< 60%)"}
+            </h3>
+            <ul className="space-y-1 text-sm text-red-700">
+              {objectiveAnalytics.objectivesByMastery
+                .filter((o) => o.needsReview)
+                .slice(0, 10)
+                .map((o) => (
+                  <li key={o.objectiveId}>
+                    <span className="font-mono text-xs">{o.code}</span> {o.title} - {o.avgMastery}% (
+                    {o.learnerCount} {locale === "de" ? "Lerner" : "learners"})
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <h3 className="mb-3 font-medium">
+            {locale === "de" ? "Problematische Fragen" : "Problem questions"}
+          </h3>
+          {contentAnalytics.problemQuestions.length === 0 ? (
+            <p className="text-sm text-foreground/60">
+              {locale === "de"
+                ? `Keine Fragen mit niedriger Erfolgsquote (Ø ${contentAnalytics.avgSuccessRate}%, ${contentAnalytics.questionsWithEnoughData} Fragen mit genug Daten).`
+                : `No questions with a low success rate (avg ${contentAnalytics.avgSuccessRate}%, ${contentAnalytics.questionsWithEnoughData} questions with enough data).`}
+            </p>
+          ) : (
+            <ul className="space-y-1 text-sm text-foreground/70">
+              {contentAnalytics.problemQuestions.map((q) => (
+                <li key={q.questionId}>
+                  <span className="font-mono text-xs">{q.humanId}</span> - {q.successRate}% (
+                  {q.correctAttempts}/{q.totalAttempts})
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         {/* Content review workflow info */}
         <div className="rounded-lg border border-border bg-surface p-4">
