@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   remediationSessions,
@@ -60,22 +60,45 @@ export class RemediationService {
   }
 
   /**
-   * Generates remediation content for an objective and stores it in database.
-   * Returns the remediation session ID.
+   * Returns an existing, unfinished remediation session for this user +
+   * objective if one exists (reuses its cached content, no AI call), or
+   * generates one once and persists the content. Previously this generated
+   * fresh content on every call (and the API route generated ANOTHER copy on
+   * top of that) - two live, billed Gemini calls per page load, discarded
+   * after use. Now: one AI call per user+objective, ever, unless the learner
+   * explicitly asks for a fresh one via `forceRegenerate`.
    */
-  static async generateRemediationSession(
+  static async getOrCreateRemediationSession(
     userId: string,
     objectiveId: string,
-    quizAttemptId?: string,
-  ): Promise<string> {
+    options: { quizAttemptId?: string; forceRegenerate?: boolean } = {},
+  ): Promise<{ sessionId: string; lesson: unknown; questions: unknown }> {
     const db = getDb();
+
+    if (!options.forceRegenerate) {
+      const existing = await db
+        .select()
+        .from(remediationSessions)
+        .where(
+          and(
+            eq(remediationSessions.userId, userId),
+            eq(remediationSessions.objectiveId, objectiveId),
+          ),
+        )
+        .orderBy(desc(remediationSessions.createdAt))
+        .limit(1);
+
+      if (existing.length > 0 && existing[0].content) {
+        const content = existing[0].content as { lesson: unknown; questions: unknown };
+        return { sessionId: existing[0].id, lesson: content.lesson, questions: content.questions };
+      }
+    }
 
     // Fetch objective details
     const obj = await db
       .select({
         title: objectives.title,
         description: objectives.description,
-        domainId: domains.id,
         certificationName: certifications.name,
       })
       .from(objectives)
@@ -90,30 +113,28 @@ export class RemediationService {
 
     const objData = obj[0];
 
-    // Generate remediation content via AI
+    // Generate remediation content via AI - the ONE call for this session
     const remediation = await generateRemediationForObjective(
       objData.certificationName,
       objData.title,
       objData.description || "",
     );
 
-    // Store remediation session
     const sessionInserted = await db
       .insert(remediationSessions)
       .values({
         userId,
         objectiveId,
-        quizAttemptId: quizAttemptId || null,
+        quizAttemptId: options.quizAttemptId || null,
+        content: remediation as unknown as Record<string, unknown>,
       })
       .returning();
 
-    const sessionId = sessionInserted[0].id;
-
-    // TODO: Store the generated remediation content somewhere (e.g., in a cache or temp table)
-    // For now, we'll regenerate it on-the-fly when fetching, but in production you'd
-    // want to persist it to avoid re-generating for the same user/objective
-
-    return sessionId;
+    return {
+      sessionId: sessionInserted[0].id,
+      lesson: remediation.lesson,
+      questions: remediation.questions,
+    };
   }
 
   /**

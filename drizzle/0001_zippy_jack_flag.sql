@@ -1,0 +1,1 @@
+ALTER TABLE "remediation_sessions" ADD COLUMN "content" jsonb;

@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
-import { getDb } from "@/lib/server/db/client";
-import { objectives, domains, certifications } from "@/lib/server/db/schema";
-import { generateRemediationForObjective } from "@/lib/server/ai/service";
 import { RemediationService } from "@/lib/server/remediation/service";
 
 export async function GET(
@@ -17,48 +13,24 @@ export async function GET(
   }
 
   const { objectiveId } = await params;
-  const db = getDb();
+  const forceRegenerate = request.nextUrl.searchParams.get("regenerate") === "true";
 
   try {
-    // Fetch objective details
-    const obj = await db
-      .select({
-        id: objectives.id,
-        title: objectives.title,
-        description: objectives.description,
-        certificationName: certifications.name,
-      })
-      .from(objectives)
-      .innerJoin(domains, eq(domains.id, objectives.domainId))
-      .innerJoin(certifications, eq(certifications.id, domains.certificationId))
-      .where(eq(objectives.id, objectiveId))
-      .limit(1);
-
-    if (!obj.length) {
-      return NextResponse.json({ error: "Objective not found" }, { status: 404 });
-    }
-
-    // Generate remediation content
-    const remediation = await generateRemediationForObjective(
-      obj[0].certificationName,
-      obj[0].title,
-      obj[0].description || "",
-    );
-
-    // Create remediation session (for tracking)
-    const sessionId = await RemediationService.generateRemediationSession(
+    const result = await RemediationService.getOrCreateRemediationSession(
       session.user.id,
       objectiveId,
+      { forceRegenerate },
     );
 
     return NextResponse.json({
-      sessionId,
+      sessionId: result.sessionId,
       objectiveId,
-      lesson: remediation.lesson,
-      questions: remediation.questions,
+      lesson: result.lesson,
+      questions: result.questions,
     });
   } catch (error) {
     console.error("Error generating remediation:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -11,9 +11,34 @@ const registerRequestSchema = z.object({
   name: z.string().min(1).optional(),
 });
 
+/**
+ * Registration is gated by an email allowlist (comma-separated
+ * REGISTRATION_ALLOWED_EMAILS env var). Without this, anyone who finds the
+ * app can create accounts that trigger live, billed Gemini API calls (e.g.
+ * via the remediation endpoint) against the deployer's own key - there is no
+ * per-user billing or invite system, so open registration means open access
+ * to a paid API key. If the env var is unset, registration is closed
+ * entirely rather than silently left open.
+ */
+function isEmailAllowed(email: string): boolean {
+  const allowlist = (process.env.REGISTRATION_ALLOWED_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowlist.includes(email.toLowerCase());
+}
+
 export async function POST(request: Request) {
   try {
     const body = registerRequestSchema.parse(await request.json());
+
+    if (!isEmailAllowed(body.email)) {
+      return NextResponse.json(
+        { error: "Registrierung ist derzeit nur auf Einladung möglich." },
+        { status: 403 },
+      );
+    }
+
     const db = getDb();
 
     const [existing] = await db

@@ -190,6 +190,12 @@ export const remediationSessions = pgTable("remediation_sessions", {
   quizAttemptId: uuid("quiz_attempt_id").references(() => quizAttempts.id, {
     onDelete: "set null",
   }),
+  /**
+   * Generated lesson + practice questions, persisted so repeated requests for
+   * the same session reuse this instead of calling the (billed) AI service
+   * again - see RemediationService.getOrCreateRemediationSession.
+   */
+  content: jsonb("content").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   improved: boolean("improved"),
 });
