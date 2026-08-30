@@ -31,9 +31,8 @@ services:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-learning_pwa}
       
-      # Auth
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-your-secret-key-change-this-in-production}
+      # Auth (Auth.js v5 reads AUTH_SECRET, see lib/server/auth.ts)
+      AUTH_SECRET: ${AUTH_SECRET}
       
       # Gemini API
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
