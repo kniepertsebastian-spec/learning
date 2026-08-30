@@ -25,20 +25,28 @@ import { generateLessonsAndQuestionsForObjective } from "../lib/server/ai/servic
  * Skript einfach ab - erneutes Ausführen (auch an einem späteren Tag) setzt
  * dank Idempotenz beim nächsten unfertigen Objective fort.
  *
- * humanId-Präfix "SEC" ist aktuell hartkodiert (nur eine Zertifizierung
- * existiert bislang) - ein echtes Präfix-Schema pro Zertifizierung ist ein
- * Dev-Order-Schritt-20-Thema ("Add more certifications").
+ * Zertifikat wird per CLI-Argument gewählt (Default: security-plus-sy0-701,
+ * damit bestehende Aufrufe ohne Argument weiterlaufen). Der humanId-Präfix
+ * wird aus dem ersten Wort des Slugs abgeleitet ("security-plus-sy0-701" ->
+ * "SEC", "network-plus" -> "NET"), statt hartkodiert zu sein.
+ *
+ * Usage: npm run content:draft-lessons -- <cert-slug>
  */
+function humanIdPrefix(slug: string): string {
+  return slug.split("-")[0].substring(0, 3).toUpperCase();
+}
+
 async function main() {
   const db = getDb();
+  const certSlug = process.argv[2] || "security-plus-sy0-701";
 
   const [cert] = await db
     .select()
     .from(certifications)
-    .where(eq(certifications.slug, "security-plus-sy0-701"))
+    .where(eq(certifications.slug, certSlug))
     .limit(1);
   if (!cert) {
-    console.error('Zertifikat "security-plus-sy0-701" nicht gefunden. Erst `npm run db:seed` ausführen.');
+    console.error(`Zertifikat "${certSlug}" nicht gefunden. Erst \`npm run db:seed\` oder \`npm run cert:add\` ausführen.`);
     process.exit(1);
   }
 
@@ -130,7 +138,7 @@ async function main() {
 
     for (let i = 0; i < draftQuestions.length; i++) {
       const draft = draftQuestions[i];
-      const humanId = `SEC-${objective.code}-Q${String(i + 1).padStart(3, "0")}`;
+      const humanId = `${humanIdPrefix(cert.slug)}-${objective.code}-Q${String(i + 1).padStart(3, "0")}`;
       const [question] = await db
         .insert(questions)
         .values({

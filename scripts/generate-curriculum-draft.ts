@@ -11,17 +11,23 @@ import { generateCurriculumDraftForDomain } from "../lib/server/ai/service";
  * keine hat (roadmap2.md Dev-Order Schritt 3-5, ausgewählter Weg: AI-Entwurf
  * statt offizieller Objectives - siehe Tracker-Notiz zu Schritt 1). Idempotent:
  * Domains, die bereits Objectives haben, werden übersprungen.
+ *
+ * Zertifikat wird per CLI-Argument gewählt (Default: security-plus-sy0-701,
+ * damit bestehende Aufrufe ohne Argument weiterlaufen).
+ *
+ * Usage: npm run content:draft-curriculum -- <cert-slug>
  */
 async function main() {
   const db = getDb();
+  const certSlug = process.argv[2] || "security-plus-sy0-701";
 
   const [cert] = await db
     .select()
     .from(certifications)
-    .where(eq(certifications.slug, "security-plus-sy0-701"))
+    .where(eq(certifications.slug, certSlug))
     .limit(1);
   if (!cert) {
-    console.error('Zertifikat "security-plus-sy0-701" nicht gefunden. Erst `npm run db:seed` ausführen.');
+    console.error(`Zertifikat "${certSlug}" nicht gefunden. Erst \`npm run db:seed\` oder \`npm run cert:add\` ausführen.`);
     process.exit(1);
   }
 

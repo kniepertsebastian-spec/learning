@@ -4,50 +4,15 @@ import Link from "next/link";
 import { ArrowRight, AlertTriangle, CheckCircle } from "lucide-react";
 import { auth } from "@/lib/server/auth";
 import { getServerLocale } from "@/lib/server/locale";
-
-interface CertificationStats {
-  id: string;
-  slug: string;
-  name: string;
-  provider: string;
-  examName: string;
-  examVersion: string;
-  stats: {
-    domains: number;
-    objectives: number;
-    sections: number;
-    lessons: number;
-    questions: number;
-  };
-  createdAt: Date;
-}
-
-async function fetchCertifications(): Promise<CertificationStats[]> {
-  try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/admin/certifications`, {
-      headers: {
-        Cookie: ``,
-      },
-    });
-
-    if (!response.ok) {
-      return [];
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching certifications:", error);
-    return [];
-  }
-}
+import { getCertificationsWithStats } from "@/lib/server/admin/stats";
 
 export default async function AdminDashboard() {
-  const [session, locale, certifications] = await Promise.all([
-    auth(),
-    getServerLocale(),
-    fetchCertifications(),
-  ]);
+  const [session, locale] = await Promise.all([auth(), getServerLocale()]);
+
+  // Query directly instead of self-fetching /api/admin/certifications - a
+  // server-to-server fetch from a server component doesn't carry the
+  // browser's session cookie, so that always returned 401 -> [] silently.
+  const certifications = session?.user?.id ? await getCertificationsWithStats() : [];
 
   if (!session?.user?.id) {
     return (
