@@ -50,6 +50,19 @@ services:
     networks:
       - learning_network
 
+  # Cloudflare Tunnel (exposes the app without a public port)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: learning-cloudflared
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - app
+    networks:
+      - learning_network
+
 volumes:
   postgres_data:
     driver: local
