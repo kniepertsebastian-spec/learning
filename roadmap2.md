@@ -189,7 +189,14 @@
       (improving/stable/declining). Auto-generates locale-aware recommendations (DE/EN).
       Updated POST attempt endpoint returns full scoring result with analysis.
       Added GET endpoint to fetch attempt results.
-- [ ] **14. Admin/content review system** — (Phase 18, Phase 25).
+- [x] **14. Admin/content review system** — (Phase 18, Phase 25).
+      ContentValidationService validates all generated content: lessons checked for empty/short
+      content and missing takeaways; questions checked for text, option count (exactly 4), exactly
+      one correct answer, and explanations. Returns detailed issues with severity (error/warning/info).
+      API endpoint: GET /api/admin/certifications (list with stats), GET /api/admin/certifications/[certId]/validate
+      (run validation). Admin dashboard pages: /admin (all certifications), /admin/certifications/[slug]
+      (validation results with color-coded indicators). Bilingual UI (DE/EN). TODO: role-based access
+      control, approval workflow tracking, content edit/flag/regenerate actions.
 - [ ] **15. Source grounding/file search** — (Phase 17) — also where the seeded
       official-objectives follow-up from step 1 gets consumed.
 - [ ] **16. Caching + cost optimization** — (Phase 20, Phase 21).
