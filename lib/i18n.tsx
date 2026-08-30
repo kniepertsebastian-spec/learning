@@ -69,6 +69,10 @@ export const uiStrings = {
       loading: "Gemini erstellt deinen Lehrplan …",
       error: "Der Lehrplan konnte nicht erstellt werden.",
     },
+    generation: {
+      signInRequired: "Bitte melde dich an, um KI-Inhalte zu generieren.",
+      signInLink: "Anmelden",
+    },
     certDetail: {
       back: "Zurück zum Dashboard",
       roadmap: "Roadmap",
@@ -153,6 +157,10 @@ export const uiStrings = {
       submit: "Generate study plan",
       loading: "Gemini is generating your study plan …",
       error: "The study plan could not be created.",
+    },
+    generation: {
+      signInRequired: "Please sign in to generate AI content.",
+      signInLink: "Sign in",
     },
     certDetail: {
       back: "Back to dashboard",

@@ -17,7 +17,7 @@ const MINUTES_PER_50_QUESTIONS = 90;
 const MIN_DURATION_SECONDS = 10 * 60;
 const PASSING_SCORE = 75;
 
-type ExamPhase = "setup" | "loading" | "error" | "in-progress" | "finished";
+type ExamPhase = "setup" | "loading" | "error" | "auth-required" | "in-progress" | "finished";
 
 export default function ExamPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,6 +53,10 @@ export default function ExamPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ certName: certificate!.title, questionCount }),
       });
+      if (response.status === 401) {
+        setPhase("auth-required");
+        return;
+      }
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         throw new Error(body?.error ?? t.exam.loadError);
@@ -170,6 +174,18 @@ export default function ExamPage() {
           >
             {t.common.retry}
           </button>
+        </div>
+      )}
+
+      {phase === "auth-required" && (
+        <div className="flex flex-1 flex-col items-center gap-4 py-20 text-center">
+          <p className="text-red-500">{t.generation.signInRequired}</p>
+          <Link
+            href="/login"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            {t.generation.signInLink}
+          </Link>
         </div>
       )}
 

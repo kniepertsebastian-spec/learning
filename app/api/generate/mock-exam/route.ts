@@ -2,9 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateStructured } from "@/lib/ai/generate";
 import { toErrorResponse } from "@/lib/ai/http";
 import { mockExamRequestSchema, mockExamResponseSchema } from "@/lib/ai/schemas";
+import { auth } from "@/lib/server/auth";
 
 export async function POST(request: NextRequest) {
   try {
+    // This calls a live, billed Gemini generation on every request with no
+    // caching - previously reachable by anyone with no account at all.
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = mockExamRequestSchema.parse(await request.json());
 
     const focusHint = body.focusAreas?.length

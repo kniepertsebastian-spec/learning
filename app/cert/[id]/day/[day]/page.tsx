@@ -54,6 +54,10 @@ export default function LessonPage() {
       }),
     })
       .then(async (response) => {
+        if (response.status === 401) {
+          setGenerationError(t.generation.signInRequired);
+          return;
+        }
         if (!response.ok) {
           const body = await response.json().catch(() => null);
           throw new Error(body?.error ?? t.lesson.loadError);
