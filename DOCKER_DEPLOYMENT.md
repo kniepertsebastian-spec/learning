@@ -3,7 +3,7 @@
 ## Prerequisites
 - Docker & Docker Compose installed
 - Gemini API key (get free tier at https://ai.google.dev)
-- Domain or IP for NEXTAUTH_URL
+- Cloudflare Tunnel token (for the `cloudflared` service in docker-compose.yml)
 
 ## Quick Start (5 minutes)
 
@@ -17,15 +17,15 @@ ssh user@your-server
 cd /path/to/app
 
 # Create .env file from template
-cp .env.production.example .env.production
+cp .env.example .env
 
 # Edit with your values
-nano .env.production
+nano .env
 # Set:
 # - DB_USER & DB_PASSWORD (used by both PostgreSQL and app)
-# - NEXTAUTH_URL (your domain or http://your-ip:3000)
-# - NEXTAUTH_SECRET (generate: openssl rand -base64 32)
+# - AUTH_SECRET (generate: openssl rand -base64 32)
 # - GEMINI_API_KEY (from Google AI Studio)
+# - TUNNEL_TOKEN (for the cloudflared service)
 
 # Important: DB_USER and DB_PASSWORD are shared between PostgreSQL and the app's
 # DATABASE_URL connection string. They must match for the connection to work.
@@ -141,10 +141,8 @@ docker-compose config | grep -A 20 "environment:"
 ## Production Checklist
 
 ### Security
-- [ ] Change `NEXTAUTH_SECRET` (use: `openssl rand -base64 32`)
+- [ ] Change `AUTH_SECRET` (use: `openssl rand -base64 32`)
 - [ ] Change `DB_PASSWORD` to strong password
-- [ ] Set `NEXTAUTH_URL` to real domain (https://)
-- [ ] Remove `.env.production.example` from server
 - [ ] Run on https (use reverse proxy like nginx)
 
 ### Performance
@@ -192,8 +190,8 @@ server {
 | `DB_USER` | Database user | Yes | PostgreSQL + app | Used in POSTGRES_USER and DATABASE_URL |
 | `DB_PASSWORD` | Database password | Yes | PostgreSQL + app | Used in POSTGRES_PASSWORD and DATABASE_URL |
 | `DATABASE_URL` | Full connection string | Yes | App only | Auto-generated from DB_* vars |
-| `NEXTAUTH_URL` | App URL | Yes | App | http://IP:3000 or https://domain |
-| `NEXTAUTH_SECRET` | Session encryption key | Yes | App | Generate: `openssl rand -base64 32` |
+| `AUTH_SECRET` | Session encryption key (Auth.js) | Yes | App | Generate: `openssl rand -base64 32` |
+| `TUNNEL_TOKEN` | Cloudflare Tunnel token | Yes | cloudflared | From Zero Trust dashboard |
 | `GEMINI_API_KEY` | Google Gemini API key | No | App | From https://ai.google.dev |
 | `NODE_ENV` | Environment mode | Yes | App | Set to `production` |
 
