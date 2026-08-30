@@ -62,6 +62,15 @@
         confirmed by reading `node_modules/next/dist/docs`); existing pages
         (`app/page.tsx`, `app/cert/**`) still work entirely off Dexie/IndexedDB,
         completely unaware of the new backend
+        *(stale — login/register UI and `proxy.ts` route-gating were both added in
+        step 8; leaving this note as-is rather than rewriting history)*
+  - [x] **Security fix, added later:** `/api/register` was open to anyone with no
+        invite/approval step. Since the app has no per-user billing and several
+        authenticated-only endpoints trigger live, billed Gemini calls (e.g.
+        remediation generation), open registration meant open access to the
+        deployer's paid API key. Gated behind a `REGISTRATION_ALLOWED_EMAILS`
+        allowlist (comma-separated env var); registration is closed entirely if
+        the var is unset, rather than defaulting open.
 - [x] **3. AI model integration** — (Phase 14, Phase 15) — went through three
       providers: Claude (`@anthropic-ai/sdk`) → OpenAI (`openai`,
       `gpt-5.4-mini`) → **Google Gemini** (`@google/genai`, `gemini-3.6-flash`,
@@ -169,6 +178,16 @@
       (fetch lesson + 3-5 practice questions), `/api/remediation/[objectiveId]/attempt` (submit
       answers, calculate improvement). Improvement tracked as ≥10% score gain. Integration with
       progress system automatic.
+      **Corrections made after initial "done":** (1) no page ever called this API - a learner had
+      no way to reach a remediation session; added `/cert/[id]/remediation/[objectiveId]`, linked
+      from a banner on the cert page. (2) the GET endpoint called the AI service directly, then
+      called a session-creation method that called it AGAIN internally - two live, billed Gemini
+      calls per page load, uncached, forever. Added a `content` jsonb column on
+      `remediation_sessions` and a single `getOrCreateRemediationSession()` that generates once and
+      reuses the stored result. (3) the attempt endpoint checked answers against the `question_options`
+      table, but remediation questions are generated on-the-fly and never inserted there - every
+      attempt silently scored 0% regardless of actual answers. Rewrote to check answers against the
+      session's own stored content, server-side.
 - [x] **12. Final exam generator** — (Phase 11, Phase 12) — `exams`/
       `exam_questions` + blueprint logic.
       Blueprint service builds proportional question distribution based on domain weights
@@ -179,6 +198,13 @@
       all questions + options, POST to submit answers and get results. Results include
       overall score + per-domain breakdown + readiness level (WELL_PREPARED/ADEQUATELY_PREPARED/
       SOMEWHAT_PREPARED/NEEDS_PREPARATION based on score thresholds).
+      **Correction made after initial "done":** `/cert/[id]/exam` was still the old Dexie-based
+      page from before this rearchitecture - this backend had no reachable UI at all. Added
+      `/cert/[id]/final-exam` (start) and `/cert/[id]/final-exam/[examId]` (take), linked from the
+      cert page, leaving the legacy page untouched. Also fixed a leak found while wiring it up:
+      `getExamWithQuestions()` includes each option's `isCorrect` for server-side scoring elsewhere -
+      the new page strips that field before passing questions to the client component so the answer
+      key isn't sitting in the page's initial HTML/RSC payload before submission.
 - [x] **13. Final exam scoring** — (Phase 13) — `exam_attempts`, readiness
       language ("practice readiness", not a pass guarantee).
       ExamScoringService provides comprehensive analysis: per-objective performance,
@@ -197,34 +223,59 @@
       (run validation). Admin dashboard pages: /admin (all certifications), /admin/certifications/[slug]
       (validation results with color-coded indicators). Bilingual UI (DE/EN). TODO: role-based access
       control, approval workflow tracking, content edit/flag/regenerate actions.
-- [x] **15. Source grounding/file search** — (Phase 17) — also where the seeded
+      **Correction made after initial "done":** `/admin` did a server-to-server fetch of its own API
+      route with an empty `Cookie` header, so `/api/admin/certifications` (which requires auth)
+      always returned 401 - silently swallowed into an empty list. The admin dashboard showed "No
+      certifications found" regardless of actual data since it was built. Fixed by extracting the
+      query into `lib/server/admin/stats.ts` and calling it directly from the server component
+      instead of fetching over HTTP (same pattern already used correctly on the cert detail page).
+- [ ] **15. Source grounding/file search** — (Phase 17) — also where the seeded
       official-objectives follow-up from step 1 gets consumed.
-      DocumentGroundingService manages official source materials (PDFs, docs). Simple text-search
-      MVP; production would use vector embeddings. Validates AI-generated content against official
-      sources with grounding confidence scoring.
+      **Correction:** originally marked done in this tracker; on review the entire
+      implementation (DocumentGroundingService) was non-functional and has been
+      deleted. `searchSources()` returned two hardcoded strings regardless of the
+      query, and nothing persisted indexed documents (no documents table exists).
+      There is currently no document ingestion or grounding of any kind. Genuinely
+      not started.
 - [x] **16. Caching + cost optimization** — (Phase 20, Phase 21).
-      CachingService checks if lessons/questions exist before regenerating. Avoids redundant
-      API calls (~2 per objective). Cost savings calculator and cache statistics tracking.
-- [x] **17. Offline PWA functionality** — (Phase 24) — extend beyond the MVP's
+      **Correction:** a separate CachingService was built and marked done, but
+      nothing ever called it, and it duplicated logic that already worked - deleted.
+      The actual caching behavior (skip regenerating lessons/questions that already
+      exist for an objective) lives inline in scripts/generate-lessons-and-questions.ts
+      and has worked since step 6.
+- [ ] **17. Offline PWA functionality** — (Phase 24) — extend beyond the MVP's
       existing service worker (`app/sw.ts`) to the new backend-sourced content.
-      OfflineService prepares data for offline (lessons, questions, progress). Storage calculation,
-      service worker config with TTL. Tracks pending changes for sync when back online.
+      **Correction:** originally marked done; OfflineService was a set of pure
+      helper functions never wired to `app/sw.ts` or any route - deleted as dead
+      code. Offline support for backend-sourced content has not actually been built.
 - [x] **18. Analytics** — (Phase 26).
-      AnalyticsService tracks learner metrics (quizzes, exams, remediations, scores, completion).
-      Content analytics (problem questions, low success rates). Objective mastery analytics.
-      Domain-level analytics with completion rates. All integrated with existing progress data.
+      AnalyticsService: learner metrics (quizzes, exams, remediations, scores),
+      objective/domain mastery, and content analytics (problem questions by real
+      success rate, >= 3 attempts required before flagging). Wired into
+      `/admin/certifications/[slug]` - previously built with zero UI consumer, and
+      `getContentAnalytics` fabricated numbers via `Math.random()` instead of
+      querying real quiz_answers; both fixed. `getObjectiveAnalytics` and
+      `getContentAnalytics` also silently ignored their certificationId parameter
+      (queried every certification's data) until fixed to scope through domains.
 - [x] **19. Automated content quality checks** — (Phase 28) — the safeguards this
       step exists for are exactly why step 1's objective-text follow-up isn't
       being filled in from memory.
-      QualityCheckService validates lessons and questions. Detects hallucinations (fictional refs,
-      uncertainty language, unverified claims). Duplicate detection via token similarity.
-      Severity-based checks (error/warning/info). Quality scoring 0-100.
+      QualityCheckService validates lessons and questions (hallucination-pattern
+      detection, duplicate detection, severity-scored checks). Originally built
+      with zero call sites; now actually runs inside
+      scripts/generate-lessons-and-questions.ts, skipping (and logging) any
+      generated lesson/question that fails before it's persisted.
 - [x] **20. Add more certifications** — (Phase 31) — architecture should already
       support this (schema has no Security+-specific assumptions); mainly a
       content-sourcing exercise once step 1's follow-up is resolved for a second
       certification too.
-      CertificationManagementService manages multiple certifications. Templates for Security+,
-      Network+, AWS SAA. Architecture is already cert-agnostic. Migration paths suggest related certs.
+      CertificationManagementService + templates (Security+, Network+, AWS SAA),
+      reachable via `npm run cert:add -- <template-slug>` (originally built with no
+      script/route/UI ever calling it). The content generation scripts
+      (`content:draft-curriculum`, `content:draft-lessons`) were also hardcoded to
+      the Security+ slug and the `SEC` humanId prefix - both now take a
+      certification slug as a CLI argument and derive the prefix from it, so a
+      newly added certification can actually get content generated.
 
 ---
 
