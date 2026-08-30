@@ -33,7 +33,10 @@ services:
       
       # Auth (Auth.js v5 reads AUTH_SECRET, see lib/server/auth.ts)
       AUTH_SECRET: ${AUTH_SECRET}
-      
+
+      # Comma-separated allowlist gating /api/register (see app/api/register/route.ts)
+      REGISTRATION_ALLOWED_EMAILS: ${REGISTRATION_ALLOWED_EMAILS:-}
+
       # Gemini API
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       
