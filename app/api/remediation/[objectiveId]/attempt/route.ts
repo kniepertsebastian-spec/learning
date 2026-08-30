@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
-import { questionOptions, remediationSessions, objectiveProgress } from "@/lib/server/db/schema";
+import { remediationSessions, objectiveProgress } from "@/lib/server/db/schema";
 import { RemediationService } from "@/lib/server/remediation/service";
-import { ObjectiveProgressService } from "@/lib/server/progress/service";
+import type { RemediationResponse } from "@/lib/server/ai/service";
 
 interface RemediationAnswerPayload {
   sessionId: string;
-  objectiveId: string;
-  answers: Array<{ questionId: string; selectedOptionId: string }>;
+  answers: Array<{ questionIndex: number; selectedOptionIndex: number }>;
 }
 
 export async function POST(
@@ -27,7 +26,10 @@ export async function POST(
   const db = getDb();
 
   try {
-    // Verify session belongs to this user
+    // Verify session belongs to this user and load its stored content -
+    // remediation questions are generated on-the-fly (not persisted in the
+    // questions table), so correctness has to be checked against the
+    // session's own stored content, not the question bank.
     const sessionRecord = await db
       .select()
       .from(remediationSessions)
@@ -36,6 +38,11 @@ export async function POST(
 
     if (!sessionRecord.length || sessionRecord[0].userId !== session.user.id) {
       return NextResponse.json({ error: "Invalid session" }, { status: 400 });
+    }
+
+    const content = sessionRecord[0].content as RemediationResponse | null;
+    if (!content?.questions?.length) {
+      return NextResponse.json({ error: "Session has no stored questions" }, { status: 400 });
     }
 
     // Get mastery before attempt
@@ -47,38 +54,23 @@ export async function POST(
 
     const beforeScore = beforeMastery.length > 0 ? Number(beforeMastery[0].masteryScore) : 0;
 
-    // Evaluate answers
-    const questionIds = body.answers.map((a) => a.questionId);
-    const optionRows =
-      questionIds.length > 0
-        ? await db
-            .select()
-            .from(questionOptions)
-            .where(inArray(questionOptions.questionId, questionIds))
-        : [];
-
+    // Evaluate answers server-side against the session's stored questions
     let correctCount = 0;
-    const results: Array<{ questionId: string; isCorrect: boolean; correctOptionId: string }> = [];
+    const results: Array<{ questionIndex: number; isCorrect: boolean }> = [];
 
     for (const answer of body.answers) {
-      const correctOption = optionRows.find(
-        (o) => o.questionId === answer.questionId && o.isCorrect,
-      );
-      const isCorrect = !!correctOption && correctOption.id === answer.selectedOptionId;
+      const question = content.questions[answer.questionIndex];
+      const isCorrect = question?.options[answer.selectedOptionIndex]?.isCorrect ?? false;
       if (isCorrect) correctCount++;
-      results.push({
-        questionId: answer.questionId,
-        isCorrect,
-        correctOptionId: correctOption?.id ?? "",
-      });
+      results.push({ questionIndex: answer.questionIndex, isCorrect });
     }
 
-    const score = body.answers.length > 0 ? Math.round((correctCount / body.answers.length) * 100) : 0;
+    const score =
+      body.answers.length > 0 ? Math.round((correctCount / body.answers.length) * 100) : 0;
 
     // Check if improved (at least 10% gain)
     const improved = score >= beforeScore + 10;
 
-    // Update remediation session outcome
     await RemediationService.updateRemediationOutcome(body.sessionId, improved);
 
     return NextResponse.json({

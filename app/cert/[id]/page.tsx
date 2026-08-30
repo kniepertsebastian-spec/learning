@@ -8,6 +8,7 @@ import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, objectives, sections, objectiveProgress } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
+import { RemediationService } from "@/lib/server/remediation/service";
 
 interface ProgressData {
   [key: string]: { masteryScore: number; status: string };
@@ -56,14 +57,18 @@ export default async function CertDetailPage({
 
   // Fetch progress data if user is authenticated
   let progressData: ProgressData = {};
+  let needsRemediation: Array<{ objectiveId: string; objectiveTitle: string }> = [];
   if (session?.user?.id) {
-    const progress = await db
-      .select()
-      .from(objectiveProgress)
-      .where(eq(objectiveProgress.userId, session.user.id));
+    const [progress, remediationTargets] = await Promise.all([
+      db.select().from(objectiveProgress).where(eq(objectiveProgress.userId, session.user.id)),
+      RemediationService.findObjectivesNeedingRemediation(session.user.id),
+    ]);
     progressData = Object.fromEntries(
       progress.map((p) => [p.objectiveId, { masteryScore: Number(p.masteryScore), status: p.status }])
     );
+    // Only show objectives that belong to this certification
+    const certObjectiveIds = new Set(allObjectives.map((o) => o.id));
+    needsRemediation = remediationTargets.filter((r) => certObjectiveIds.has(r.objectiveId));
   }
 
   // Calculate domain mastery
@@ -127,6 +132,27 @@ export default async function CertDetailPage({
           >
             {locale === "de" ? "Anmelden" : "Sign in"}
           </Link>
+        </div>
+      )}
+
+      {needsRemediation.length > 0 && (
+        <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
+          <p className="mb-2 text-sm font-medium text-yellow-800">
+            {locale === "de"
+              ? `${needsRemediation.length} Bereich(e) benötigen Wiederholung:`
+              : `${needsRemediation.length} area(s) need review:`}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {needsRemediation.map((r) => (
+              <Link
+                key={r.objectiveId}
+                href={`/cert/${slug}/remediation/${r.objectiveId}`}
+                className="rounded-md border border-yellow-300 bg-white px-3 py-1.5 text-sm text-yellow-800 hover:bg-yellow-100"
+              >
+                {r.objectiveTitle}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
