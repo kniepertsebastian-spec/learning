@@ -11,6 +11,58 @@ export class AIGenerationError extends Error {
   }
 }
 
+const RETRYABLE_HTTP_STATUSES = new Set([429, 500, 502, 503, 504]);
+const DEFAULT_MAX_ATTEMPTS = 5;
+const DEFAULT_RETRY_BASE_MS = 2_000;
+const MAX_RETRY_DELAY_MS = 30_000;
+
+function positiveIntegerFromEnv(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function errorStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined;
+
+  for (const key of ["status", "code"] as const) {
+    const value = Reflect.get(error, key);
+    if (typeof value === "number") return value;
+  }
+
+  const nested = Reflect.get(error, "error");
+  if (nested && typeof nested === "object") {
+    const value = Reflect.get(nested, "code");
+    if (typeof value === "number") return value;
+  }
+
+  return undefined;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isRetryableGeminiError(error: unknown): boolean {
+  const status = errorStatus(error);
+  const message = errorMessage(error);
+
+  // A daily free-tier quota cannot recover within this process. Preserve the
+  // existing fail-fast behavior so the idempotent content script can resume
+  // on a later day instead of sleeping and issuing guaranteed-to-fail calls.
+  if (status === 429 && /requests?perday|perdayperproject|daily quota/i.test(message)) {
+    return false;
+  }
+
+  return (
+    (status !== undefined && RETRYABLE_HTTP_STATUSES.has(status)) ||
+    /ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i.test(message)
+  );
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 /**
  * Extrahiert das erste vollständige, balancierte JSON-Objekt aus der Antwort.
  * Ein naives indexOf("{")-bis-lastIndexOf("}") bricht, sobald die KI nach dem
@@ -54,21 +106,51 @@ function extractJson(text: string): string {
 
 async function requestJson(systemPrompt: string, userPrompt: string): Promise<string> {
   const client = getGeminiClient();
-  const response = await client.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: userPrompt,
-    config: {
-      systemInstruction: systemPrompt,
-      responseMimeType: "application/json",
-      maxOutputTokens: 16000,
-    },
-  });
+  const maxAttempts = positiveIntegerFromEnv(
+    process.env.GEMINI_MAX_ATTEMPTS,
+    DEFAULT_MAX_ATTEMPTS,
+  );
+  const retryBaseMs = positiveIntegerFromEnv(
+    process.env.GEMINI_RETRY_BASE_MS,
+    DEFAULT_RETRY_BASE_MS,
+  );
 
-  const text = response.text;
-  if (!text) {
-    throw new AIGenerationError("Gemini hat keine Textantwort zurückgegeben.");
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await client.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: userPrompt,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          maxOutputTokens: 16000,
+        },
+      });
+
+      const text = response.text;
+      if (!text) {
+        throw new AIGenerationError("Gemini hat keine Textantwort zurückgegeben.");
+      }
+      return text;
+    } catch (error) {
+      if (attempt === maxAttempts || !isRetryableGeminiError(error)) {
+        throw error;
+      }
+
+      const exponentialDelay = Math.min(
+        retryBaseMs * 2 ** (attempt - 1),
+        MAX_RETRY_DELAY_MS,
+      );
+      const delayMs = Math.round(exponentialDelay * (1 + Math.random() * 0.25));
+      console.warn(
+        `Gemini vorübergehend nicht verfügbar (${errorStatus(error) ?? "Netzwerkfehler"}). ` +
+          `Neuer Versuch ${attempt + 1}/${maxAttempts} in ${Math.ceil(delayMs / 1_000)}s ...`,
+      );
+      await sleep(delayMs);
+    }
   }
-  return text;
+
+  throw new AIGenerationError("Gemini-Anfrage konnte nicht verarbeitet werden.");
 }
 
 const JSON_ONLY_INSTRUCTION =
