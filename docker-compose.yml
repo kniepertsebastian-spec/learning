@@ -39,6 +39,8 @@ services:
 
       # Gemini API
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MAX_ATTEMPTS: ${GEMINI_MAX_ATTEMPTS:-5}
+      GEMINI_RETRY_BASE_MS: ${GEMINI_RETRY_BASE_MS:-2000}
       
       # Node env
       NODE_ENV: production
