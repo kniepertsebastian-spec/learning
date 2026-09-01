@@ -63,19 +63,60 @@ function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function toGeminiJsonSchema<T>(schema: ZodType<T>): Record<string, unknown> {
-  const jsonSchema = {
-    ...z.toJSONSchema(schema, {
-      target: "draft-07",
-      unrepresentable: "any",
-    }),
-  } as Record<string, unknown>;
+const GEMINI_JSON_SCHEMA_KEYS = new Set([
+  "$id",
+  "$defs",
+  "$ref",
+  "$anchor",
+  "type",
+  "format",
+  "title",
+  "description",
+  "enum",
+  "items",
+  "prefixItems",
+  "minItems",
+  "maxItems",
+  "minimum",
+  "maximum",
+  "anyOf",
+  "oneOf",
+  "properties",
+  "additionalProperties",
+  "required",
+  "propertyOrdering",
+]);
 
-  // Gemini accepts a large JSON Schema subset, but not the draft declaration
-  // itself. Zod's non-enumerable "~standard" metadata is removed defensively.
-  delete jsonSchema.$schema;
-  delete jsonSchema["~standard"];
-  return jsonSchema;
+function sanitizeGeminiJsonSchema(
+  value: unknown,
+  isPropertyMap = false,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeGeminiJsonSchema(item));
+  }
+  if (!value || typeof value !== "object") return value;
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (!isPropertyMap && !GEMINI_JSON_SCHEMA_KEYS.has(key)) continue;
+    sanitized[key] = sanitizeGeminiJsonSchema(
+      child,
+      key === "properties" || key === "$defs",
+    );
+  }
+  return sanitized;
+}
+
+function toGeminiJsonSchema<T>(schema: ZodType<T>): Record<string, unknown> {
+  const jsonSchema = z.toJSONSchema(schema, {
+    target: "draft-07",
+    unrepresentable: "any",
+  });
+
+  // Zod emits full Draft-07 (for example `minLength`), while Gemini accepts
+  // only the subset documented by @google/genai. Unsupported keywords make
+  // the entire request fail with an otherwise opaque 400 INVALID_ARGUMENT.
+  return sanitizeGeminiJsonSchema(jsonSchema) as Record<string, unknown>;
 }
 
 /**
@@ -133,6 +174,7 @@ async function requestJson(
     process.env.GEMINI_RETRY_BASE_MS,
     DEFAULT_RETRY_BASE_MS,
   );
+  let schemaEnabled = true;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -142,7 +184,7 @@ async function requestJson(
         config: {
           systemInstruction: systemPrompt,
           responseMimeType: "application/json",
-          responseJsonSchema,
+          ...(schemaEnabled ? { responseJsonSchema } : {}),
           maxOutputTokens: 16000,
         },
       });
@@ -153,6 +195,21 @@ async function requestJson(
       }
       return text;
     } catch (error) {
+      if (
+        schemaEnabled &&
+        errorStatus(error) === 400 &&
+        /invalid argument/i.test(errorMessage(error))
+      ) {
+        // Older/limited Gemini models may reject structured-output schemas.
+        // Fall back to the explicit JSON prompt + normal Zod validation rather
+        // than making the entire offline content-generation job unusable.
+        schemaEnabled = false;
+        console.warn(
+          "Gemini hat das strukturierte Ausgabeschema abgelehnt; erneuter Versuch mit Prompt-Validierung ...",
+        );
+        continue;
+      }
+
       if (attempt === maxAttempts || !isRetryableGeminiError(error)) {
         throw error;
       }
