@@ -1,4 +1,4 @@
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 import { GEMINI_MODEL, getGeminiClient } from "@/lib/gemini";
 
 export class AIGenerationError extends Error {
@@ -63,6 +63,21 @@ function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function toGeminiJsonSchema<T>(schema: ZodType<T>): Record<string, unknown> {
+  const jsonSchema = {
+    ...z.toJSONSchema(schema, {
+      target: "draft-07",
+      unrepresentable: "any",
+    }),
+  } as Record<string, unknown>;
+
+  // Gemini accepts a large JSON Schema subset, but not the draft declaration
+  // itself. Zod's non-enumerable "~standard" metadata is removed defensively.
+  delete jsonSchema.$schema;
+  delete jsonSchema["~standard"];
+  return jsonSchema;
+}
+
 /**
  * Extrahiert das erste vollständige, balancierte JSON-Objekt aus der Antwort.
  * Ein naives indexOf("{")-bis-lastIndexOf("}") bricht, sobald die KI nach dem
@@ -104,7 +119,11 @@ function extractJson(text: string): string {
   return text.slice(start);
 }
 
-async function requestJson(systemPrompt: string, userPrompt: string): Promise<string> {
+async function requestJson(
+  systemPrompt: string,
+  userPrompt: string,
+  responseJsonSchema: Record<string, unknown>,
+): Promise<string> {
   const client = getGeminiClient();
   const maxAttempts = positiveIntegerFromEnv(
     process.env.GEMINI_MAX_ATTEMPTS,
@@ -123,6 +142,7 @@ async function requestJson(systemPrompt: string, userPrompt: string): Promise<st
         config: {
           systemInstruction: systemPrompt,
           responseMimeType: "application/json",
+          responseJsonSchema,
           maxOutputTokens: 16000,
         },
       });
@@ -167,7 +187,8 @@ export async function generateStructured<T>(
   schema: ZodType<T>,
 ): Promise<T> {
   const jsonSystemPrompt = `${systemPrompt}${JSON_ONLY_INSTRUCTION}`;
-  let rawText = await requestJson(jsonSystemPrompt, userPrompt);
+  const responseJsonSchema = toGeminiJsonSchema(schema);
+  let rawText = await requestJson(jsonSystemPrompt, userPrompt, responseJsonSchema);
 
   const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -181,6 +202,7 @@ export async function generateStructured<T>(
       rawText = await requestJson(
         jsonSystemPrompt,
         `Deine vorherige Antwort war kein valides JSON:\n${rawText}\n\nBitte antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
+        responseJsonSchema,
       );
       continue;
     }
@@ -196,6 +218,7 @@ export async function generateStructured<T>(
     rawText = await requestJson(
       jsonSystemPrompt,
       `Deine vorherige Antwort erfüllte das erwartete Schema nicht (${result.error.message}):\n${rawText}\n\nBitte korrigiere sie und antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
+      responseJsonSchema,
     );
   }
 
