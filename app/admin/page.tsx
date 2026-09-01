@@ -1,49 +1,45 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { ArrowRight, AlertTriangle, CheckCircle } from "lucide-react";
+import { ArrowRight, Terminal } from "lucide-react";
 import { auth } from "@/lib/server/auth";
 import { getServerLocale } from "@/lib/server/locale";
 import { getCertificationsWithStats } from "@/lib/server/admin/stats";
+import { createCertificationAction } from "./actions";
 
 export default async function AdminDashboard() {
   const [session, locale] = await Promise.all([auth(), getServerLocale()]);
 
-  // Query directly instead of self-fetching /api/admin/certifications - a
-  // server-to-server fetch from a server component doesn't carry the
-  // browser's session cookie, so that always returned 401 -> [] silently.
-  const certifications = session?.user?.id ? await getCertificationsWithStats() : [];
-
   if (!session?.user?.id) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">{locale === "de" ? "Nicht authentifiziert" : "Not authenticated"}</p>
-        <Link href="/login" className="mt-4 text-accent hover:underline">
+        <p className="text-foreground/70">
+          {locale === "de" ? "Nicht authentifiziert" : "Not authenticated"}
+        </p>
+        <Link href="/login?from=/admin" className="mt-4 text-accent hover:underline">
           {locale === "de" ? "Anmelden" : "Sign in"}
         </Link>
       </div>
     );
   }
 
-  // TODO: Add admin role verification
-  if (!session.user.email?.includes("admin")) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center">
-        <AlertTriangle className="h-8 w-8 text-yellow-500" />
-        <p className="mt-2 text-foreground/70">{locale === "de" ? "Admin-Zugriff erforderlich" : "Admin access required"}</p>
-      </div>
-    );
-  }
+  // Until user roles are introduced, the admin API and UI deliberately use
+  // the same rule: every authenticated user may administer this private PWA.
+  const certifications = await getCertificationsWithStats();
 
   return (
     <div className="flex flex-1 flex-col">
-      <h1 className="mb-1 text-2xl font-semibold">{locale === "de" ? "Admin-Dashboard" : "Admin Dashboard"}</h1>
+      <h1 className="mb-1 text-2xl font-semibold">
+        {locale === "de" ? "Admin-Dashboard" : "Admin Dashboard"}
+      </h1>
       <p className="mb-6 text-sm text-foreground/70">
-        {locale === "de" ? "Verwaltung von Zertifizierungen und Inhalten" : "Manage certifications and content"}
+        {locale === "de"
+          ? "Zertifizierungen und Lerninhalte verwalten"
+          : "Manage certifications and learning content"}
       </p>
 
-      <div className="flex flex-col gap-6">
-        <div>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <section>
           <h2 className="mb-4 text-lg font-semibold">
             {locale === "de" ? "Zertifizierungen" : "Certifications"}
           </h2>
@@ -56,43 +52,107 @@ export default async function AdminDashboard() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {certifications.map((cert) => (
-                <Link
-                  key={cert.id}
-                  href={`/admin/certifications/${cert.slug}`}
-                  className="flex items-center justify-between rounded-lg border border-border bg-surface p-4 hover:border-accent hover:bg-background"
-                >
-                  <div className="flex-1">
-                    <p className="font-medium">{cert.name}</p>
-                    <p className="text-sm text-foreground/60">
-                      {cert.provider} • {cert.examName} {cert.examVersion}
-                    </p>
-                    <div className="mt-2 flex gap-4 text-xs text-foreground/50">
-                      <span>{cert.stats.domains} domains</span>
-                      <span>•</span>
-                      <span>{cert.stats.objectives} objectives</span>
-                      <span>•</span>
-                      <span>{cert.stats.lessons} lessons</span>
-                      <span>•</span>
-                      <span>{cert.stats.questions} questions</span>
+              {certifications.map((cert) => {
+                const contentReady = cert.stats.sections > 0 && cert.stats.lessons > 0;
+                return (
+                  <Link
+                    key={cert.id}
+                    href={`/admin/certifications/${cert.slug}`}
+                    className="flex items-center justify-between rounded-lg border border-border bg-surface p-4 hover:border-accent hover:bg-background"
+                  >
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">{cert.name}</p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            contentReady
+                              ? "bg-green-500/10 text-green-600"
+                              : "bg-yellow-500/10 text-yellow-600"
+                          }`}
+                        >
+                          {contentReady
+                            ? locale === "de" ? "Lerninhalt bereit" : "Content ready"
+                            : locale === "de" ? "Inhalt fehlt" : "Content missing"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground/60">
+                        {cert.provider} · {cert.examName} {cert.examVersion}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-x-3 text-xs text-foreground/50">
+                        <span>{cert.stats.domains} Domains</span>
+                        <span>{cert.stats.objectives} Objectives</span>
+                        <span>{cert.stats.sections} Sections</span>
+                        <span>{cert.stats.lessons} Lessons</span>
+                        <span>{cert.stats.questions} Questions</span>
+                      </div>
                     </div>
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-foreground/40" />
-                </Link>
-              ))}
+                    <ArrowRight className="h-5 w-5 shrink-0 text-foreground/40" />
+                  </Link>
+                );
+              })}
             </div>
           )}
-        </div>
 
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <h3 className="mb-2 font-medium">{locale === "de" ? "Admin-Funktionen" : "Admin Functions"}</h3>
-          <ul className="space-y-1 text-sm text-foreground/70">
-            <li>• {locale === "de" ? "Inhalte validieren" : "Validate content"}</li>
-            <li>• {locale === "de" ? "Inhalte genehmigen/ablehnen" : "Approve/reject content"}</li>
-            <li>• {locale === "de" ? "Problematische Inhalte markieren" : "Flag problematic content"}</li>
-            <li>• {locale === "de" ? "Inhalte bearbeiten" : "Edit content"}</li>
-          </ul>
-        </div>
+          {certifications.some((cert) => cert.stats.lessons === 0) && (
+            <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+              <div className="flex gap-3">
+                <Terminal className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
+                <div>
+                  <p className="font-medium">
+                    {locale === "de" ? "Lerninhalte müssen noch erzeugt werden" : "Learning content still needs generation"}
+                  </p>
+                  <p className="mt-1 text-sm text-foreground/70">
+                    {locale === "de"
+                      ? "Führe für den jeweiligen Slug zuerst content:draft-curriculum und danach content:draft-lessons im App-Container aus."
+                      : "For the relevant slug, run content:draft-curriculum and then content:draft-lessons in the app container."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="h-fit rounded-xl border border-border bg-surface p-5">
+          <h2 className="mb-1 text-lg font-semibold">
+            {locale === "de" ? "Kurs hinzufügen" : "Add course"}
+          </h2>
+          <p className="mb-4 text-sm text-foreground/60">
+            {locale === "de"
+              ? "Eine Domain pro Zeile, optional mit Gewichtung: Name | 20"
+              : "One domain per line, optionally weighted: Name | 20"}
+          </p>
+          <form action={createCertificationAction} className="space-y-3">
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">{locale === "de" ? "Name" : "Name"}</span>
+              <input name="name" required className="w-full rounded-md border border-border bg-background px-3 py-2" />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Slug</span>
+              <input name="slug" required placeholder="network-plus-n10-009" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" className="w-full rounded-md border border-border bg-background px-3 py-2" />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Provider</span>
+              <input name="provider" required className="w-full rounded-md border border-border bg-background px-3 py-2" />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">{locale === "de" ? "Prüfung" : "Exam"}</span>
+                <input name="examName" required className="w-full rounded-md border border-border bg-background px-3 py-2" />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">{locale === "de" ? "Version" : "Version"}</span>
+                <input name="examVersion" required className="w-full rounded-md border border-border bg-background px-3 py-2" />
+              </label>
+            </div>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Domains</span>
+              <textarea name="domains" required rows={5} placeholder={"Networking Concepts | 23\nNetwork Security | 20"} className="w-full rounded-md border border-border bg-background px-3 py-2" />
+            </label>
+            <button type="submit" className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+              {locale === "de" ? "Kursstruktur anlegen" : "Create course structure"}
+            </button>
+          </form>
+        </section>
       </div>
     </div>
   );

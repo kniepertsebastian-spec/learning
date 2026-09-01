@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, domains, objectives, sections, objectiveProgress } from "@/lib/server/db/schema";
+import { certifications, domains, objectives, sections, lessons, objectiveProgress } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { RemediationService } from "@/lib/server/remediation/service";
 
@@ -52,6 +52,16 @@ export default async function CertDetailPage({
           .where(inArray(sections.objectiveId, objectiveIds))
           .orderBy(sections.orderNum)
       : [];
+
+  const sectionIds = allSections.map((section) => section.id);
+  const lessonRows =
+    sectionIds.length > 0
+      ? await db
+          .select({ sectionId: lessons.sectionId })
+          .from(lessons)
+          .where(inArray(lessons.sectionId, sectionIds))
+      : [];
+  const sectionsWithLessons = new Set(lessonRows.map((lesson) => lesson.sectionId));
 
   const [session, locale] = await Promise.all([auth(), getServerLocale()]);
 
@@ -168,6 +178,24 @@ export default async function CertDetailPage({
         </div>
       )}
 
+      {allSections.length === 0 && (
+        <div className="mb-6 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+          <p className="font-medium">
+            {locale === "de" ? "Für diesen Kurs wurden noch keine Lerninhalte erzeugt." : "Learning content has not been generated for this course yet."}
+          </p>
+          <p className="mt-1 text-sm text-foreground/70">
+            {locale === "de"
+              ? "Im Adminbereich siehst du den Content-Status. Danach müssen Curriculum und Lektionen einmalig im App-Container erzeugt werden."
+              : "Admin shows the content status. The curriculum and lessons then need to be generated once in the app container."}
+          </p>
+          {session && (
+            <Link href={`/admin/certifications/${slug}`} className="mt-3 inline-block text-sm font-medium text-accent hover:underline">
+              {locale === "de" ? "Zum Adminbereich" : "Open admin"}
+            </Link>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col gap-8">
         {allDomains.map((domain) => {
           const domainObjectives = allObjectives.filter((o) => o.domainId === domain.id);
@@ -223,20 +251,36 @@ export default async function CertDetailPage({
                         )}
                       </div>
                       <div className="flex flex-col gap-1.5">
-                        {objSections.map((section) => (
-                          <Link
-                            key={section.id}
-                            href={`/cert/${slug}/section/${section.id}`}
-                            className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:border-accent hover:bg-background"
-                          >
-                            <span>{section.title[locale]}</span>
-                            {section.estimatedMinutes && (
+                        {objSections.map((section) => {
+                          const isReady = sectionsWithLessons.has(section.id);
+                          const content = (
+                            <>
+                              <span>{section.title[locale]}</span>
                               <span className="shrink-0 text-xs text-foreground/50">
-                                {section.estimatedMinutes} min
+                                {isReady
+                                  ? section.estimatedMinutes && `${section.estimatedMinutes} min`
+                                  : locale === "de" ? "Inhalt fehlt" : "Content missing"}
                               </span>
-                            )}
-                          </Link>
-                        ))}
+                            </>
+                          );
+
+                          return isReady ? (
+                            <Link
+                              key={section.id}
+                              href={`/cert/${slug}/section/${section.id}`}
+                              className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:border-accent hover:bg-background"
+                            >
+                              {content}
+                            </Link>
+                          ) : (
+                            <div
+                              key={section.id}
+                              className="flex cursor-not-allowed items-center justify-between rounded-md border border-border px-3 py-2 text-sm opacity-60"
+                            >
+                              {content}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );

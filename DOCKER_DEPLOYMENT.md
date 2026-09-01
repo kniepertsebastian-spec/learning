@@ -50,8 +50,13 @@ docker-compose ps
 # Run database migrations
 docker-compose exec app npm run db:migrate
 
-# Seed initial data (Security+ certification)
+# Seed initial data (Security+ certification + domain skeleton)
 docker-compose exec app npm run db:seed
+
+# Generate the curriculum, lessons and questions.
+# Without these two steps the dashboard only shows an empty course shell.
+docker-compose exec app npm run content:draft-curriculum -- security-plus-sy0-701
+docker-compose exec app npm run content:draft-lessons -- security-plus-sy0-701
 ```
 
 ### 4. Access Application
