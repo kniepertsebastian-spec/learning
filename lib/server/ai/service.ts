@@ -45,6 +45,9 @@ export async function generateCurriculumDraftForDomain(
     "Objective-Titel und -Beschreibung auf Englisch (Fachbegriffe wie im echten Exam üblich).",
     "Section-Titel bilingual (Deutsch + Englisch).",
     "Schwierigkeitsgrad realistisch verteilen (nicht alles \"advanced\").",
+    "Jede Section MUSS exakt diese Felder besitzen:",
+    '{ "title": { "de": "Deutscher Titel", "en": "English title" }, "estimatedMinutes": 30, "difficulty": "beginner" }',
+    "Für difficulty ist ausschließlich beginner, intermediate oder advanced erlaubt.",
   ].join("\n");
 
   const userPrompt = `Generiere den Objectives+Sections-Entwurf für Domain ${domainOrderNum} ("${domainName}").`;
