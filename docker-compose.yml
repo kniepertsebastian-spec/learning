@@ -57,7 +57,11 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: learning-cloudflared
     restart: always
-    command: tunnel --no-autoupdate run
+    # http2 (TCP) instead of the default QUIC (UDP): QUIC's connections were
+    # dying simultaneously across all edge nodes with "timeout: no recent
+    # network activity", consistent with the home router/NAT dropping idle
+    # UDP sessions. http2 avoids that failure mode.
+    command: tunnel --no-autoupdate --protocol http2 run
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
     depends_on:
