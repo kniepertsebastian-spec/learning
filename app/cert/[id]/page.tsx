@@ -185,8 +185,8 @@ export default async function CertDetailPage({
           </p>
           <p className="mt-1 text-sm text-foreground/70">
             {locale === "de"
-              ? "Ein angemeldeter Nutzer kann den Status im Adminbereich prüfen und die Content-Generierung für diesen Kurs starten."
-              : "A signed-in user can check the status in admin and start content generation for this course."}
+              ? "Im Adminbereich siehst du den Content-Status. Danach müssen Curriculum und Lektionen einmalig im App-Container erzeugt werden."
+              : "Admin shows the content status. The curriculum and lessons then need to be generated once in the app container."}
           </p>
           {session && (
             <Link href={`/admin/certifications/${slug}`} className="mt-3 inline-block text-sm font-medium text-accent hover:underline">
