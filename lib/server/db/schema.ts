@@ -200,6 +200,21 @@ export const remediationSessions = pgTable("remediation_sessions", {
   improved: boolean("improved"),
 });
 
+export const contentGenerationJobs = pgTable("content_generation_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  certificationId: uuid("certification_id")
+    .notNull()
+    .references(() => certifications.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("queued"),
+  phase: text("phase").notNull().default("queued"),
+  progress: integer("progress").notNull().default(0),
+  message: text("message"),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
 export const exams = pgTable("exams", {
   id: uuid("id").primaryKey().defaultRandom(),
   certificationId: uuid("certification_id")

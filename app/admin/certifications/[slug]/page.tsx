@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, AlertCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import { ArrowLeft, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
@@ -9,6 +9,8 @@ import { certifications } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { ContentValidationService } from "@/lib/server/admin/validation";
 import { AnalyticsService } from "@/lib/server/analytics/service";
+import { ContentGenerationControl } from "@/components/ContentGenerationControl";
+import { getLatestContentGenerationJob } from "@/lib/server/admin/content-generation";
 
 export default async function AdminCertificationPage({
   params,
@@ -52,6 +54,7 @@ export default async function AdminCertificationPage({
   }
 
   const cert = certRows[0];
+  const initialGenerationJob = await getLatestContentGenerationJob(cert.id);
 
   // Run validation
   const validation = await ContentValidationService.validateCertificationContent(cert.id);
@@ -80,12 +83,22 @@ export default async function AdminCertificationPage({
         {cert.examName} {cert.examVersion}
       </p>
 
-      <div className="mb-6 flex gap-3">
-        <button className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90">
-          <RefreshCw className="h-4 w-4" />
-          {locale === "de" ? "Validierung aktualisieren" : "Refresh validation"}
-        </button>
-      </div>
+      <ContentGenerationControl
+        certificationId={cert.id}
+        locale={locale}
+        initialJob={
+          initialGenerationJob
+            ? {
+                id: initialGenerationJob.id,
+                status: initialGenerationJob.status,
+                phase: initialGenerationJob.phase,
+                progress: initialGenerationJob.progress,
+                message: initialGenerationJob.message,
+                error: initialGenerationJob.error,
+              }
+            : null
+        }
+      />
 
       <div className="grid gap-6">
         {/* Validation Summary */}

@@ -85,23 +85,25 @@ async function main() {
       .where(eq(sections.objectiveId, objective.id))
       .orderBy(sections.orderNum);
 
-    const [existingLesson] = await db
-      .select({ id: lessons.id })
+    const existingLessons = await db
+      .select({ id: lessons.id, sectionId: lessons.sectionId })
       .from(lessons)
       .where(
         inArray(
           lessons.sectionId,
           objSections.map((s) => s.id),
         ),
-      )
-      .limit(1);
-    const [existingQuestion] = await db
-      .select({ id: questions.id })
+      );
+    const existingQuestions = await db
+      .select({ id: questions.id, humanId: questions.humanId })
       .from(questions)
-      .where(eq(questions.objectiveId, objective.id))
-      .limit(1);
+      .where(eq(questions.objectiveId, objective.id));
 
-    if (existingLesson && existingQuestion) {
+    const sectionsWithLesson = new Set(existingLessons.map((lesson) => lesson.sectionId));
+    if (
+      objSections.every((section) => sectionsWithLesson.has(section.id)) &&
+      existingQuestions.length >= 5
+    ) {
       console.log(`Objective ${objective.code} "${objective.title}": bereits vorhanden, überspringe.`);
       continue;
     }
@@ -128,6 +130,7 @@ async function main() {
         console.warn(`  sectionOrderNum ${draft.sectionOrderNum} nicht gefunden, überspringe.`);
         continue;
       }
+      if (sectionsWithLesson.has(section.id)) continue;
 
       const quality = QualityCheckService.checkLessonQuality({
         content: draft.content.en,
@@ -152,11 +155,15 @@ async function main() {
         promptVersion: "v2",
         modelVersion: process.env.GEMINI_MODEL || "gemini-3.6-flash",
       });
+      sectionsWithLesson.add(section.id);
       lessonsSaved++;
     }
 
     let questionsSaved = 0;
+    const usedHumanIds = new Set(existingQuestions.map((question) => question.humanId));
+    let nextQuestionNumber = 1;
     for (let i = 0; i < draftQuestions.length; i++) {
+      if (existingQuestions.length + questionsSaved >= 5) break;
       const draft = draftQuestions[i];
 
       const quality = QualityCheckService.checkQuestionQuality({
@@ -175,7 +182,12 @@ async function main() {
         continue;
       }
 
-      const humanId = `${humanIdPrefix(cert.slug)}-${objective.code}-Q${String(questionsSaved + 1).padStart(3, "0")}`;
+      let humanId: string;
+      do {
+        humanId = `${humanIdPrefix(cert.slug)}-${objective.code}-Q${String(nextQuestionNumber).padStart(3, "0")}`;
+        nextQuestionNumber++;
+      } while (usedHumanIds.has(humanId));
+      usedHumanIds.add(humanId);
       const [question] = await db
         .insert(questions)
         .values({
