@@ -15,6 +15,13 @@
       "when": 1788057530790,
       "tag": "0001_zippy_jack_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788347927489,
+      "tag": "0002_same_psynapse",
+      "breakpoints": true
     }
   ]
 }
