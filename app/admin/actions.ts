@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/server/auth";
+import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { CertificationManagementService } from "@/lib/server/admin/certification-management";
@@ -17,10 +17,7 @@ function requiredField(formData: FormData, name: string): string {
 }
 
 export async function createCertificationAction(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/login?from=/admin");
-  }
+  await requireAdminPage("/admin");
 
   const name = requiredField(formData, "name");
   const provider = requiredField(formData, "provider");

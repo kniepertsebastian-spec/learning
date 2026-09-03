@@ -126,6 +126,19 @@ docker-compose exec app npm run content:validate
 docker-compose exec app sh
 ```
 
+### Admin role (R0.2)
+`/admin` and all `/api/admin/**` routes require `users.role = 'admin'` (default
+role is `learner`). After the operator registers a normal account via
+`/register`, promote it once from inside the app container:
+
+```bash
+docker-compose exec app npm run user:set-role -- operator@example.com admin
+```
+
+Revoke the same way with `learner` instead of `admin`; the role is read fresh
+from the database on every request, so a revoked admin loses access
+immediately without needing to sign out.
+
 ### Troubleshooting
 ```bash
 # Rebuild images

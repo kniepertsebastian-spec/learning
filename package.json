@@ -10,6 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",
+    "user:set-role": "tsx scripts/set-user-role.ts",
     "cert:add": "tsx scripts/add-certification.ts",
     "content:draft-curriculum": "tsx scripts/generate-curriculum-draft.ts",
     "content:draft-lessons": "tsx scripts/generate-lessons-and-questions.ts"

@@ -4,7 +4,10 @@ import { getDb } from "@/lib/server/db/client";
 import {
   contentGenerationJobs,
   domains,
+  lessons,
   objectives,
+  questions,
+  sections,
 } from "@/lib/server/db/schema";
 
 export type ContentGenerationJob = typeof contentGenerationJobs.$inferSelect;
@@ -200,6 +203,97 @@ export async function getLatestContentGenerationJob(
   }
 
   return job;
+}
+
+export interface GenerationEstimate {
+  domainsPending: number;
+  objectivesPending: number;
+  estimatedAiCalls: number;
+  missingObjectiveCodes: string[];
+}
+
+/**
+ * R0.3: zeigt vor dem Start an, welche Objectives fehlen und ungefähr wie
+ * viele KI-Aufrufe nötig sind - ein Aufruf pro Domain ohne Objectives
+ * (content:draft-curriculum) plus ein Aufruf pro Objective, dem noch Lessons
+ * oder ein voller Fragenpool fehlen (content:draft-lessons). Spiegelt genau
+ * die Skip-Bedingungen der beiden Skripte, damit die Schätzung nicht
+ * abweicht.
+ */
+export async function estimateGenerationWork(
+  certificationId: string,
+): Promise<GenerationEstimate> {
+  const db = getDb();
+
+  const certDomains = await db
+    .select({ id: domains.id })
+    .from(domains)
+    .where(eq(domains.certificationId, certificationId));
+  const domainIds = certDomains.map((domain) => domain.id);
+
+  const certObjectives = domainIds.length
+    ? await db
+        .select({ id: objectives.id, code: objectives.code, domainId: objectives.domainId })
+        .from(objectives)
+        .where(inArray(objectives.domainId, domainIds))
+    : [];
+  const domainsWithObjectives = new Set(certObjectives.map((objective) => objective.domainId));
+  const domainsPending = domainIds.filter((id) => !domainsWithObjectives.has(id)).length;
+
+  const objectiveIds = certObjectives.map((objective) => objective.id);
+  const objectiveSections = objectiveIds.length
+    ? await db
+        .select({ id: sections.id, objectiveId: sections.objectiveId })
+        .from(sections)
+        .where(inArray(sections.objectiveId, objectiveIds))
+    : [];
+  const sectionIds = objectiveSections.map((section) => section.id);
+
+  const lessonRows = sectionIds.length
+    ? await db
+        .select({ sectionId: lessons.sectionId })
+        .from(lessons)
+        .where(inArray(lessons.sectionId, sectionIds))
+    : [];
+  const sectionsWithLesson = new Set(lessonRows.map((lesson) => lesson.sectionId));
+
+  const questionRows = objectiveIds.length
+    ? await db
+        .select({ objectiveId: questions.objectiveId })
+        .from(questions)
+        .where(inArray(questions.objectiveId, objectiveIds))
+    : [];
+  const questionCountByObjective = new Map<string, number>();
+  for (const row of questionRows) {
+    questionCountByObjective.set(
+      row.objectiveId,
+      (questionCountByObjective.get(row.objectiveId) ?? 0) + 1,
+    );
+  }
+
+  const sectionIdsByObjective = new Map<string, string[]>();
+  for (const section of objectiveSections) {
+    const list = sectionIdsByObjective.get(section.objectiveId) ?? [];
+    list.push(section.id);
+    sectionIdsByObjective.set(section.objectiveId, list);
+  }
+
+  const missingObjectiveCodes = certObjectives
+    .filter((objective) => {
+      const objSectionIds = sectionIdsByObjective.get(objective.id) ?? [];
+      const allSectionsHaveLesson =
+        objSectionIds.length > 0 && objSectionIds.every((id) => sectionsWithLesson.has(id));
+      const hasEnoughQuestions = (questionCountByObjective.get(objective.id) ?? 0) >= 5;
+      return !allSectionsHaveLesson || !hasEnoughQuestions;
+    })
+    .map((objective) => objective.code);
+
+  return {
+    domainsPending,
+    objectivesPending: missingObjectiveCodes.length,
+    estimatedAiCalls: domainsPending + missingObjectiveCodes.length,
+    missingObjectiveCodes,
+  };
 }
 
 export async function findActiveContentGenerationJob(

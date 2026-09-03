@@ -5,7 +5,7 @@ import { GraduationCap, Languages, Moon, Settings, Sun } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 
-export function Header() {
+export function Header({ isAdmin }: { isAdmin: boolean }) {
   const { locale, setLocale, t } = useLocale();
   const { theme, toggleTheme } = useTheme();
 
@@ -21,13 +21,15 @@ export function Header() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/admin"
-            className="rounded-md border border-border p-2 hover:bg-background"
-            aria-label={locale === "de" ? "Admin öffnen" : "Open admin"}
-          >
-            <Settings className="h-4 w-4" aria-hidden="true" />
-          </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="rounded-md border border-border p-2 hover:bg-background"
+              aria-label={locale === "de" ? "Admin öffnen" : "Open admin"}
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          )}
 
           <button
             type="button"
