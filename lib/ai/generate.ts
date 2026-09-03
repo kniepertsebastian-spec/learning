@@ -200,6 +200,46 @@ function extractJson(text: string): string {
   return text.slice(start);
 }
 
+const DIFFICULTY_ALIASES: Record<string, "beginner" | "intermediate" | "advanced"> = {
+  beginner: "beginner",
+  basic: "beginner",
+  easy: "beginner",
+  entry: "beginner",
+  foundational: "beginner",
+  novice: "beginner",
+  anfänger: "beginner",
+  anfaenger: "beginner",
+  intermediate: "intermediate",
+  medium: "intermediate",
+  moderate: "intermediate",
+  mittel: "intermediate",
+  advanced: "advanced",
+  difficult: "advanced",
+  expert: "advanced",
+  hard: "advanced",
+  schwierig: "advanced",
+};
+
+/**
+ * Gemini occasionally ignores an enum when structured output is unavailable
+ * and returns a common synonym such as `medium`. Normalize only known,
+ * semantically equivalent aliases; unknown values still fail Zod validation.
+ */
+function normalizeGeneratedAliases(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeGeneratedAliases);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => {
+      if (key === "difficulty" && typeof child === "string") {
+        const normalized = child.trim().toLowerCase();
+        return [key, DIFFICULTY_ALIASES[normalized] ?? child];
+      }
+      return [key, normalizeGeneratedAliases(child)];
+    }),
+  );
+}
+
 async function requestJson(
   systemPrompt: string,
   userPrompt: string,
@@ -309,7 +349,7 @@ export async function generateStructured<T>(
       continue;
     }
 
-    const result = schema.safeParse(parsed);
+    const result = schema.safeParse(normalizeGeneratedAliases(parsed));
     if (result.success) return result.data;
 
     if (attempt === maxAttempts) {

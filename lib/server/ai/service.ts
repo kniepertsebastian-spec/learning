@@ -93,6 +93,7 @@ export async function generateLessonsAndQuestionsForObjective(
     "NICHT nur Faktenabfrage - bevorzugt szenariobasierte Fragen, die Verständnis testen",
     '(z. B. statt "Wofür steht CIA?" eher eine Situationsbeschreibung, die CIA anwendet).',
     "Genau 4 Antwortoptionen pro Frage, genau EINE davon korrekt. Schwierigkeitsgrade realistisch mischen.",
+    "Das Feld `difficulty` MUSS bei jeder Frage exakt `beginner`, `intermediate` oder `advanced` sein.",
     "",
     "WICHTIG - jedes bilinguale Feld ist ein OBJEKT mit genau den Keys `de` und `en`,",
     "NIEMALS ein einzelner String oder ein Array direkt. Exaktes Ausgabeformat:",
