@@ -1,5 +1,6 @@
 import { generateStructured } from "@/lib/ai/generate";
 import {
+  blueprintExtractionSchema,
   curriculumDraftForDomainResponseSchema,
   lessonsAndQuestionsForObjectiveResponseSchema,
   remediationResponseSchema,
@@ -13,6 +14,7 @@ export type DraftObjective = z.infer<typeof draftObjectiveSchema>;
 export type DraftLesson = z.infer<typeof draftLessonSchema>;
 export type DraftQuestion = z.infer<typeof draftQuestionSchema>;
 export type RemediationResponse = z.infer<typeof remediationResponseSchema>;
+export type BlueprintExtraction = z.infer<typeof blueprintExtractionSchema>;
 export interface LessonsAndQuestions {
   lessons: DraftLesson[];
   questions: DraftQuestion[];
@@ -178,4 +180,45 @@ export async function generateRemediationForObjective(
   const userPrompt = `Generiere Remediations-Lektion und Übungsfragen für "${objectiveTitle}".`;
 
   return generateStructured(systemPrompt, userPrompt, remediationResponseSchema);
+}
+
+/**
+ * R1.2 (roadmap.md): strukturierte Extraktion von Zertifizierungsmetadaten,
+ * Domains, Gewichtungen und Objectives aus einer bereits hochgeladenen und
+ * seitenweise extrahierten Quelle (R1.1) - anders als
+ * generateCurriculumDraftForDomain oben KEIN freier KI-Entwurf: die KI muss
+ * jedes Feld aus `sourceText` belegen (Locator + Confidence pro Objective),
+ * siehe blueprintExtractionSchema.
+ */
+export async function generateBlueprintDraft(sourceText: string): Promise<BlueprintExtraction> {
+  const systemPrompt = [
+    "Du extrahierst die offizielle Prüfungsstruktur aus einem bereitgestellten Auszug",
+    "einer offiziellen Zertifizierungs-Prüfungsbeschreibung (z. B. CompTIA Exam Objectives).",
+    "",
+    "WICHTIG: Nutze AUSSCHLIESSLICH den bereitgestellten Text als Quelle. Erfinde keine",
+    "Domains, Objectives, Titel oder Prozentwerte, die nicht im Text stehen oder sich nicht",
+    "eindeutig daraus ableiten lassen.",
+    "",
+    'Der Text ist seitenweise mit Markierungen der Form "== Seite N ==" versehen.',
+    '`locator` MUSS sich auf eine dieser Seitenzahlen beziehen (z. B. "S. 4" oder "S. 4-5"),',
+    "niemals erfunden oder geschätzt sein.",
+    "",
+    "Für jedes Objective vergib `confidence` zwischen 0 und 1:",
+    "1.0 = Code/Titel wörtlich und eindeutig im Text gefunden.",
+    "0.5 = im Text vorhanden, aber Formulierung/Zuordnung leicht unsicher.",
+    "0.0-0.3 = geraten/aus dem Kontext abgeleitet, nicht wörtlich belegt.",
+    "",
+    "`weightPercent` ist die offizielle Domain-Gewichtung in Prozent, FALLS im Text",
+    "angegeben - sonst exakt `null` (nicht raten oder gleichmäßig verteilen).",
+  ].join("\n");
+
+  const userPrompt = [
+    "Extrahiere Zertifizierungsname, Anbieter, Exam-Code sowie alle Domains mit",
+    "Gewichtung und allen Objectives (Code, Titel, Beschreibung, Locator, Confidence)",
+    "aus folgendem seitenmarkiertem Quelltext:",
+    "",
+    sourceText,
+  ].join("\n");
+
+  return generateStructured(systemPrompt, userPrompt, blueprintExtractionSchema);
 }

@@ -394,3 +394,49 @@ export const sourceChunks = pgTable(
     unique("source_chunks_source_page_unique").on(table.sourceId, table.pageNumber),
   ],
 );
+
+/**
+ * R1.2 (roadmap.md): KI-Extraktionsvorschlag für eine Quelle - ein Draft pro
+ * Quelle (erneute Extraktion überschreibt den bisherigen Draft statt einen
+ * neuen anzulegen, siehe generateBlueprintDraft-Aufrufstelle). `content` hält
+ * die volle Struktur (Zertifizierungsmetadaten, Domains, Objectives je mit
+ * Locator+Confidence, siehe blueprintExtractionSchema) als jsonb, analog zum
+ * bereits etablierten Muster bei remediation_sessions.content - relationale
+ * Tabellen (objective_source_refs etc.) sind erst sinnvoll, sobald ein Draft
+ * in R1.3 tatsächlich freigegeben und in die echten domains/objectives-
+ * Tabellen übernommen wird.
+ */
+export const blueprintDrafts = pgTable("blueprint_drafts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sourceId: uuid("source_id")
+    .notNull()
+    .unique()
+    .references(() => certificationSources.id, { onDelete: "cascade" }),
+  certificationId: uuid("certification_id")
+    .notNull()
+    .references(() => certifications.id, { onDelete: "cascade" }),
+  /** Struktur siehe blueprintExtractionSchema (lib/server/ai/schemas.ts) -
+   * bewusst nur locker typisiert statt mit dem Zod-Typ, damit db/schema.ts
+   * nicht von lib/server/ai/ importieren muss; an den Lese-/Schreibstellen
+   * in lib/server/admin/blueprint.ts wird konkret typisiert. */
+  content: jsonb("content").$type<Record<string, unknown>>().notNull(),
+  /** Aus Zertifizierungsname + Exam-Code vorgeschlagen (suggestSlug()),
+   * bewusst editierbar - siehe R1.2-Arbeitspaket. */
+  suggestedSlug: text("suggested_slug").notNull(),
+  /** Plausibilitätswarnungen aus validateBlueprintDraft() (Gewichtssumme,
+   * doppelte Codes, Lücken, ...) - bei jeder (Neu-)Generierung oder
+   * Slug-Korrektur neu berechnet statt separat gepflegt. */
+  warnings: jsonb("warnings").$type<string[]>().notNull().default([]),
+  /** true, falls der Quelltext für den KI-Aufruf gekürzt werden musste (siehe
+   * buildSourceText) - macht sichtbar, dass nicht das ganze Dokument einbezogen wurde. */
+  truncatedSource: boolean("truncated_source").notNull().default(false),
+  modelVersion: text("model_version"),
+  promptVersion: text("prompt_version"),
+  generatedByUserId: uuid("generated_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  editedByUserId: uuid("edited_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  editedAt: timestamp("edited_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

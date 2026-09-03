@@ -95,3 +95,38 @@ export const remediationResponseSchema = z.object({
   lesson: remediationLessonSchema,
   questions: z.array(draftQuestionSchema).min(3).max(5),
 });
+
+/**
+ * R1.2 (roadmap.md): strukturierte Extraktion aus einer hochgeladenen
+ * offiziellen Quelle (R1.1) - im Unterschied zu draftObjectiveSchema oben
+ * MUSS jedes Feld aus dem gelieferten Quelltext stammen (kein freier
+ * KI-Entwurf), daher `locator` (Seitenbezug) und `confidence` pro Objective.
+ * Bewusst kein bilinguales `Localized<T>` hier - das sind Referenzdaten aus
+ * dem offiziellen (meist englischen) Exam-Dokument, nicht lernerseitige Prosa.
+ */
+export const blueprintObjectiveSchema = z.object({
+  /** Offizieller Objective-Code, z. B. "1.2". */
+  code: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  /** Seiten-/Abschnittsbezug in der Quelle, z. B. "S. 4" - muss sich auf eine
+   * der `== Seite N ==`-Markierungen im Quelltext beziehen. */
+  locator: z.string().min(1),
+  /** 0 = geraten/aus Kontext abgeleitet, 1 = wörtlich und eindeutig im Text gefunden. */
+  confidence: z.number().min(0).max(1),
+});
+
+export const blueprintDomainSchema = z.object({
+  name: z.string().min(1),
+  /** Offizielle Gewichtung in Prozent, falls im Text angegeben - sonst null
+   * (nicht raten, siehe R1.2-Plausibilitätsprüfung). */
+  weightPercent: z.number().min(0).max(100).nullable(),
+  objectives: z.array(blueprintObjectiveSchema).min(1),
+});
+
+export const blueprintExtractionSchema = z.object({
+  certificationName: z.string().min(1),
+  provider: z.string().min(1),
+  examCode: z.string().min(1),
+  domains: z.array(blueprintDomainSchema).min(1),
+});

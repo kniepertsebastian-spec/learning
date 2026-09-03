@@ -43,6 +43,13 @@
       "when": 1788444358471,
       "tag": "0005_amazing_hiroim",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788446586780,
+      "tag": "0006_bitter_gwen_stacy",
+      "breakpoints": true
     }
   ]
 }

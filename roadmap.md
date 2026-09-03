@@ -219,13 +219,40 @@ Datenmodell zu ändern (`storageKey` bleibt ein opaker String).
 
 #### R1.2 Strukturierte Blueprint-Extraktion
 
-- [ ] Striktes Schema für Zertifizierungsmetadaten definieren.
-- [ ] Domains, Gewichtungen, Objective-Codes, Titel und Beschreibungen extrahieren.
-- [ ] Prozentwerte auf Plausibilität prüfen; Summe sollte typischerweise 100 ergeben.
-- [ ] Doppelte Objective-Codes, Lücken und ungewöhnliche Reihenfolgen markieren.
-- [ ] Für jedes Feld Seiten- oder Abschnittsreferenz speichern.
-- [ ] Niedrige Extraktionssicherheit sichtbar machen und manuelle Bestätigung verlangen.
-- [ ] Slug aus Name und Prüfungscode vorschlagen, aber editierbar lassen.
+- [x] Striktes Schema für Zertifizierungsmetadaten definieren.
+      (`blueprintExtractionSchema`/`blueprintDomainSchema`/
+      `blueprintObjectiveSchema` in `lib/server/ai/schemas.ts`.)
+- [x] Domains, Gewichtungen, Objective-Codes, Titel und Beschreibungen
+      extrahieren. (`generateBlueprintDraft()` in `lib/server/ai/service.ts` -
+      EIN Gemini-Aufruf über den seitenmarkierten Quelltext aus R1.1;
+      Ergebnis in `blueprint_drafts.content`.)
+- [x] Prozentwerte auf Plausibilität prüfen; Summe sollte typischerweise 100
+      ergeben. (`validateBlueprintDraft()` in `lib/server/admin/blueprint.ts`,
+      Toleranz ±2 Prozentpunkte, mit Tests.)
+- [x] Doppelte Objective-Codes, Lücken und ungewöhnliche Reihenfolgen
+      markieren. (Dieselbe Funktion; Lücken-Erkennung ist ein
+      Best-Effort-Heuristik auf `<Domain>.<Laufnummer>`-Codes.)
+- [x] Für jedes Feld Seiten- oder Abschnittsreferenz speichern.
+      (`locator` pro Objective, muss laut Prompt auf eine tatsächliche
+      `== Seite N ==`-Markierung im Quelltext verweisen statt erfunden zu sein.)
+- [ ] Niedrige Extraktionssicherheit sichtbar machen und manuelle Bestätigung
+      verlangen. Sichtbarkeit ist da (Confidence-Badge pro Objective in der
+      Admin-UI, Sammelwarnung bei < 50 %) - eine harte Bestätigungspflicht vor
+      der Übernahme gibt es noch nicht, weil der Freigabe-Schritt selbst erst
+      mit R1.3 entsteht; dort ist der naheliegende Ort, sie technisch zu
+      erzwingen (z. B. Freigabe blockieren, solange niedrig-konfidente
+      Objectives nicht einzeln bestätigt wurden).
+- [x] Slug aus Name und Prüfungscode vorschlagen, aber editierbar lassen.
+      (`suggestSlug()`, editierbares Feld in der Admin-UI, gespeichert über
+      `PATCH /api/admin/sources/:id/blueprint`.)
+
+**Bewusste Vereinfachungen für R1.2:** Extraktion läuft synchron in einem
+Request (ein einzelner Gemini-Aufruf, ratenbegrenzt wie R0.3, aber kein
+Hintergrundjob) und der an die KI übergebene Quelltext ist auf ~60.000
+Zeichen gedeckelt (`buildSourceText`, `truncatedSource`-Flag statt stiller
+Kürzung) - für sehr lange Dokumente reicht das ggf. nicht für das gesamte
+Dokument; eine Chunking-/Retrieval-Strategie über mehrere Aufrufe ist erst
+nötig, sobald das in der Praxis zum Problem wird.
 
 #### R1.3 Review- und Freigabeoberfläche
 

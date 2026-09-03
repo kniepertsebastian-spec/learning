@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Loader2, UploadCloud } from "lucide-react";
+import { BlueprintPanel } from "./BlueprintPanel";
 
 interface Source {
   id: string;
@@ -186,6 +187,7 @@ export function SourcesManager({
               const statusLabel = STATUS_LABEL[source.status]?.[locale] ?? source.status;
               const statusColor = STATUS_COLOR[source.status] ?? "bg-foreground/10 text-foreground/60";
               const isParsing = parsingId === source.id;
+              const textExtracted = ["parsed", "reviewed", "approved"].includes(source.status);
               return (
                 <div key={source.id} className="rounded-lg border border-border bg-surface p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -195,7 +197,7 @@ export function SourcesManager({
                         <p className="font-medium">{source.title}</p>
                         <p className="text-xs text-foreground/60">
                           {source.provider} · {formatBytes(source.fileSizeBytes)}
-                          {source.status === "parsed" || source.status === "reviewed" || source.status === "approved"
+                          {textExtracted
                             ? ` · ${source.chunkCount} ${locale === "de" ? "Seiten extrahiert" : "pages extracted"}`
                             : ""}
                         </p>
@@ -223,6 +225,8 @@ export function SourcesManager({
                       ? locale === "de" ? "Text extrahieren" : "Extract text"
                       : locale === "de" ? "Erneut extrahieren" : "Re-extract"}
                   </button>
+
+                  {textExtracted && <BlueprintPanel sourceId={source.id} locale={locale} />}
                 </div>
               );
             })}
