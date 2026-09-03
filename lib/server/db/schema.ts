@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   integer,
   jsonb,
   numeric,
@@ -7,9 +9,14 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import type { Localized } from "@/lib/types";
+
+/** R0.2 (roadmap.md): learner is the default, admin unlocks /admin and every
+ * admin API route/server action. */
+export type UserRole = "learner" | "admin";
 
 /**
  * v2-Backend-Schema nach roadmap2.md Phase 2/3 (Certification -> Domain ->
@@ -21,13 +28,18 @@ import type { Localized } from "@/lib/types";
  * teilweise - passend zur bisherigen Dexie-Nutzung).
  */
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  name: text("name"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    name: text("name"),
+    role: text("role").$type<UserRole>().notNull().default("learner"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check("users_role_check", sql`${table.role} in ('learner', 'admin')`)],
+);
 
 export const certifications = pgTable("certifications", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -200,20 +212,35 @@ export const remediationSessions = pgTable("remediation_sessions", {
   improved: boolean("improved"),
 });
 
-export const contentGenerationJobs = pgTable("content_generation_jobs", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  certificationId: uuid("certification_id")
-    .notNull()
-    .references(() => certifications.id, { onDelete: "cascade" }),
-  status: text("status").notNull().default("queued"),
-  phase: text("phase").notNull().default("queued"),
-  progress: integer("progress").notNull().default(0),
-  message: text("message"),
-  error: text("error"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  startedAt: timestamp("started_at", { withTimezone: true }),
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-});
+export const contentGenerationJobs = pgTable(
+  "content_generation_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    /** R0.3 (roadmap.md): welcher Admin den (kostenpflichtigen) Job gestartet hat. */
+    startedByUserId: uuid("started_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("queued"),
+    phase: text("phase").notNull().default("queued"),
+    progress: integer("progress").notNull().default(0),
+    message: text("message"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    // R0.3: DB-seitig höchstens ein aktiver Job pro Zertifizierung erzwingen,
+    // statt sich nur auf die (race-anfällige) Anwendungsprüfung zu verlassen -
+    // zwei fast gleichzeitige Startanfragen können so nur einen Job erzeugen.
+    uniqueIndex("content_generation_jobs_active_per_cert")
+      .on(table.certificationId)
+      .where(sql`${table.status} in ('queued', 'running')`),
+  ],
+);
 
 export const exams = pgTable("exams", {
   id: uuid("id").primaryKey().defaultRandom(),

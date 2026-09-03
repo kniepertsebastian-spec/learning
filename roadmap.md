@@ -73,21 +73,41 @@ Kurse verändern oder kostenpflichtige KI-Jobs starten.
 
 #### R0.2 Rollenmodell
 
-- [ ] Benutzerrolle einführen: `learner` oder `admin`.
+- [x] Benutzerrolle einführen: `learner` oder `admin`. (`users.role`,
+      Migration `drizzle/0003_charming_sentry.sql`)
 - [ ] Bestehenden Betreiber kontrolliert zum ersten Administrator machen.
-- [ ] Gemeinsamen serverseitigen Guard `requireAdmin()` bereitstellen.
-- [ ] `/admin`, alle Admin-API-Routen und Server Actions damit schützen.
-- [ ] Admin-Link im Header nur für Administratoren anzeigen.
-- [ ] Nicht berechtigte Zugriffe mit 403 beantworten; nicht nur die UI ausblenden.
-- [ ] Einen dokumentierten Weg zur Vergabe und zum Entzug einer Adminrolle anbieten.
+      Werkzeug dafür steht bereit (`npm run user:set-role`, siehe
+      DOCKER_DEPLOYMENT.md), muss aber noch einmal gegen die echte
+      Produktions-DB ausgeführt werden.
+- [x] Gemeinsamen serverseitigen Guard `requireAdmin()` bereitstellen.
+      (`lib/server/auth-guards.ts`: `requireAdminPage()` für Server
+      Components/Actions, `requireAdminApi()` für Route Handler; Rolle wird
+      bei jedem Aufruf frisch aus der DB gelesen statt aus dem JWT.)
+- [x] `/admin`, alle Admin-API-Routen und Server Actions damit schützen.
+- [x] Admin-Link im Header nur für Administratoren anzeigen.
+- [x] Nicht berechtigte Zugriffe mit 403 beantworten; nicht nur die UI
+      ausblenden. (Next.js `forbidden()`/`app/forbidden.tsx`,
+      `experimental.authInterrupts` in next.config.ts; API-Routen liefern
+      401/403 als JSON.)
+- [x] Einen dokumentierten Weg zur Vergabe und zum Entzug einer Adminrolle
+      anbieten. (`scripts/set-user-role.ts`, `npm run user:set-role -- <email>
+      <admin|learner>`.)
 
 #### R0.3 Schutz kostenpflichtiger Aktionen
 
-- [ ] Start eines Generierungsjobs mit Benutzer-ID protokollieren.
-- [ ] Doppelklicks und parallele Starts idempotent behandeln.
-- [ ] Einfaches serverseitiges Rate Limit für Generierungsaktionen einführen.
-- [ ] Vor dem Start anzeigen, welche Objectives fehlen und ungefähr wie viele
-      KI-Aufrufe notwendig sind.
+- [x] Start eines Generierungsjobs mit Benutzer-ID protokollieren.
+      (`content_generation_jobs.started_by_user_id` + Log-Zeile beim Start.)
+- [x] Doppelklicks und parallele Starts idempotent behandeln. (Unique
+      Partial Index `content_generation_jobs_active_per_cert` erzwingt
+      höchstens einen aktiven Job pro Zertifizierung DB-seitig; die
+      Anwendungsprüfung bleibt nur als schneller Vorab-Check.)
+- [x] Einfaches serverseitiges Rate Limit für Generierungsaktionen
+      einführen. (`lib/server/admin/rate-limit.ts`, in-process, 5 Starts/h
+      pro Nutzer - siehe Kommentar dort zu den Grenzen bei Multi-Instanz-
+      Deployments.)
+- [x] Vor dem Start anzeigen, welche Objectives fehlen und ungefähr wie viele
+      KI-Aufrufe notwendig sind. (`estimateGenerationWork()`, angezeigt in
+      `ContentGenerationControl`.)
 
 ### Datenmodell
 

@@ -22,6 +22,13 @@
       "when": 1788347927489,
       "tag": "0002_same_psynapse",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788441234382,
+      "tag": "0003_charming_sentry",
+      "breakpoints": true
     }
   ]
 }

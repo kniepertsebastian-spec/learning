@@ -13,17 +13,27 @@ interface Job {
   error: string | null;
 }
 
+interface GenerationEstimate {
+  domainsPending: number;
+  objectivesPending: number;
+  estimatedAiCalls: number;
+  missingObjectiveCodes: string[];
+}
+
 export function ContentGenerationControl({
   certificationId,
   locale,
   initialJob,
+  initialEstimate,
 }: {
   certificationId: string;
   locale: "de" | "en";
   initialJob: Job | null;
+  initialEstimate: GenerationEstimate;
 }) {
   const router = useRouter();
   const [job, setJob] = useState<Job | null>(initialJob);
+  const [estimate, setEstimate] = useState<GenerationEstimate>(initialEstimate);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const active = job?.status === "queued" || job?.status === "running";
@@ -35,8 +45,9 @@ export function ContentGenerationControl({
         { cache: "no-store" },
       );
       if (!response.ok) throw new Error(`Status ${response.status}`);
-      const data = (await response.json()) as { job: Job | null };
+      const data = (await response.json()) as { job: Job | null; estimate: GenerationEstimate };
       setJob(data.job);
+      setEstimate(data.estimate);
       setRequestError(null);
       if (data.job?.status === "succeeded") router.refresh();
     } catch {
@@ -118,6 +129,21 @@ export function ContentGenerationControl({
               : locale === "de" ? "Inhalte generieren" : "Generate content"}
         </button>
       </div>
+
+      {!active && estimate.estimatedAiCalls > 0 && (
+        <p className="mt-3 text-xs text-foreground/60">
+          {locale === "de"
+            ? `${estimate.domainsPending} Domain(s) ohne Curriculum, ${estimate.objectivesPending} Objective(s) ohne vollständige Lektionen/Fragen – geschätzt ${estimate.estimatedAiCalls} KI-Aufrufe.`
+            : `${estimate.domainsPending} domain(s) without curriculum, ${estimate.objectivesPending} objective(s) without complete lessons/questions – estimated ${estimate.estimatedAiCalls} AI calls.`}
+        </p>
+      )}
+      {!active && estimate.estimatedAiCalls === 0 && job?.status !== "failed" && (
+        <p className="mt-3 text-xs text-foreground/60">
+          {locale === "de"
+            ? "Alle Domains und Objectives haben bereits Inhalte."
+            : "All domains and objectives already have content."}
+        </p>
+      )}
 
       {job && (
         <div className="mt-4">

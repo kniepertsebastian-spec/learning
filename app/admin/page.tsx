@@ -2,29 +2,14 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { ArrowRight, Terminal } from "lucide-react";
-import { auth } from "@/lib/server/auth";
+import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getServerLocale } from "@/lib/server/locale";
 import { getCertificationsWithStats } from "@/lib/server/admin/stats";
 import { createCertificationAction } from "./actions";
 
 export default async function AdminDashboard() {
-  const [session, locale] = await Promise.all([auth(), getServerLocale()]);
-
-  if (!session?.user?.id) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">
-          {locale === "de" ? "Nicht authentifiziert" : "Not authenticated"}
-        </p>
-        <Link href="/login?from=/admin" className="mt-4 text-accent hover:underline">
-          {locale === "de" ? "Anmelden" : "Sign in"}
-        </Link>
-      </div>
-    );
-  }
-
-  // Until user roles are introduced, the admin API and UI deliberately use
-  // the same rule: every authenticated user may administer this private PWA.
+  await requireAdminPage("/admin");
+  const locale = await getServerLocale();
   const certifications = await getCertificationsWithStats();
 
   return (

@@ -3,14 +3,17 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/server/auth";
+import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { ContentValidationService } from "@/lib/server/admin/validation";
 import { AnalyticsService } from "@/lib/server/analytics/service";
 import { ContentGenerationControl } from "@/components/ContentGenerationControl";
-import { getLatestContentGenerationJob } from "@/lib/server/admin/content-generation";
+import {
+  estimateGenerationWork,
+  getLatestContentGenerationJob,
+} from "@/lib/server/admin/content-generation";
 
 export default async function AdminCertificationPage({
   params,
@@ -18,19 +21,9 @@ export default async function AdminCertificationPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const session = await auth();
+  await requireAdminPage(`/admin/certifications/${slug}`);
   const locale = await getServerLocale();
   const db = getDb();
-
-  if (!session?.user?.id) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">{locale === "de" ? "Nicht authentifiziert" : "Not authenticated"}</p>
-      </div>
-    );
-  }
-
-  // TODO: Add admin role verification
 
   const certRows = await db
     .select()
@@ -54,7 +47,10 @@ export default async function AdminCertificationPage({
   }
 
   const cert = certRows[0];
-  const initialGenerationJob = await getLatestContentGenerationJob(cert.id);
+  const [initialGenerationJob, initialEstimate] = await Promise.all([
+    getLatestContentGenerationJob(cert.id),
+    estimateGenerationWork(cert.id),
+  ]);
 
   // Run validation
   const validation = await ContentValidationService.validateCertificationContent(cert.id);
@@ -98,6 +94,7 @@ export default async function AdminCertificationPage({
               }
             : null
         }
+        initialEstimate={initialEstimate}
       />
 
       <div className="grid gap-6">

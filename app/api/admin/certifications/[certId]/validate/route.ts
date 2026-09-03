@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/server/auth";
+import { requireAdminApi } from "@/lib/server/auth-guards";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { ContentValidationService } from "@/lib/server/admin/validation";
@@ -10,12 +10,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ certId: string }> },
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireAdminApi();
+  if (!guard.ok) return guard.response;
 
-  // TODO: Add admin role check
   const { certId } = await params;
   const db = getDb();
 
