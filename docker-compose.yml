@@ -41,7 +41,10 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MAX_ATTEMPTS: ${GEMINI_MAX_ATTEMPTS:-5}
       GEMINI_RETRY_BASE_MS: ${GEMINI_RETRY_BASE_MS:-2000}
-      
+
+      # Uploaded certification source PDFs (R1.1, lib/server/storage/local-disk.ts)
+      SOURCES_STORAGE_DIR: /app/data/sources
+
       # Node env
       NODE_ENV: production
     ports:
@@ -51,6 +54,7 @@ services:
         condition: service_healthy
     volumes:
       - ./public:/app/public
+      - source_uploads_data:/app/data/sources
     networks:
       - learning_network
 
@@ -69,6 +73,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  source_uploads_data:
     driver: local
 
 networks:

@@ -39,6 +39,13 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+# Uploaded certification source PDFs (R1.1) - source_uploads_data volume in
+# docker-compose.yml mounts here. A named volume that's empty on first run
+# inherits ownership/permissions from the image directory it's mounted over,
+# so this has to happen before switching to the non-root user below.
+RUN mkdir -p /app/data/sources && chown -R nextjs:nodejs /app/data/sources
+
 USER nextjs
 
 EXPOSE 3000

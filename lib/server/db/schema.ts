@@ -27,6 +27,21 @@ export type GenerationErrorClass =
   | "provider_outage"
   | "internal";
 
+/** R1.1 (roadmap.md): "url" ist Teil des künftigen Datenmodells, wird aber
+ * erstmal nicht angeboten - siehe Kommentar auf certificationSources.sourceType. */
+export type CertificationSourceType = "pdf" | "url";
+
+/** R1.1 (roadmap.md): Lebenszyklus einer certification_sources-Zeile. `parsed`
+ * wird von R1.1 gesetzt (Textextraktion fertig); `reviewed`/`approved`/
+ * `superseded` gehören zum Review-Workflow aus R1.3. */
+export type CertificationSourceStatus =
+  | "uploaded"
+  | "parsed"
+  | "reviewed"
+  | "approved"
+  | "superseded"
+  | "failed";
+
 /**
  * v2-Backend-Schema nach roadmap2.md Phase 2/3 (Certification -> Domain ->
  * Objective -> Section -> Lesson/Quiz -> Attempt -> Objective Progress).
@@ -295,3 +310,87 @@ export const examAttempts = pgTable("exam_attempts", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
   durationSeconds: integer("duration_seconds"),
 });
+
+/**
+ * R1.1 (roadmap.md): offizielle Prüfungsunterlagen als Quelle der Wahrheit
+ * (Leitplanke). Volles Datenmodell laut roadmap.md R1-Abschnitt in einer
+ * Tabelle, auch wenn R1.1 nur Upload+Extraktion (status uploaded -> parsed/
+ * failed) bedient - approvedBy/approvedAt/versionLabel bleiben bis zum
+ * Review-Workflow aus R1.3 ungenutzt (null), statt dafür eine zweite
+ * Migration zu brauchen.
+ */
+export const certificationSources = pgTable(
+  "certification_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    /** Nur "pdf" wird aktuell angenommen (siehe R1.1-Entscheidung: URL-Import
+     * folgt erst, sobald geklärt ist, von welchen Anbietern automatisiert
+     * abgerufen werden darf). */
+    sourceType: text("source_type").$type<CertificationSourceType>().notNull(),
+    title: text("title").notNull(),
+    provider: text("provider").notNull(),
+    sourceUrl: text("source_url"),
+    /** Pfad/Key im lokalen Storage (lib/server/storage/local-disk.ts), nicht
+     * direkt eine Dateisystem-Absolute - siehe dort. */
+    storageKey: text("storage_key").notNull(),
+    mimeType: text("mime_type").notNull(),
+    fileSizeBytes: integer("file_size_bytes").notNull(),
+    /** SHA-256 der Originaldatei, zur Duplikaterkennung je Zertifizierung. */
+    checksum: text("checksum").notNull(),
+    /** Offizielles Veröffentlichungsdatum der Unterlage (admin-seitig erfasst). */
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    /** Wann diese Quelle hochgeladen/abgerufen wurde. */
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }).notNull().defaultNow(),
+    status: text("status").$type<CertificationSourceStatus>().notNull().default("uploaded"),
+    /** Fehlertext, falls status = "failed" (z. B. Extraktion fehlgeschlagen). */
+    parseError: text("parse_error"),
+    versionLabel: text("version_label"),
+    approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("certification_sources_cert_checksum_unique").on(
+      table.certificationId,
+      table.checksum,
+    ),
+    check(
+      "certification_sources_source_type_check",
+      sql`${table.sourceType} in ('pdf', 'url')`,
+    ),
+    check(
+      "certification_sources_status_check",
+      sql`${table.status} in ('uploaded', 'parsed', 'reviewed', 'approved', 'superseded', 'failed')`,
+    ),
+  ],
+);
+
+/**
+ * R1.1: seitenweise extrahierter Text einer Quelle, mit Seitenbezug - Basis
+ * für objective_source_refs (R1.2) und die knappe/vollständige
+ * Quellenangabe in Lern-/Adminansicht (R1.4).
+ */
+export const sourceChunks = pgTable(
+  "source_chunks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sourceId: uuid("source_id")
+      .notNull()
+      .references(() => certificationSources.id, { onDelete: "cascade" }),
+    pageNumber: integer("page_number").notNull(),
+    /** Grober Abschnittspfad (z. B. Kapitelüberschrift), erst mit einer
+     * strukturierten Extraktion (R1.2) sinnvoll befüllbar - bis dahin null. */
+    sectionPath: text("section_path"),
+    content: text("content").notNull(),
+    /** SHA-256 von `content`, um identische Chunks nach erneuter Extraktion
+     * zu erkennen statt sie zu duplizieren. */
+    contentHash: text("content_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("source_chunks_source_page_unique").on(table.sourceId, table.pageNumber),
+  ],
+);

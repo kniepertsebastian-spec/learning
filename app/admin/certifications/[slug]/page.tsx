@@ -74,10 +74,20 @@ export default async function AdminCertificationPage({
         {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
       </Link>
 
-      <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
-      <p className="mb-6 text-sm text-foreground/70">
-        {cert.examName} {cert.examVersion}
-      </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
+          <p className="text-sm text-foreground/70">
+            {cert.examName} {cert.examVersion}
+          </p>
+        </div>
+        <Link
+          href={`/admin/certifications/${slug}/sources`}
+          className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-background"
+        >
+          {locale === "de" ? "Offizielle Quellen verwalten" : "Manage official sources"}
+        </Link>
+      </div>
 
       <ContentGenerationControl
         certificationId={cert.id}

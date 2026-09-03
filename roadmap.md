@@ -179,15 +179,43 @@ die Anwendung erstellt daraus einen überprüfbaren Importvorschlag.
 
 #### R1.1 Quellenverwaltung
 
-- [ ] Quelle per PDF-Upload unterstützen.
-- [ ] Quelle per URL unterstützen, sofern Abruf und Nutzungsbedingungen dies erlauben.
-- [ ] Dateigröße, MIME-Type und PDF-Signatur validieren.
-- [ ] SHA-256-Prüfsumme speichern, um Duplikate zu erkennen.
-- [ ] Titel, Provider, Veröffentlichungsdatum, Abrufdatum, URL und lokale Version
-      erfassen.
-- [ ] Text seitenweise extrahieren und Seitenbezug erhalten.
-- [ ] Quelle als `uploaded`, `parsed`, `reviewed`, `approved`, `superseded` oder
-      `failed` kennzeichnen.
+- [x] Quelle per PDF-Upload unterstützen. (`POST /api/admin/sources`,
+      multipart/form-data; Admin-UI unter
+      `/admin/certifications/[slug]/sources`.)
+- [ ] Quelle per URL unterstützen, sofern Abruf und Nutzungsbedingungen dies
+      erlauben. Bewusst zurückgestellt, bis geklärt ist, von welchen
+      Anbietern automatisiert abgerufen werden darf - `sourceType` im
+      Datenmodell erlaubt `url` bereits, damit dafür keine weitere Migration
+      nötig wird.
+- [x] Dateigröße, MIME-Type und PDF-Signatur validieren.
+      (`validatePdfUpload()` in `lib/server/admin/sources.ts`, mit Tests -
+      prüft alle drei, weil ein clientseitig gesetzter MIME-Type allein
+      fälschbar ist.)
+- [x] SHA-256-Prüfsumme speichern, um Duplikate zu erkennen.
+      (`certification_sources.checksum` + Unique Index auf
+      `(certification_id, checksum)`; Storage ist zusätzlich
+      inhaltsadressiert, siehe `lib/server/storage/local-disk.ts`.)
+- [x] Titel, Provider, Veröffentlichungsdatum, Abrufdatum, URL und lokale
+      Version erfassen. (`certification_sources`: title, provider,
+      publishedAt, retrievedAt, sourceUrl, versionLabel - `sourceUrl`/
+      `versionLabel` bleiben leer, bis URL-Import bzw. der Freigabe-Workflow
+      aus R1.3 sie befüllen.)
+- [x] Text seitenweise extrahieren und Seitenbezug erhalten.
+      (`POST /api/admin/sources/:id/parse`, `extractSourceContent()` in
+      `lib/server/admin/source-extraction.ts` - Text pro Seite in
+      `source_chunks` mit `pageNumber`; Test mit echtem, per `pdf-lib`
+      erzeugtem PDF als Roundtrip statt nur gemockt.)
+- [x] Quelle als `uploaded`, `parsed`, `reviewed`, `approved`, `superseded`
+      oder `failed` kennzeichnen. (`certification_sources.status` mit
+      Check-Constraint; R1.1 nutzt `uploaded`/`parsed`/`failed`, der Rest
+      gehört zum Review-Workflow aus R1.3.)
+
+**Speicher-Entscheidung:** hochgeladene PDFs liegen in einem lokalen,
+benannten Docker-Volume (`source_uploads_data`, siehe docker-compose.yml und
+`lib/server/storage/local-disk.ts`), nicht in einem externen Objektspeicher -
+passend zum aktuellen Single-Instance-Deployment. Bei Bedarf für
+Mehrinstanz-Betrieb später auf S3-kompatiblen Speicher migrierbar, ohne das
+Datenmodell zu ändern (`storageKey` bleibt ein opaker String).
 
 #### R1.2 Strukturierte Blueprint-Extraktion
 

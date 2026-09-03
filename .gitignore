@@ -46,3 +46,7 @@ next-env.d.ts
 /public/sw.js.map
 /public/swe-worker*.js
 /public/swe-worker*.js.map
+
+# local fallback for lib/server/storage/local-disk.ts (SOURCES_STORAGE_DIR
+# unset, i.e. outside Docker) - uploaded certification source PDFs
+/data/sources
