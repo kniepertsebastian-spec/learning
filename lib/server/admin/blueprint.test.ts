@@ -40,23 +40,36 @@ describe("validateBlueprintDraft", () => {
     };
   }
 
-  it("returns no warnings for a clean, plausible draft", () => {
-    expect(validateBlueprintDraft(draft())).toEqual([]);
+  it("returns no errors or warnings for a clean, plausible draft", () => {
+    expect(validateBlueprintDraft(draft())).toEqual({ errors: [], warnings: [] });
   });
 
-  it("flags duplicate objective codes", () => {
-    const warnings = validateBlueprintDraft(
+  it("flags duplicate objective codes within the same domain as an error", () => {
+    const { errors } = validateBlueprintDraft(
       draft({
         domains: [
           { name: "Domain 1", weightPercent: 100, objectives: [objective("1.1"), objective("1.1")] },
         ],
       }),
     );
+    expect(errors.some((e) => e.includes("1.1"))).toBe(true);
+  });
+
+  it("flags the same objective code reused across domains as a warning, not an error", () => {
+    const { errors, warnings } = validateBlueprintDraft(
+      draft({
+        domains: [
+          { name: "Domain 1", weightPercent: 50, objectives: [objective("1.1")] },
+          { name: "Domain 2", weightPercent: 50, objectives: [objective("1.1")] },
+        ],
+      }),
+    );
+    expect(errors).toEqual([]);
     expect(warnings.some((w) => w.includes("1.1"))).toBe(true);
   });
 
   it("flags a weight sum that isn't close to 100", () => {
-    const warnings = validateBlueprintDraft(
+    const { warnings } = validateBlueprintDraft(
       draft({
         domains: [
           { name: "Domain 1", weightPercent: 30, objectives: [objective("1.1")] },
@@ -68,7 +81,7 @@ describe("validateBlueprintDraft", () => {
   });
 
   it("does not flag a weight sum within tolerance", () => {
-    const warnings = validateBlueprintDraft(
+    const { warnings } = validateBlueprintDraft(
       draft({
         domains: [
           { name: "Domain 1", weightPercent: 49, objectives: [objective("1.1")] },
@@ -80,7 +93,7 @@ describe("validateBlueprintDraft", () => {
   });
 
   it("flags when only some domains have a weight", () => {
-    const warnings = validateBlueprintDraft(
+    const { warnings } = validateBlueprintDraft(
       draft({
         domains: [
           { name: "Domain 1", weightPercent: 50, objectives: [objective("1.1")] },
@@ -92,7 +105,7 @@ describe("validateBlueprintDraft", () => {
   });
 
   it("flags a gap in a domain's objective sequence", () => {
-    const warnings = validateBlueprintDraft(
+    const { warnings } = validateBlueprintDraft(
       draft({
         domains: [
           {
@@ -107,7 +120,7 @@ describe("validateBlueprintDraft", () => {
   });
 
   it("flags low-confidence objectives so they require manual confirmation", () => {
-    const warnings = validateBlueprintDraft(
+    const { warnings } = validateBlueprintDraft(
       draft({
         domains: [
           {

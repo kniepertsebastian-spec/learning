@@ -1,0 +1,1 @@
+ALTER TABLE "blueprint_drafts" ADD COLUMN "validation_errors" jsonb DEFAULT '[]'::jsonb NOT NULL;

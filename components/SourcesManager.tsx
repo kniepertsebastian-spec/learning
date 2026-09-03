@@ -43,10 +43,12 @@ function formatBytes(bytes: number): string {
 
 export function SourcesManager({
   certificationId,
+  certificationSlug,
   locale,
   initialSources,
 }: {
   certificationId: string;
+  certificationSlug: string;
   locale: "de" | "en";
   initialSources: Source[];
 }) {
@@ -226,7 +228,14 @@ export function SourcesManager({
                       : locale === "de" ? "Erneut extrahieren" : "Re-extract"}
                   </button>
 
-                  {textExtracted && <BlueprintPanel sourceId={source.id} locale={locale} />}
+                  {textExtracted && (
+                    <BlueprintPanel
+                      sourceId={source.id}
+                      certificationSlug={certificationSlug}
+                      sourceStatus={source.status}
+                      locale={locale}
+                    />
+                  )}
                 </div>
               );
             })}

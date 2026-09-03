@@ -63,7 +63,12 @@ export default async function AdminCertificationSourcesPage({
           : "Upload official exam documentation as PDF and extract its text. Source of truth for domains, objectives, and learning material (R1)."}
       </p>
 
-      <SourcesManager certificationId={cert.id} locale={locale} initialSources={sources} />
+      <SourcesManager
+        certificationId={cert.id}
+        certificationSlug={slug}
+        locale={locale}
+        initialSources={sources}
+      />
     </div>
   );
 }

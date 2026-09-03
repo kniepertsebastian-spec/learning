@@ -423,9 +423,13 @@ export const blueprintDrafts = pgTable("blueprint_drafts", {
   /** Aus Zertifizierungsname + Exam-Code vorgeschlagen (suggestSlug()),
    * bewusst editierbar - siehe R1.2-Arbeitspaket. */
   suggestedSlug: text("suggested_slug").notNull(),
-  /** Plausibilitätswarnungen aus validateBlueprintDraft() (Gewichtssumme,
-   * doppelte Codes, Lücken, ...) - bei jeder (Neu-)Generierung oder
-   * Slug-Korrektur neu berechnet statt separat gepflegt. */
+  /** R1.3: blockierende Validierungsfehler aus validateBlueprintDraft() (z. B.
+   * doppelte Objective-Codes innerhalb einer Domain) - verhindert die Freigabe
+   * (approveBlueprintDraft), anders als warnings unten. */
+  validationErrors: jsonb("validation_errors").$type<string[]>().notNull().default([]),
+  /** Nicht-blockierende Hinweise aus validateBlueprintDraft() (Gewichtssumme,
+   * Lücken, niedrige Confidence, ...) - bei jeder (Neu-)Generierung oder
+   * Inhalts-Korrektur neu berechnet statt separat gepflegt. */
   warnings: jsonb("warnings").$type<string[]>().notNull().default([]),
   /** true, falls der Quelltext für den KI-Aufruf gekürzt werden musste (siehe
    * buildSourceText) - macht sichtbar, dass nicht das ganze Dokument einbezogen wurde. */

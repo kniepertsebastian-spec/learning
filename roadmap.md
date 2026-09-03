@@ -256,12 +256,57 @@ nötig, sobald das in der Praxis zum Problem wird.
 
 #### R1.3 Review- und Freigabeoberfläche
 
-- [ ] Originalquelle und extrahierte Struktur nebeneinander anzeigen.
-- [ ] Felder inline korrigierbar machen.
-- [ ] Validierungsfehler von Hinweisen unterscheiden.
-- [ ] „Entwurf speichern“ und „Blueprint freigeben“ getrennt anbieten.
-- [ ] Freigabe mit Admin-ID und Zeitpunkt protokollieren.
-- [ ] Nach Freigabe versehentliche Änderungen verhindern oder versionieren.
+- [x] Originalquelle und extrahierte Struktur nebeneinander anzeigen.
+      (`/admin/certifications/[slug]/sources/[sourceId]/review`,
+      `BlueprintReview`: linke Spalte der seitenweise extrahierte Originaltext
+      aus `GET /api/admin/sources/:id/text`, rechte Spalte die editierbare
+      Struktur.)
+- [x] Felder inline korrigierbar machen. (Zertifizierungsname/Anbieter/
+      Exam-Code, Domain-Name/-Gewichtung, Objective-Code/-Titel/-Beschreibung
+      direkt im Formular; Locator/Confidence bleiben absichtlich read-only als
+      KI-Attribution. Hinzufügen/Entfernen von Domains/Objectives ist bewusst
+      nicht Teil dieses Arbeitspakets - nur Feldkorrektur, keine
+      Strukturänderung.)
+- [x] Validierungsfehler von Hinweisen unterscheiden.
+      (`validateBlueprintDraft()` liefert jetzt `{ errors, warnings }` statt
+      einer flachen Liste; nur doppelte Objective-Codes INNERHALB derselben
+      Domain sind ein Error, der die Freigabe blockiert - alles andere bleibt
+      ein übergehbarer Hinweis. In der UI rot/blockierend vs. gelb/informativ
+      getrennt dargestellt.)
+- [x] „Entwurf speichern“ und „Blueprint freigeben“ getrennt anbieten.
+      (`PATCH /api/admin/sources/:id/blueprint` für Korrekturen,
+      `POST /api/admin/sources/:id/approve` für die Freigabe - Freigabe
+      speichert zuerst den aktuellen Stand, damit nie ein von der Anzeige
+      abweichender Entwurf freigegeben wird.)
+- [x] Freigabe mit Admin-ID und Zeitpunkt protokollieren.
+      (`certification_sources.approvedBy`/`approvedAt`, seit R1.1 im Schema
+      vorhanden, jetzt erstmals tatsächlich befüllt.)
+- [x] Nach Freigabe versehentliche Änderungen verhindern oder versionieren.
+      Für "verhindern" entschieden (Versionierung ist explizit R1.5):
+      `BlueprintLockedError`, sobald `certification_sources.status` auf
+      `approved`/`superseded` steht - blockiert erneute Extraktion und
+      PATCH-Korrekturen serverseitig (nicht nur UI-seitig deaktiviert).
+
+**Was die Freigabe konkret tut:** `approveBlueprintDraft()`
+(`lib/server/admin/blueprint-approval.ts`) übernimmt die Domains/Objectives
+des Drafts in die echten `domains`/`objectives`-Tabellen (Match per Name
+bzw. Code, Update bei Treffer, sonst Insert - löscht nie etwas), blockt bei
+verbleibenden Errors, und setzt erst danach `status = approved`. Das macht
+"freigegebene Objectives" für R1.4 (quellengebundene Generierung) zum ersten
+Mal zu echten, abfragbaren Datensätzen statt nur zu KI-Entwurfstext.
+
+**Bekannte Lücke:** "Niedrige Extraktionssicherheit ... manuelle Bestätigung
+verlangen" (R1.2) ist weiterhin nur sichtbar (Confidence-Badges, Warnung ab
+< 50 %), nicht einzeln erzwungen - die Freigabe verlangt lediglich, dass
+keine Errors mehr offen sind. Eine echte Pro-Objective-Bestätigung für
+niedrige Confidence ist ein sinnvoller Nachtrag, sobald sich in der Praxis
+zeigt, dass die aktuelle Sichtbarkeit nicht reicht.
+
+**Nicht abgedeckt (bewusst außerhalb des Merge-Umfangs):** `applyBlueprintDraft()`
+läuft gegen eine echte Postgres-Transaktion und ist in dieser Sandbox mangels
+laufender DB nicht End-to-End getestet - nur die vorgelagerte
+Validierungslogik (`validateBlueprintDraft`) hat Unit-Tests. Vor dem ersten
+produktiven Freigabe-Lauf einmal manuell gegen eine echte DB verifizieren.
 
 #### R1.4 Quellengebundene Generierung
 

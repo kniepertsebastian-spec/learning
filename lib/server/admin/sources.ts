@@ -163,3 +163,19 @@ export async function getCertificationSource(sourceId: string): Promise<Certific
     .limit(1);
   return source ?? null;
 }
+
+export interface SourcePage {
+  pageNumber: number;
+  content: string;
+}
+
+/** R1.3: geordneter Seitentext für die Original-vs-Extraktion-Ansicht
+ * ("Originalquelle und extrahierte Struktur nebeneinander anzeigen"). */
+export async function getSourcePages(sourceId: string): Promise<SourcePage[]> {
+  const rows = await getDb()
+    .select({ pageNumber: sourceChunks.pageNumber, content: sourceChunks.content })
+    .from(sourceChunks)
+    .where(eq(sourceChunks.sourceId, sourceId))
+    .orderBy(sourceChunks.pageNumber);
+  return rows;
+}
