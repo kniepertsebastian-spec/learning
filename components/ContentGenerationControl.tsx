@@ -11,7 +11,33 @@ interface Job {
   progress: number;
   message: string | null;
   error: string | null;
+  errorClass: string | null;
 }
+
+/** R0.1 (roadmap.md): Ursache + sinnvoller nächster Schritt pro Fehlerklasse,
+ * statt nur den rohen Skript-Output zu zeigen. */
+const ERROR_CLASS_INFO: Record<string, { de: [string, string]; en: [string, string] }> = {
+  schema: {
+    de: ["Antwortformat-Fehler", "Die KI-Antwort passte nicht ins erwartete Format. Oft hilft ein erneuter Versuch."],
+    en: ["Response format error", "The AI response didn't match the expected format. Often fixed by retrying."],
+  },
+  rate_limit: {
+    de: ["Rate Limit erreicht", "Kurzfristiges Limit der KI-API. In ein paar Minuten erneut versuchen."],
+    en: ["Rate limit reached", "Short-term AI API limit. Try again in a few minutes."],
+  },
+  quota: {
+    de: ["Tageskontingent erschöpft", "Das tägliche Kontingent der KI-API ist aufgebraucht. Morgen erneut versuchen oder Kontingent erhöhen."],
+    en: ["Daily quota exhausted", "The AI API's daily quota is used up. Try again tomorrow or increase the quota."],
+  },
+  provider_outage: {
+    de: ["KI-Anbieter nicht erreichbar", "Vorübergehendes Problem beim KI-Anbieter. In Kürze erneut versuchen."],
+    en: ["AI provider unavailable", "Temporary problem at the AI provider. Try again shortly."],
+  },
+  internal: {
+    de: ["Interner Fehler", "Unerwarteter Fehler in der Anwendung. Bei wiederholtem Auftreten die Logs prüfen."],
+    en: ["Internal error", "Unexpected application error. Check the logs if this keeps happening."],
+  },
+};
 
 interface GenerationEstimate {
   domainsPending: number;
@@ -171,15 +197,32 @@ export function ContentGenerationControl({
               {locale === "de" ? "Die Lerninhalte sind bereit." : "Learning content is ready."}
             </p>
           )}
-          {job.status === "failed" && (
-            <div className="mt-3 rounded-md bg-red-500/10 p-3 text-sm text-red-600">
-              <p className="flex items-center gap-1.5 font-medium">
-                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                {locale === "de" ? "Generierung fehlgeschlagen" : "Generation failed"}
-              </p>
-              {job.error && <p className="mt-1 whitespace-pre-wrap text-xs">{job.error}</p>}
-            </div>
-          )}
+          {job.status === "failed" && (() => {
+            const info = job.errorClass ? ERROR_CLASS_INFO[job.errorClass] : undefined;
+            const [title, hint] = info
+              ? info[locale]
+              : [
+                  locale === "de" ? "Generierung fehlgeschlagen" : "Generation failed",
+                  undefined,
+                ];
+            return (
+              <div className="mt-3 rounded-md bg-red-500/10 p-3 text-sm text-red-600">
+                <p className="flex items-center gap-1.5 font-medium">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  {title}
+                </p>
+                {hint && <p className="mt-1 text-xs text-red-600/90">{hint}</p>}
+                {job.error && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-red-600/70">
+                      {locale === "de" ? "Technische Details" : "Technical details"}
+                    </summary>
+                    <p className="mt-1 whitespace-pre-wrap text-xs">{job.error}</p>
+                  </details>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

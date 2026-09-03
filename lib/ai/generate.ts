@@ -63,6 +63,46 @@ function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+const MAX_PROVIDER_RETRY_DELAY_MS = 120_000;
+
+/**
+ * Extrahiert Googles RetryInfo (google.rpc.RetryInfo, z. B. `{"retryDelay":
+ * "21s"}` innerhalb von `error.details[]`) aus einer Gemini-429-Antwort. Das
+ * @google/genai-SDK gibt keine strukturierten Details her - `ApiError.message`
+ * ist der per JSON.stringify() serialisierte komplette Fehler-Body (siehe
+ * node_modules/@google/genai .../throwErrorIfNotOK), daher wird hier erneut
+ * geparst. Ohne das würde bei kurzzeitigem Rate Limiting immer nur die eigene
+ * (ggf. zu kurze oder zu lange) exponentielle Schätzung verwendet statt der
+ * vom Provider vorgegebenen Wartezeit (R0.1 in roadmap.md).
+ */
+export function parseProviderRetryDelayMs(error: unknown): number | undefined {
+  const message = errorMessage(error);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(message);
+  } catch {
+    return undefined;
+  }
+  if (!parsed || typeof parsed !== "object") return undefined;
+
+  const details = Reflect.get(Reflect.get(parsed, "error") ?? {}, "details");
+  if (!Array.isArray(details)) return undefined;
+
+  for (const detail of details) {
+    if (!detail || typeof detail !== "object") continue;
+    const retryDelay = Reflect.get(detail, "retryDelay");
+    if (typeof retryDelay !== "string") continue;
+
+    const match = /^(\d+(?:\.\d+)?)s$/.exec(retryDelay.trim());
+    if (!match) continue;
+    const seconds = Number.parseFloat(match[1]);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(seconds * 1_000, MAX_PROVIDER_RETRY_DELAY_MS);
+    }
+  }
+  return undefined;
+}
+
 const GEMINI_JSON_SCHEMA_KEYS = new Set([
   "$id",
   "$defs",
@@ -214,14 +254,19 @@ async function requestJson(
         throw error;
       }
 
+      const providerDelayMs =
+        errorStatus(error) === 429 ? parseProviderRetryDelayMs(error) : undefined;
       const exponentialDelay = Math.min(
         retryBaseMs * 2 ** (attempt - 1),
         MAX_RETRY_DELAY_MS,
       );
-      const delayMs = Math.round(exponentialDelay * (1 + Math.random() * 0.25));
+      const baseDelayMs = providerDelayMs ?? exponentialDelay;
+      const delayMs = Math.round(baseDelayMs * (1 + Math.random() * 0.25));
       console.warn(
         `Gemini vorübergehend nicht verfügbar (${errorStatus(error) ?? "Netzwerkfehler"}). ` +
-          `Neuer Versuch ${attempt + 1}/${maxAttempts} in ${Math.ceil(delayMs / 1_000)}s ...`,
+          `Neuer Versuch ${attempt + 1}/${maxAttempts} in ${Math.ceil(delayMs / 1_000)}s` +
+          (providerDelayMs !== undefined ? " (vom Provider vorgegeben)" : "") +
+          " ...",
       );
       await sleep(delayMs);
     }

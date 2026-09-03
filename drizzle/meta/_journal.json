@@ -29,6 +29,13 @@
       "when": 1788441234382,
       "tag": "0003_charming_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788444004305,
+      "tag": "0004_good_mariko_yashida",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,7 @@ import {
   objectives,
   questions,
   sections,
+  type GenerationErrorClass,
 } from "@/lib/server/db/schema";
 
 export type ContentGenerationJob = typeof contentGenerationJobs.$inferSelect;
@@ -146,6 +147,37 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
   });
 }
 
+/**
+ * R0.1 (roadmap.md): grobe Fehlerklasse aus dem gecapturten Skript-Output
+ * (stdout+stderr-Tail, siehe runNpmScript) ableiten, damit die Admin-UI
+ * unterscheiden kann statt nur den rohen Fehlertext zu zeigen. Reihenfolge
+ * ist wichtig: "quota" ist ein Spezialfall von "rate_limit" (beide melden
+ * RESOURCE_EXHAUSTED/429), daher zuerst geprüft.
+ */
+export function classifyGenerationError(outputTail: string): GenerationErrorClass {
+  if (/RESOURCE_EXHAUSTED/i.test(outputTail) && /per\s?day|daily quota/i.test(outputTail)) {
+    return "quota";
+  }
+  if (/status:\s?429|RESOURCE_EXHAUSTED/i.test(outputTail)) {
+    return "rate_limit";
+  }
+  if (
+    /entspricht nicht dem erwarteten Schema|konnte nicht als JSON geparst werden|invalid argument/i.test(
+      outputTail,
+    )
+  ) {
+    return "schema";
+  }
+  if (
+    /status:\s?5\d\d|UNAVAILABLE|ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i.test(
+      outputTail,
+    )
+  ) {
+    return "provider_outage";
+  }
+  return "internal";
+}
+
 export function startContentGenerationJob(
   jobId: string,
   certificationId: string,
@@ -162,6 +194,7 @@ export function startContentGenerationJob(
         phase: "failed",
         message: "Inhaltsgenerierung fehlgeschlagen.",
         error: truncate(message),
+        errorClass: classifyGenerationError(message),
         completedAt: new Date(),
       });
     })

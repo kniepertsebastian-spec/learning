@@ -1,0 +1,2 @@
+ALTER TABLE "content_generation_jobs" ADD COLUMN "error_class" text;--> statement-breakpoint
+ALTER TABLE "content_generation_jobs" ADD CONSTRAINT "content_generation_jobs_error_class_check" CHECK ("content_generation_jobs"."error_class" is null or "content_generation_jobs"."error_class" in ('schema', 'rate_limit', 'quota', 'provider_outage', 'internal'));

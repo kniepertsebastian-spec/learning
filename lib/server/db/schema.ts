@@ -18,6 +18,15 @@ import type { Localized } from "@/lib/types";
  * admin API route/server action. */
 export type UserRole = "learner" | "admin";
 
+/** R0.1 (roadmap.md): Fehlerklassen für content_generation_jobs, siehe
+ * classifyGenerationError() in lib/server/admin/content-generation.ts. */
+export type GenerationErrorClass =
+  | "schema"
+  | "rate_limit"
+  | "quota"
+  | "provider_outage"
+  | "internal";
+
 /**
  * v2-Backend-Schema nach roadmap2.md Phase 2/3 (Certification -> Domain ->
  * Objective -> Section -> Lesson/Quiz -> Attempt -> Objective Progress).
@@ -228,6 +237,9 @@ export const contentGenerationJobs = pgTable(
     progress: integer("progress").notNull().default(0),
     message: text("message"),
     error: text("error"),
+    /** R0.1 (roadmap.md): grobe Fehlerklasse für die Admin-UI, siehe
+     * classifyGenerationError() in content-generation.ts. */
+    errorClass: text("error_class").$type<GenerationErrorClass>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -239,6 +251,10 @@ export const contentGenerationJobs = pgTable(
     uniqueIndex("content_generation_jobs_active_per_cert")
       .on(table.certificationId)
       .where(sql`${table.status} in ('queued', 'running')`),
+    check(
+      "content_generation_jobs_error_class_check",
+      sql`${table.errorClass} is null or ${table.errorClass} in ('schema', 'rate_limit', 'quota', 'provider_outage', 'internal')`,
+    ),
   ],
 );
 

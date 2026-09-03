@@ -91,6 +91,7 @@ export default async function AdminCertificationPage({
                 progress: initialGenerationJob.progress,
                 message: initialGenerationJob.message,
                 error: initialGenerationJob.error,
+                errorClass: initialGenerationJob.errorClass,
               }
             : null
         }

@@ -62,14 +62,40 @@ Kurse verändern oder kostenpflichtige KI-Jobs starten.
 
 #### R0.1 Generator stabilisieren
 
-- [ ] Offenen Fix für normalisierte Schwierigkeitswerte integrieren und testen.
-- [ ] Einen abgebrochenen Generierungslauf ab dem nächsten fehlenden Objective
-      fortsetzen können.
-- [ ] Pro Zertifizierung höchstens einen aktiven Generierungsjob erlauben.
-- [ ] Fehlerklassen im UI unterscheiden: Schemafehler, Rate Limit, Kontingent,
-      Provider-Ausfall und interner Fehler.
-- [ ] Vom Provider geliefertes `retryDelay` bei HTTP 429 berücksichtigen.
-- [ ] Teilweise erzeugte Inhalte als Teilerfolg anzeigen und nicht verwerfen.
+- [x] Offenen Fix für normalisierte Schwierigkeitswerte integrieren und
+      testen. (`ObjectiveProgressService.calculateDifficultyWeight` prüfte
+      vorher "hard"/"medium"/"easy", was nie zu den echten Werten
+      beginner/intermediate/advanced passte - Fix war schon im Code, jetzt
+      mit Unit-Tests in `lib/server/progress/service.test.ts` abgesichert.
+      Erstes Test-Setup dafür neu: `vitest`, `npm test`.)
+- [x] Einen abgebrochenen Generierungslauf ab dem nächsten fehlenden Objective
+      fortsetzen können. War durch die bestehende Idempotenz der Skripte
+      (`scripts/generate-curriculum-draft.ts`,
+      `scripts/generate-lessons-and-questions.ts` - überspringen bereits
+      vorhandene Domains/Objectives, ergänzen fehlende Sections/Fragen eines
+      teilweise fertigen Objectives) schon gegeben; R0.3 hat das nutzbar
+      gemacht, indem ein nach App-Neustart unterbrochener Job automatisch als
+      "failed/interrupted" markiert wird und "Erneut versuchen" denselben
+      idempotenten Lauf neu startet.
+- [x] Pro Zertifizierung höchstens einen aktiven Generierungsjob erlauben.
+      (Bereits in R0.3 umgesetzt: Unique Partial Index
+      `content_generation_jobs_active_per_cert`.)
+- [x] Fehlerklassen im UI unterscheiden: Schemafehler, Rate Limit, Kontingent,
+      Provider-Ausfall und interner Fehler. (`errorClass`-Spalte +
+      `classifyGenerationError()` in `lib/server/admin/content-generation.ts`,
+      mit Tests; `ContentGenerationControl` zeigt Ursache + nächsten Schritt,
+      rohen Output nur noch eingeklappt.)
+- [x] Vom Provider geliefertes `retryDelay` bei HTTP 429 berücksichtigen.
+      (`parseProviderRetryDelayMs()` in `lib/ai/generate.ts` liest Googles
+      RetryInfo aus der 429-Fehlerantwort und nutzt sie statt der reinen
+      Schätzung per exponentiellem Backoff, mit Tests.)
+- [x] Teilweise erzeugte Inhalte als Teilerfolg anzeigen und nicht verwerfen.
+      War durch die Persistenz pro Objective schon gegeben (bereits fertige
+      Objectives bleiben in der DB und für Lernende nutzbar, auch wenn ein
+      späteres Objective den Job scheitern lässt); die R0.3-Schätzung
+      (`estimateGenerationWork`) macht den Fortschritt jetzt auch nach einem
+      Fehlschlag sichtbar (verbleibende Domains/Objectives statt nur
+      "fehlgeschlagen").
 
 #### R0.2 Rollenmodell
 
