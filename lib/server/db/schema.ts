@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   check,
   integer,
@@ -117,6 +118,16 @@ export const sections = pgTable("sections", {
   difficulty: text("difficulty"),
 });
 
+/** R1.4 (roadmap.md): Herkunft/Prüfstatus einer Lesson.
+ * "unreviewed" = wie bisher frei generiert (kein Quellenbezug) - Default, damit
+ *   bestehende Zeilen nach der Migration unverändert gelten.
+ * "grounded" = quellengebunden generiert, alle Aussagen zitiert.
+ * "needs_review" = quellengebunden generiert, aber mindestens eine Aussage
+ *   konnte nicht eindeutig belegt werden ("als Review-Fall markieren").
+ * "stale" = R1.5: die Quelle, aus der diese Lesson stammt, wurde durch eine
+ *   neue Version ersetzt, die dieses Objective inhaltlich verändert hat. */
+export type LessonReviewStatus = "unreviewed" | "grounded" | "needs_review" | "stale";
+
 export const lessons = pgTable("lessons", {
   id: uuid("id").primaryKey().defaultRandom(),
   sectionId: uuid("section_id")
@@ -129,6 +140,14 @@ export const lessons = pgTable("lessons", {
   version: integer("version").notNull().default(1),
   promptVersion: text("prompt_version"),
   modelVersion: text("model_version"),
+  /** R1.4: welche freigegebene Quelle (falls überhaupt eine) für diese Lesson
+   * herangezogen wurde - "Blueprint-Version" ist hier schlicht die jeweilige
+   * certification_sources-Zeile, da jede freigegebene Quelle eine Version
+   * des Blueprints darstellt (siehe R1.5: supersedesSourceId verkettet sie). */
+  sourceVersionId: uuid("source_version_id").references(() => certificationSources.id, {
+    onDelete: "set null",
+  }),
+  reviewStatus: text("review_status").$type<LessonReviewStatus>().notNull().default("unreviewed"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -145,7 +164,18 @@ export const questions = pgTable("questions", {
   type: text("type").notNull(),
   question: jsonb("question").$type<Localized<string>>().notNull(),
   explanation: jsonb("explanation").$type<Localized<string>>().notNull(),
+  /** Menschenlesbarer Locator-Text (z. B. "S. 4"), unabhängig von sourceChunkId
+   * unten gepflegt - bleibt auch dann lesbar, falls der Chunk später gelöscht
+   * würde (onDelete: set null). */
   sourceReference: text("source_reference"),
+  /** R1.4 (roadmap.md): "questions.sourceReference zu einer echten Relation
+   * weiterentwickeln" - der eigentliche Beleg, zusätzlich zum Text oben. */
+  sourceChunkId: uuid("source_chunk_id").references(() => sourceChunks.id, {
+    onDelete: "set null",
+  }),
+  /** R1.5: true, wenn die Quelle, aus der diese Frage stammt, durch eine neue
+   * Version ersetzt wurde, die dieses Objective inhaltlich verändert hat. */
+  stale: boolean("stale").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -348,6 +378,14 @@ export const certificationSources = pgTable(
     /** Fehlertext, falls status = "failed" (z. B. Extraktion fehlgeschlagen). */
     parseError: text("parse_error"),
     versionLabel: text("version_label"),
+    /** R1.5: admin-gesetzt beim Upload, wenn diese Quelle eine neue Ausgabe
+     * einer bereits freigegebenen Quelle ist - approveBlueprintDraft() nutzt
+     * das für den Diff und um betroffene Lessons/Questions als stale zu
+     * markieren, und setzt die referenzierte alte Quelle auf "superseded". */
+    supersedesSourceId: uuid("supersedes_source_id").references(
+      (): AnyPgColumn => certificationSources.id,
+      { onDelete: "set null" },
+    ),
     approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -444,3 +482,36 @@ export const blueprintDrafts = pgTable("blueprint_drafts", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * R1.4 (roadmap.md): reale Relation zwischen einem freigegebenen Objective
+ * und den Quellenseiten, die es belegen - wird beim Freigeben
+ * (approveBlueprintDraft -> applyBlueprintDraft) aus dem Locator-Text des
+ * Drafts abgeleitet (siehe lib/server/admin/blueprint-approval.ts,
+ * parseLocatorPageNumbers). Grundlage für "Quellenabdeckung validieren"
+ * (jedes Objective braucht mindestens eine Referenz) und für die
+ * quellengebundene Generierung.
+ */
+export const objectiveSourceRefs = pgTable(
+  "objective_source_refs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    objectiveId: uuid("objective_id")
+      .notNull()
+      .references(() => objectives.id, { onDelete: "cascade" }),
+    sourceChunkId: uuid("source_chunk_id")
+      .notNull()
+      .references(() => sourceChunks.id, { onDelete: "cascade" }),
+    /** Menschenlesbar aus dem Blueprint-Draft übernommen, z. B. "S. 4-5". */
+    locator: text("locator").notNull(),
+    /** Aus dem Blueprint-Draft übernommene Extraktionssicherheit (0-1). */
+    confidence: numeric("confidence", { precision: 3, scale: 2 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("objective_source_refs_objective_chunk_unique").on(
+      table.objectiveId,
+      table.sourceChunkId,
+    ),
+  ],
+);

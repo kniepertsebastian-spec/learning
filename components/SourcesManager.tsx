@@ -57,6 +57,7 @@ export function SourcesManager({
   const [uploading, setUploading] = useState(false);
   const [parsingId, setParsingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const approvedSources = sources.filter((s) => s.status === "approved");
 
   async function refresh() {
     const response = await fetch(
@@ -157,6 +158,30 @@ export function SourcesManager({
               className="w-full rounded-md border border-border bg-background px-3 py-2"
             />
           </label>
+          {approvedSources.length > 0 && (
+            <label className="block text-sm sm:col-span-2">
+              <span className="mb-1 block font-medium">
+                {locale === "de" ? "Ersetzt bereits freigegebene Quelle (optional)" : "Supersedes an approved source (optional)"}
+              </span>
+              <select
+                name="supersedesSourceId"
+                defaultValue=""
+                className="w-full rounded-md border border-border bg-background px-3 py-2"
+              >
+                <option value="">{locale === "de" ? "– Keine, neue Quelle –" : "– None, new source –"}</option>
+                {approvedSources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-foreground/50">
+                {locale === "de"
+                  ? "Markiert dies als neue Ausgabe - beim Freigeben werden betroffene Lessons/Fragen als veraltet markiert (R1.5)."
+                  : "Marks this as a new edition - approving it flags affected lessons/questions as stale (R1.5)."}
+              </span>
+            </label>
+          )}
           <button
             type="submit"
             disabled={uploading}

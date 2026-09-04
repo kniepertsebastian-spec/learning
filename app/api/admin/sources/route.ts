@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { requireAdminApi } from "@/lib/server/auth-guards";
 import { getDb } from "@/lib/server/db/client";
-import { certifications } from "@/lib/server/db/schema";
+import { certifications, certificationSources } from "@/lib/server/db/schema";
 import {
   listCertificationSources,
   registerCertificationSource,
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
   const title = formData.get("title");
   const provider = formData.get("provider");
   const publishedAtRaw = formData.get("publishedAt");
+  const supersedesSourceIdRaw = formData.get("supersedesSourceId");
   const file = formData.get("file");
 
   if (
@@ -82,6 +83,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Zertifizierung nicht gefunden." }, { status: 404 });
   }
 
+  let supersedesSourceId: string | null = null;
+  if (typeof supersedesSourceIdRaw === "string" && supersedesSourceIdRaw.trim()) {
+    // R1.5: nur eine bereits freigegebene Quelle DERSELBEN Zertifizierung
+    // darf ersetzt werden.
+    const [supersededCandidate] = await getDb()
+      .select({ id: certificationSources.id })
+      .from(certificationSources)
+      .where(
+        and(
+          eq(certificationSources.id, supersedesSourceIdRaw),
+          eq(certificationSources.certificationId, certificationId),
+          eq(certificationSources.status, "approved"),
+        ),
+      )
+      .limit(1);
+    if (!supersededCandidate) {
+      return NextResponse.json(
+        { error: "Die zu ersetzende Quelle wurde nicht gefunden oder ist nicht freigegeben." },
+        { status: 400 },
+      );
+    }
+    supersedesSourceId = supersededCandidate.id;
+  }
+
   const data = Buffer.from(await file.arrayBuffer());
   const validationError = validatePdfUpload({
     mimeType: file.type,
@@ -102,6 +127,7 @@ export async function POST(request: Request) {
     publishedAt,
     data,
     mimeType: file.type,
+    supersedesSourceId,
   });
 
   return NextResponse.json({ source, alreadyExisted }, { status: alreadyExisted ? 200 : 201 });

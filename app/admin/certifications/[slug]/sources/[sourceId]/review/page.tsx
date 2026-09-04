@@ -91,6 +91,7 @@ export default async function BlueprintReviewPage({
         sourceId={sourceId}
         locale={locale}
         initialStatus={source.status}
+        supersedesSourceId={source.supersedesSourceId}
         initialPages={pages}
         initialDraft={{
           content: draft.content as unknown as BlueprintExtraction,

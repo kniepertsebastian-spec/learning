@@ -50,23 +50,26 @@ export const draftQuestionOptionSchema = z.object({
   isCorrect: z.boolean(),
 });
 
-export const draftQuestionSchema = z
-  .object({
-    difficulty: z.enum(["beginner", "intermediate", "advanced"]),
-    type: z.enum([
-      "knowledge",
-      "comprehension",
-      "application",
-      "scenario",
-      "troubleshooting",
-    ]),
-    question: localizedStringSchema,
-    options: z.array(draftQuestionOptionSchema).length(4),
-    explanation: localizedStringSchema,
-  })
-  .refine((q) => q.options.filter((o) => o.isCorrect).length === 1, {
-    message: "Exakt eine Option muss isCorrect=true sein.",
-  });
+const exactlyOneCorrectOption = (q: { options: { isCorrect: boolean }[] }) =>
+  q.options.filter((o) => o.isCorrect).length === 1;
+const exactlyOneCorrectOptionMessage = { message: "Exakt eine Option muss isCorrect=true sein." };
+
+/** Ungeprüfte Basisform, damit sowohl draftQuestionSchema (frei generiert)
+ * als auch groundedDraftQuestionSchema (R1.4, mit Quellenbezug) sie per
+ * `.extend()` erweitern können - ein `.refine()`-Ergebnis (ZodEffects) hat
+ * kein `.extend()` mehr, daher hier getrennt von der Validierung. */
+const draftQuestionBaseSchema = z.object({
+  difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+  type: z.enum(["knowledge", "comprehension", "application", "scenario", "troubleshooting"]),
+  question: localizedStringSchema,
+  options: z.array(draftQuestionOptionSchema).length(4),
+  explanation: localizedStringSchema,
+});
+
+export const draftQuestionSchema = draftQuestionBaseSchema.refine(
+  exactlyOneCorrectOption,
+  exactlyOneCorrectOptionMessage,
+);
 
 /**
  * Lessons + Questions in EINEM Call statt zwei (Dev-Order Schritt 6+7 kombiniert)
@@ -78,6 +81,34 @@ export const draftQuestionSchema = z
 export const lessonsAndQuestionsForObjectiveResponseSchema = z.object({
   lessons: z.array(draftLessonSchema).min(1),
   questions: z.array(draftQuestionSchema).min(5).max(10),
+});
+
+/**
+ * R1.4 (roadmap.md): quellengebundene Variante - "Aussagen ohne ausreichende
+ * Grundlage verwerfen oder als Review-Fall markieren". `grounded` sagt pro
+ * Lesson/Frage, ob der Inhalt durch die mitgelieferten Quellenausschnitte
+ * belegt ist; `sourceLocator` bei Fragen zitiert den konkret genutzten
+ * Ausschnitt (oder `null`, wenn keiner passt). Der Aufrufer (siehe
+ * scripts/generate-lessons-and-questions.ts) verwirft ungegroundete Fragen
+ * und markiert ungegroundete Lessons als reviewStatus "needs_review" statt
+ * sie unmarkiert zu übernehmen.
+ */
+export const groundedDraftLessonSchema = draftLessonSchema.extend({
+  grounded: z.boolean(),
+});
+
+export const groundedDraftQuestionSchema = draftQuestionBaseSchema
+  .extend({
+    /** Locator eines der mitgelieferten Quellenausschnitte (z. B. "S. 4"),
+     * der die Antwort belegt - `null`, wenn kein Ausschnitt sie belegt. */
+    sourceLocator: z.string().min(1).nullable(),
+    grounded: z.boolean(),
+  })
+  .refine(exactlyOneCorrectOption, exactlyOneCorrectOptionMessage);
+
+export const groundedLessonsAndQuestionsResponseSchema = z.object({
+  lessons: z.array(groundedDraftLessonSchema).min(1),
+  questions: z.array(groundedDraftQuestionSchema).min(5).max(10),
 });
 
 /**

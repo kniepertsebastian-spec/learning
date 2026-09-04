@@ -63,6 +63,10 @@ export async function generateFinalExam(
       .where(
         and(
           inArray(questions.objectiveId, objectiveIds),
+          // R1.5: veraltete Fragen (stale = Objective wurde durch eine neue
+          // Quellenversion inhaltlich verändert) nicht mehr in neue Prüfungen
+          // aufnehmen.
+          eq(questions.stale, false),
           // Exclude already answered questions
           ...(!answeredIds.size ? [] : [notInArray(questions.id, Array.from(answeredIds))]),
         ),

@@ -21,8 +21,8 @@ export async function POST(
 
   const { id } = await params;
   try {
-    const { source, applyResult } = await approveBlueprintDraft(id, guard.user.id);
-    return NextResponse.json({ source, applyResult });
+    const { source, applyResult, diff, staleResult } = await approveBlueprintDraft(id, guard.user.id);
+    return NextResponse.json({ source, applyResult, diff, staleResult });
   } catch (error) {
     if (error instanceof BlueprintNotApprovableError) {
       return NextResponse.json({ error: error.message }, { status: 409 });

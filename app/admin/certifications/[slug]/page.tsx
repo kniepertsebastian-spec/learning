@@ -175,6 +175,66 @@ export default async function AdminCertificationPage({
           </div>
         )}
 
+        {/* R1.4: Quellenabdeckung - vollständige Ansicht (Adminbereich), nur
+            relevant sobald eine Quelle freigegeben wurde. */}
+        {validation.sourceCoverage.hasApprovedSource && (
+          <div
+            className={`rounded-lg border p-4 ${
+              validation.sourceCoverage.objectivesWithoutReference.length > 0
+                ? "border-yellow-200 bg-yellow-50"
+                : "border-green-200 bg-green-50"
+            }`}
+          >
+            <h3
+              className={`mb-2 font-medium ${
+                validation.sourceCoverage.objectivesWithoutReference.length > 0
+                  ? "text-yellow-700"
+                  : "text-green-700"
+              }`}
+            >
+              {locale === "de" ? "Quellenabdeckung" : "Source coverage"}
+            </h3>
+            {validation.sourceCoverage.objectivesWithoutReference.length === 0 ? (
+              <p className="text-sm text-green-700">
+                {locale === "de"
+                  ? "Jedes Objective hat mindestens eine Quellenreferenz."
+                  : "Every objective has at least one source reference."}
+              </p>
+            ) : (
+              <>
+                <p className="mb-2 text-sm text-yellow-700">
+                  {locale === "de"
+                    ? `${validation.sourceCoverage.objectivesWithoutReference.length} Objective(s) ohne Quellenreferenz:`
+                    : `${validation.sourceCoverage.objectivesWithoutReference.length} objective(s) without a source reference:`}
+                </p>
+                <ul className="space-y-1 text-sm text-yellow-700">
+                  {validation.sourceCoverage.objectivesWithoutReference.map((o) => (
+                    <li key={o.id}>
+                      <span className="font-mono text-xs">{o.code}</span> {o.title}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* R1.5: veraltete Inhalte nach dem Freigeben einer neuen
+            Quellenversion - Neugenerierung (Button oben) erzeugt gezielt
+            nur diese neu. */}
+        {(validation.staleContent.staleLessons > 0 || validation.staleContent.staleQuestions > 0) && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+            <h3 className="mb-1 font-medium text-yellow-700">
+              {locale === "de" ? "Veraltete Inhalte" : "Stale content"}
+            </h3>
+            <p className="text-sm text-yellow-700">
+              {locale === "de"
+                ? `${validation.staleContent.staleLessons} Lesson(s) und ${validation.staleContent.staleQuestions} Frage(n) durch eine neuere Quellenversion veraltet. "Inhalte generieren" oben erzeugt gezielt nur diese neu.`
+                : `${validation.staleContent.staleLessons} lesson(s) and ${validation.staleContent.staleQuestions} question(s) are stale due to a newer source version. "Generate content" above regenerates just those.`}
+            </p>
+          </div>
+        )}
+
         {/* Analytics */}
         <div className="rounded-lg border border-border bg-surface p-4">
           <h3 className="mb-3 font-medium">{locale === "de" ? "Domain-Mastery" : "Domain mastery"}</h3>

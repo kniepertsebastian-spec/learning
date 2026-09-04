@@ -15,6 +15,9 @@ export interface SectionQuizQuestion {
     orderNum: number;
     isCorrect: boolean;
   }>;
+  /** R1.4: knappe Quellenangabe (z. B. "S. 4"), falls die Frage
+   * quellengebunden generiert wurde - sonst null. */
+  sourceReference: string | null;
 }
 
 interface SectionQuizProps {
@@ -113,6 +116,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale }: SectionQ
         key={questions[quizIndex].id}
         question={mapped}
         onAnswered={handleAnswered}
+        sourceReference={questions[quizIndex].sourceReference}
       />
       <button
         type="button"

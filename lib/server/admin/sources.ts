@@ -70,6 +70,10 @@ export async function registerCertificationSource(input: {
   publishedAt: Date | null;
   data: Buffer;
   mimeType: string;
+  /** R1.5: markiert diesen Upload als neue Ausgabe einer bereits
+   * freigegebenen Quelle - approveBlueprintDraft() nutzt das für den Diff
+   * und die stale-Markierung betroffener Lessons/Fragen. */
+  supersedesSourceId?: string | null;
 }): Promise<{ source: CertificationSource; alreadyExisted: boolean }> {
   const db = getDb();
   const checksum = sha256Hex(input.data);
@@ -94,6 +98,7 @@ export async function registerCertificationSource(input: {
         checksum,
         publishedAt: input.publishedAt,
         status: "uploaded",
+        supersedesSourceId: input.supersedesSourceId ?? null,
       })
       .returning();
     return { source, alreadyExisted: false };

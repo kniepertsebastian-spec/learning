@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Loader2, Lock, Save, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, GitCompareArrows, Loader2, Lock, Save, ShieldCheck } from "lucide-react";
 import type { BlueprintExtraction } from "@/lib/server/ai/service";
+import type { BlueprintDiff } from "@/lib/server/admin/blueprint-diff";
 
 interface SourcePage {
   pageNumber: number;
@@ -16,6 +17,11 @@ interface DraftState {
   warnings: string[];
   validationErrors: string[];
   truncatedSource: boolean;
+}
+
+interface StaleResult {
+  lessonsMarkedStale: number;
+  questionsMarkedStale: number;
 }
 
 const LOCKED_STATUSES = new Set(["approved", "superseded"]);
@@ -61,12 +67,14 @@ export function BlueprintReview({
   sourceId,
   locale,
   initialStatus,
+  supersedesSourceId,
   initialPages,
   initialDraft,
 }: {
   sourceId: string;
   locale: "de" | "en";
   initialStatus: string;
+  supersedesSourceId: string | null;
   initialPages: SourcePage[];
   initialDraft: DraftState;
 }) {
@@ -82,8 +90,24 @@ export function BlueprintReview({
   const [approving, setApproving] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [savedNote, setSavedNote] = useState<string | null>(null);
+  const [diff, setDiff] = useState<BlueprintDiff | null>(null);
+  const [staleResult, setStaleResult] = useState<StaleResult | null>(null);
 
   const locked = LOCKED_STATUSES.has(status);
+
+  useEffect(() => {
+    if (!supersedesSourceId || locked) return;
+    let cancelled = false;
+    (async () => {
+      const response = await fetch(`/api/admin/sources/${sourceId}/diff`, { cache: "no-store" });
+      if (cancelled || !response.ok) return;
+      const data = (await response.json()) as { diff: BlueprintDiff };
+      setDiff(data.diff);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceId, supersedesSourceId, locked]);
 
   async function save(): Promise<boolean> {
     setSaving(true);
@@ -124,9 +148,14 @@ export function BlueprintReview({
       if (!savedOk) return;
 
       const response = await fetch(`/api/admin/sources/${sourceId}/approve`, { method: "POST" });
-      const data = (await response.json()) as { source?: { status: string }; error?: string };
+      const data = (await response.json()) as {
+        source?: { status: string };
+        staleResult?: StaleResult | null;
+        error?: string;
+      };
       if (!response.ok || !data.source) throw new Error(data.error ?? `Status ${response.status}`);
       setStatus(data.source.status);
+      if (data.staleResult) setStaleResult(data.staleResult);
       router.refresh();
     } catch (err) {
       setRequestError(
@@ -160,6 +189,67 @@ export function BlueprintReview({
           {locale === "de"
             ? "Das Dokument war zu lang und wurde für die Extraktion gekürzt."
             : "The document was too long and was truncated for extraction."}
+        </p>
+      )}
+
+      {supersedesSourceId && !locked && diff && (
+        <div className="rounded-md border border-border bg-surface p-3 text-sm">
+          <p className="mb-2 flex items-center gap-1.5 font-medium">
+            <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
+            {locale === "de" ? "Änderungen gegenüber der ersetzten Quelle" : "Changes vs. the superseded source"}
+          </p>
+          {diff.addedDomains.length === 0 &&
+          diff.removedDomains.length === 0 &&
+          diff.addedObjectives.length === 0 &&
+          diff.removedObjectives.length === 0 &&
+          diff.changedObjectives.length === 0 ? (
+            <p className="text-xs text-foreground/60">
+              {locale === "de" ? "Keine Unterschiede zum aktuellen Stand." : "No differences from the current state."}
+            </p>
+          ) : (
+            <ul className="space-y-1 text-xs">
+              {diff.addedDomains.map((name) => (
+                <li key={`ad-${name}`} className="text-green-700">
+                  + {locale === "de" ? "Neue Domain" : "New domain"}: {name}
+                </li>
+              ))}
+              {diff.removedDomains.map((name) => (
+                <li key={`rd-${name}`} className="text-red-600">
+                  − {locale === "de" ? "Domain entfernt" : "Domain removed"}: {name}
+                </li>
+              ))}
+              {diff.addedObjectives.map((o) => (
+                <li key={`ao-${o.domainName}-${o.code}`} className="text-green-700">
+                  + {o.code} {o.title} ({o.domainName})
+                </li>
+              ))}
+              {diff.removedObjectives.map((o) => (
+                <li key={`ro-${o.id}`} className="text-red-600">
+                  − {o.code} {o.title} ({o.domainName})
+                </li>
+              ))}
+              {diff.changedObjectives.map((o, i) => (
+                <li key={`co-${o.id}-${o.field}-${i}`} className="text-yellow-700">
+                  ~ {o.code} ({o.domainName}): {o.field} {locale === "de" ? "geändert" : "changed"}
+                </li>
+              ))}
+            </ul>
+          )}
+          {(diff.changedObjectives.length > 0 || diff.removedObjectives.length > 0) && (
+            <p className="mt-2 text-xs text-foreground/50">
+              {locale === "de"
+                ? "Bei Freigabe werden Lessons/Fragen der geänderten oder entfernten Objectives als veraltet markiert."
+                : "Approving this will mark lessons/questions of changed or removed objectives as stale."}
+            </p>
+          )}
+        </div>
+      )}
+
+      {staleResult && (staleResult.lessonsMarkedStale > 0 || staleResult.questionsMarkedStale > 0) && (
+        <p className="rounded-md bg-yellow-500/10 p-2 text-xs text-yellow-700">
+          {locale === "de"
+            ? `${staleResult.lessonsMarkedStale} Lesson(s) und ${staleResult.questionsMarkedStale} Frage(n) als veraltet markiert - Neugenerierung erzeugt sie gezielt neu.`
+            : `${staleResult.lessonsMarkedStale} lesson(s) and ${staleResult.questionsMarkedStale} question(s) marked stale - regeneration will target just those.`}
         </p>
       )}
 

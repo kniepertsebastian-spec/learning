@@ -8,9 +8,13 @@ import type { QuizQuestion } from "@/lib/types";
 interface QuizQuestionCardProps {
   question: QuizQuestion;
   onAnswered: (isCorrect: boolean, selectedIndex: number) => void;
+  /** R1.4: knappe Quellenangabe (z. B. "S. 4") für die Lernansicht - die
+   * vollständige Angabe (Quelle, Titel, ...) bleibt dem Adminbereich
+   * vorbehalten (roadmap.md: "knapp" vs. "vollständig"). */
+  sourceReference?: string | null;
 }
 
-export function QuizQuestionCard({ question, onAnswered }: QuizQuestionCardProps) {
+export function QuizQuestionCard({ question, onAnswered, sourceReference }: QuizQuestionCardProps) {
   const { locale, t } = useLocale();
   const [selected, setSelected] = useState<number | null>(null);
 
@@ -63,6 +67,11 @@ export function QuizQuestionCard({ question, onAnswered }: QuizQuestionCardProps
             {selected === question.correctIndex ? t.lesson.correct : t.lesson.incorrect}
           </p>
           <p className="text-foreground/70">{question.explanation[locale]}</p>
+          {sourceReference && (
+            <p className="mt-2 text-xs text-foreground/50">
+              {locale === "de" ? "Quelle" : "Source"}: {sourceReference}
+            </p>
+          )}
         </div>
       )}
     </div>

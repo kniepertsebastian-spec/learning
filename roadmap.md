@@ -310,21 +310,67 @@ produktiven Freigabe-Lauf einmal manuell gegen eine echte DB verifizieren.
 
 #### R1.4 Quellengebundene Generierung
 
-- [ ] Generierungs-Prompts nur mit freigegebenen Objectives und relevanten
-      Quellenausschnitten aufrufen.
-- [ ] Jede Lesson mit Blueprint-Version, Modell- und Prompt-Version verknüpfen.
-- [ ] Jede Frage mit einer konkreten Quellenreferenz versehen.
-- [ ] Aussagen ohne ausreichende Grundlage verwerfen oder als Review-Fall markieren.
-- [ ] Quellenabdeckung validieren: Jedes Objective benötigt mindestens eine Referenz.
-- [ ] Quellenangaben in der Lernansicht knapp, im Adminbereich vollständig anzeigen.
+- [x] Generierungs-Prompts nur mit freigegebenen Objectives und relevanten
+      Quellenausschnitten aufrufen. Genauer: WENN ein Objective freigegebene
+      Quellenausschnitte hat (`objective_source_refs`, aus R1.3 befüllt),
+      wird ausschließlich damit generiert
+      (`generateGroundedLessonsAndQuestionsForObjective`); Zertifizierungen
+      ganz ohne hochgeladene Quelle nutzen weiterhin den bisherigen freien
+      KI-Weg (roadmap2.md) als Fallback, statt komplett zu blockieren.
+- [x] Jede Lesson mit Blueprint-Version, Modell- und Prompt-Version
+      verknüpfen. (`lessons.sourceVersionId` - zeigt auf die jeweilige
+      `certification_sources`-Zeile als "Blueprint-Version" -, `modelVersion`,
+      `promptVersion`.)
+- [x] Jede Frage mit einer konkreten Quellenreferenz versehen. Gilt für
+      quellengebunden generierte Fragen (`questions.sourceChunkId` als echte
+      Relation + `sourceReference` als lesbarer Text); Fragen aus dem
+      ungegroundeten Fallback-Pfad bleiben wie bisher ohne Referenz.
+- [x] Aussagen ohne ausreichende Grundlage verwerfen oder als Review-Fall
+      markieren. Für Fragen "verwerfen" (nie gespeichert, siehe
+      `discard`-Logik im Skript), für Lessons "als Review-Fall markieren"
+      (`reviewStatus = "needs_review"` statt `"grounded"`).
+- [x] Quellenabdeckung validieren: Jedes Objective benötigt mindestens eine
+      Referenz. (`ContentValidationService.validateSourceCoverage()`, nur
+      relevant sobald die Zertifizierung eine freigegebene Quelle hat.)
+- [x] Quellenangaben in der Lernansicht knapp, im Adminbereich vollständig
+      anzeigen. Lernansicht: `QuizQuestionCard` zeigt nach der Antwort knapp
+      "Quelle: S. 4". Adminbereich: die Validierungsseite listet Objectives
+      ohne Referenz vollständig auf; eine Ansicht mit dem vollen zitierten
+      Quellentext pro Frage existiert noch nicht (Nachtrag, falls sich das
+      als nötig erweist - `objective_source_refs`/`source_chunks` tragen
+      die Daten dafür bereits).
 
 #### R1.5 Versionen und Aktualisierungen
 
-- [ ] Neue Ausgabe eines Blueprints als neue Version importieren.
-- [ ] Added/changed/removed Domains und Objectives als Diff darstellen.
-- [ ] Betroffene Lessons und Fragen als `stale` markieren.
-- [ ] Gezielte Neugenerierung nur der betroffenen Inhalte ermöglichen.
-- [ ] Alte Kursversionen für vorhandene Lernverläufe lesbar halten.
+- [x] Neue Ausgabe eines Blueprints als neue Version importieren.
+      (`certification_sources.supersedesSourceId`, im Upload-Formular als
+      "Ersetzt bereits freigegebene Quelle" wählbar.)
+- [x] Added/changed/removed Domains und Objectives als Diff darstellen.
+      (`diffBlueprintAgainstObjectives()` in `lib/server/admin/blueprint-diff.ts`,
+      pur und getestet; Vorschau vor der Freigabe über
+      `GET /api/admin/sources/:id/diff`, angezeigt in der Review-Oberfläche.)
+- [x] Betroffene Lessons und Fragen als `stale` markieren.
+      (`markStaleContentForDiff()` in `blueprint-approval.ts`: geänderte oder
+      entfernte Objectives -> `lessons.reviewStatus = "stale"` /
+      `questions.stale = true`. Neu hinzugekommene Objectives haben
+      naturgemäß noch nichts, das stale sein könnte.)
+- [x] Gezielte Neugenerierung nur der betroffenen Inhalte ermöglichen.
+      `scripts/generate-lessons-and-questions.ts` zählt stale Lessons/Fragen
+      nicht mehr als "bereits vorhanden": stale Lessons werden in-place
+      aktualisiert (eine Section darf wegen des Unique-Constraints nur eine
+      Lesson haben), stale Fragen bleiben unangetastet stehen (siehe
+      nächster Punkt) und werden durch neue ergänzt. Veraltete Fragen werden
+      außerdem aus neuen Prüfungen (`exam/generator.ts`) und aus der
+      Lernansicht (`section/[sectionId]/page.tsx`) herausgefiltert, damit
+      "stale" tatsächlich wirkt statt nur ein Label zu sein.
+- [x] Alte Kursversionen für vorhandene Lernverläufe lesbar halten.
+      Durch Konstruktion erfüllt: nichts in der gesamten R1-Pipeline löscht
+      jemals eine Lesson oder Frage (nur Insert/Update/stale-Markierung) -
+      `quiz_answers`/`exam_questions`, die auf eine jetzt veraltete Frage
+      verweisen, bleiben unverändert lesbar. Keine separate
+      "Kursversions-Snapshot"-Funktion (wäre eine deutlich größere
+      Datenmodell-Änderung) - bislang nicht verlangt, da bestehende
+      Lernverläufe schon allein durch das Nie-Löschen intakt bleiben.
 
 ### Datenmodell
 

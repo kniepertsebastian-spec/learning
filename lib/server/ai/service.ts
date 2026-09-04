@@ -2,17 +2,22 @@ import { generateStructured } from "@/lib/ai/generate";
 import {
   blueprintExtractionSchema,
   curriculumDraftForDomainResponseSchema,
+  groundedLessonsAndQuestionsResponseSchema,
   lessonsAndQuestionsForObjectiveResponseSchema,
   remediationResponseSchema,
   type draftObjectiveSchema,
   type draftLessonSchema,
   type draftQuestionSchema,
+  type groundedDraftLessonSchema,
+  type groundedDraftQuestionSchema,
 } from "./schemas";
 import type { z } from "zod";
 
 export type DraftObjective = z.infer<typeof draftObjectiveSchema>;
 export type DraftLesson = z.infer<typeof draftLessonSchema>;
 export type DraftQuestion = z.infer<typeof draftQuestionSchema>;
+export type GroundedDraftLesson = z.infer<typeof groundedDraftLessonSchema>;
+export type GroundedDraftQuestion = z.infer<typeof groundedDraftQuestionSchema>;
 export type RemediationResponse = z.infer<typeof remediationResponseSchema>;
 export type BlueprintExtraction = z.infer<typeof blueprintExtractionSchema>;
 export interface LessonsAndQuestions {
@@ -222,4 +227,99 @@ export async function generateBlueprintDraft(sourceText: string): Promise<Bluepr
   ].join("\n");
 
   return generateStructured(systemPrompt, userPrompt, blueprintExtractionSchema);
+}
+
+export interface GroundedLessonsAndQuestions {
+  lessons: GroundedDraftLesson[];
+  questions: GroundedDraftQuestion[];
+}
+
+export interface SourceExcerpt {
+  /** z. B. "S. 4" - muss identisch in den generierten Fragen als
+   * `sourceLocator` zitiert werden können. */
+  locator: string;
+  text: string;
+}
+
+/**
+ * R1.4 (roadmap.md): quellengebundene Variante von
+ * generateLessonsAndQuestionsForObjective() - bekommt die für dieses
+ * Objective freigegebenen Quellenausschnitte (objective_source_refs, siehe
+ * lib/server/admin/objective-sources.ts) und verlangt, dass Lessons/Fragen
+ * sich primär darauf stützen und ihre Grundlage markieren
+ * (groundedDraftLessonSchema/groundedDraftQuestionSchema), statt frei zu
+ * generieren wie der ungegroundete Pfad.
+ */
+export async function generateGroundedLessonsAndQuestionsForObjective(
+  certificationName: string,
+  objectiveTitle: string,
+  objectiveDescription: string,
+  sections: { orderNum: number; titleEn: string; estimatedMinutes: number; difficulty: string }[],
+  excerpts: SourceExcerpt[],
+): Promise<GroundedLessonsAndQuestions> {
+  const systemPrompt = [
+    `Du bist Dozent und Prüfungsfragen-Autor für die Zertifizierung "${certificationName}",`,
+    `Objective "${objectiveTitle}" - ${objectiveDescription}.`,
+    "",
+    "Dir liegen unten AUSZÜGE AUS DER OFFIZIELLEN QUELLE für genau dieses Objective vor.",
+    "Stütze Lerninhalt und Fragen VORRANGIG auf diese Auszüge statt auf allgemeines Wissen.",
+    "",
+    "TEIL 1 - Lerninhalt: Erstelle didaktischen Markdown-Lerninhalt für JEDE der folgenden Sections:",
+    ...sections.map(
+      (s) =>
+        `- sectionOrderNum ${s.orderNum}: "${s.titleEn}" (~${s.estimatedMinutes} Min, ${s.difficulty})`,
+    ),
+    "Jede Lesson enthält: Einführung, Kernkonzepte, Beispiele, häufige Fehler, prüfungsrelevante Punkte.",
+    "Setze `grounded: true`, wenn der Inhalt durch die Auszüge belegt ist, sonst `grounded: false`",
+    "(dann darfst du sparsam mit allgemeinem Wissen ergänzen, aber musst es markieren).",
+    "",
+    "TEIL 2 - Fragen: Erstelle 6-8 Multiple-Choice-Fragen zu diesem Objective, Mischung aus",
+    "knowledge, comprehension, application, scenario, troubleshooting.",
+    "NICHT nur Faktenabfrage - bevorzugt szenariobasierte Fragen, die Verständnis testen.",
+    "Genau 4 Antwortoptionen pro Frage, genau EINE davon korrekt. Schwierigkeitsgrade realistisch mischen.",
+    "Das Feld `difficulty` MUSS bei jeder Frage exakt `beginner`, `intermediate` oder `advanced` sein.",
+    "Jede Frage MUSS `sourceLocator` setzen: den Locator (z. B. \"S. 4\") des Auszugs unten, der Frage",
+    "und richtige Antwort belegt - exakt einer der unten angegebenen Locator-Werte, NICHT erfunden.",
+    "Findet sich in keinem Auszug eine Grundlage, setze `sourceLocator: null` und `grounded: false`.",
+    "Ist ein Auszug die Grundlage, setze `grounded: true` und den passenden `sourceLocator`.",
+    "",
+    "Quellenauszüge für dieses Objective:",
+    ...excerpts.flatMap((excerpt) => [`--- ${excerpt.locator} ---`, excerpt.text]),
+    "",
+    "WICHTIG - jedes bilinguale Feld ist ein OBJEKT mit genau den Keys `de` und `en`,",
+    "NIEMALS ein einzelner String oder ein Array direkt. Exaktes Ausgabeformat:",
+    "```json",
+    "{",
+    '  "lessons": [',
+    "    {",
+    '      "sectionOrderNum": 1,',
+    '      "content": { "de": "... Markdown auf Deutsch ...", "en": "... Markdown in English ..." },',
+    '      "keyTakeaways": { "de": ["Punkt 1", "Punkt 2"], "en": ["Point 1", "Point 2"] },',
+    '      "examFocusPoints": { "de": ["Punkt 1", "Punkt 2"], "en": ["Point 1", "Point 2"] },',
+    '      "grounded": true',
+    "    }",
+    "  ],",
+    '  "questions": [',
+    "    {",
+    '      "difficulty": "intermediate",',
+    '      "type": "scenario",',
+    '      "question": { "de": "... Frage auf Deutsch ...", "en": "... Question in English ..." },',
+    '      "options": [',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": false },',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": true },',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": false },',
+    '        { "text": { "de": "...", "en": "..." }, "isCorrect": false }',
+    "      ],",
+    '      "explanation": { "de": "...", "en": "..." },',
+    '      "sourceLocator": "S. 4",',
+    '      "grounded": true',
+    "    }",
+    "  ]",
+    "}",
+    "```",
+  ].join("\n");
+
+  const userPrompt = `Generiere quellengebundenen Lerninhalt + Fragen-Pool für Objective "${objectiveTitle}".`;
+
+  return generateStructured(systemPrompt, userPrompt, groundedLessonsAndQuestionsResponseSchema);
 }

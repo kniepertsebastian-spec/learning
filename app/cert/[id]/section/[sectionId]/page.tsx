@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   sections,
@@ -50,11 +50,13 @@ export default async function SectionPage({
     .limit(1);
   const domainName = domainRows[0]?.name ?? "";
 
-  // Fetch questions for this objective
+  // Fetch questions for this objective - R1.5: veraltete (stale) Fragen
+  // nicht mehr an Lernende ausliefern, sie bleiben nur für bereits
+  // bestehende Quiz-/Prüfungsverläufe lesbar.
   const questionRows = await db
     .select()
     .from(questions)
-    .where(eq(questions.objectiveId, objective.id));
+    .where(and(eq(questions.objectiveId, objective.id), eq(questions.stale, false)));
 
   const questionIds = questionRows.map((q) => q.id);
   const optionRows =
@@ -78,6 +80,7 @@ export default async function SectionPage({
         orderNum: o.orderNum,
         isCorrect: o.isCorrect,
       })),
+    sourceReference: q.sourceReference,
   }));
 
   return (

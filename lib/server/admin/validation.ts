@@ -1,6 +1,15 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { lessons, questions, questionOptions, sections, objectives, domains } from "@/lib/server/db/schema";
+import {
+  lessons,
+  questions,
+  questionOptions,
+  sections,
+  objectives,
+  domains,
+  certificationSources,
+  objectiveSourceRefs,
+} from "@/lib/server/db/schema";
 
 export interface ValidationIssue {
   type:
@@ -190,6 +199,101 @@ export class ContentValidationService {
   }
 
   /**
+   * R1.5 (roadmap.md): Anzahl Lessons/Fragen, die durch eine neue
+   * Quellenversion als veraltet markiert wurden ("Betroffene Lessons und
+   * Fragen als stale markieren") - damit ein Admin sieht, wie viel gezielte
+   * Neugenerierung noch aussteht (npm run content:draft-lessons regeneriert
+   * nur genau diese, siehe scripts/generate-lessons-and-questions.ts).
+   */
+  static async getStaleContentCounts(
+    certificationId: string,
+  ): Promise<{ staleLessons: number; staleQuestions: number }> {
+    const db = getDb();
+    const certObjectiveIds = (
+      await db
+        .select({ id: objectives.id })
+        .from(objectives)
+        .innerJoin(domains, eq(domains.id, objectives.domainId))
+        .where(eq(domains.certificationId, certificationId))
+    ).map((o) => o.id);
+    if (certObjectiveIds.length === 0) return { staleLessons: 0, staleQuestions: 0 };
+
+    const certSectionIds = (
+      await db
+        .select({ id: sections.id })
+        .from(sections)
+        .where(inArray(sections.objectiveId, certObjectiveIds))
+    ).map((s) => s.id);
+
+    const [staleLessonRows, staleQuestionRows] = await Promise.all([
+      certSectionIds.length > 0
+        ? db
+            .select({ id: lessons.id })
+            .from(lessons)
+            .where(and(inArray(lessons.sectionId, certSectionIds), eq(lessons.reviewStatus, "stale")))
+        : Promise.resolve([]),
+      db
+        .select({ id: questions.id })
+        .from(questions)
+        .where(and(inArray(questions.objectiveId, certObjectiveIds), eq(questions.stale, true))),
+    ]);
+
+    return { staleLessons: staleLessonRows.length, staleQuestions: staleQuestionRows.length };
+  }
+
+  /**
+   * R1.4 (roadmap.md): "Quellenabdeckung validieren: Jedes Objective benötigt
+   * mindestens eine Referenz" - aber nur relevant, sobald die Zertifizierung
+   * überhaupt eine freigegebene Quelle hat (approved). Ohne freigegebene
+   * Quelle bleibt der bisherige rein KI-generierte Weg (roadmap2.md)
+   * unverändert gültig und wird nicht als "fehlende Abdeckung" gemeldet.
+   */
+  static async validateSourceCoverage(certificationId: string): Promise<{
+    hasApprovedSource: boolean;
+    objectivesWithoutReference: { id: string; code: string; title: string }[];
+  }> {
+    const db = getDb();
+    const [approvedSource] = await db
+      .select({ id: certificationSources.id })
+      .from(certificationSources)
+      .where(
+        and(
+          eq(certificationSources.certificationId, certificationId),
+          eq(certificationSources.status, "approved"),
+        ),
+      )
+      .limit(1);
+    if (!approvedSource) {
+      return { hasApprovedSource: false, objectivesWithoutReference: [] };
+    }
+
+    const certObjectives = await db
+      .select({ id: objectives.id, code: objectives.code, title: objectives.title })
+      .from(objectives)
+      .innerJoin(domains, eq(domains.id, objectives.domainId))
+      .where(eq(domains.certificationId, certificationId));
+    if (certObjectives.length === 0) {
+      return { hasApprovedSource: true, objectivesWithoutReference: [] };
+    }
+
+    const refs = await db
+      .select({ objectiveId: objectiveSourceRefs.objectiveId })
+      .from(objectiveSourceRefs)
+      .where(
+        inArray(
+          objectiveSourceRefs.objectiveId,
+          certObjectives.map((o) => o.id),
+        ),
+      );
+    const objectiveIdsWithRef = new Set(refs.map((r) => r.objectiveId));
+
+    return {
+      hasApprovedSource: true,
+      objectivesWithoutReference: certObjectives.filter((o) => !objectiveIdsWithRef.has(o.id)),
+    };
+  }
+
+  /**
    * Validates all content for a certification
    */
   static async validateCertificationContent(certificationId: string) {
@@ -241,13 +345,20 @@ export class ContentValidationService {
     const errorCount = allResults.filter((r) => !r.isValid).length;
     const warningCount = allResults.flatMap((r) => r.issues).filter((i) => i.severity === "warning").length;
 
+    const [sourceCoverage, staleContent] = await Promise.all([
+      this.validateSourceCoverage(certificationId),
+      this.getStaleContentCounts(certificationId),
+    ]);
+
     return {
       certificationId,
       totalContent: allResults.length,
       validContent: allResults.filter((r) => r.isValid).length,
       invalidContent: errorCount,
-      warnings: warningCount,
+      warnings: warningCount + sourceCoverage.objectivesWithoutReference.length,
       results: allResults,
+      sourceCoverage,
+      staleContent,
     };
   }
 }
