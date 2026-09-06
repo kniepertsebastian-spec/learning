@@ -31,4 +31,15 @@ describe("extractPdfPages", () => {
     expect(pages).toHaveLength(1);
     expect(pages[0].text).toContain("Only page");
   });
+
+  it("keeps blank pages so following page numbers remain correct", async () => {
+    const pdf = await buildTestPdf(["First page", "", "Third page"]);
+
+    const pages = await extractPdfPages(pdf);
+
+    expect(pages).toHaveLength(3);
+    expect(pages[1]).toEqual({ pageNumber: 2, text: "" });
+    expect(pages[2].pageNumber).toBe(3);
+    expect(pages[2].text).toContain("Third page");
+  });
 });

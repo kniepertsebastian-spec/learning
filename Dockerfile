@@ -17,8 +17,10 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init for proper signal handling and Poppler for CPU-portable
+# PDF text extraction. The previous pdf-parse 2.x dependency loaded a native
+# Skia canvas binary that raised SIGILL on older x86 hosts during `next build`.
+RUN apk add --no-cache dumb-init poppler-utils
 
 # Copy package files (full install: drizzle-kit/tsx are used at runtime for
 # db:migrate/db:seed/cert:add/content:* via `docker compose exec app npm run ...`)

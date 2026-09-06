@@ -139,6 +139,14 @@ Revoke the same way with `learner` instead of `admin`; the role is read fresh
 from the database on every request, so a revoked admin loses access
 immediately without needing to sign out.
 
+### PDF text extraction
+
+The production image installs Poppler's `pdftotext` utility for source-PDF
+extraction. This deliberately avoids the native Skia canvas dependency used by
+`pdf-parse` 2.x, which can terminate builds with `SIGILL` on older x86 hosts.
+For development outside Docker, install `pdftotext` locally (package
+`poppler-utils` on Debian/Ubuntu and Alpine).
+
 ### Troubleshooting
 ```bash
 # Rebuild images
