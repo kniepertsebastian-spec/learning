@@ -17,6 +17,7 @@ interface DraftState {
   warnings: string[];
   validationErrors: string[];
   truncatedSource: boolean;
+  confirmedLowConfidenceObjectives: string[];
 }
 
 interface StaleResult {
@@ -63,6 +64,13 @@ function confidenceColor(confidence: number): string {
   return "bg-green-500/10 text-green-600";
 }
 
+// Muss exakt lowConfidenceObjectiveKey() aus lib/server/admin/blueprint.ts
+// spiegeln - hier dupliziert, weil eine Client-Komponente dieses
+// Server-Modul (importiert u. a. die DB-Verbindung) nicht laden darf.
+function lowConfidenceKey(domainIndex: number, objectiveIndex: number): string {
+  return `${domainIndex}:${objectiveIndex}`;
+}
+
 export function BlueprintReview({
   sourceId,
   locale,
@@ -85,6 +93,9 @@ export function BlueprintReview({
   const [errors, setErrors] = useState(initialDraft.validationErrors);
   const [warnings, setWarnings] = useState(initialDraft.warnings);
   const [truncated] = useState(initialDraft.truncatedSource);
+  const [confirmedLowConfidence, setConfirmedLowConfidence] = useState(
+    () => new Set(initialDraft.confirmedLowConfidenceObjectives),
+  );
   const [pages] = useState(initialPages);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -117,10 +128,20 @@ export function BlueprintReview({
       const response = await fetch(`/api/admin/sources/${sourceId}/blueprint`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, suggestedSlug: slug }),
+        body: JSON.stringify({
+          content,
+          suggestedSlug: slug,
+          confirmedLowConfidenceObjectives: [...confirmedLowConfidence],
+        }),
       });
       const data = (await response.json()) as {
-        draft?: { content: BlueprintExtraction; suggestedSlug: string; warnings: string[]; validationErrors: string[] };
+        draft?: {
+          content: BlueprintExtraction;
+          suggestedSlug: string;
+          warnings: string[];
+          validationErrors: string[];
+          confirmedLowConfidenceObjectives: string[];
+        };
         error?: string;
       };
       if (!response.ok || !data.draft) throw new Error(data.error ?? `Status ${response.status}`);
@@ -128,6 +149,7 @@ export function BlueprintReview({
       setSlug(data.draft.suggestedSlug);
       setErrors(data.draft.validationErrors);
       setWarnings(data.draft.warnings);
+      setConfirmedLowConfidence(new Set(data.draft.confirmedLowConfidenceObjectives));
       setSavedNote(locale === "de" ? "Entwurf gespeichert." : "Draft saved.");
       return true;
     } catch (err) {
@@ -502,6 +524,27 @@ export function BlueprintReview({
                         }
                         className="mt-1.5 w-full rounded border border-border bg-surface px-1.5 py-1 text-xs disabled:opacity-60"
                       />
+                      {objective.confidence < 0.5 && (
+                        <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-red-600">
+                          <input
+                            type="checkbox"
+                            disabled={locked}
+                            checked={confirmedLowConfidence.has(lowConfidenceKey(domainIndex, objectiveIndex))}
+                            onChange={(e) =>
+                              setConfirmedLowConfidence((prev) => {
+                                const next = new Set(prev);
+                                const key = lowConfidenceKey(domainIndex, objectiveIndex);
+                                if (e.target.checked) next.add(key);
+                                else next.delete(key);
+                                return next;
+                              })
+                            }
+                          />
+                          {locale === "de"
+                            ? "Niedrige Extraktionssicherheit - manuell geprüft und bestätigt (Pflicht für Freigabe)"
+                            : "Low extraction confidence - manually reviewed and confirmed (required for approval)"}
+                        </label>
+                      )}
                     </li>
                   ))}
                 </ul>

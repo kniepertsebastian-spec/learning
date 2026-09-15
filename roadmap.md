@@ -235,13 +235,19 @@ Datenmodell zu ändern (`storageKey` bleibt ein opaker String).
 - [x] Für jedes Feld Seiten- oder Abschnittsreferenz speichern.
       (`locator` pro Objective, muss laut Prompt auf eine tatsächliche
       `== Seite N ==`-Markierung im Quelltext verweisen statt erfunden zu sein.)
-- [ ] Niedrige Extraktionssicherheit sichtbar machen und manuelle Bestätigung
-      verlangen. Sichtbarkeit ist da (Confidence-Badge pro Objective in der
-      Admin-UI, Sammelwarnung bei < 50 %) - eine harte Bestätigungspflicht vor
-      der Übernahme gibt es noch nicht, weil der Freigabe-Schritt selbst erst
-      mit R1.3 entsteht; dort ist der naheliegende Ort, sie technisch zu
-      erzwingen (z. B. Freigabe blockieren, solange niedrig-konfidente
-      Objectives nicht einzeln bestätigt wurden).
+- [x] Niedrige Extraktionssicherheit sichtbar machen und manuelle Bestätigung
+      verlangen. Sichtbarkeit war schon da (Confidence-Badge pro Objective);
+      jetzt zusätzlich hart erzwungen: `validateBlueprintDraft()`
+      (`lib/server/admin/blueprint.ts`) erzeugt für jedes Objective mit
+      confidence < 0.5 einen blockierenden Error, solange sein Positions-Key
+      (`lowConfidenceObjectiveKey()`) nicht in
+      `blueprint_drafts.confirmedLowConfidenceObjectives` steht. In
+      `BlueprintReview` erscheint dafür eine Pflicht-Checkbox direkt am
+      betroffenen Objective; "Blueprint freigeben" bleibt disabled, bis alle
+      niedrig-konfidenten Objectives einzeln bestätigt sind - geprüft sowohl
+      client- als auch serverseitig (`approveBlueprintDraft()`). Eine
+      Neu-Extraktion setzt die Bestätigungen zurück, da sie sich auf jetzt
+      überschriebene Objectives an denselben Positionen bezogen.
 - [x] Slug aus Name und Prüfungscode vorschlagen, aber editierbar lassen.
       (`suggestSlug()`, editierbares Feld in der Admin-UI, gespeichert über
       `PATCH /api/admin/sources/:id/blueprint`.)
@@ -306,12 +312,10 @@ verbleibenden Errors, und setzt erst danach `status = approved`. Das macht
 "freigegebene Objectives" für R1.4 (quellengebundene Generierung) zum ersten
 Mal zu echten, abfragbaren Datensätzen statt nur zu KI-Entwurfstext.
 
-**Bekannte Lücke:** "Niedrige Extraktionssicherheit ... manuelle Bestätigung
-verlangen" (R1.2) ist weiterhin nur sichtbar (Confidence-Badges, Warnung ab
-< 50 %), nicht einzeln erzwungen - die Freigabe verlangt lediglich, dass
-keine Errors mehr offen sind. Eine echte Pro-Objective-Bestätigung für
-niedrige Confidence ist ein sinnvoller Nachtrag, sobald sich in der Praxis
-zeigt, dass die aktuelle Sichtbarkeit nicht reicht.
+**Nachtrag geschlossen:** "Niedrige Extraktionssicherheit ... manuelle
+Bestätigung verlangen" (R1.2) blockiert die Freigabe jetzt tatsächlich
+(`validateBlueprintDraft()` liefert dafür einen Error, solange nicht jedes
+Objective mit confidence < 0.5 einzeln bestätigt wurde) - siehe R1.2 oben.
 
 **Nicht abgedeckt (bewusst außerhalb des Merge-Umfangs):** `applyBlueprintDraft()`
 läuft gegen eine echte Postgres-Transaktion und ist in dieser Sandbox mangels

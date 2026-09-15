@@ -99,6 +99,7 @@ export default async function BlueprintReviewPage({
           warnings: draft.warnings,
           validationErrors: draft.validationErrors,
           truncatedSource: draft.truncatedSource,
+          confirmedLowConfidenceObjectives: draft.confirmedLowConfidenceObjectives,
         }}
       />
     </div>

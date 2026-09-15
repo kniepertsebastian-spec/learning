@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSourceText, suggestSlug, validateBlueprintDraft } from "./blueprint";
+import { buildSourceText, lowConfidenceObjectiveKey, suggestSlug, validateBlueprintDraft } from "./blueprint";
 import type { BlueprintExtraction } from "@/lib/server/ai/service";
 
 function objective(code: string, confidence = 0.9) {
@@ -123,8 +123,8 @@ describe("validateBlueprintDraft", () => {
     expect(warnings.some((w) => w.includes("Lücke"))).toBe(true);
   });
 
-  it("flags low-confidence objectives so they require manual confirmation", () => {
-    const { warnings } = validateBlueprintDraft(
+  it("blocks approval with an error when a low-confidence objective isn't confirmed", () => {
+    const { errors, warnings } = validateBlueprintDraft(
       draft({
         domains: [
           {
@@ -135,7 +135,65 @@ describe("validateBlueprintDraft", () => {
         ],
       }),
     );
-    expect(warnings.some((w) => w.includes("niedriger Extraktionssicherheit"))).toBe(true);
+    expect(errors.some((e) => e.includes("1.1") && e.includes("niedrige"))).toBe(true);
+    expect(warnings).toEqual([]);
+  });
+
+  it("clears the low-confidence block once that objective's position is confirmed", () => {
+    const content = draft({
+      domains: [
+        {
+          name: "Domain 1",
+          weightPercent: 100,
+          objectives: [objective("1.1", 0.2)],
+        },
+      ],
+    });
+    const { errors } = validateBlueprintDraft(
+      content,
+      new Set([lowConfidenceObjectiveKey(0, 0)]),
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it("does not clear the block for a different objective's confirmation", () => {
+    const content = draft({
+      domains: [
+        {
+          name: "Domain 1",
+          weightPercent: 100,
+          objectives: [objective("1.1", 0.2)],
+        },
+      ],
+    });
+    const { errors } = validateBlueprintDraft(
+      content,
+      new Set([lowConfidenceObjectiveKey(0, 1)]),
+    );
+    expect(errors.some((e) => e.includes("1.1"))).toBe(true);
+  });
+
+  it("requires every low-confidence objective to be confirmed individually", () => {
+    const content = draft({
+      domains: [
+        {
+          name: "Domain 1",
+          weightPercent: 100,
+          objectives: [objective("1.1", 0.2), objective("1.2", 0.3)],
+        },
+      ],
+    });
+    const onlyFirstConfirmed = validateBlueprintDraft(
+      content,
+      new Set([lowConfidenceObjectiveKey(0, 0)]),
+    );
+    expect(onlyFirstConfirmed.errors.some((e) => e.includes("1.2"))).toBe(true);
+
+    const bothConfirmed = validateBlueprintDraft(
+      content,
+      new Set([lowConfidenceObjectiveKey(0, 0), lowConfidenceObjectiveKey(0, 1)]),
+    );
+    expect(bothConfirmed.errors).toEqual([]);
   });
 
   it("flags a missing exam format (question count/duration/passing score) as a warning", () => {

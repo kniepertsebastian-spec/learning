@@ -488,6 +488,16 @@ export const blueprintDrafts = pgTable("blueprint_drafts", {
   /** true, falls der Quelltext für den KI-Aufruf gekürzt werden musste (siehe
    * buildSourceText) - macht sichtbar, dass nicht das ganze Dokument einbezogen wurde. */
   truncatedSource: boolean("truncated_source").notNull().default(false),
+  /** R1.2-Nachtrag: "Niedrige Extraktionssicherheit ... manuelle Bestätigung
+   * verlangen" - Positions-Keys ("<domainIndex>:<objectiveIndex>") der
+   * Objectives, die ein Admin trotz confidence < 0.5 explizit bestätigt hat
+   * (siehe BlueprintReview). validateBlueprintDraft() blockiert die Freigabe,
+   * solange ein niedrig-konfidentes Objective hier fehlt. Wird bei jeder
+   * Neu-Extraktion zurückgesetzt (neuer Inhalt = neue Prüfung nötig). */
+  confirmedLowConfidenceObjectives: jsonb("confirmed_low_confidence_objectives")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
   modelVersion: text("model_version"),
   promptVersion: text("prompt_version"),
   generatedByUserId: uuid("generated_by_user_id").references(() => users.id, {
