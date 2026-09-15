@@ -11,12 +11,16 @@ import {
 } from "@/lib/server/db/schema";
 import { ObjectiveProgressService } from "@/lib/server/progress/service";
 import { recordReviewOutcomes } from "@/lib/server/review/service";
+import type { AnswerConfidence } from "@/lib/types";
 
 export class SectionNotFoundError extends Error {}
 
 export interface SectionQuizAnswerInput {
   questionId: string;
   selectedOptionId: string;
+  /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - optional,
+   * fehlt z. B. bei alten, noch nicht aktualisierten Offline-Paketen. */
+  confidence?: AnswerConfidence;
 }
 
 export interface SectionQuizAttemptResult {
@@ -94,6 +98,7 @@ export async function recordSectionQuizAttempt(
         questionId: a.questionId,
         selectedOptionId: a.selectedOptionId || null,
         isCorrect: results.find((r) => r.questionId === a.questionId)?.isCorrect ?? false,
+        confidence: a.confidence ?? null,
       })),
     );
   }

@@ -3,8 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import type { Locale } from "@/lib/types";
+import type { AnswerConfidence, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
+
+const CONFIDENCE_LABEL: Record<AnswerConfidence, { de: string; en: string }> = {
+  guessed: { de: "Geraten", en: "Guessed" },
+  unsure: { de: "Unsicher", en: "Unsure" },
+  sure: { de: "Sicher", en: "Sure" },
+};
 
 interface SessionQuestionItem {
   itemId: string;
@@ -61,6 +67,9 @@ export function StudySession({
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
+  const [confidences, setConfidences] = useState<Array<AnswerConfidence | null>>(() =>
+    questionItems.map(() => null),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<StudySessionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +82,7 @@ export function StudySession({
       answers: questionItems.map((item, i) => ({
         itemId: item.itemId,
         selectedOptionId: answers[i] ?? "",
+        confidence: confidences[i] ?? undefined,
       })),
     };
 
@@ -220,6 +230,36 @@ export function StudySession({
               </button>
             ))}
         </div>
+
+        {answers[currentIndex] && (
+          <div className="mt-4">
+            <p className="mb-2 text-xs text-foreground/60">
+              {locale === "de" ? "Wie sicher warst du dir?" : "How sure were you?"}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(CONFIDENCE_LABEL) as AnswerConfidence[]).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() =>
+                    setConfidences((prev) => {
+                      const next = [...prev];
+                      next[currentIndex] = level;
+                      return next;
+                    })
+                  }
+                  className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                    confidences[currentIndex] === level
+                      ? "border-accent bg-accent/10"
+                      : "border-border hover:bg-background"
+                  }`}
+                >
+                  {CONFIDENCE_LABEL[level][locale]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex items-center justify-between">

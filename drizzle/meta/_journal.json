@@ -120,6 +120,13 @@
       "when": 1789493309487,
       "tag": "0016_lethal_the_fallen",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789495614533,
+      "tag": "0017_productive_paladin",
+      "breakpoints": true
     }
   ]
 }

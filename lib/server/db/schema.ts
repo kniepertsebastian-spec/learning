@@ -14,7 +14,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { Locale, Localized } from "@/lib/types";
+import type { AnswerConfidence, Locale, Localized } from "@/lib/types";
 
 /** R0.2 (roadmap.md): learner is the default, admin unlocks /admin and every
  * admin API route/server action. */
@@ -241,6 +241,11 @@ export const quizAnswers = pgTable("quiz_answers", {
     onDelete: "set null",
   }),
   isCorrect: boolean("is_correct").notNull(),
+  /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - optional,
+   * vom Client VOR Aufdeckung der Korrektheit erfasst. Bewusst nicht auf
+   * exam_answers übertragen: die Abschlussprüfung soll eine realistische,
+   * zeitkritische Simulation bleiben statt einer reflektierenden Übung. */
+  confidence: text("confidence").$type<AnswerConfidence>(),
 });
 
 export const objectiveProgress = pgTable(
@@ -454,6 +459,9 @@ export const studySessionItems = pgTable("study_session_items", {
   referenceType: text("reference_type").$type<"question" | "section">().notNull(),
   referenceId: uuid("reference_id").notNull(),
   outcome: text("outcome").$type<ReviewOutcome>(),
+  /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - wie bei
+   * quizAnswers.confidence, nur für "question"-Items relevant. */
+  confidence: text("confidence").$type<AnswerConfidence>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
-import type { QuizQuestion, Locale } from "@/lib/types";
+import type { AnswerConfidence, QuizQuestion, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 
 export interface SectionQuizQuestion {
@@ -42,10 +42,11 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
   const [pendingAnswer, setPendingAnswer] = useState<{
     questionId: string;
     selectedOptionId: string;
+    confidence?: AnswerConfidence;
   } | null>(null);
-  const [answers, setAnswers] = useState<Array<{ questionId: string; selectedOptionId: string }>>(
-    [],
-  );
+  const [answers, setAnswers] = useState<
+    Array<{ questionId: string; selectedOptionId: string; confidence?: AnswerConfidence }>
+  >([]);
 
   function mapQuestion(q: SectionQuizQuestion): QuizQuestion {
     const sorted = [...q.options].sort((a, b) => a.orderNum - b.orderNum);
@@ -61,7 +62,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
     };
   }
 
-  function handleAnswered(isCorrect: boolean, selectedIndex: number) {
+  function handleAnswered(isCorrect: boolean, selectedIndex: number, confidence?: AnswerConfidence) {
     if (isCorrect) setCorrectCount((c) => c + 1);
     setHasAnsweredCurrent(true);
     const q = questions[quizIndex];
@@ -69,6 +70,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
     setPendingAnswer({
       questionId: q.id,
       selectedOptionId: sorted[selectedIndex]?.id ?? "",
+      confidence,
     });
   }
 
@@ -139,6 +141,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
         question={mapped}
         onAnswered={handleAnswered}
         sourceReference={questions[quizIndex].sourceReference}
+        askConfidence
       />
       <button
         type="button"

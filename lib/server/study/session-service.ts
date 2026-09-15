@@ -17,7 +17,7 @@ import {
   type StudySessionItemCategory,
   type StudySessionStatus,
 } from "@/lib/server/db/schema";
-import type { Localized } from "@/lib/types";
+import type { AnswerConfidence, Localized } from "@/lib/types";
 import { getDueReviewCount, getDueReviewItems, recordReviewOutcomes } from "@/lib/server/review/service";
 import {
   computeLessonFallbackCount,
@@ -416,6 +416,8 @@ async function selectFallbackLessonSections(
 export interface StudySessionAnswerInput {
   itemId: string;
   selectedOptionId: string;
+  /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - optional. */
+  confidence?: AnswerConfidence;
 }
 
 export interface StudySessionAttemptResult {
@@ -480,11 +482,15 @@ export async function completeStudySession(
   }
 
   if (results.length > 0) {
+    const confidenceByItemId = new Map(answers.map((a) => [a.itemId, a.confidence]));
     await Promise.all(
       results.map((r) =>
         db
           .update(studySessionItems)
-          .set({ outcome: r.isCorrect ? "correct" : "incorrect" })
+          .set({
+            outcome: r.isCorrect ? "correct" : "incorrect",
+            confidence: confidenceByItemId.get(r.itemId) ?? null,
+          })
           .where(eq(studySessionItems.id, r.itemId)),
       ),
     );
