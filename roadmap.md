@@ -499,29 +499,67 @@ aus fälligen Wiederholungen, schwachen Objectives und neuem Stoff.
       Fälligkeits-Sortiment in `getDueReviewItems()` (fälligste zuerst) -
       eine gerade beantwortete Frage springt sofort auf ein späteres `dueAt`
       und rückt damit automatisch hinter andere fällige Fragen.
-- [ ] Neue Inhalte begrenzen, wenn viele Wiederholungen überfällig sind. Gehört
-      strukturell zur Session-Zusammenstellung (60/25/15-Mix aus
-      Wiederholung/schwachen Bereichen/neuem Stoff) und ist daher Teil von
-      R2.3 (Session Builder), nicht des Schedulers selbst - `getDueReviewCount()`
-      liegt bereits bereit, damit R2.3 diese Zahl für die Drosselung nutzen kann.
+- [x] Neue Inhalte begrenzen, wenn viele Wiederholungen überfällig sind. Wie
+      hier vorgemerkt in R2.3 umgesetzt: `computeSessionComposition()`
+      (`lib/server/study/session-builder.ts`) lässt neuen Stoff auf 0 fallen
+      und Review den frei werdenden Anteil übernehmen, sobald der
+      Rückstau (`dueCount`, aus `getDueReviewCount()`) den regulären
+      60-%-Anteil übersteigt.
 
 #### R2.3 Session Builder
 
-- [ ] Session anhand des Zeitbudgets erstellen.
-- [ ] Empfohlener Startmix: 60 % fällige Wiederholungen, 25 % schwache Bereiche,
-      15 % neuer Stoff.
-- [ ] Prüfungstermin und Domaingewichtung in die Priorisierung einbeziehen.
-- [ ] Bei zu kleinem Fragenpool auf Lesson-Wiederholung oder vorhandene Remediation
-      zurückfallen.
-- [ ] Session deterministisch speichern, damit ein Reload sie nicht verändert.
+- [x] Session anhand des Zeitbudgets erstellen. `estimateTargetQuestionCount()`
+      übersetzt das Tagesziel aus `study_profiles` (R2.1) in eine
+      Ziel-Fragenanzahl (bei einem Zeitziel über eine dokumentierte
+      Minuten-pro-Frage-Schätzung, `MINUTES_PER_SESSION_QUESTION`).
+- [x] Empfohlener Startmix: 60 % fällige Wiederholungen, 25 % schwache
+      Bereiche, 15 % neuer Stoff. `computeSessionComposition()`, reine
+      Funktion, vollständig getestet (inkl. Pool-Kappung und Umverteilung
+      bei zu kleinen Kategorien).
+- [x] Prüfungstermin und Domaingewichtung in die Priorisierung einbeziehen.
+      Domaingewichtung: `selectNewQuestions()`/`getDueReviewItems()` (R2.2)
+      sortieren nach `domains.weightPercent`. Prüfungstermin: innerhalb von
+      `EXAM_URGENCY_WINDOW_DAYS` (7 Tage) vor der Prüfung reallokiert
+      `reallocateForExamUrgency()` neuen Stoff zugunsten von Review/Weak -
+      bewusst nur soweit dort tatsächlich noch Plätze frei sind (an die real
+      abrufbaren Pools gebunden), damit die Session nie mehr verspricht, als
+      sie befüllen kann.
+- [x] Bei zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen.
+      `computeLessonFallbackCount()` + `selectFallbackLessonSections()`
+      füllen die Differenz zum Tagesziel mit Lesson-Links auf. "... oder
+      vorhandene Remediation" bewusst NICHT umgesetzt: dafür bräuchte es
+      eine Auswahllogik für "welche Remediation-Session ist noch relevant",
+      die es noch nicht gibt (Remediation-Sessions werden bislang nur direkt
+      über den "Bereiche benötigen Wiederholung"-Banner erreicht) - Lesson-
+      Fallback allein deckt den Fall "zu wenig Fragen" bereits ab.
+- [x] Session deterministisch speichern, damit ein Reload sie nicht
+      verändert. `study_sessions`/`study_session_items`, höchstens eine
+      aktive Session pro (Nutzer, Zertifizierung) (Unique-Partial-Index
+      `study_sessions_active_per_user_cert`, wie `content_generation_jobs`
+      in R0.3) - `getOrCreateStudySession()` liest eine bestehende (aktive
+      ODER von heute abgeschlossene/ausgesetzte) Session, statt sie neu zu
+      bauen.
 
 #### R2.4 Dashboard „Heute lernen“
 
-- [ ] Primäre CTA mit geschätzter Dauer.
-- [ ] Fällige Reviews, Lernserie und Tagesziel anzeigen.
-- [ ] Drei wichtigste schwache Objectives erklären.
-- [ ] „Später“, „Heute aussetzen“ und Zielanpassung ermöglichen.
-- [ ] Nach der Session eine kurze, motivierende Zusammenfassung zeigen.
+- [x] Primäre CTA mit geschätzter Dauer. `TodayDashboard`-Panel auf der
+      Kursseite, Link zur Session mit `estimateSessionMinutes()`-Schätzung
+      im Button-Text.
+- [x] Fällige Reviews, Lernserie und Tagesziel anzeigen. `getDueReviewCount()`
+      (R2.2), `getStudyStreak()` (`computeStreak()` über abgeschlossene
+      `study_sessions`), Zielwerte aus dem Session-Schnappschuss.
+- [x] Drei wichtigste schwache Objectives erklären. `getTopWeakObjectives()` -
+      niedrigste Mastery zuerst, mit Domain-Name und Mastery-Prozentzahl.
+- [x] „Später“, „Heute aussetzen“ und Zielanpassung ermöglichen. "Später"
+      bewusst ohne Persistenz (blendet die Karte nur für die aktuelle
+      Ansicht aus - kein Hydration-Mismatch-Risiko durch serverseitig
+      unbekannten Browser-Zustand); "Heute aussetzen" setzt den
+      Session-Status echt auf `skipped` (`POST /api/study-sessions/:id/skip`,
+      zählt entsprechend nicht in die Lernserie); Zielanpassung verlinkt auf
+      das `StudyGoalPanel` (R2.1) auf derselben Seite.
+- [x] Nach der Session eine kurze, motivierende Zusammenfassung zeigen.
+      Ergebnis-Ansicht in `StudySession` nach dem Einreichen (Score, Anzahl
+      richtig, ermutigender Text, Link zurück).
 
 #### R2.5 Readiness weiterentwickeln
 

@@ -384,6 +384,79 @@ export const studyProfiles = pgTable(
   ],
 );
 
+/** R2.3 (roadmap.md): Lebenszyklus einer Lernsession. */
+export type StudySessionStatus = "planned" | "in_progress" | "completed" | "skipped" | "abandoned";
+
+/**
+ * R2.3: eine vom Session Builder zusammengestellte, tageweise Lerneinheit
+ * aus fälligen Wiederholungen, schwachen Bereichen und neuem Stoff (siehe
+ * lib/server/study/session-builder.ts). `goalType`/`goalValue` sind ein
+ * Schnappschuss des zum Erstellungszeitpunkt gültigen study_profiles-Ziels -
+ * bewusst nicht live aus study_profiles gelesen, damit eine spätere
+ * Zieländerung eine bereits gebaute Session nicht rückwirkend verändert
+ * ("Session deterministisch speichern, damit ein Reload sie nicht
+ * verändert"). Höchstens eine aktive (planned/in_progress) Session pro
+ * (Nutzer, Zertifizierung) - derselbe Unique-Partial-Index-Ansatz wie bei
+ * content_generation_jobs (R0.3): ein Reload liest dieselbe Zeile erneut,
+ * statt eine neue Session zu erzeugen.
+ */
+export const studySessions = pgTable(
+  "study_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    status: text("status").$type<StudySessionStatus>().notNull().default("planned"),
+    goalType: text("goal_type").$type<StudyGoalType>().notNull(),
+    goalValue: integer("goal_value").notNull(),
+    plannedAt: timestamp("planned_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("study_sessions_active_per_user_cert")
+      .on(table.userId, table.certificationId)
+      .where(sql`${table.status} in ('planned', 'in_progress')`),
+    check(
+      "study_sessions_status_check",
+      sql`${table.status} in ('planned', 'in_progress', 'completed', 'skipped', 'abandoned')`,
+    ),
+    check("study_sessions_goal_type_check", sql`${table.goalType} in ('minutes', 'questions')`),
+  ],
+);
+
+/** R2.3: die drei Session-Builder-Kategorien plus der Lesson-Fallback ("Bei
+ * zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen"). */
+export type StudySessionItemCategory = "review" | "weak" | "new" | "lesson";
+
+/**
+ * R2.3: eine einzelne Position innerhalb einer study_sessions-Zeile.
+ * `referenceId` verweist je nach `referenceType` auf `questions.id` oder
+ * `sections.id` - bewusst OHNE DB-seitige FK (eine Spalte kann nicht auf
+ * zwei verschiedene Tabellen verweisen), Integrität wird ausschließlich in
+ * lib/server/study/session-service.ts sichergestellt, das diese Zeilen
+ * schreibt. `outcome` bleibt für Lesson-Items immer null (die werden
+ * gelesen, nicht beantwortet).
+ */
+export const studySessionItems = pgTable("study_session_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sessionId: uuid("session_id")
+    .notNull()
+    .references(() => studySessions.id, { onDelete: "cascade" }),
+  orderNum: integer("order_num").notNull(),
+  category: text("category").$type<StudySessionItemCategory>().notNull(),
+  referenceType: text("reference_type").$type<"question" | "section">().notNull(),
+  referenceId: uuid("reference_id").notNull(),
+  outcome: text("outcome").$type<ReviewOutcome>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const contentGenerationJobs = pgTable(
   "content_generation_jobs",
   {
