@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/server/auth-guards";
 import { approveBlueprintDraft, BlueprintNotApprovableError } from "@/lib/server/admin/blueprint-approval";
+import { recordAuditEvent } from "@/lib/server/audit/service";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,6 +23,16 @@ export async function POST(
   const { id } = await params;
   try {
     const { source, applyResult, diff, staleResult } = await approveBlueprintDraft(id, guard.user.id);
+    await recordAuditEvent({
+      actorUserId: guard.user.id,
+      action: "source.approved",
+      targetType: "certification_source",
+      targetId: id,
+      metadata: {
+        lessonsMarkedStale: staleResult?.lessonsMarkedStale ?? 0,
+        questionsMarkedStale: staleResult?.questionsMarkedStale ?? 0,
+      },
+    }).catch((error) => console.error("Audit-Log fehlgeschlagen:", error));
     return NextResponse.json({ source, applyResult, diff, staleResult });
   } catch (error) {
     if (error instanceof BlueprintNotApprovableError) {

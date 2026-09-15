@@ -10,6 +10,7 @@ import {
 import { blueprintExtractionSchema } from "@/lib/server/ai/schemas";
 import type { BlueprintExtraction } from "@/lib/server/ai/service";
 import { checkBlueprintExtractionRateLimit } from "@/lib/server/admin/rate-limit";
+import { recordAuditEvent } from "@/lib/server/audit/service";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,6 +56,12 @@ export async function POST(
   const { id } = await params;
   try {
     const draft = await generateAndStoreBlueprintDraft(id, guard.user.id);
+    await recordAuditEvent({
+      actorUserId: guard.user.id,
+      action: "blueprint_extraction.started",
+      targetType: "certification_source",
+      targetId: id,
+    }).catch((error) => console.error("Audit-Log fehlgeschlagen:", error));
     return NextResponse.json({ draft }, { status: 201 });
   } catch (error) {
     if (error instanceof SourceNotParsedError || error instanceof BlueprintLockedError) {

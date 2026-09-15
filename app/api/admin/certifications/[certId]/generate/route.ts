@@ -10,6 +10,7 @@ import {
   startContentGenerationJob,
 } from "@/lib/server/admin/content-generation";
 import { checkContentGenerationRateLimit } from "@/lib/server/admin/rate-limit";
+import { recordAuditEvent } from "@/lib/server/audit/service";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -104,6 +105,13 @@ export async function POST(
   console.log(
     `Generierungsjob ${job.id} für Zertifizierung ${certId} gestartet von Nutzer ${user.id}.`,
   );
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "content_generation.started",
+    targetType: "certification",
+    targetId: certId,
+    metadata: { jobId: job.id, certificationSlug: certification.slug },
+  }).catch((error) => console.error("Audit-Log fehlgeschlagen:", error));
   startContentGenerationJob(job.id, certId, certification.slug);
   return NextResponse.json({ job }, { status: 202 });
 }

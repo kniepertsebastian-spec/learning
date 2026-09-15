@@ -2,6 +2,7 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 import { CertificationManagementService } from "../lib/server/admin/certification-management";
+import { recordAuditEvent } from "../lib/server/audit/service";
 
 /**
  * Adds a new certification from a predefined template (roadmap2.md Dev-Order
@@ -38,6 +39,14 @@ async function main() {
   }
 
   const result = await CertificationManagementService.createCertificationWithDomains(template);
+
+  await recordAuditEvent({
+    actorType: "cli",
+    action: "certification.created",
+    targetType: "certification",
+    targetId: result.certificationId,
+    metadata: { templateSlug, name: template.name, domainsCreated: result.domainsCreated },
+  }).catch((err) => console.error("Audit-Log fehlgeschlagen:", err));
 
   console.log(
     `Created "${template.name}" (${result.certificationId}) with ${result.domainsCreated} domains.`,

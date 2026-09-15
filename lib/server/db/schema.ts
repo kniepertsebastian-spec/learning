@@ -3,6 +3,7 @@ import {
   type AnyPgColumn,
   boolean,
   check,
+  index,
   integer,
   jsonb,
   numeric,
@@ -776,5 +777,39 @@ export const syncEvents = pgTable(
   },
   (table) => [
     unique("sync_events_user_client_event_unique").on(table.userId, table.clientEventId),
+  ],
+);
+
+/** R0 (roadmap.md, neue Fassung): "Änderungen an Inhalten und Rollen
+ * auditierbar machen" + "kostenpflichtige Aktionen ... protokollieren".
+ * Bewusst eine einzelne generische Tabelle statt einer je Aktionstyp - die
+ * Menge unterschiedlicher auditierter Aktionen ist klein und wächst
+ * langsam, ein append-only Log mit freiem `metadata`-Feld genügt dafür,
+ * siehe lib/server/audit/service.ts. */
+export type AuditActorType = "user" | "cli" | "system";
+
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null bei actorType "cli"/"system" (z. B. scripts/set-user-role.ts,
+     * das mit einer direkten DB-Verbindung läuft, nicht als eingeloggter
+     * Nutzer). */
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    actorType: text("actor_type").$type<AuditActorType>().notNull().default("user"),
+    /** Stabiler, punktgetrennter Aktionsname, z. B. "role.changed",
+     * "certification.created", "content_generation.started",
+     * "blueprint_extraction.started", "source.approved". */
+    action: text("action").notNull(),
+    targetType: text("target_type"),
+    /** Kein FK - das Ziel kann in jeder Tabelle liegen (gleiches Muster wie
+     * studySessionItems.referenceId), Integrität bleibt App-seitig. */
+    targetId: uuid("target_id"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("audit_events_created_at_idx").on(table.createdAt),
+    index("audit_events_actor_user_id_idx").on(table.actorUserId),
   ],
 );
