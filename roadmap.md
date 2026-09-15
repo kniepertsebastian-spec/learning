@@ -459,13 +459,38 @@ aus fälligen Wiederholungen, schwachen Objectives und neuem Stoff.
 
 #### R2.2 Review-Scheduler
 
-- [ ] Für beantwortete Fragen beziehungsweise Objectives einen Review-Zustand führen.
-- [ ] Zunächst einen nachvollziehbaren Leitner-/SM-2-ähnlichen Algorithmus verwenden.
-- [ ] Falsche Antwort kurzfristig erneut einplanen.
-- [ ] Richtige Antworten mit wachsendem Abstand einplanen.
-- [ ] Schwierigkeit, letzte Versuche und Objective-Gewichtung berücksichtigen.
-- [ ] Fragenrotation sicherstellen, damit nicht nur dieselbe Frage auswendig gelernt wird.
-- [ ] Neue Inhalte begrenzen, wenn viele Wiederholungen überfällig sind.
+- [x] Für beantwortete Fragen einen Review-Zustand führen. Bewusst pro Frage,
+      nicht pro Objective (`review_items`, unique auf `(userId, questionId)`) -
+      sonst würde "Fragenrotation sicherstellen" (siehe unten) nicht
+      funktionieren: ein Objective mit mehreren Fragen wäre nach der ersten
+      richtigen Antwort komplett erledigt, statt die einzelnen Fragen wirklich
+      rotieren zu lassen.
+- [x] Zunächst einen nachvollziehbaren Leitner-/SM-2-ähnlichen Algorithmus
+      verwenden. (`computeNextReview()` in `lib/server/review/scheduler.ts` -
+      reine, vollständig getestete Funktion: Ease-Faktor 1.3–2.8, Intervalle
+      1 Tag / 6 Tage / `Intervall × Ease-Faktor` ab der dritten Wiederholung.)
+- [x] Falsche Antwort kurzfristig erneut einplanen. (Sofort wieder fällig -
+      `intervalDays = 0` bei "incorrect", zusätzlich sinkt der Ease-Faktor.)
+- [x] Richtige Antworten mit wachsendem Abstand einplanen. (Repetitions-Zähler
+      + wachsendes Intervall, siehe oben - getestet mit drei aufeinanderfolgenden
+      richtigen Antworten.)
+- [x] Schwierigkeit ... berücksichtigen. (`difficultyMultiplier()`: "advanced"
+      verkürzt das Intervall, "beginner" verlängert es.) "... letzte Versuche
+      und Objective-Gewichtung berücksichtigen" teilweise: letzte Versuche
+      fließen über `repetitions`/`easeFactor` bereits ein; Objective-/Domain-
+      Gewichtung ist als Sortierkriterium in `getDueReviewItems()` vorhanden
+      (Tiebreaker bei gleicher Fälligkeit), eine echte gewichtete Auswahl
+      unter mehreren fälligen Objectives ist aber erst mit dem Session Builder
+      (R2.3) sinnvoll umsetzbar.
+- [x] Fragenrotation sicherstellen. Ergibt sich strukturell aus dem
+      Fälligkeits-Sortiment in `getDueReviewItems()` (fälligste zuerst) -
+      eine gerade beantwortete Frage springt sofort auf ein späteres `dueAt`
+      und rückt damit automatisch hinter andere fällige Fragen.
+- [ ] Neue Inhalte begrenzen, wenn viele Wiederholungen überfällig sind. Gehört
+      strukturell zur Session-Zusammenstellung (60/25/15-Mix aus
+      Wiederholung/schwachen Bereichen/neuem Stoff) und ist daher Teil von
+      R2.3 (Session Builder), nicht des Schedulers selbst - `getDueReviewCount()`
+      liegt bereits bereit, damit R2.3 diese Zahl für die Drosselung nutzen kann.
 
 #### R2.3 Session Builder
 
