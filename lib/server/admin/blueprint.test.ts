@@ -32,6 +32,10 @@ describe("validateBlueprintDraft", () => {
       certificationName: "Test Cert",
       provider: "Test Provider",
       examCode: "T0-001",
+      examQuestionCount: 90,
+      examDurationMinutes: 90,
+      passingScore: 750,
+      scoreScale: "100-900",
       domains: [
         { name: "Domain 1", weightPercent: 50, objectives: [objective("1.1"), objective("1.2")] },
         { name: "Domain 2", weightPercent: 50, objectives: [objective("2.1")] },
@@ -132,6 +136,21 @@ describe("validateBlueprintDraft", () => {
       }),
     );
     expect(warnings.some((w) => w.includes("niedriger Extraktionssicherheit"))).toBe(true);
+  });
+
+  it("flags a missing exam format (question count/duration/passing score) as a warning", () => {
+    const { errors, warnings } = validateBlueprintDraft(
+      draft({ examQuestionCount: null, examDurationMinutes: null, passingScore: null }),
+    );
+    expect(errors).toEqual([]);
+    expect(warnings.some((w) => w.includes("Prüfungsformat"))).toBe(true);
+  });
+
+  it("does not flag exam format when at least one of question count/duration/passing score is known", () => {
+    const { warnings } = validateBlueprintDraft(
+      draft({ examQuestionCount: null, examDurationMinutes: null, passingScore: 750 }),
+    );
+    expect(warnings.some((w) => w.includes("Prüfungsformat"))).toBe(false);
   });
 });
 

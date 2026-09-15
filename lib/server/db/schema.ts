@@ -74,6 +74,22 @@ export const certifications = pgTable("certifications", {
   examName: text("exam_name").notNull(),
   examVersion: text("exam_version").notNull(),
   lastVerifiedDate: timestamp("last_verified_date", { withTimezone: true }),
+  /** Prüfungsrealismus-Ergänzung zu R1.2: reales Prüfungsformat, aus der
+   * offiziellen Quelle extrahiert (blueprintExtractionSchema) statt wie
+   * bisher global hartkodiert (siehe lib/server/exam/blueprint.ts vor dieser
+   * Änderung: `totalQuestions = 90` für jede Zertifizierung). Bleibt null,
+   * bis eine Quelle freigegeben wurde, die diese Werte enthielt - der
+   * Exam-Generator fällt dann weiterhin auf den bisherigen Default zurück. */
+  examQuestionCount: integer("exam_question_count"),
+  examDurationMinutes: integer("exam_duration_minutes"),
+  /** Offizielle Bestehensgrenze auf der jeweiligen Anbieter-Skala (siehe
+   * scoreScale), z. B. 750 auf einer 100-900-Skala - rein informativ für die
+   * Lernenden-Ansicht, fließt NICHT in die "Readiness"-Berechnung ein (siehe
+   * lib/server/exam/scoring.ts: Readiness bleibt bewusst ein prozentualer
+   * Lernindikator, keine Simulation der offiziellen Skala). */
+  passingScore: numeric("passing_score", { precision: 6, scale: 2 }),
+  /** Menschenlesbare Skalenbeschreibung, z. B. "100-900" oder "0-100%". */
+  scoreScale: text("score_scale"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

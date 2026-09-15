@@ -159,5 +159,13 @@ export const blueprintExtractionSchema = z.object({
   certificationName: z.string().min(1),
   provider: z.string().min(1),
   examCode: z.string().min(1),
+  /** Prüfungsrealismus-Ergänzung zu R1.2: reales Prüfungsformat, falls im
+   * Text angegeben - sonst exakt `null` (dieselbe "nicht raten"-Regel wie
+   * bei domain.weightPercent oben), damit der Exam-Generator nicht mit
+   * erfundenen Werten arbeitet. */
+  examQuestionCount: z.number().int().min(1).nullable(),
+  examDurationMinutes: z.number().int().min(1).nullable(),
+  passingScore: z.number().min(0).nullable(),
+  scoreScale: z.string().min(1).nullable(),
   domains: z.array(blueprintDomainSchema).min(1),
 });

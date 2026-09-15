@@ -245,6 +245,17 @@ Datenmodell zu ändern (`storageKey` bleibt ein opaker String).
 - [x] Slug aus Name und Prüfungscode vorschlagen, aber editierbar lassen.
       (`suggestSlug()`, editierbares Feld in der Admin-UI, gespeichert über
       `PATCH /api/admin/sources/:id/blueprint`.)
+- [x] Prüfungsrealismus-Ergänzung: reales Prüfungsformat (Fragenanzahl,
+      Zeitlimit, Bestehensgrenze, Skala) mit extrahieren statt es weiterhin
+      global hartzukodieren. `blueprintExtractionSchema` (dieselbe
+      "nicht raten, sonst `null`"-Regel wie bei `weightPercent`), editierbar
+      in `BlueprintReview`, bei Freigabe non-destruktiv (nur belegte Felder)
+      nach `certifications.examQuestionCount`/`examDurationMinutes`/
+      `passingScore`/`scoreScale` übernommen (`blueprint-approval.ts`).
+      `buildExamBlueprint()`/`generateFinalExam()` (`lib/server/exam/`)
+      nutzen das statt der vorherigen festen `90` für jede Zertifizierung;
+      `ExamSession` skaliert das Zeitlimit entsprechend, mit Fallback auf den
+      bisherigen Wert, solange eine Zertifizierung das (noch) nicht hat.
 
 **Bewusste Vereinfachungen für R1.2:** Extraktion läuft synchron in einem
 Request (ein einzelner Gemini-Aufruf, ratenbegrenzt wie R0.3, aber kein

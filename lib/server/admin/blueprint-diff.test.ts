@@ -18,6 +18,10 @@ function blueprint(overrides: Partial<BlueprintExtraction> = {}): BlueprintExtra
     certificationName: "Test",
     provider: "Test Provider",
     examCode: "T0-001",
+    examQuestionCount: null,
+    examDurationMinutes: null,
+    passingScore: null,
+    scoreScale: null,
     domains: [
       {
         name: "Domain 1",

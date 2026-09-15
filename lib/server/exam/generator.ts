@@ -22,11 +22,15 @@ export interface ExamCreated {
  * Generates a final practice exam for a learner.
  * Creates exam record and selects questions based on blueprint.
  * Avoids questions the learner has already answered in quizzes.
+ *
+ * `totalQuestions`: optional override - without it, buildExamBlueprint()
+ * uses the certification's real question count (once extracted from an
+ * official source), falling back to a generic default.
  */
 export async function generateFinalExam(
   certificationId: string,
   userId: string,
-  totalQuestions: number = 90,
+  totalQuestions?: number,
 ): Promise<ExamCreated> {
   const db = getDb();
 
