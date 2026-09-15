@@ -687,6 +687,27 @@ wiederkehrende Fehler und Readiness-Trends lassen sich nachvollziehen.
 
 ---
 
+### Konsolidierung vor R4: Altes Dexie-System entfernt
+
+Vor R4 wurde das alte, parallel existierende v1-Frontend (IndexedDB/Dexie via
+`lib/db.ts`, `lib/hooks/queries.ts`, `lib/hooks/mutations.ts`) inklusive der
+dazugehörigen, aus keiner Navigation mehr erreichbaren Seiten
+(`app/cert/[id]/exam`, `app/cert/[id]/day/[day]`, `AddCertModal`,
+`CertificateCard`) und der nur von diesen genutzten Live-Generierungs-Routen
+(`app/api/generate/chapter|curriculum|mock-exam`) vollständig entfernt.
+Postgres (v2) ist damit die alleinige Datenquelle des Frontends. Geteilte
+Bausteine, die sowohl v1 als auch das aktive v2-System nutzten
+(`localizedStringSchema`/`localizedStringArraySchema` in `lib/ai/schemas.ts`,
+`Locale`/`Localized`/`QuizQuestion` in `lib/types.ts`, `lib/ai/generate.ts`,
+`lib/ai/http.ts`, `lib/gemini.ts`), wurden unverändert beibehalten. Die
+`dexie`/`dexie-react-hooks`-Abhängigkeiten wurden aus `package.json` entfernt.
+Damit entfällt für R4.2 der ursprünglich vorgesehene Schritt „Vorhandenes
+IndexedDB/Dexie-Konzept auf Backend-Inhalte abstimmen" - R4 baut die
+Offline-Datenhaltung direkt und ausschließlich auf den v2-Postgres-Inhalten
+neu auf, ohne ein bestehendes Altsystem migrieren zu müssen.
+
+---
+
 ## R4 — Offline-Kurse und Synchronisation
 
 ### Ziel
@@ -707,7 +728,7 @@ nach Wiederherstellung des Netzes genau einmal synchronisiert.
 
 #### R4.2 Lokale Datenhaltung
 
-- [ ] Vorhandenes IndexedDB/Dexie-Konzept auf Backend-Inhalte abstimmen.
+- [x] Vorhandenes IndexedDB/Dexie-Konzept auf Backend-Inhalte abstimmen. *(Konsolidierung vor R4: Altsystem entfernt statt migriert - R4.2 startet direkt mit einer neuen, v2-Postgres-basierten lokalen Datenhaltung.)*
 - [ ] Keine Passwort- oder Session-Secrets in der Offline-Datenbank speichern.
 - [ ] Inhalte nach Nutzer und Kursversion partitionieren.
 - [ ] „Offline-Daten löschen“ in den Einstellungen anbieten.

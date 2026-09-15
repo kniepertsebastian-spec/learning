@@ -46,11 +46,10 @@ export type CertificationSourceStatus =
 /**
  * v2-Backend-Schema nach roadmap2.md Phase 2/3 (Certification -> Domain ->
  * Objective -> Section -> Lesson/Quiz -> Attempt -> Objective Progress).
- * Bewusst getrennt von lib/db.ts (Dexie, weiterhin die einzige Datenquelle des
- * aktuell deployten Frontends) - siehe roadmap2.md Dev-Order Schritt 1/2.
+ * Einzige Datenquelle des Frontends (das frühere parallele Dexie/IndexedDB-
+ * System wurde entfernt - siehe roadmap.md, Konsolidierung vor R4).
  * Bilinguale Felder ({de,en}) folgen exakt der Localized<T>-Konvention aus
- * lib/types.ts, als jsonb-Spalte (immer als Paar gelesen/geschrieben, nie
- * teilweise - passend zur bisherigen Dexie-Nutzung).
+ * lib/types.ts, als jsonb-Spalte (immer als Paar gelesen/geschrieben).
  */
 
 export const users = pgTable(
