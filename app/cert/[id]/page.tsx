@@ -9,6 +9,8 @@ import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, objectives, sections, lessons, objectiveProgress } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { RemediationService } from "@/lib/server/remediation/service";
+import { getStudyProfile } from "@/lib/server/study/profile";
+import { StudyGoalPanel, type StudyGoalState } from "@/components/StudyGoalPanel";
 
 interface ProgressData {
   [key: string]: { masteryScore: number; status: string };
@@ -68,10 +70,12 @@ export default async function CertDetailPage({
   // Fetch progress data if user is authenticated
   let progressData: ProgressData = {};
   let needsRemediation: Array<{ objectiveId: string; objectiveTitle: string }> = [];
+  let studyGoal: StudyGoalState | null = null;
   if (session?.user?.id) {
-    const [progress, remediationTargets] = await Promise.all([
+    const [progress, remediationTargets, studyProfile] = await Promise.all([
       db.select().from(objectiveProgress).where(eq(objectiveProgress.userId, session.user.id)),
       RemediationService.findObjectivesNeedingRemediation(session.user.id),
+      getStudyProfile(session.user.id, cert.id),
     ]);
     progressData = Object.fromEntries(
       progress.map((p) => [p.objectiveId, { masteryScore: Number(p.masteryScore), status: p.status }])
@@ -79,6 +83,15 @@ export default async function CertDetailPage({
     // Only show objectives that belong to this certification
     const certObjectiveIds = new Set(allObjectives.map((o) => o.id));
     needsRemediation = remediationTargets.filter((r) => certObjectiveIds.has(r.objectiveId));
+    studyGoal = studyProfile
+      ? {
+          examDate: studyProfile.examDate ? studyProfile.examDate.toISOString().slice(0, 10) : null,
+          dailyGoalType: studyProfile.dailyGoalType,
+          dailyGoalValue: studyProfile.dailyGoalValue,
+          activeDays: studyProfile.activeDays,
+          preferredLocale: studyProfile.preferredLocale,
+        }
+      : null;
   }
 
   // Calculate domain mastery
@@ -156,6 +169,8 @@ export default async function CertDetailPage({
           </Link>
         </div>
       )}
+
+      {session && <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} />}
 
       {needsRemediation.length > 0 && (
         <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">

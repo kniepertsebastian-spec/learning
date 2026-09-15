@@ -13,7 +13,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { Localized } from "@/lib/types";
+import type { Locale, Localized } from "@/lib/types";
 
 /** R0.2 (roadmap.md): learner is the default, admin unlocks /admin and every
  * admin API route/server action. */
@@ -327,6 +327,59 @@ export const reviewItems = pgTable(
     check(
       "review_items_last_outcome_check",
       sql`${table.lastOutcome} is null or ${table.lastOutcome} in ('correct', 'incorrect')`,
+    ),
+  ],
+);
+
+/** R2.1 (roadmap.md): "Tägliches Zeit- oder Fragenziel festlegen" - genau
+ * eines von beiden gilt, je nachdem, was `dailyGoalType` sagt. */
+export type StudyGoalType = "minutes" | "questions";
+
+/**
+ * R2.1: Lernprofil je (Nutzer, Zertifizierung) - Grundlage für den Session
+ * Builder (R2.3) und das "Heute lernen"-Dashboard (R2.4). Eine separate
+ * Tabelle statt Felder auf `users`, weil das Profil PRO KURS gilt (Prüfungs-
+ * termin und Tagesziel unterscheiden sich je Zertifizierung). "Ziel jederzeit
+ * änderbar machen, ohne bisherigen Fortschritt zu verlieren" ist dadurch
+ * erfüllt, dass diese Tabelle reine Zieleinstellungen hält und nie etwas in
+ * objective_progress/review_items/quiz_attempts anfasst - ein Update hier
+ * kann also strukturell keinen Fortschritt löschen.
+ */
+export const studyProfiles = pgTable(
+  "study_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    /** "Prüfungstermin optional speichern" - bewusst nullable. */
+    examDate: timestamp("exam_date", { withTimezone: true }),
+    dailyGoalType: text("daily_goal_type").$type<StudyGoalType>().notNull().default("minutes"),
+    dailyGoalValue: integer("daily_goal_value").notNull().default(15),
+    /** ISO-Wochentage (1 = Montag ... 7 = Sonntag), an denen gelernt werden
+     * soll - "Aktive Lerntage ... speichern". */
+    activeDays: jsonb("active_days").$type<number[]>().notNull().default([1, 2, 3, 4, 5, 6, 7]),
+    /** "bevorzugte Sprache speichern" - unabhängig vom UI-Sprachcookie
+     * (lib/server/locale.ts): eine bewusste Lernziel-Angabe je Kurs, z. B. um
+     * Inhalte auf Englisch zu üben, obwohl die Oberfläche auf Deutsch steht.
+     * `null` = keine Präferenz (UI-Sprache gilt weiter). */
+    preferredLocale: text("preferred_locale").$type<Locale>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("study_profiles_user_certification_unique").on(table.userId, table.certificationId),
+    check(
+      "study_profiles_daily_goal_type_check",
+      sql`${table.dailyGoalType} in ('minutes', 'questions')`,
+    ),
+    check("study_profiles_daily_goal_value_check", sql`${table.dailyGoalValue} > 0`),
+    check(
+      "study_profiles_preferred_locale_check",
+      sql`${table.preferredLocale} is null or ${table.preferredLocale} in ('de', 'en')`,
     ),
   ],
 );
