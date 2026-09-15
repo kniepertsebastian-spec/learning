@@ -14,6 +14,8 @@ import {
   peekActiveOrTodaySession,
   getStudyStreak,
   getTopWeakObjectives,
+  getSessionCategoryBreakdown,
+  getSessionRecommendationFeedback,
 } from "@/lib/server/study/session-service";
 import { getDueReviewCount } from "@/lib/server/review/service";
 import { getReadiness } from "@/lib/server/readiness/service";
@@ -125,16 +127,27 @@ export default async function CertDetailPage({
           preferredLocale: studyProfile.preferredLocale,
         }
       : null;
-    todayDashboard = sessionSummary && {
-      sessionId: sessionSummary.id,
-      sessionStatus: sessionSummary.status,
-      estimatedMinutes: sessionSummary.estimatedMinutes,
-      dueCount,
-      streak,
-      dailyGoalType: sessionSummary.goalType,
-      dailyGoalValue: sessionSummary.goalValue,
-      weakObjectives,
-    };
+    if (sessionSummary) {
+      // R2 (neue Roadmap-Fassung): "Empfehlungen mit Gründen anzeigen" +
+      // "Nutzerfeedback auf Empfehlungen erfassen" - beide hängen an der
+      // konkreten Session, daher erst nachgeladen, sobald deren ID bekannt ist.
+      const [categoryBreakdown, feedback] = await Promise.all([
+        getSessionCategoryBreakdown(sessionSummary.id),
+        getSessionRecommendationFeedback(sessionSummary.id),
+      ]);
+      todayDashboard = {
+        sessionId: sessionSummary.id,
+        sessionStatus: sessionSummary.status,
+        estimatedMinutes: sessionSummary.estimatedMinutes,
+        dueCount,
+        streak,
+        dailyGoalType: sessionSummary.goalType,
+        dailyGoalValue: sessionSummary.goalValue,
+        weakObjectives,
+        categoryBreakdown,
+        feedback,
+      };
+    }
   }
 
   // Calculate domain mastery
