@@ -4,6 +4,7 @@ config({ path: ".env.local" });
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
 import { users, type UserRole } from "../lib/server/db/schema";
+import { recordAuditEvent } from "../lib/server/audit/service";
 
 /**
  * Dokumentierter Weg, eine Adminrolle zu vergeben oder zu entziehen (R0.2 in
@@ -25,16 +26,29 @@ async function main() {
   }
 
   const db = getDb();
+  const [existing] = await db
+    .select({ id: users.id, role: users.role })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  if (!existing) {
+    console.error(`Kein Nutzer mit E-Mail "${email}" gefunden. Erst über /register registrieren.`);
+    process.exit(1);
+  }
+
   const [user] = await db
     .update(users)
     .set({ role })
     .where(eq(users.email, email))
     .returning({ id: users.id, email: users.email, role: users.role });
 
-  if (!user) {
-    console.error(`Kein Nutzer mit E-Mail "${email}" gefunden. Erst über /register registrieren.`);
-    process.exit(1);
-  }
+  await recordAuditEvent({
+    actorType: "cli",
+    action: "role.changed",
+    targetType: "user",
+    targetId: user.id,
+    metadata: { email: user.email, oldRole: existing.role, newRole: user.role },
+  }).catch((err) => console.error("Audit-Log fehlgeschlagen:", err));
 
   console.log(`OK: ${user.email} ist jetzt "${user.role}".`);
   process.exit(0);

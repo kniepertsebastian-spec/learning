@@ -440,6 +440,23 @@ Die vorhandene Anwendung wird abgesichert, bevor sensible Lern- und Unternehmens
 - sichere Uploadverarbeitung
 - Backup- und Wiederanlaufverfahren dokumentieren
 
+### Umsetzungsstand
+
+*(Ergänzt beim Wechsel auf diese Roadmap-Fassung: R0-R6 führen laut Abschnitt 7 die bisherige technische Roadmap fort - dieser Abschnitt ordnet den bereits gebauten Stand ein, statt bei null neu zu planen.)*
+
+Bereits umgesetzt:
+
+- Generatorfehler klassifizieren und verständlich darstellen (`classifyGenerationError()`, `ContentGenerationControl.tsx`).
+- Generierungsjobs wiederaufnehmbar/idempotent, parallele Generierung pro Kurs durch einen partiellen Unique-Index (`content_generation_jobs_active_per_cert`) verhindert.
+- Rollen `learner`/`admin` serverseitig abgesichert (`lib/server/auth-guards.ts`, bei jedem Request frisch aus der DB gelesen).
+- Kostenpflichtige Aktionen (Content-Generierung, Blueprint-Extraktion) sind pro Nutzer und Aktion rate-limitiert (`lib/server/admin/rate-limit.ts`).
+- Eingaben werden durchgängig mit Zod an den Servergrenzen validiert.
+- Sichere Uploadverarbeitung (PDF-Signaturprüfung, Checksummen-Dedup, `lib/server/admin/sources.ts`).
+- Kostenpflichtige/inhalts- und rollenändernde Aktionen sind auditierbar protokolliert: neue `audit_events`-Tabelle (append-only, `lib/server/audit/service.ts`), verdrahtet in Content-Generierung-Start, Blueprint-Extraktion-Start, Quellenfreigabe sowie den CLI-Skripten für Rollenänderung und Zertifizierungsanlage (letztere laufen mit direkter DB-Verbindung statt eingeloggter Session, daher `actorType: "cli"`).
+- Backup- und Wiederanlaufverfahren dokumentiert: [docs/BACKUP.md](docs/BACKUP.md) (logisches Postgres-Backup per `pg_dump`/`pg_restore`, Volume-Backup der hochgeladenen Quell-PDFs, Restore-Checkliste).
+
+R0 ist damit vollständig geschlossen.
+
 ### Abnahmekriterien
 
 - Kein Admin-Endpunkt verlässt sich ausschließlich auf die Benutzeroberfläche.
@@ -469,6 +486,12 @@ Offizielle Unterlagen bilden die Quelle der Wahrheit für Zertifikatskurse.
 - neue Blueprint-Versionen vergleichen
 - betroffene Inhalte als veraltet markieren
 - alte Lernverläufe lesbar halten
+
+### Umsetzungsstand
+
+Bereits umgesetzt: PDF-Quellenimport, Extraktion (Anbieter/Prüfungscode/Version/Domains/Objectives), Aufteilung in referenzierbare `source_chunks`, editierbarer Blueprint-Entwurf mit Validierungsfehlern/-warnungen, manuelle Bestätigung niedriger Extraktionssicherheit je Objective (`blueprintDrafts.confirmedLowConfidenceObjectives`), getrennte Freigabe-/Entwurfsstatus, Quellen-/Modell-/Prompt-Version je Lesson, Fragen/Lessons mit Quellen verknüpft, Versionsvergleich (`.../sources/[id]/diff`), veraltete Inhalte werden markiert (`questions.stale`) statt gelöscht, alte Lernverläufe bleiben lesbar.
+
+Noch offen: URL-Quellen (bisher nur PDF-Upload, bewusst so eingeschränkt - siehe `CertificationSourceType`-Kommentar in `lib/server/db/schema.ts`); eine von der Objective-Konfidenz unabhängige Prüfung auf einzelne unbelegte Aussagen/Behauptungen innerhalb einer Lesson.
 
 ### Abnahmekriterien
 
@@ -513,6 +536,12 @@ Die Startseite beantwortet: „Was passt gerade und was ist jetzt am sinnvollste
 - Antwortgeschwindigkeit nur als schwaches Signal verwenden
 - Auswahl ohne normalen KI-Aufruf deterministisch ermöglichen
 
+### Umsetzungsstand
+
+Bereits umgesetzt: Zeitbudget (bisher als Minuten-/Fragenziel in `study_profiles`, noch nicht als die vier festen 2/5/10/20-Minuten-Buttons), Prüfungstermin/Lerntage, Session unterbrechen/fortsetzen (`study_sessions` planned/in_progress), SM-2-artiger Review-Scheduler (`lib/server/review/scheduler.ts`, voll unit-getestet), Priorisierung schwacher/prüfungsrelevanter Bereiche und Rückstau-Berücksichtigung (`computeSessionComposition`, `reallocateForExamUrgency`), nicht-strafende Serienzählung, deterministische Session-Zusammenstellung ohne KI-Aufruf.
+
+Noch offen: die vier festen Zeitbudget-Buttons als primäre Eingabe; optionaler Energiezustand; „Nur eine Aufgabe“-Modus; ein expliziter sanfter Comeback-Modus nach Pause; Begründungstext direkt an der Session-Empfehlung (bisher nur bei Readiness, „Warum diese Einschätzung?“); Nutzerfeedback auf Empfehlungen; Selbsteinschätzung der Antwortsicherheit; ein Hinweis-/Hint-System samt Protokollierung; Antwortgeschwindigkeit als Signal. Diese Lücken hängen eng mit dem neuen Skill-/Mission-Modell (R7) zusammen und werden dort mit aufgegriffen, sollen aber, wo sinnvoll, schon vorher in die bestehende Session ergänzt werden.
+
 ### Abnahmekriterien
 
 - Innerhalb von zwei Interaktionen startet eine sinnvolle Mission.
@@ -541,6 +570,12 @@ Lernende verstehen ihren Fortschritt, ohne dass eine Prozentzahl falsche Sicherh
 - Empfehlung aus jeder Schwachstelle starten
 - erste Trennung von Wissen, Anwendung und Transfer
 - private Fehler- und Hinweisanalyse
+
+### Umsetzungsstand
+
+Bereits umgesetzt: Quiz-/Prüfungshistorie mit Detailauswertung pro Versuch, wiederkehrende Fehler (`getTopWeakObjectives`, wiederholte Schwachstellen in der Prüfungshistorie), zeitliche Aktualität (Recency-Decay im Readiness-Modell), Datenunsicherheit sichtbar (`INSUFFICIENT_DATA` unterhalb einer Konfidenzschwelle statt einer falschen Zahl), begründete Readiness („Warum diese Einschätzung?“), JSON-Export der Lernaktivität, Remediation-Link aus jeder Schwachstelle.
+
+Noch offen: Trends sind bisher kursweit (7/30/90 Tage), noch nicht nach Domain/Objective aufgeschlüsselt; die Trennung von Wissen, Anwendung und Transfer sowie eine echte Hinweis-Analyse setzen das neue Skill-/Mission-Modell (R7) bzw. ein Hint-System (R2) voraus.
 
 ### Regeln
 
@@ -574,6 +609,12 @@ Ausgewählte Kurse und Missionen funktionieren offline und synchronisieren Ergeb
 - manuelle Löschung lokaler Daten
 - Konflikte nachvollziehbar behandeln
 - Missionen auf Offline-Fähigkeit kennzeichnen
+
+### Umsetzungsstand
+
+Vollständig umgesetzt: versioniertes Offline-Paket je Kurs (inklusive der bereits aktiven Tages-Session, falls beim Download vorhanden) mit Download-/Größen-/Aktualisierungsanzeige, IndexedDB-Partitionierung nach Nutzer und Kursversion, Offline-Beantwortung von Abschnittsquiz und Session, idempotente Sync-Queue mit serverseitigem Claim-Mechanismus (Unique-Index als Wettlauf-Sperre statt reinem Dedup), sichtbarer Online-/Offline-/Sync-Status im Header, Räumen lokaler Daten bei Logout und manuell, nachvollziehbare Konfliktbehandlung (z. B. anderswo bereits abgeschlossene Session).
+
+Noch offen: "Missionen auf Offline-Fähigkeit kennzeichnen" setzt das neue Missions-Modell (R7) voraus und wird dort nachgezogen; eine komplett neue Session lässt sich weiterhin nicht offline bauen (nur eine bereits vor dem Download bestehende), da das Live-Zugriff auf Fälligkeits-/Schwachstellendaten bräuchte.
 
 ### Abnahmekriterien
 
