@@ -4,13 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import type { Locale } from "@/lib/types";
+import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 
 interface SessionQuestionItem {
   itemId: string;
   category: "review" | "weak" | "new";
   questionId: string;
   question: { de: string; en: string };
-  options: Array<{ id: string; text: { de: string; en: string }; orderNum: number }>;
+  /** isCorrect ist nur im Offline-Paket gesetzt (siehe offline-Prop unten) -
+   * im Live-Fall bleibt Korrektheit serverseitig geprüft. */
+  options: Array<{ id: string; text: { de: string; en: string }; orderNum: number; isCorrect?: boolean }>;
 }
 
 interface SessionLessonItem {
@@ -30,6 +33,10 @@ interface StudySessionProps {
   questionItems: SessionQuestionItem[];
   lessonItems: SessionLessonItem[];
   locale: Locale;
+  /** R4.3 (roadmap.md): im Offline-Reader gesetzt - reiht das Ergebnis statt
+   * eines Live-POST in die lokale Sync-Warteschlange ein und berechnet den
+   * Score direkt clientseitig aus den mitgelieferten isCorrect-Werten. */
+  offline?: { userId: string };
 }
 
 const CATEGORY_LABEL: Record<SessionQuestionItem["category"], { de: string; en: string }> = {
@@ -50,6 +57,7 @@ export function StudySession({
   questionItems,
   lessonItems,
   locale,
+  offline,
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
@@ -61,13 +69,34 @@ export function StudySession({
     if (submitting || result) return;
     setSubmitting(true);
     setError(null);
+    const payload = {
+      answers: questionItems.map((item, i) => ({
+        itemId: item.itemId,
+        selectedOptionId: answers[i] ?? "",
+      })),
+    };
+
+    if (offline) {
+      const results = questionItems.map((item, i) => ({
+        itemId: item.itemId,
+        isCorrect: item.options.some((o) => o.id === answers[i] && o.isCorrect),
+      }));
+      const score =
+        results.length > 0
+          ? Math.round((results.filter((r) => r.isCorrect).length / results.length) * 100)
+          : 0;
+      await enqueueSyncEvent(
+        offline.userId,
+        "study_session",
+        { sessionId, answers: payload.answers },
+        locale === "de" ? "Tages-Session" : "Today's session",
+      ).catch(() => {});
+      setResult({ score, results });
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      const payload = {
-        answers: questionItems.map((item, i) => ({
-          itemId: item.itemId,
-          selectedOptionId: answers[i] ?? "",
-        })),
-      };
       const response = await fetch(`/api/study-sessions/${sessionId}/attempt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,6 +153,13 @@ export function StudySession({
           <p className="mt-3 text-sm font-medium text-accent">
             {locale === "de" ? "Gut gemacht - weiter so!" : "Well done - keep it up!"}
           </p>
+          {offline && (
+            <p className="mt-3 text-xs text-foreground/50">
+              {locale === "de"
+                ? "Offline-Modus: Dieses Ergebnis wird synchronisiert, sobald du wieder online bist."
+                : "Offline mode: this result will sync once you're back online."}
+            </p>
+          )}
         </div>
 
         {lessonItems.length > 0 && (

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Loader2, UploadCloud } from "lucide-react";
 import { BlueprintPanel } from "./BlueprintPanel";
+import { useOnlineStatus } from "@/lib/client/use-online-status";
 
 interface Source {
   id: string;
@@ -53,6 +54,7 @@ export function SourcesManager({
   initialSources: Source[];
 }) {
   const router = useRouter();
+  const online = useOnlineStatus();
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [uploading, setUploading] = useState(false);
   const [parsingId, setParsingId] = useState<string | null>(null);
@@ -184,7 +186,7 @@ export function SourcesManager({
           )}
           <button
             type="submit"
-            disabled={uploading}
+            disabled={uploading || !online}
             className="flex items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
           >
             {uploading ? (
@@ -195,6 +197,14 @@ export function SourcesManager({
             {locale === "de" ? "Hochladen" : "Upload"}
           </button>
         </form>
+        {/* R4.4 (roadmap.md): "Quellenimport ausdrücklich nicht offline anbieten". */}
+        {!online && (
+          <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+            {locale === "de"
+              ? "Der Quellenimport benötigt eine Verbindung."
+              : "Source import requires a connection."}
+          </p>
+        )}
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
       </section>
 

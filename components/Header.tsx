@@ -4,8 +4,9 @@ import Link from "next/link";
 import { GraduationCap, Languages, Moon, Settings, Sun } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
+import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 
-export function Header({ isAdmin }: { isAdmin: boolean }) {
+export function Header({ isAdmin, userId }: { isAdmin: boolean; userId: string | null }) {
   const { locale, setLocale, t } = useLocale();
   const { theme, toggleTheme } = useTheme();
 
@@ -21,6 +22,8 @@ export function Header({ isAdmin }: { isAdmin: boolean }) {
         </Link>
 
         <div className="flex items-center gap-2">
+          {userId && <SyncStatusBadge userId={userId} locale={locale} />}
+
           {isAdmin && (
             <Link
               href="/admin"

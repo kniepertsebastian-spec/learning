@@ -20,7 +20,7 @@ export async function GET(
   }
 
   const { certId } = await params;
-  const pkg = await getOfflinePackage(certId);
+  const pkg = await getOfflinePackage(certId, session.user.id);
   if (!pkg) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

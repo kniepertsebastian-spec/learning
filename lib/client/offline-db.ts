@@ -1,8 +1,10 @@
 import type { OfflinePackage } from "@/lib/server/offline/manifest";
+import type { SyncEventType } from "@/lib/server/db/schema";
 
 const DB_NAME = "certstudy-offline";
-const DB_VERSION = 1;
-const STORE_NAME = "packages";
+const DB_VERSION = 2;
+const PACKAGES_STORE = "packages";
+const SYNC_EVENTS_STORE = "pendingSyncEvents";
 
 export interface StoredOfflinePackage {
   key: string;
@@ -16,6 +18,23 @@ export interface StoredOfflinePackage {
   data: OfflinePackage;
 }
 
+export type PendingSyncEventStatus = "pending" | "syncing" | "failed" | "conflict" | "synced";
+
+export interface PendingSyncEvent {
+  clientEventId: string;
+  userId: string;
+  type: SyncEventType;
+  createdAt: string;
+  payload: unknown;
+  /** Kurzer, menschenlesbarer Kontext für die UI (z. B. Kursname/Abschnitt),
+   * damit die Warteschlange nicht nur IDs anzeigen muss. */
+  label: string;
+  status: PendingSyncEventStatus;
+  attempts: number;
+  lastError: string | null;
+  syncedAt: string | null;
+}
+
 function packageKey(userId: string, certificationId: string): string {
   return `${userId}:${certificationId}`;
 }
@@ -25,11 +44,12 @@ function isSupported(): boolean {
 }
 
 /**
- * R4.2 (roadmap.md): rohes IndexedDB statt einer Bibliothek - das frühere
- * Dexie-System wurde bewusst als parallele v1-Datenquelle entfernt (siehe
- * "Konsolidierung vor R4" in roadmap.md), eine neue Abhängigkeit dafür
- * einzuführen wäre dem zuwidergelaufen. Ein Object Store genügt für den
- * schmalen Bedarf hier (ein Paket pro Nutzer+Kurs).
+ * R4.2/R4.3 (roadmap.md): rohes IndexedDB statt einer Bibliothek - das
+ * frühere Dexie-System wurde bewusst als parallele v1-Datenquelle entfernt
+ * (siehe "Konsolidierung vor R4" in roadmap.md), eine neue Abhängigkeit
+ * dafür einzuführen wäre dem zuwidergelaufen. Zwei Object Stores: das
+ * heruntergeladene Kurspaket (R4.1/4.2) und die Warteschlange offline
+ * aufgezeichneter Ereignisse, die noch zum Server müssen (R4.3).
  */
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -40,8 +60,12 @@ function openDb(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: "key" });
+      if (!db.objectStoreNames.contains(PACKAGES_STORE)) {
+        const store = db.createObjectStore(PACKAGES_STORE, { keyPath: "key" });
+        store.createIndex("userId", "userId", { unique: false });
+      }
+      if (!db.objectStoreNames.contains(SYNC_EVENTS_STORE)) {
+        const store = db.createObjectStore(SYNC_EVENTS_STORE, { keyPath: "clientEventId" });
         store.createIndex("userId", "userId", { unique: false });
       }
     };
@@ -51,15 +75,31 @@ function openDb(): Promise<IDBDatabase> {
 }
 
 async function withStore<T>(
+  storeName: string,
   mode: IDBTransactionMode,
   fn: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   const db = await openDb();
   try {
     return await new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, mode);
-      const store = tx.objectStore(STORE_NAME);
+      const tx = db.transaction(storeName, mode);
+      const store = tx.objectStore(storeName);
       const request = fn(store);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error ?? new Error("IndexedDB-Zugriff fehlgeschlagen."));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function getAllByUserId<T>(storeName: string, userId: string): Promise<T[]> {
+  const db = await openDb();
+  try {
+    return await new Promise<T[]>((resolve, reject) => {
+      const tx = db.transaction(storeName, "readonly");
+      const index = tx.objectStore(storeName).index("userId");
+      const request = index.getAll(userId);
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error("IndexedDB-Zugriff fehlgeschlagen."));
     });
@@ -86,7 +126,7 @@ export async function saveOfflinePackage(
     sizeBytes,
     data: pkg,
   };
-  await withStore("readwrite", (store) => store.put(record));
+  await withStore(PACKAGES_STORE, "readwrite", (store) => store.put(record));
   return record;
 }
 
@@ -94,37 +134,31 @@ export async function getOfflinePackageRecord(
   userId: string,
   certificationId: string,
 ): Promise<StoredOfflinePackage | undefined> {
-  return withStore("readonly", (store) => store.get(packageKey(userId, certificationId)));
+  return withStore(PACKAGES_STORE, "readonly", (store) => store.get(packageKey(userId, certificationId)));
 }
 
 export async function deleteOfflinePackage(userId: string, certificationId: string): Promise<void> {
-  await withStore("readwrite", (store) => store.delete(packageKey(userId, certificationId)));
+  await withStore(PACKAGES_STORE, "readwrite", (store) => store.delete(packageKey(userId, certificationId)));
 }
 
 export async function listOfflinePackages(userId: string): Promise<StoredOfflinePackage[]> {
-  const db = await openDb();
-  try {
-    return await new Promise<StoredOfflinePackage[]>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const index = tx.objectStore(STORE_NAME).index("userId");
-      const request = index.getAll(userId);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error ?? new Error("IndexedDB-Zugriff fehlgeschlagen."));
-    });
-  } finally {
-    db.close();
-  }
+  return getAllByUserId<StoredOfflinePackage>(PACKAGES_STORE, userId);
 }
 
-/** R4.2: "Bei Logout nutzerbezogene lokale Daten entfernen." */
+/** R4.2: "Bei Logout nutzerbezogene lokale Daten entfernen" - bewusst nur
+ * das heruntergeladene KURSPAKET (jederzeit erneut herunterladbar), NICHT
+ * die Sync-Warteschlange (lib/client/sync-queue.ts): die enthält bereits
+ * erbrachte, noch nicht übertragene Lernleistung, die bei einem Logout
+ * nicht verloren gehen darf - sie bleibt bis zum nächsten erfolgreichen
+ * Sync auf dem Gerät liegen, unabhängig davon, wer gerade eingeloggt ist. */
 export async function clearOfflineDataForUser(userId: string): Promise<void> {
   if (!isSupported()) return;
   const packages = await listOfflinePackages(userId).catch(() => []);
   const db = await openDb();
   try {
     await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
+      const tx = db.transaction(PACKAGES_STORE, "readwrite");
+      const store = tx.objectStore(PACKAGES_STORE);
       for (const pkg of packages) store.delete(pkg.key);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error ?? new Error("IndexedDB-Zugriff fehlgeschlagen."));
@@ -132,6 +166,18 @@ export async function clearOfflineDataForUser(userId: string): Promise<void> {
   } finally {
     db.close();
   }
+}
+
+export async function savePendingSyncEvent(event: PendingSyncEvent): Promise<void> {
+  await withStore(SYNC_EVENTS_STORE, "readwrite", (store) => store.put(event));
+}
+
+export async function listPendingSyncEvents(userId: string): Promise<PendingSyncEvent[]> {
+  return getAllByUserId<PendingSyncEvent>(SYNC_EVENTS_STORE, userId);
+}
+
+export async function deletePendingSyncEvent(clientEventId: string): Promise<void> {
+  await withStore(SYNC_EVENTS_STORE, "readwrite", (store) => store.delete(clientEventId));
 }
 
 export { isSupported as isOfflineStorageSupported };
