@@ -13,6 +13,7 @@ import {
   quizAnswers,
 } from "@/lib/server/db/schema";
 import { ObjectiveProgressService } from "@/lib/server/progress/service";
+import { recordReviewOutcomes } from "@/lib/server/review/service";
 
 interface AnswerPayload {
   questionId: string;
@@ -121,6 +122,12 @@ export async function POST(
 
   // Update objective progress
   await ObjectiveProgressService.updateProgressForQuizAttempt(session.user.id, attemptId);
+
+  // R2.2: Review-Zustand (Fälligkeit/Intervall) je beantworteter Frage fortschreiben.
+  await recordReviewOutcomes(
+    session.user.id,
+    results.map((r) => ({ questionId: r.questionId, isCorrect: r.isCorrect })),
+  );
 
   return NextResponse.json({ score, results, attemptId });
 }

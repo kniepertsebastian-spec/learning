@@ -11,6 +11,7 @@ import {
 } from "@/lib/server/db/schema";
 import { ExamScoringService } from "@/lib/server/exam/scoring";
 import { getServerLocale } from "@/lib/server/locale";
+import { recordReviewOutcomes } from "@/lib/server/review/service";
 
 interface ExamAnswerPayload {
   answers: Array<{ questionId: string; selectedOptionId: string }>;
@@ -91,6 +92,9 @@ export async function POST(
         completedAt: new Date(),
       })
       .returning();
+
+    // R2.2: Review-Zustand (Fälligkeit/Intervall) je beantworteter Frage fortschreiben.
+    await recordReviewOutcomes(session.user.id, answerEvaluation);
 
     return NextResponse.json({
       attemptId: attemptInserted[0].id,

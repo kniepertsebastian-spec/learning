@@ -282,6 +282,55 @@ export const remediationSessions = pgTable("remediation_sessions", {
   improved: boolean("improved"),
 });
 
+/** R2.2 (roadmap.md): "letzter Ausgang" einer Wiederholung. */
+export type ReviewOutcome = "correct" | "incorrect";
+
+/**
+ * R2.2 (roadmap.md): Spaced-Repetition-Zustand pro (Nutzer, Frage) - ein
+ * vereinfachter SM-2/Leitner-Hybrid (siehe lib/server/review/scheduler.ts),
+ * bewusst NICHT pro Objective, weil "Fragenrotation sicherstellen" (roadmap.md)
+ * eine pro-Frage-Fälligkeit braucht: sonst würde ein Objective mit vielen
+ * Fragen nach der ersten richtigen Antwort komplett als "erledigt" gelten,
+ * statt die einzelnen Fragen tatsächlich zu rotieren. `questionId` verweist
+ * auf eine echte questions-Zeile - Remediation-Fragen sind absichtlich
+ * ausgeschlossen (die werden pro Session ad-hoc generiert, nicht in
+ * `questions` persistiert, siehe RemediationService).
+ */
+export const reviewItems = pgTable(
+  "review_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    questionId: uuid("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Aktuelles Wiederholungsintervall in Tagen (kann gebrochen sein, z. B.
+     * durch die Schwierigkeits-Gewichtung in computeNextReview()). */
+    intervalDays: numeric("interval_days", { precision: 6, scale: 2 }).notNull().default("0"),
+    /** Anzahl AUFEINANDERFOLGENDER richtiger Antworten - jede falsche Antwort
+     * setzt das auf 0 zurück (siehe computeNextReview()). */
+    repetitions: integer("repetitions").notNull().default(0),
+    /** SM-2-artiger Ease-Faktor, steuert wie stark das Intervall bei
+     * richtigen Antworten wächst - sinkt bei falschen, steigt bei richtigen,
+     * innerhalb [1.3, 2.8] geklemmt. */
+    easeFactor: numeric("ease_factor", { precision: 4, scale: 2 }).notNull().default("2.5"),
+    lastOutcome: text("last_outcome").$type<ReviewOutcome>(),
+    lastAnsweredAt: timestamp("last_answered_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("review_items_user_question_unique").on(table.userId, table.questionId),
+    check(
+      "review_items_last_outcome_check",
+      sql`${table.lastOutcome} is null or ${table.lastOutcome} in ('correct', 'incorrect')`,
+    ),
+  ],
+);
+
 export const contentGenerationJobs = pgTable(
   "content_generation_jobs",
   {
