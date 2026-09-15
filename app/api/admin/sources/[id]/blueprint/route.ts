@@ -93,7 +93,11 @@ export async function PATCH(
   }
   const rawBody = body as Record<string, unknown>;
 
-  const update: { content?: BlueprintExtraction; suggestedSlug?: string } = {};
+  const update: {
+    content?: BlueprintExtraction;
+    suggestedSlug?: string;
+    confirmedLowConfidenceObjectives?: string[];
+  } = {};
 
   if ("content" in rawBody) {
     const parsed = blueprintExtractionSchema.safeParse(rawBody.content);
@@ -117,9 +121,24 @@ export async function PATCH(
     update.suggestedSlug = suggestedSlug;
   }
 
-  if (update.content === undefined && update.suggestedSlug === undefined) {
+  if ("confirmedLowConfidenceObjectives" in rawBody) {
+    const raw = rawBody.confirmedLowConfidenceObjectives;
+    if (!Array.isArray(raw) || !raw.every((key) => typeof key === "string" && /^\d+:\d+$/.test(key))) {
+      return NextResponse.json(
+        { error: "confirmedLowConfidenceObjectives muss eine Liste von Positions-Keys (\"<domain>:<objective>\") sein." },
+        { status: 400 },
+      );
+    }
+    update.confirmedLowConfidenceObjectives = raw;
+  }
+
+  if (
+    update.content === undefined &&
+    update.suggestedSlug === undefined &&
+    update.confirmedLowConfidenceObjectives === undefined
+  ) {
     return NextResponse.json(
-      { error: "Weder content noch suggestedSlug angegeben." },
+      { error: "Weder content noch suggestedSlug noch confirmedLowConfidenceObjectives angegeben." },
       { status: 400 },
     );
   }

@@ -355,7 +355,10 @@ export async function approveBlueprintDraft(
   }
 
   const content = draft.content as unknown as BlueprintExtraction;
-  const { errors } = validateBlueprintDraft(content);
+  const { errors } = validateBlueprintDraft(
+    content,
+    new Set(draft.confirmedLowConfidenceObjectives),
+  );
   if (errors.length > 0) {
     throw new BlueprintNotApprovableError(
       `Freigabe durch Validierungsfehler blockiert: ${errors.join(" ")}`,

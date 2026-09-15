@@ -52,6 +52,18 @@ export interface BlueprintValidationResult {
   warnings: string[];
 }
 
+/** R1.2-Nachtrag: stabiler Schlüssel für ein Objective innerhalb eines Drafts
+ * (Position in `content.domains[domainIndex].objectives[objectiveIndex]`),
+ * genutzt um Confirmations in `blueprint_drafts.confirmedLowConfidenceObjectives`
+ * zu referenzieren - dieselbe Formel läuft hier UND in BlueprintReview.tsx
+ * (dort dupliziert, da Client-Komponenten dieses Server-Modul nicht
+ * importieren dürfen). Code/Titel sind editierbar, die Position innerhalb des
+ * Drafts aber nicht (R1.3: "nur Feldkorrektur, keine Strukturänderung") -
+ * daher als Schlüssel geeigneter als der (editierbare) Code. */
+export function lowConfidenceObjectiveKey(domainIndex: number, objectiveIndex: number): string {
+  return `${domainIndex}:${objectiveIndex}`;
+}
+
 /**
  * R1.2/R1.3: Plausibilitätsprüfung des KI-Extraktionsvorschlags - reine
  * Funktion (kein KI-Aufruf), damit sie sowohl direkt nach der Generierung als
@@ -61,12 +73,18 @@ export interface BlueprintValidationResult {
  * (R1.3) matcht Objectives beim Freigeben per Code innerhalb ihrer Domain -
  * ein Duplikat dort würde beim Merge in die echten objectives-Tabellen
  * kommentarlos eine der beiden Zeilen verschlucken. Alles andere bleibt ein
- * Hinweis, den ein Admin bewusst übergehen kann.
+ * Hinweis, den ein Admin bewusst übergehen kann - AUSSER niedriger
+ * Extraktionssicherheit (siehe unten): das war bisher nur ein Hinweis, ist
+ * jetzt ein Error, solange das jeweilige Objective nicht einzeln in
+ * `confirmedLowConfidence` bestätigt wurde (roadmap.md R1.2: "Niedrige
+ * Extraktionssicherheit sichtbar machen und manuelle Bestätigung verlangen").
  */
-export function validateBlueprintDraft(content: BlueprintExtraction): BlueprintValidationResult {
+export function validateBlueprintDraft(
+  content: BlueprintExtraction,
+  confirmedLowConfidence: ReadonlySet<string> = new Set(),
+): BlueprintValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
-  const allObjectives = content.domains.flatMap((domain) => domain.objectives);
 
   for (const domain of content.domains) {
     const codeCounts = new Map<string, number>();
@@ -126,12 +144,19 @@ export function validateBlueprintDraft(content: BlueprintExtraction): BlueprintV
     }
   }
 
-  const lowConfidenceCount = allObjectives.filter((objective) => objective.confidence < 0.5).length;
-  if (lowConfidenceCount > 0) {
-    warnings.push(
-      `${lowConfidenceCount} Objective(s) mit niedriger Extraktionssicherheit (< 50 %) - manuell prüfen.`,
-    );
-  }
+  const unconfirmedLowConfidence: string[] = [];
+  content.domains.forEach((domain, domainIndex) => {
+    domain.objectives.forEach((objective, objectiveIndex) => {
+      if (objective.confidence >= 0.5) return;
+      const key = lowConfidenceObjectiveKey(domainIndex, objectiveIndex);
+      if (!confirmedLowConfidence.has(key)) {
+        unconfirmedLowConfidence.push(
+          `Domain "${domain.name}": Objective ${objective.code} hat niedrige Extraktionssicherheit (${Math.round(objective.confidence * 100)} %) und muss vor der Freigabe einzeln bestätigt werden.`,
+        );
+      }
+    });
+  });
+  errors.push(...unconfirmedLowConfidence);
 
   // Prüfungsrealismus-Ergänzung zu R1.2: nur ein Hinweis, kein Error - viele
   // offizielle Objective-Dokumente nennen Fragenanzahl/Zeitlimit gar nicht
@@ -240,6 +265,10 @@ export async function generateAndStoreBlueprintDraft(
         validationErrors: errors,
         warnings,
         truncatedSource: truncated,
+        // Neuer Inhalt => vorherige Bestätigungen beziehen sich auf jetzt
+        // überschriebene Objectives an denselben Positionen, siehe
+        // lowConfidenceObjectiveKey() - müssen erneut geprüft werden.
+        confirmedLowConfidenceObjectives: [],
         modelVersion: GEMINI_MODEL,
         promptVersion: "v1",
         generatedByUserId: userId,
@@ -258,6 +287,10 @@ export interface BlueprintDraftUpdate {
    * die die eingehenden Rohdaten vor dem Aufruf hier prüft. */
   content?: BlueprintExtraction;
   suggestedSlug?: string;
+  /** R1.2-Nachtrag: Positions-Keys (lowConfidenceObjectiveKey) der niedrig-
+   * konfidenten Objectives, die der Admin gerade bestätigt hat - ersetzt den
+   * bisherigen Stand vollständig (wie `content`), nicht additiv. */
+  confirmedLowConfidenceObjectives?: string[];
 }
 
 /**
@@ -293,9 +326,21 @@ export async function updateBlueprintDraftContent(
     updatedAt: new Date(),
   };
 
-  if (update.content) {
-    const { errors, warnings } = validateBlueprintDraft(update.content);
-    setValues.content = update.content;
+  if (update.content || update.confirmedLowConfidenceObjectives !== undefined) {
+    // errors/warnings hängen von BEIDEM ab (Inhalt + Bestätigungen), also bei
+    // jeder Änderung eines der beiden neu berechnen - dafür den jeweils nicht
+    // mitgesendeten Teil aus dem bestehenden Draft nachladen, statt ihn
+    // fälschlich als leer/fehlend zu behandeln.
+    const existing = await getBlueprintDraft(sourceId);
+    const effectiveContent = update.content ?? (existing?.content as unknown as BlueprintExtraction);
+    const effectiveConfirmed = new Set(
+      update.confirmedLowConfidenceObjectives ?? existing?.confirmedLowConfidenceObjectives ?? [],
+    );
+    const { errors, warnings } = validateBlueprintDraft(effectiveContent, effectiveConfirmed);
+    if (update.content) setValues.content = update.content;
+    if (update.confirmedLowConfidenceObjectives !== undefined) {
+      setValues.confirmedLowConfidenceObjectives = update.confirmedLowConfidenceObjectives;
+    }
     setValues.validationErrors = errors;
     setValues.warnings = warnings;
   }

@@ -1,0 +1,1 @@
+ALTER TABLE "blueprint_drafts" ADD COLUMN "confirmed_low_confidence_objectives" jsonb DEFAULT '[]'::jsonb NOT NULL;
