@@ -3,25 +3,54 @@
 import { useState } from "react";
 import { Check, X } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
-import type { QuizQuestion } from "@/lib/types";
+import type { AnswerConfidence, QuizQuestion } from "@/lib/types";
 
 interface QuizQuestionCardProps {
   question: QuizQuestion;
-  onAnswered: (isCorrect: boolean, selectedIndex: number) => void;
+  onAnswered: (isCorrect: boolean, selectedIndex: number, confidence?: AnswerConfidence) => void;
   /** R1.4: knappe Quellenangabe (z. B. "S. 4") für die Lernansicht - die
    * vollständige Angabe (Quelle, Titel, ...) bleibt dem Adminbereich
    * vorbehalten (roadmap.md: "knapp" vs. "vollständig"). */
   sourceReference?: string | null;
+  /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - wenn
+   * gesetzt, wird zwischen Options-Auswahl und Aufdeckung der Korrektheit
+   * ein Zwischenschritt eingefügt, der die Selbsteinschätzung erfasst
+   * (muss VOR der Aufdeckung erfasst werden, sonst ist sie keine echte
+   * Selbsteinschätzung mehr). Standardmäßig aus, damit bestehende
+   * Aufrufer (z. B. RemediationSession) unverändert bleiben. */
+  askConfidence?: boolean;
 }
 
-export function QuizQuestionCard({ question, onAnswered, sourceReference }: QuizQuestionCardProps) {
+const CONFIDENCE_LABEL: Record<AnswerConfidence, { de: string; en: string }> = {
+  guessed: { de: "Geraten", en: "Guessed" },
+  unsure: { de: "Unsicher", en: "Unsure" },
+  sure: { de: "Sicher", en: "Sure" },
+};
+
+export function QuizQuestionCard({
+  question,
+  onAnswered,
+  sourceReference,
+  askConfidence = false,
+}: QuizQuestionCardProps) {
   const { locale, t } = useLocale();
   const [selected, setSelected] = useState<number | null>(null);
+  const [confidence, setConfidence] = useState<AnswerConfidence | null>(null);
+
+  const revealed = askConfidence ? confidence !== null : selected !== null;
 
   function handleSelect(index: number) {
     if (selected !== null) return;
     setSelected(index);
-    onAnswered(index === question.correctIndex, index);
+    if (!askConfidence) {
+      onAnswered(index === question.correctIndex, index);
+    }
+  }
+
+  function handleConfidence(level: AnswerConfidence) {
+    if (selected === null || confidence !== null) return;
+    setConfidence(level);
+    onAnswered(selected === question.correctIndex, selected, level);
   }
 
   return (
@@ -32,13 +61,15 @@ export function QuizQuestionCard({ question, onAnswered, sourceReference }: Quiz
         {question.options[locale].map((option, index) => {
           const isSelected = selected === index;
           const isCorrectOption = index === question.correctIndex;
-          const showState = selected !== null;
+          const showState = revealed;
 
           let stateClasses = "border-border hover:bg-background";
           if (showState && isCorrectOption) {
             stateClasses = "border-emerald-500 bg-emerald-500/10";
           } else if (showState && isSelected && !isCorrectOption) {
             stateClasses = "border-red-500 bg-red-500/10";
+          } else if (isSelected) {
+            stateClasses = "border-accent bg-accent/10";
           }
 
           return (
@@ -61,7 +92,27 @@ export function QuizQuestionCard({ question, onAnswered, sourceReference }: Quiz
         })}
       </div>
 
-      {selected !== null && (
+      {askConfidence && selected !== null && confidence === null && (
+        <div className="mt-4">
+          <p className="mb-2 text-sm text-foreground/70">
+            {locale === "de" ? "Wie sicher warst du dir?" : "How sure were you?"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(CONFIDENCE_LABEL) as AnswerConfidence[]).map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => handleConfidence(level)}
+                className="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent hover:bg-background"
+              >
+                {CONFIDENCE_LABEL[level][locale]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {revealed && (
         <div className="mt-4 rounded-md bg-background p-3 text-sm">
           <p className="mb-1 font-medium">
             {selected === question.correctIndex ? t.lesson.correct : t.lesson.incorrect}
