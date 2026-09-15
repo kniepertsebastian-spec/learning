@@ -5,6 +5,7 @@ import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import {
   exams,
+  examAnswers,
   examAttempts,
   questionOptions,
   questions,
@@ -15,6 +16,10 @@ import { recordReviewOutcomes } from "@/lib/server/review/service";
 
 interface ExamAnswerPayload {
   answers: Array<{ questionId: string; selectedOptionId: string }>;
+  /** R3 (roadmap.md): "Seite 'Meine Prüfungen' mit ... Dauer" - vom Client
+   * gemessen (Zeit von Sessionstart bis Einreichen), optional, damit alte
+   * Client-Versionen weiterhin funktionieren. */
+  durationSeconds?: number;
 }
 
 export async function POST(
@@ -90,8 +95,26 @@ export async function POST(
         score: String(score),
         readiness: scoringResult.readinessLevel,
         completedAt: new Date(),
+        durationSeconds:
+          typeof body.durationSeconds === "number" && body.durationSeconds >= 0
+            ? Math.round(body.durationSeconds)
+            : null,
       })
       .returning();
+
+    // R3: einzelne Antworten persistieren - sonst lässt sich eine
+    // Domain-/Objective-Auswertung für diesen Versuch später nicht mehr
+    // rekonstruieren (siehe Kommentar auf exam_answers in db/schema.ts).
+    if (results.length > 0) {
+      await db.insert(examAnswers).values(
+        results.map((r) => ({
+          examAttemptId: attemptInserted[0].id,
+          questionId: r.questionId,
+          selectedOptionId: body.answers.find((a) => a.questionId === r.questionId)?.selectedOptionId || null,
+          isCorrect: r.isCorrect,
+        })),
+      );
+    }
 
     // R2.2: Review-Zustand (Fälligkeit/Intervall) je beantworteter Frage fortschreiben.
     await recordReviewOutcomes(session.user.id, answerEvaluation);

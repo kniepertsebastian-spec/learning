@@ -533,6 +533,30 @@ export const examAttempts = pgTable("exam_attempts", {
 });
 
 /**
+ * R3 (roadmap.md): persistiert die einzelnen Antworten eines Exam-Versuchs -
+ * bis hierher (anders als bei quiz_answers) nirgends gespeichert, nur
+ * transient beim Einreichen berechnet und an den Client zurückgegeben. Ohne
+ * das lässt sich eine "Detailseite pro Versuch mit Domain- und
+ * Objective-Auswertung" für einen VERGANGENEN Versuch nicht mehr rekonstru-
+ * ieren, sobald die Antwort einmal abgeschickt wurde. Bewusst analog zu
+ * quiz_answers (gleiche Spalten/Constraints), damit beide Auswertungspfade
+ * (lib/server/exam/scoring.ts) dieselbe Form konsumieren können.
+ */
+export const examAnswers = pgTable("exam_answers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  examAttemptId: uuid("exam_attempt_id")
+    .notNull()
+    .references(() => examAttempts.id, { onDelete: "cascade" }),
+  questionId: uuid("question_id")
+    .notNull()
+    .references(() => questions.id, { onDelete: "cascade" }),
+  selectedOptionId: uuid("selected_option_id").references(() => questionOptions.id, {
+    onDelete: "set null",
+  }),
+  isCorrect: boolean("is_correct").notNull(),
+});
+
+/**
  * R1.1 (roadmap.md): offizielle Prüfungsunterlagen als Quelle der Wahrheit
  * (Leitplanke). Volles Datenmodell laut roadmap.md R1-Abschnitt in einer
  * Tabelle, auch wenn R1.1 nur Upload+Extraktion (status uploaded -> parsed/

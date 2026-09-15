@@ -73,6 +73,11 @@ export function ExamSession({
     }
     return Math.round(questions.length * FALLBACK_MINUTES_PER_QUESTION * 60);
   });
+  // R3 (roadmap.md): "Dauer" für die "Meine Prüfungen"-Übersicht - gemessen
+  // von Sessionstart bis Einreichen, nicht aus secondsLeft rückgerechnet
+  // (das würde bei einem Auto-Submit durch Zeitablauf ungenau, da
+  // secondsLeft dann exakt 0 ist statt der tatsächlich verstrichenen Zeit).
+  const [startedAt] = useState(() => Date.now());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questions.map(() => null));
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
@@ -90,6 +95,7 @@ export function ExamSession({
           questionId: q.questionId,
           selectedOptionId: answers[i] ?? "",
         })),
+        durationSeconds: Math.round((Date.now() - startedAt) / 1000),
       };
       const response = await fetch(`/api/exams/${certSlug}/${examId}/attempt`, {
         method: "POST",

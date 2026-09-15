@@ -626,11 +626,30 @@ wiederkehrende Fehler und Readiness-Trends lassen sich nachvollziehen.
 
 ### Arbeitspakete
 
-- [ ] Seite „Meine Prüfungen“ mit Datum, Ergebnis, Dauer und Readiness bauen.
-- [ ] Detailseite pro Versuch mit Domain- und Objective-Auswertung ergänzen.
-- [ ] Vergleich mit dem vorherigen Versuch anzeigen.
-- [ ] Wiederholt falsch beantwortete Themen hervorheben.
-- [ ] Direkten Einstieg in Remediation oder Tagesplan anbieten.
+- [x] Seite „Meine Prüfungen“ mit Datum, Ergebnis, Dauer und Readiness bauen.
+      (`app/cert/[id]/history/page.tsx`, `listExamAttempts()`. Voraussetzung
+      dafür neu geschaffen: `exam_answers` persistiert seit dieser Änderung
+      die einzelnen Antworten eines Exam-Versuchs - vorher wurden sie beim
+      Einreichen nur transient berechnet und nie gespeichert, eine
+      Detailauswertung wäre danach nicht mehr rekonstruierbar gewesen.
+      `durationSeconds` wird jetzt clientseitig gemessen (Sessionstart bis
+      Einreichen) und mitgeschickt.)
+- [x] Detailseite pro Versuch mit Domain- und Objective-Auswertung ergänzen.
+      (`app/cert/[id]/history/[attemptId]/page.tsx`, `getExamAttemptDetail()`
+      rekonstruiert die Auswertung eines vergangenen Versuchs aus
+      `exam_answers` über dieselbe `ExamScoringService.scoreExam()`-Logik wie
+      direkt nach dem Einreichen - keine zweite Implementierung. Bewusst kein
+      Fragewortlaut sichtbar, siehe Regel unten.)
+- [x] Vergleich mit dem vorherigen Versuch anzeigen. (`previousScore` -
+      `null`, wenn keiner existiert, statt mit 0 zu verwechseln, siehe
+      "Fehlende Daten"-Regel unten.)
+- [x] Wiederholt falsch beantwortete Themen hervorheben.
+      (`repeatedWeakObjectiveCodes`: Objective-Codes, die sowohl im
+      aktuellen als auch im unmittelbar vorherigen Versuch als schwach
+      galten - eigenes Badge in der Detailansicht.)
+- [x] Direkten Einstieg in Remediation oder Tagesplan anbieten. Jedes
+      schwache Objective verlinkt auf die bestehende Remediation-Seite,
+      zusätzlich ein "Heute lernen"-Link zur R2.3-Session.
 - [ ] 7-/30-/90-Tage-Trend für Mastery und Übungsaktivität anzeigen.
 - [ ] Aktivitätskalender beziehungsweise Lernserie ergänzen.
 - [ ] Datenexport als JSON oder CSV optional vorsehen.

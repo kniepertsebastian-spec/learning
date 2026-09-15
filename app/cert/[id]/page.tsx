@@ -185,12 +185,20 @@ export default async function CertDetailPage({
           </p>
         </div>
         {session && (
-          <Link
-            href={`/cert/${slug}/final-exam`}
-            className="shrink-0 rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent/10"
-          >
-            {locale === "de" ? "Abschlussprüfung" : "Final practice exam"}
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href={`/cert/${slug}/history`}
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
+            >
+              {locale === "de" ? "Meine Prüfungen" : "My exams"}
+            </Link>
+            <Link
+              href={`/cert/${slug}/final-exam`}
+              className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent/10"
+            >
+              {locale === "de" ? "Abschlussprüfung" : "Final practice exam"}
+            </Link>
+          </div>
         )}
       </div>
 
