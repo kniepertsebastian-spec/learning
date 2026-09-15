@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/server/auth";
 import { getServerLocale } from "@/lib/server/locale";
 import { getExamWithQuestions } from "@/lib/server/exam/generator";
+import type { ExamBlueprint } from "@/lib/server/exam/blueprint";
 import { ExamSession } from "@/components/ExamSession";
 
 export default async function FinalExamTakePage({
@@ -41,6 +42,12 @@ export default async function FinalExamTakePage({
     options: q.options.map((o) => ({ id: o.id, text: o.text, orderNum: o.orderNum })),
   }));
 
+  // exams.blueprint ist das jsonb-Snapshot von buildExamBlueprint() zum
+  // Erstellungszeitpunkt - trägt seit der Prüfungsrealismus-Ergänzung auch
+  // das reale Zeitlimit + die Ziel-Fragenanzahl, statt dass ExamSession sie
+  // aus einer festen Konstante ableitet.
+  const blueprint = examData.exam.blueprint as unknown as ExamBlueprint;
+
   return (
     <div className="flex flex-1 flex-col">
       <ExamSession
@@ -48,6 +55,8 @@ export default async function FinalExamTakePage({
         examId={examId}
         questions={questionsForClient}
         locale={locale}
+        durationMinutes={blueprint.durationMinutes ?? null}
+        targetQuestionCount={blueprint.totalQuestions ?? null}
       />
     </div>
   );

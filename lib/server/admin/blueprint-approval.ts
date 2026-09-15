@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
+  certifications,
   certificationSources,
   domains,
   lessons,
@@ -133,6 +134,31 @@ export async function applyBlueprintDraft(
   };
 
   await db.transaction(async (tx) => {
+    // Prüfungsrealismus-Ergänzung zu R1.2/R1.4: reales Prüfungsformat aus der
+    // Quelle auf die Zertifizierung übernehmen, statt es weiterhin nur in
+    // exam/blueprint.ts als globale Konstante zu pflegen. Nur Felder
+    // schreiben, die dieser Draft tatsächlich belegt (nicht null) - eine
+    // spätere, unvollständigere Quelle (oder ein Dokument, das das Format gar
+    // nicht nennt) soll ein zuvor korrekt erkanntes Feld nicht mit null
+    // überschreiben.
+    const certificationUpdate: Partial<typeof certifications.$inferInsert> = {};
+    if (content.examQuestionCount !== null) {
+      certificationUpdate.examQuestionCount = content.examQuestionCount;
+    }
+    if (content.examDurationMinutes !== null) {
+      certificationUpdate.examDurationMinutes = content.examDurationMinutes;
+    }
+    if (content.passingScore !== null) {
+      certificationUpdate.passingScore = content.passingScore.toString();
+    }
+    if (content.scoreScale !== null) {
+      certificationUpdate.scoreScale = content.scoreScale;
+    }
+    if (Object.keys(certificationUpdate).length > 0) {
+      certificationUpdate.updatedAt = new Date();
+      await tx.update(certifications).set(certificationUpdate).where(eq(certifications.id, certificationId));
+    }
+
     const existingDomains = await tx
       .select()
       .from(domains)

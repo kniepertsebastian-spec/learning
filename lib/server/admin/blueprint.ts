@@ -133,6 +133,20 @@ export function validateBlueprintDraft(content: BlueprintExtraction): BlueprintV
     );
   }
 
+  // Prüfungsrealismus-Ergänzung zu R1.2: nur ein Hinweis, kein Error - viele
+  // offizielle Objective-Dokumente nennen Fragenanzahl/Zeitlimit gar nicht
+  // (steht dann nur auf der Anbieter-Webseite), das soll die Freigabe nicht
+  // blockieren.
+  if (
+    content.examQuestionCount === null &&
+    content.examDurationMinutes === null &&
+    content.passingScore === null
+  ) {
+    warnings.push(
+      "Kein Prüfungsformat (Fragenanzahl/Zeitlimit/Bestehensgrenze) im Dokument gefunden - Übungsprüfung nutzt den generischen Default, bis das manuell ergänzt wird.",
+    );
+  }
+
   return { errors, warnings };
 }
 

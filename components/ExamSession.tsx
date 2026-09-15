@@ -38,19 +38,41 @@ interface ExamResult {
   };
 }
 
-const MINUTES_PER_QUESTION = 90 / 50; // matches the real Security+ ratio (90 min / 50 questions)
+// Fallback, nur falls für diese Zertifizierung (noch) kein reales Zeitlimit
+// aus der offiziellen Quelle bekannt ist (certifications.examDurationMinutes,
+// siehe lib/server/exam/blueprint.ts) - vorher war das hier der einzige,
+// für jede Zertifizierung gleiche Wert.
+const FALLBACK_MINUTES_PER_QUESTION = 90 / 50;
 
 interface ExamSessionProps {
   certSlug: string;
   examId: string;
   questions: ExamQuestion[];
   locale: Locale;
+  /** Reales Zeitlimit der offiziellen Prüfung, falls bekannt. */
+  durationMinutes: number | null;
+  /** Ziel-Fragenanzahl laut Blueprint - kann von questions.length abweichen,
+   * wenn der Fragenpool für diese Zertifizierung noch nicht vollständig ist;
+   * das Zeitlimit wird dann proportional skaliert statt die volle Zeit für
+   * eine kürzere Prüfung zu geben. */
+  targetQuestionCount: number | null;
 }
 
-export function ExamSession({ certSlug, examId, questions, locale }: ExamSessionProps) {
-  const [secondsLeft, setSecondsLeft] = useState(() =>
-    Math.round(questions.length * MINUTES_PER_QUESTION * 60),
-  );
+export function ExamSession({
+  certSlug,
+  examId,
+  questions,
+  locale,
+  durationMinutes,
+  targetQuestionCount,
+}: ExamSessionProps) {
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    if (durationMinutes) {
+      const ratio = targetQuestionCount ? questions.length / targetQuestionCount : 1;
+      return Math.round(durationMinutes * 60 * ratio);
+    }
+    return Math.round(questions.length * FALLBACK_MINUTES_PER_QUESTION * 60);
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questions.map(() => null));
   const [flagged, setFlagged] = useState<Set<number>>(new Set());

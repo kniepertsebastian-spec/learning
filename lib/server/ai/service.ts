@@ -216,10 +216,17 @@ export async function generateBlueprintDraft(sourceText: string): Promise<Bluepr
     "",
     "`weightPercent` ist die offizielle Domain-Gewichtung in Prozent, FALLS im Text",
     "angegeben - sonst exakt `null` (nicht raten oder gleichmäßig verteilen).",
+    "",
+    "`examQuestionCount` (maximale Anzahl Fragen), `examDurationMinutes` (Zeitlimit",
+    "in Minuten), `passingScore` (offizielle Bestehensgrenze) und `scoreScale`",
+    "(Skalenbeschreibung, z. B. \"100-900\") FALLS im Text angegeben - sonst jeweils",
+    "exakt `null`. Dieselbe Regel wie bei `weightPercent`: nicht raten oder aus",
+    "Erfahrungswissen über die Zertifizierung ergänzen, nur was im Text steht.",
   ].join("\n");
 
   const userPrompt = [
-    "Extrahiere Zertifizierungsname, Anbieter, Exam-Code sowie alle Domains mit",
+    "Extrahiere Zertifizierungsname, Anbieter, Exam-Code, Prüfungsformat",
+    "(Fragenanzahl, Zeitlimit, Bestehensgrenze, Skala) sowie alle Domains mit",
     "Gewichtung und allen Objectives (Code, Titel, Beschreibung, Locator, Confidence)",
     "aus folgendem seitenmarkiertem Quelltext:",
     "",

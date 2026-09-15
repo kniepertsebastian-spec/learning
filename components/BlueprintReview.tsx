@@ -342,6 +342,80 @@ export function BlueprintReview({
             </label>
           </div>
 
+          <div className="grid gap-3 sm:grid-cols-4">
+            <label className="block text-xs">
+              <span className="mb-1 block font-medium text-foreground/70">
+                {locale === "de" ? "Fragenanzahl" : "Question count"}
+              </span>
+              <input
+                type="number"
+                min={1}
+                value={content.examQuestionCount ?? ""}
+                disabled={locked}
+                placeholder={locale === "de" ? "unbekannt" : "unknown"}
+                onChange={(e) =>
+                  setContent({
+                    ...content,
+                    examQuestionCount: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs disabled:opacity-60"
+              />
+            </label>
+            <label className="block text-xs">
+              <span className="mb-1 block font-medium text-foreground/70">
+                {locale === "de" ? "Zeitlimit (Min.)" : "Time limit (min)"}
+              </span>
+              <input
+                type="number"
+                min={1}
+                value={content.examDurationMinutes ?? ""}
+                disabled={locked}
+                placeholder={locale === "de" ? "unbekannt" : "unknown"}
+                onChange={(e) =>
+                  setContent({
+                    ...content,
+                    examDurationMinutes: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs disabled:opacity-60"
+              />
+            </label>
+            <label className="block text-xs">
+              <span className="mb-1 block font-medium text-foreground/70">
+                {locale === "de" ? "Bestehensgrenze" : "Passing score"}
+              </span>
+              <input
+                type="number"
+                min={0}
+                value={content.passingScore ?? ""}
+                disabled={locked}
+                placeholder={locale === "de" ? "unbekannt" : "unknown"}
+                onChange={(e) =>
+                  setContent({
+                    ...content,
+                    passingScore: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs disabled:opacity-60"
+              />
+            </label>
+            <label className="block text-xs">
+              <span className="mb-1 block font-medium text-foreground/70">
+                {locale === "de" ? "Skala" : "Scale"}
+              </span>
+              <input
+                value={content.scoreScale ?? ""}
+                disabled={locked}
+                placeholder={locale === "de" ? "z. B. 100-900" : "e.g. 100-900"}
+                onChange={(e) =>
+                  setContent({ ...content, scoreScale: e.target.value === "" ? null : e.target.value })
+                }
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs disabled:opacity-60"
+              />
+            </label>
+          </div>
+
           <label className="block text-xs">
             <span className="mb-1 block font-medium text-foreground/70">
               {locale === "de" ? "Vorgeschlagener Slug" : "Suggested slug"}

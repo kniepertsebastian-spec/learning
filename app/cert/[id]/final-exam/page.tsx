@@ -62,10 +62,28 @@ export default async function FinalExamStartPage({
         <div className="mb-8 w-full rounded-lg border border-border bg-surface p-5 text-left text-sm text-foreground/80">
           <ul className="list-disc space-y-1.5 pl-5">
             <li>
-              {locale === "de"
-                ? "90 Fragen, verteilt nach offizieller Domain-Gewichtung"
-                : "90 questions distributed by official domain weighting"}
+              {cert.examQuestionCount
+                ? locale === "de"
+                  ? `${cert.examQuestionCount} Fragen, verteilt nach offizieller Domain-Gewichtung`
+                  : `${cert.examQuestionCount} questions distributed by official domain weighting`
+                : locale === "de"
+                  ? "Fragen verteilt nach offizieller Domain-Gewichtung (Fragenanzahl der echten Prüfung noch nicht hinterlegt)"
+                  : "Questions distributed by official domain weighting (real exam question count not on file yet)"}
             </li>
+            {cert.examDurationMinutes && (
+              <li>
+                {locale === "de"
+                  ? `Zeitlimit: ${cert.examDurationMinutes} Minuten, wie in der echten Prüfung`
+                  : `Time limit: ${cert.examDurationMinutes} minutes, matching the real exam`}
+              </li>
+            )}
+            {cert.passingScore && (
+              <li>
+                {locale === "de"
+                  ? `Offizielle Bestehensgrenze: ${cert.passingScore}${cert.scoreScale ? ` (Skala ${cert.scoreScale})` : ""}`
+                  : `Official passing score: ${cert.passingScore}${cert.scoreScale ? ` (scale ${cert.scoreScale})` : ""}`}
+              </li>
+            )}
             <li>
               {locale === "de"
                 ? "Vermeidet Fragen, die du bereits in Quizzes beantwortet hast"

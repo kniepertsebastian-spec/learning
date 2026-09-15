@@ -30,8 +30,10 @@ export async function POST(
       return NextResponse.json({ error: "Certification not found" }, { status: 404 });
     }
 
-    // Generate exam
-    const examData = await generateFinalExam(certId, session.user.id, 90);
+    // Generate exam - question count comes from the certification's real
+    // exam format when known (buildExamBlueprint), falling back to a generic
+    // default otherwise.
+    const examData = await generateFinalExam(certId, session.user.id);
 
     return NextResponse.json({
       examId: examData.examId,
