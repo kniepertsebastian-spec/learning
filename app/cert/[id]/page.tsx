@@ -10,7 +10,14 @@ import { certifications, domains, objectives, sections, lessons, objectiveProgre
 import { getServerLocale } from "@/lib/server/locale";
 import { RemediationService } from "@/lib/server/remediation/service";
 import { getStudyProfile } from "@/lib/server/study/profile";
+import {
+  getOrCreateStudySession,
+  getStudyStreak,
+  getTopWeakObjectives,
+} from "@/lib/server/study/session-service";
+import { getDueReviewCount } from "@/lib/server/review/service";
 import { StudyGoalPanel, type StudyGoalState } from "@/components/StudyGoalPanel";
+import { TodayDashboard, type TodayDashboardData } from "@/components/TodayDashboard";
 
 interface ProgressData {
   [key: string]: { masteryScore: number; status: string };
@@ -71,12 +78,20 @@ export default async function CertDetailPage({
   let progressData: ProgressData = {};
   let needsRemediation: Array<{ objectiveId: string; objectiveTitle: string }> = [];
   let studyGoal: StudyGoalState | null = null;
+  let todayDashboard: TodayDashboardData | null = null;
   if (session?.user?.id) {
-    const [progress, remediationTargets, studyProfile] = await Promise.all([
-      db.select().from(objectiveProgress).where(eq(objectiveProgress.userId, session.user.id)),
-      RemediationService.findObjectivesNeedingRemediation(session.user.id),
-      getStudyProfile(session.user.id, cert.id),
-    ]);
+    const [progress, remediationTargets, studyProfile, sessionSummary, dueCount, streak, weakObjectives] =
+      await Promise.all([
+        db.select().from(objectiveProgress).where(eq(objectiveProgress.userId, session.user.id)),
+        RemediationService.findObjectivesNeedingRemediation(session.user.id),
+        getStudyProfile(session.user.id, cert.id),
+        // R2.3/R2.4: liest die aktuell gültige Session (baut sie bei Bedarf) -
+        // Grundlage für das "Heute lernen"-Dashboard unten.
+        getOrCreateStudySession(session.user.id, cert.id),
+        getDueReviewCount(session.user.id, cert.id),
+        getStudyStreak(session.user.id, cert.id),
+        getTopWeakObjectives(session.user.id, cert.id),
+      ]);
     progressData = Object.fromEntries(
       progress.map((p) => [p.objectiveId, { masteryScore: Number(p.masteryScore), status: p.status }])
     );
@@ -92,6 +107,16 @@ export default async function CertDetailPage({
           preferredLocale: studyProfile.preferredLocale,
         }
       : null;
+    todayDashboard = {
+      sessionId: sessionSummary.id,
+      sessionStatus: sessionSummary.status,
+      estimatedMinutes: sessionSummary.estimatedMinutes,
+      dueCount,
+      streak,
+      dailyGoalType: sessionSummary.goalType,
+      dailyGoalValue: sessionSummary.goalValue,
+      weakObjectives,
+    };
   }
 
   // Calculate domain mastery
@@ -168,6 +193,10 @@ export default async function CertDetailPage({
             {locale === "de" ? "Anmelden" : "Sign in"}
           </Link>
         </div>
+      )}
+
+      {session && todayDashboard && (
+        <TodayDashboard certSlug={slug} locale={locale} data={todayDashboard} />
       )}
 
       {session && <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} />}

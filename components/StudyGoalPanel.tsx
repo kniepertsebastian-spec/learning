@@ -77,7 +77,7 @@ export function StudyGoalPanel({
   }
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-surface p-4">
+    <div id="study-goal" className="mb-6 scroll-mt-4 rounded-lg border border-border bg-surface p-4">
       <h2 className="mb-3 flex items-center gap-1.5 text-sm font-medium">
         <Target className="h-4 w-4" aria-hidden="true" />
         {locale === "de" ? "Lernziel" : "Study goal"}
