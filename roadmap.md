@@ -452,10 +452,23 @@ aus fälligen Wiederholungen, schwachen Objectives und neuem Stoff.
 
 #### R2.1 Lernprofil und Ziele
 
-- [ ] Prüfungstermin optional speichern.
-- [ ] Tägliches Zeit- oder Fragenziel festlegen.
-- [ ] Aktive Lerntage und bevorzugte Sprache speichern.
-- [ ] Ziel jederzeit änderbar machen, ohne bisherigen Fortschritt zu verlieren.
+- [x] Prüfungstermin optional speichern. (`study_profiles.examDate`, nullable.)
+- [x] Tägliches Zeit- oder Fragenziel festlegen. (`dailyGoalType`
+      "minutes"/"questions" + `dailyGoalValue` - genau eine der beiden
+      Einheiten gilt, kein gleichzeitiges Minuten- und Fragenziel.)
+- [x] Aktive Lerntage und bevorzugte Sprache speichern. (`activeDays`
+      (ISO-Wochentage 1-7), `preferredLocale` - Letzteres bewusst getrennt
+      vom UI-Sprachcookie in `lib/server/locale.ts`: eine Lernziel-Angabe je
+      Kurs, keine UI-Einstellung.)
+- [x] Ziel jederzeit änderbar machen, ohne bisherigen Fortschritt zu
+      verlieren. Ein Profil pro (Nutzer, Zertifizierung)
+      (`study_profiles_user_certification_unique`), `upsertStudyProfile()`
+      überschreibt es vollständig per PUT - strukturell unmöglich, dabei
+      Fortschritt zu verlieren, da die Tabelle nichts mit
+      objective_progress/review_items/quiz_attempts teilt.
+      `validateStudyProfileInput()` (reine Funktion, vollständig getestet)
+      blockt ungültige Werte, bevor sie gespeichert werden. UI:
+      `StudyGoalPanel` auf der Kursseite.
 
 #### R2.2 Review-Scheduler
 
