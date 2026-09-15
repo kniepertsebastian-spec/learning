@@ -821,3 +821,27 @@ export const auditEvents = pgTable(
     index("audit_events_actor_user_id_idx").on(table.actorUserId),
   ],
 );
+
+/** R2 (roadmap.md, neue Fassung): "Nutzerfeedback auf Empfehlungen erfassen"
+ * - einfaches Daumen-hoch/-runter je Session, direkt an der Empfehlung
+ * (siehe getSessionCategoryBreakdown()/TodayDashboard). Höchstens ein
+ * Feedback-Eintrag pro Session (Unique-Constraint), ein zweiter Klick
+ * überschreibt den ersten statt einen weiteren Eintrag anzulegen (Upsert in
+ * lib/server/study/session-service.ts). */
+export const sessionRecommendationFeedback = pgTable(
+  "session_recommendation_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => studySessions.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    helpful: boolean("helpful").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("session_recommendation_feedback_session_unique").on(table.sessionId),
+  ],
+);

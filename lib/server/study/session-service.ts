@@ -9,6 +9,7 @@ import {
   questions,
   reviewItems,
   sections,
+  sessionRecommendationFeedback,
   studyProfiles,
   studySessionItems,
   studySessions,
@@ -622,4 +623,58 @@ export async function getTopWeakObjectives(
     .orderBy(asc(objectiveProgress.masteryScore))
     .limit(limit);
   return rows.map((r) => ({ ...r, masteryScore: Number(r.masteryScore) }));
+}
+
+/** R2 (roadmap.md, neue Fassung): "Empfehlungen mit Gründen anzeigen" -
+ * zählt die bereits gebauten study_session_items je Kategorie, damit das
+ * Dashboard daraus einen erklärenden Satz bauen kann ("3 Wiederholungen,
+ * 1 schwacher Bereich, 1 neue Frage"), ohne die Session-Zusammenstellung
+ * (computeSessionComposition) an dieser Stelle zu wiederholen. */
+export async function getSessionCategoryBreakdown(
+  sessionId: string,
+): Promise<Record<StudySessionItemCategory, number>> {
+  const rows = await getDb()
+    .select({ category: studySessionItems.category, count: sql<number>`count(*)::int` })
+    .from(studySessionItems)
+    .where(eq(studySessionItems.sessionId, sessionId))
+    .groupBy(studySessionItems.category);
+
+  const breakdown: Record<StudySessionItemCategory, number> = { review: 0, weak: 0, new: 0, lesson: 0 };
+  for (const row of rows) breakdown[row.category] = row.count;
+  return breakdown;
+}
+
+/** R2 (roadmap.md, neue Fassung): "Nutzerfeedback auf Empfehlungen erfassen"
+ * - Upsert, da höchstens ein Feedback pro Session sinnvoll ist (Unique-
+ * Constraint auf session_id): ein erneuter Klick ändert die bestehende
+ * Bewertung statt eine zweite Zeile anzulegen. */
+export async function setSessionRecommendationFeedback(
+  sessionId: string,
+  userId: string,
+  helpful: boolean,
+): Promise<void> {
+  const db = getDb();
+  const [session] = await db
+    .select({ id: studySessions.id })
+    .from(studySessions)
+    .where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId)))
+    .limit(1);
+  if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
+
+  await db
+    .insert(sessionRecommendationFeedback)
+    .values({ sessionId, userId, helpful })
+    .onConflictDoUpdate({
+      target: sessionRecommendationFeedback.sessionId,
+      set: { helpful },
+    });
+}
+
+export async function getSessionRecommendationFeedback(sessionId: string): Promise<boolean | null> {
+  const [row] = await getDb()
+    .select({ helpful: sessionRecommendationFeedback.helpful })
+    .from(sessionRecommendationFeedback)
+    .where(eq(sessionRecommendationFeedback.sessionId, sessionId))
+    .limit(1);
+  return row?.helpful ?? null;
 }
