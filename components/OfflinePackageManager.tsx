@@ -11,6 +11,7 @@ import {
 } from "@/lib/client/offline-db";
 import { downloadOfflinePackage, fetchOfflinePackageVersion, type DownloadProgress } from "@/lib/client/offline-download";
 import { SectionContent } from "@/components/SectionContent";
+import { StudySession } from "@/components/StudySession";
 
 interface OfflinePackageManagerProps {
   certificationId: string;
@@ -31,13 +32,11 @@ function formatDate(iso: string, locale: Locale): string {
 }
 
 /**
- * R4.1/4.2 (roadmap.md): Download, lokale Speicherung (IndexedDB) und
+ * R4.1/4.2/4.3 (roadmap.md): Download, lokale Speicherung (IndexedDB) und
  * Offline-Ansicht eines Kurspakets - eigene Route statt jede bestehende
  * Server-Seite offline-fähig zu machen (die sind `force-dynamic` und setzen
  * eine Live-DB-Verbindung voraus; das einzeln umzubauen wäre ein deutlich
- * größerer, risikoreicherer Eingriff und bewusst nicht Teil dieses PRs).
- * "Tages-Session" offline abschließen ist ebenfalls bewusst nicht hier -
- * das braucht dieselbe Sync-Infrastruktur wie R4.3 und wird dort mitgebaut.
+ * größerer, risikoreicherer Eingriff und bewusst nicht Teil dieser Arbeit).
  */
 export function OfflinePackageManager({
   certificationId,
@@ -53,6 +52,7 @@ export function OfflinePackageManager({
   const [error, setError] = useState<string | null>(null);
   const [remoteVersion, setRemoteVersion] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [showSession, setShowSession] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,7 +151,29 @@ export function OfflinePackageManager({
           domainName={selected.domainName}
           lesson={selected.section.lesson}
           questions={selected.objective.questions}
-          offline
+          offline={{ userId }}
+        />
+      </div>
+    );
+  }
+
+  if (showSession && record?.data.session) {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowSession(false)}
+          className="mb-4 text-sm text-foreground/70 hover:text-foreground"
+        >
+          {locale === "de" ? "← Zurück zur Offline-Übersicht" : "← Back to offline overview"}
+        </button>
+        <StudySession
+          certSlug={certSlug}
+          sessionId={record.data.session.sessionId}
+          questionItems={record.data.session.questionItems}
+          lessonItems={[]}
+          locale={locale}
+          offline={{ userId }}
         />
       </div>
     );
@@ -240,6 +262,25 @@ export function OfflinePackageManager({
           )}
         </div>
       </div>
+
+      {record?.data.session && (
+        <div className="rounded-lg border border-accent/40 bg-accent/5 p-4">
+          <p className="mb-1 text-sm font-medium">
+            {locale === "de" ? "Heutige Session verfügbar" : "Today's session available"}
+          </p>
+          <p className="mb-3 text-xs text-foreground/60">
+            {record.data.session.questionItems.length}{" "}
+            {locale === "de" ? "Fragen, offline beantwortbar" : "questions, answerable offline"}
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowSession(true)}
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+          >
+            {locale === "de" ? "Session starten" : "Start session"}
+          </button>
+        </div>
+      )}
 
       {record && (
         <div className="flex flex-col gap-4">

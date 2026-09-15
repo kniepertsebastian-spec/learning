@@ -739,3 +739,42 @@ export const objectiveSourceRefs = pgTable(
     ),
   ],
 );
+
+/** R4.3 (roadmap.md): serverseitige Idempotenz-Wache für die Offline-Sync-
+ * Queue. Jede Zeile entspricht genau einem clientseitig erzeugten Ereignis
+ * (SectionQuiz-Abschluss oder Session-Abschluss, offline aufgezeichnet) -
+ * der Unique-Index auf (userId, clientEventId) sorgt dafür, dass ein Retry
+ * desselben Ereignisses (z. B. nach einem Netzwerkfehler mitten im vorigen
+ * Sync-Versuch) es niemals ein zweites Mal anwendet: der Sync-Endpunkt
+ * versucht zuerst, die Zeile einzufügen, wendet die eigentliche Logik
+ * (Quiz-/Session-Auswertung) nur bei Erfolg an und gibt bei einem Konflikt
+ * einfach das zuvor gespeicherte Ergebnis zurück. */
+export type SyncEventType = "section_quiz" | "study_session";
+export type SyncEventStatus = "applied" | "conflict" | "error";
+
+export const syncEvents = pgTable(
+  "sync_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Clientseitig per crypto.randomUUID() erzeugt (lib/client/sync-queue.ts). */
+    clientEventId: text("client_event_id").notNull(),
+    type: text("type").$type<SyncEventType>().notNull(),
+    status: text("status").$type<SyncEventStatus>().notNull(),
+    /** Zeitpunkt, zu dem das Ereignis OFFLINE aufgezeichnet wurde (vom
+     * Client mitgeliefert) - Grundlage für die Konfliktauflösung "nach
+     * Ereigniszeit und Serverstatus". */
+    clientCreatedAt: timestamp("client_created_at", { withTimezone: true }).notNull(),
+    /** Kompaktes, für die Client-UI verwertbares Ergebnis (z. B. Score),
+     * damit ein Retry dasselbe Ergebnis erneut liefern kann, ohne die
+     * zugrundeliegenden Tabellen erneut zu lesen. */
+    resultSummary: jsonb("result_summary"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("sync_events_user_client_event_unique").on(table.userId, table.clientEventId),
+  ],
+);

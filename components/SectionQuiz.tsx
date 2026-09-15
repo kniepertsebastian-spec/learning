@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
 import type { QuizQuestion, Locale } from "@/lib/types";
+import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 
 export interface SectionQuizQuestion {
   id: string;
@@ -25,14 +26,14 @@ interface SectionQuizProps {
   questions: SectionQuizQuestion[];
   certSlug: string;
   locale: Locale;
-  /** R4.1/4.2 (roadmap.md): im Offline-Reader gesetzt - unterdrückt den
-   * Versuch, das Ergebnis an den Server zu senden (der ohnehin fehlschlagen
-   * würde) und zeigt stattdessen einen Hinweis, dass die Synchronisierung
-   * erst mit R4.3 folgt. */
-  offline?: boolean;
+  /** R4.1/4.2/4.3 (roadmap.md): im Offline-Reader gesetzt - statt des
+   * direkten POST an den Server wird das Ergebnis in die lokale Sync-
+   * Warteschlange (lib/client/sync-queue.ts) eingereiht und beim nächsten
+   * `online`/App-Start/manuellen Sync übertragen. */
+  offline?: { userId: string };
 }
 
-export function SectionQuiz({ sectionId, questions, certSlug, locale, offline = false }: SectionQuizProps) {
+export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }: SectionQuizProps) {
   const [quizIndex, setQuizIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [hasAnsweredCurrent, setHasAnsweredCurrent] = useState(false);
@@ -78,7 +79,14 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline = 
       setQuizFinished(true);
       const score = Math.round(((correctCount + (pendingAnswer ? 0 : 0)) / questions.length) * 100);
       setFinalScore(score);
-      if (!offline) {
+      if (offline) {
+        enqueueSyncEvent(
+          offline.userId,
+          "section_quiz",
+          { sectionId, answers: nextAnswers },
+          locale === "de" ? "Abschnittsquiz" : "Section quiz",
+        ).catch(() => {});
+      } else {
         fetch(`/api/sections/${sectionId}/attempt`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -105,8 +113,8 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline = 
         {offline && (
           <p className="mb-6 text-xs text-foreground/50">
             {locale === "de"
-              ? "Offline-Modus: Dieses Ergebnis wird noch nicht mit dem Server synchronisiert."
-              : "Offline mode: this result is not yet synced with the server."}
+              ? "Offline-Modus: Dieses Ergebnis wird synchronisiert, sobald du wieder online bist."
+              : "Offline mode: this result will sync once you're back online."}
           </p>
         )}
         <Link

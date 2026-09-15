@@ -1,24 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
-import { getDb } from "@/lib/server/db/client";
 import {
-  sections,
-  objectives,
-  domains,
-  questionOptions,
-  quizzes,
-  quizAttempts,
-  quizAnswers,
-} from "@/lib/server/db/schema";
-import { ObjectiveProgressService } from "@/lib/server/progress/service";
-import { recordReviewOutcomes } from "@/lib/server/review/service";
-
-interface AnswerPayload {
-  questionId: string;
-  selectedOptionId: string;
-}
+  recordSectionQuizAttempt,
+  SectionNotFoundError,
+  type SectionQuizAnswerInput,
+} from "@/lib/server/sections/attempt-service";
 
 export async function POST(
   request: NextRequest,
@@ -30,104 +17,15 @@ export async function POST(
   }
 
   const { id: sectionId } = await params;
-  const body = (await request.json()) as { answers: AnswerPayload[] };
-  const db = getDb();
+  const body = (await request.json()) as { answers: SectionQuizAnswerInput[] };
 
-  // Resolve certificationId via join: section → objective → domain
-  const certInfo = await db
-    .select({ certificationId: domains.certificationId })
-    .from(sections)
-    .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
-    .innerJoin(domains, eq(domains.id, objectives.domainId))
-    .where(eq(sections.id, sectionId))
-    .limit(1);
-
-  if (!certInfo.length) {
-    return NextResponse.json({ error: "Section not found" }, { status: 404 });
+  try {
+    const result = await recordSectionQuizAttempt(session.user.id, sectionId, body.answers);
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof SectionNotFoundError) {
+      return NextResponse.json({ error: "Section not found" }, { status: 404 });
+    }
+    throw error;
   }
-
-  // Get or create quiz for this section
-  const existingQuiz = await db
-    .select()
-    .from(quizzes)
-    .where(eq(quizzes.sectionId, sectionId))
-    .limit(1);
-
-  let quizId: string;
-  if (existingQuiz.length) {
-    quizId = existingQuiz[0].id;
-  } else {
-    const inserted = await db
-      .insert(quizzes)
-      .values({ sectionId, certificationId: certInfo[0].certificationId })
-      .returning();
-    quizId = inserted[0].id;
-  }
-
-  // Create attempt
-  const attemptInserted = await db
-    .insert(quizAttempts)
-    .values({
-      quizId,
-      userId: session.user.id,
-      startedAt: new Date(),
-      completedAt: new Date(),
-    })
-    .returning();
-  const attemptId = attemptInserted[0].id;
-
-  // Determine correctness per answer
-  const questionIds = body.answers.map((a) => a.questionId);
-  const optionRows =
-    questionIds.length > 0
-      ? await db
-          .select()
-          .from(questionOptions)
-          .where(inArray(questionOptions.questionId, questionIds))
-      : [];
-
-  const results: Array<{ questionId: string; isCorrect: boolean; correctOptionId: string }> = [];
-  let correctCount = 0;
-
-  for (const answer of body.answers) {
-    const correctOption = optionRows.find((o) => o.questionId === answer.questionId && o.isCorrect);
-    const isCorrect = !!correctOption && correctOption.id === answer.selectedOptionId;
-    if (isCorrect) correctCount++;
-    results.push({
-      questionId: answer.questionId,
-      isCorrect,
-      correctOptionId: correctOption?.id ?? "",
-    });
-  }
-
-  // Save answers
-  if (body.answers.length > 0) {
-    await db.insert(quizAnswers).values(
-      body.answers.map((a) => ({
-        quizAttemptId: attemptId,
-        questionId: a.questionId,
-        selectedOptionId: a.selectedOptionId || null,
-        isCorrect: results.find((r) => r.questionId === a.questionId)?.isCorrect ?? false,
-      })),
-    );
-  }
-
-  const score =
-    body.answers.length > 0 ? Math.round((correctCount / body.answers.length) * 100) : 0;
-
-  await db
-    .update(quizAttempts)
-    .set({ score: String(score) })
-    .where(eq(quizAttempts.id, attemptId));
-
-  // Update objective progress
-  await ObjectiveProgressService.updateProgressForQuizAttempt(session.user.id, attemptId);
-
-  // R2.2: Review-Zustand (Fälligkeit/Intervall) je beantworteter Frage fortschreiben.
-  await recordReviewOutcomes(
-    session.user.id,
-    results.map((r) => ({ questionId: r.questionId, isCorrect: r.isCorrect })),
-  );
-
-  return NextResponse.json({ score, results, attemptId });
 }

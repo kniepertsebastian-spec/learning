@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, Play } from "lucide-react";
+import { useOnlineStatus } from "@/lib/client/use-online-status";
 
 interface Job {
   id: string;
@@ -58,6 +59,7 @@ export function ContentGenerationControl({
   initialEstimate: GenerationEstimate;
 }) {
   const router = useRouter();
+  const online = useOnlineStatus();
   const [job, setJob] = useState<Job | null>(initialJob);
   const [estimate, setEstimate] = useState<GenerationEstimate>(initialEstimate);
   const [loading, setLoading] = useState(false);
@@ -140,7 +142,7 @@ export function ContentGenerationControl({
         <button
           type="button"
           onClick={startGeneration}
-          disabled={loading || active}
+          disabled={loading || active || !online}
           className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {active || loading ? (
@@ -155,6 +157,15 @@ export function ContentGenerationControl({
               : locale === "de" ? "Inhalte generieren" : "Generate content"}
         </button>
       </div>
+
+      {/* R4.4 (roadmap.md): "Generierung ... ausdrücklich nicht offline anbieten". */}
+      {!online && (
+        <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+          {locale === "de"
+            ? "Die KI-Inhaltsgenerierung benötigt eine Verbindung."
+            : "AI content generation requires a connection."}
+        </p>
+      )}
 
       {!active && estimate.estimatedAiCalls > 0 && (
         <p className="mt-3 text-xs text-foreground/60">

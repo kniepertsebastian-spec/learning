@@ -65,7 +65,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <LocaleProvider>
           <ThemeProvider>
-            <Header isAdmin={user?.role === "admin"} />
+            <Header isAdmin={user?.role === "admin"} userId={user?.id ?? null} />
             <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6">
               {children}
             </main>

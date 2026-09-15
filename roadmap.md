@@ -734,31 +734,28 @@ nach Wiederherstellung des Netzes genau einmal synchronisiert.
 - [x] „Offline-Daten löschen“ in den Einstellungen anbieten. *(Es gibt noch keine allgemeine Einstellungsseite in der App - der Löschen-Button sitzt stattdessen direkt auf `/cert/[id]/offline`, wo auch heruntergeladen wird. Funktional identisch, nur ohne eigene globale Einstellungsseite.)*
 - [x] Bei Logout nutzerbezogene lokale Daten entfernen. *(`SignOutButton`-Client-Komponente räumt IndexedDB vor dem eigentlichen Sign-out auf - der bisherige reine Server-Action-Form-Submit hatte keinen Zugriff auf Browser-Storage.)*
 
-Bewusst noch nicht Teil von R4.1/R4.2: Das Abschnittsquiz ist im Offline-
-Reader bereits benutzbar und wird sofort clientseitig ausgewertet (dieselbe
-`isCorrect`-Information, die das Live-Quiz ohnehin an den Client schickt),
-aber das Ergebnis wird noch nirgends gespeichert oder synchronisiert - dafür
-fehlt die Sync-Infrastruktur aus R4.3. Der Offline-Reader zeigt das explizit
-an ("Dieses Ergebnis wird noch nicht mit dem Server synchronisiert."). Die
-"Tages-Session" offline zu laden/abzuschließen ist ebenfalls auf R4.3
-verschoben, da `completeStudySession()` neben der reinen Auswertung auch
-lebende Server-Logik ausführt (SM-2-Zustand in `review_items` aktualisieren)
-- das braucht denselben Sync-Endpunkt wie die Quizergebnisse.
-
 #### R4.3 Sync Queue
 
-- [ ] Offline-Quiz- und Session-Ergebnisse mit clientseitiger Ereignis-ID speichern.
-- [ ] Idempotenten Sync-Endpunkt implementieren.
-- [ ] Automatisch bei `online`, App-Start und manuellem Sync übertragen.
-- [ ] Konflikte nach Ereigniszeit und Serverstatus nachvollziehbar lösen.
-- [ ] Fehlgeschlagene Einträge mit Retry und sichtbarem Status behalten.
+- [x] Offline-Quiz- und Session-Ergebnisse mit clientseitiger Ereignis-ID speichern. *(`lib/client/sync-queue.ts::enqueueSyncEvent()`, IndexedDB-Store `pendingSyncEvents` in `lib/client/offline-db.ts` - `clientEventId` per `crypto.randomUUID()`. Das Abschnittsquiz UND die heutige, bereits vor dem Download bestehende Session sind jetzt beide offline abschließbar, jeweils sofort clientseitig ausgewertet.)*
+- [x] Idempotenten Sync-Endpunkt implementieren. *(`POST /api/sync`, `lib/server/sync/service.ts`. "Insert-first, apply-second": eine `sync_events`-Zeile (Unique-Index auf `(userId, clientEventId)`) wird VOR der eigentlichen Logik als Claim eingefügt - ein per Playwright nachgestellter echter Wettlauf zweier gleichzeitiger Sync-Aufrufe für dasselbe Ereignis hat ohne dieses Insert-first-Muster tatsächlich zu einem doppelten `quiz_attempts`-Eintrag geführt, siehe Testprotokoll unten.)*
+- [x] Automatisch bei `online`, App-Start und manuellem Sync übertragen. *(`SyncStatusBadge`, global im Header montiert: löst `runSync()` bei Mount, beim `online`-Event und per Klick aus. Ein clientseitiger `inFlightSyncs`-Guard verhindert zusätzlich überlappende Sync-Aufrufe für denselben Nutzer.)*
+- [x] Konflikte nach Ereigniszeit und Serverstatus nachvollziehbar lösen. *(Ein Sync-Versuch für eine bereits (anderswo) abgeschlossene Session liefert `status: "conflict"` mit Klartext-Fehlermeldung statt eines stillen Fehlschlags oder einer Doppelverbuchung - per Playwright gegen eine echte, bereits abgeschlossene Session verifiziert.)*
+- [x] Fehlgeschlagene Einträge mit Retry und sichtbarem Status behalten. *(Netzwerk-/Serverfehler setzen den lokalen Eintrag auf `status: "failed"` mit `attempts`/`lastError`, bleiben in der Warteschlange und werden beim nächsten Sync automatisch erneut versucht; ein dauerhafter Konflikt bleibt sichtbar, bis der Nutzer ihn über `discardPendingSyncEvent()` verwirft.)*
 
 #### R4.4 UX
 
-- [ ] Online-, Offline- und Sync-Status anzeigen.
-- [ ] Funktionen, die online bleiben müssen, verständlich deaktivieren.
-- [ ] Generierung und Quellenimport ausdrücklich nicht offline anbieten.
-- [ ] Speicherplatz und zuletzt synchronisierten Zeitpunkt anzeigen.
+- [x] Online-, Offline- und Sync-Status anzeigen. *(`SyncStatusBadge` im Header: Online/Offline-Icon, ausstehende/fehlgeschlagene/im-Konflikt-Anzahl, aufklappbares Detail-Panel.)*
+- [x] Funktionen, die online bleiben müssen, verständlich deaktivieren. *(`lib/client/use-online-status.ts` - Generierungs- und Quellenimport-Buttons im Adminbereich sind offline deaktiviert, mit erklärendem Hinweistext.)*
+- [x] Generierung und Quellenimport ausdrücklich nicht offline anbieten. *(`ContentGenerationControl`/`SourcesManager` - siehe oben.)*
+- [x] Speicherplatz und zuletzt synchronisierten Zeitpunkt anzeigen. *(Speicherplatz weiterhin auf `/cert/[id]/offline` je Kurs (R4.1); "zuletzt synchronisiert" im `SyncStatusBadge`-Panel, aus `localStorage` - bewusst nur ein informativer Anzeigewert, kein Bestandteil der eigentlichen Sync-Garantie, die vollständig serverseitig in `sync_events` liegt.)*
+
+R4 ist damit vollständig: Lessons, Abschnittsquiz UND die bereits online
+geladene Tages-Session funktionieren ohne Verbindung, Ergebnisse werden
+nach Wiederherstellung des Netzes synchronisiert (genau einmal, per
+Server-seitigem Claim-Mechanismus statt nur eines Best-Effort-Dedups).
+Bewusst außerhalb des Umfangs: eine komplett NEUE Session lässt sich nicht
+offline bauen (das bräuchte Live-Zugriff auf Fälligkeits-/Schwachstellen-
+Daten) - nur eine bereits vor dem Download bestehende.
 
 ### Tests
 
