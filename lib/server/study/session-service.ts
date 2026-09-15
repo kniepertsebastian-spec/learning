@@ -92,6 +92,23 @@ export async function getOrCreateStudySession(
   certificationId: string,
   now: Date = new Date(),
 ): Promise<StudySessionSummary> {
+  const existing = await peekActiveOrTodaySession(userId, certificationId, now);
+  if (existing) return existing;
+  return buildAndPersistSession(userId, certificationId);
+}
+
+/**
+ * R2 (roadmap.md, neue Fassung): "Zeitbudget als primäre Session-Eingabe" -
+ * die Dashboard-Seite braucht die "gültige Session existiert bereits"-Prüfung
+ * OHNE den Auto-Bau-Zweig, um stattdessen die 2/5/10/20-Minuten-Auswahl
+ * (StartSessionPicker) zu zeigen, wenn noch keine Session für heute existiert.
+ * Reine Lesefunktion - siehe getOrCreateStudySession für die "gültig"-Regel.
+ */
+export async function peekActiveOrTodaySession(
+  userId: string,
+  certificationId: string,
+  now: Date = new Date(),
+): Promise<StudySessionSummary | null> {
   const db = getDb();
 
   const [latest] = await db
@@ -109,8 +126,25 @@ export async function getOrCreateStudySession(
       return toSummary(latest, itemCount);
     }
   }
+  return null;
+}
 
-  return buildAndPersistSession(userId, certificationId);
+/**
+ * R2 (roadmap.md, neue Fassung): "Nutzer wählt 2, 5, 10 oder 20 Minuten" -
+ * baut eine neue Session explizit mit dem gerade gewählten Zeitbudget statt
+ * dem gespeicherten Tagesziel aus study_profiles. Bewusst KEIN Rückschreiben
+ * auf study_profiles.dailyGoalValue - eine Wahl "gerade 5 Minuten Zeit" soll
+ * nicht leise die langfristige Standardeinstellung überschreiben. Wirft
+ * nichts Neues, wenn bereits eine gültige Session existiert (siehe
+ * peekActiveOrTodaySession) - der Aufrufer (API-Route) prüft das vorher.
+ */
+export async function startStudySession(
+  userId: string,
+  certificationId: string,
+  goalValue: number,
+  goalType: StudyGoalType = "minutes",
+): Promise<StudySessionSummary> {
+  return buildAndPersistSession(userId, certificationId, { goalType, goalValue });
 }
 
 async function countSessionItems(sessionId: string): Promise<number> {
@@ -228,6 +262,7 @@ export async function getStudySessionWithContent(
 async function buildAndPersistSession(
   userId: string,
   certificationId: string,
+  goalOverride?: { goalType: StudyGoalType; goalValue: number },
 ): Promise<StudySessionSummary> {
   const db = getDb();
 
@@ -241,8 +276,8 @@ async function buildAndPersistSession(
     .where(and(eq(studyProfiles.userId, userId), eq(studyProfiles.certificationId, certificationId)))
     .limit(1);
 
-  const goalType = profile?.dailyGoalType ?? DEFAULT_GOAL_TYPE;
-  const goalValue = profile?.dailyGoalValue ?? DEFAULT_GOAL_VALUE;
+  const goalType = goalOverride?.goalType ?? profile?.dailyGoalType ?? DEFAULT_GOAL_TYPE;
+  const goalValue = goalOverride?.goalValue ?? profile?.dailyGoalValue ?? DEFAULT_GOAL_VALUE;
   const targetQuestionCount = estimateTargetQuestionCount(goalType, goalValue);
 
   const [dueCount, dueItems] = await Promise.all([

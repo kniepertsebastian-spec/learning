@@ -11,7 +11,7 @@ import { getServerLocale } from "@/lib/server/locale";
 import { RemediationService } from "@/lib/server/remediation/service";
 import { getStudyProfile } from "@/lib/server/study/profile";
 import {
-  getOrCreateStudySession,
+  peekActiveOrTodaySession,
   getStudyStreak,
   getTopWeakObjectives,
 } from "@/lib/server/study/session-service";
@@ -20,6 +20,7 @@ import { getReadiness } from "@/lib/server/readiness/service";
 import type { ReadinessResult } from "@/lib/server/readiness/engine";
 import { StudyGoalPanel, type StudyGoalState } from "@/components/StudyGoalPanel";
 import { TodayDashboard, type TodayDashboardData } from "@/components/TodayDashboard";
+import { StartSessionPicker } from "@/components/StartSessionPicker";
 import { ReadinessCard } from "@/components/ReadinessCard";
 
 interface ProgressData {
@@ -97,9 +98,11 @@ export default async function CertDetailPage({
       db.select().from(objectiveProgress).where(eq(objectiveProgress.userId, session.user.id)),
       RemediationService.findObjectivesNeedingRemediation(session.user.id),
       getStudyProfile(session.user.id, cert.id),
-      // R2.3/R2.4: liest die aktuell gültige Session (baut sie bei Bedarf) -
-      // Grundlage für das "Heute lernen"-Dashboard unten.
-      getOrCreateStudySession(session.user.id, cert.id),
+      // R2 (neue Roadmap-Fassung): liest die aktuell gültige Session, baut
+      // aber KEINE neue - ohne gültige Session zeigt die Seite unten
+      // stattdessen den Zeitbudget-Picker ("2, 5, 10 oder 20 Minuten" als
+      // primäre Session-Eingabe statt eines stillen Auto-Baus).
+      peekActiveOrTodaySession(session.user.id, cert.id),
       getDueReviewCount(session.user.id, cert.id),
       getStudyStreak(session.user.id, cert.id),
       getTopWeakObjectives(session.user.id, cert.id),
@@ -122,7 +125,7 @@ export default async function CertDetailPage({
           preferredLocale: studyProfile.preferredLocale,
         }
       : null;
-    todayDashboard = {
+    todayDashboard = sessionSummary && {
       sessionId: sessionSummary.id,
       sessionStatus: sessionSummary.status,
       estimatedMinutes: sessionSummary.estimatedMinutes,
@@ -226,6 +229,10 @@ export default async function CertDetailPage({
 
       {session && todayDashboard && (
         <TodayDashboard certSlug={slug} locale={locale} data={todayDashboard} />
+      )}
+
+      {session && !todayDashboard && (
+        <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} />
       )}
 
       {session && readiness && <ReadinessCard locale={locale} readiness={readiness} />}
