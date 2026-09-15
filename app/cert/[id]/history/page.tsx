@@ -9,6 +9,9 @@ import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { listExamAttempts } from "@/lib/server/exam/history";
+import { getActivityCalendar, getActivityTrends } from "@/lib/server/analytics/learner-activity";
+import { getStudyStreak } from "@/lib/server/study/session-service";
+import { ActivityTrends } from "@/components/ActivityTrends";
 
 function formatDuration(seconds: number | null, locale: "de" | "en"): string {
   if (seconds === null) return "–";
@@ -50,7 +53,12 @@ export default async function ExamHistoryPage({
     .limit(1);
   if (!cert) notFound();
 
-  const attempts = await listExamAttempts(session.user.id, cert.id);
+  const [attempts, trends, calendar, streak] = await Promise.all([
+    listExamAttempts(session.user.id, cert.id),
+    getActivityTrends(session.user.id, cert.id),
+    getActivityCalendar(session.user.id, cert.id),
+    getStudyStreak(session.user.id, cert.id),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -67,6 +75,8 @@ export default async function ExamHistoryPage({
         {locale === "de" ? "Meine Prüfungen" : "My exams"}
       </h1>
       <p className="mb-6 text-sm text-foreground/70">{cert.name}</p>
+
+      <ActivityTrends certId={cert.id} locale={locale} trends={trends} calendar={calendar} streak={streak} />
 
       {attempts.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-foreground/60">

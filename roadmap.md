@@ -650,9 +650,26 @@ wiederkehrende Fehler und Readiness-Trends lassen sich nachvollziehen.
 - [x] Direkten Einstieg in Remediation oder Tagesplan anbieten. Jedes
       schwache Objective verlinkt auf die bestehende Remediation-Seite,
       zusätzlich ein "Heute lernen"-Link zur R2.3-Session.
-- [ ] 7-/30-/90-Tage-Trend für Mastery und Übungsaktivität anzeigen.
-- [ ] Aktivitätskalender beziehungsweise Lernserie ergänzen.
-- [ ] Datenexport als JSON oder CSV optional vorsehen.
+- [x] 7-/30-/90-Tage-Trend für Mastery und Übungsaktivität anzeigen.
+      `computeActivityTrends()` (`lib/server/analytics/trends.ts`, reine
+      Funktion, vollständig getestet) - bewusst aus `quiz_attempts`/
+      `exam_attempts` statt aus `review_items` gespeist: Letzteres hält pro
+      (Nutzer, Frage) nur den LETZTEN Zustand (Upsert, siehe R2.2) und kann
+      daher keine echte Historie über die Zeit liefern, die beiden
+      Versuchs-Tabellen sind dagegen echte Ereignis-Logs (eine Zeile pro
+      Versuch). "Mastery" wird hier als Durchschnittsergebnis der Quiz-/
+      Exam-Versuche im jeweiligen Fenster angenähert - `study_sessions`
+      fließen mangels eigenem Score-Feld nur in die Aktivitätszahl ein,
+      nicht in die Genauigkeit.
+- [x] Aktivitätskalender beziehungsweise Lernserie ergänzen.
+      `buildActivityCalendar()` (84-Tage-Heatmap, Tage ohne Aktivität
+      explizit mit `count: 0` statt zu fehlen) + die bereits aus R2.4
+      bestehende `getStudyStreak()` - beides auf der "Meine Prüfungen"-Seite
+      (`ActivityTrends`-Komponente).
+- [x] Datenexport als JSON oder CSV optional vorsehen. JSON gewählt (CSV
+      hätte die verschachtelte Trend-/Versuchsstruktur ohne Informations-
+      verlust nicht flach genug abbilden können) - `GET /api/exams/:certId/export`,
+      Download-Link auf derselben Seite.
 
 ### Regeln
 
