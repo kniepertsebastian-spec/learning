@@ -1,950 +1,1531 @@
-# CertStudy AI — Weiterentwicklungs-Roadmap
+# Learning PWA — Produkt- und Entwicklungsroadmap
 
-Stand: 3. September 2026
+**Stand:** 15. September 2026  
+**Dokumenttyp:** Strategische Produkt- und technische Entwicklungsroadmap  
+**Status:** Arbeitsgrundlage
 
-Diese Roadmap setzt auf dem in `roadmap2.md` beschriebenen MVP auf. Sie konzentriert
-sich auf die noch fehlenden Funktionen, die aus dem vorhandenen Content-Generator
-eine verlässliche und regelmäßig genutzte Lernplattform machen.
+Diese Roadmap ersetzt die bisherige Ausrichtung auf eine reine adaptive Zertifikats-Lernplattform durch ein erweitertes Produktmodell:
 
-## Zielbild
+> Die Learning PWA ist ein adaptiver Lern-, Praxis- und Karrierebegleiter. Sie erkennt vorhandene Fähigkeiten, wählt abhängig von Zeit, Energie, Ziel und Unterstützungsbedarf die sinnvollste nächste Mission, plant Wiederholungen und macht sichtbar, welche Kompetenzen theoretisch verstanden, praktisch demonstriert oder betrieblich freigegeben wurden.
 
-Ein Administrator kann eine Zertifizierung anhand ihrer offiziellen Unterlagen
-importieren, prüfen und veröffentlichen. Lernende erhalten daraus einen täglichen,
-adaptiven Lernplan, können ihren Fortschritt über mehrere Prüfungsversuche verfolgen
-und ausgewählte Kurse auch offline verwenden.
+Die Plattform verbindet zwei Bereiche:
 
-Der gewünschte Ablauf ist:
+- **Private Space:** Zertifikatsvorbereitung, selbstständige Weiterbildung, Praxisprojekte, Karriereorientierung und ein lernendeneigenes Kompetenzportfolio.
+- **Company Space:** unternehmensspezifisches Onboarding, Rollenentwicklung, Security Awareness, menschlich begleitete Praxis und interne Mobilität.
 
-1. Offizielle Prüfungsbeschreibung als PDF oder URL hinzufügen.
-2. Metadaten, Domains, Gewichtungen und Objectives automatisch extrahieren.
-3. Import-Vorschlag im Adminbereich prüfen und freigeben.
-4. Quellengebundene Lessons und Fragen im Hintergrund generieren.
-5. Inhalte validieren und als veröffentlichte Kursversion markieren.
-6. Lernenden täglich die sinnvollsten nächsten Aufgaben anbieten.
-7. Lern- und Prüfungsverlauf geräteübergreifend und später auch offline fortsetzen.
-
-## Leitplanken
-
-- Offizielle Prüfungsunterlagen sind die Quelle der Wahrheit.
-- KI-generierte Inhalte werden niemals ungeprüft als offiziell dargestellt.
-- Jede administrative Mutation wird serverseitig autorisiert.
-- Bestehende Quiz-, Progress-, Remediation- und Exam-Daten werden weiterverwendet.
-- Neue Funktionen bleiben zweisprachig (Deutsch/Englisch).
-- Hintergrundjobs müssen wiederaufnehmbar und gegen Doppelausführung geschützt sein.
-- „Readiness“ bleibt eine Lernindikator-Aussage und keine Bestehensgarantie.
-- Offline-Daten werden bei Abmeldung sicher vom Gerät entfernt.
-
-## Prioritäten und Releases
-
-| Release | Schwerpunkt | Ergebnis | Aufwand |
-|---|---|---|---|
-| R0 | Stabilität und Adminschutz | Nur berechtigte Personen können Inhalte und Kosten auslösen | S–M |
-| R1 | Blueprint-Import und Source Grounding | Verifizierbare Kursstruktur aus offiziellen Quellen | L |
-| R2 | Adaptiver Tagesplan | Täglicher Lernkreislauf mit Spaced Repetition | L |
-| R3 | Prüfungshistorie und Lernanalyse | Fortschritt und Prüfungsreife werden nachvollziehbar | M |
-| R4 | Offline-Kurse und Synchronisation | Lernen ohne Netz mit späterem sicheren Sync | L |
-| R5 | Suche, Lesezeichen und Notizen | Schnelleres Arbeiten mit umfangreichen Kursen | M |
-| R6 | Betrieb und Observability | Fehler, Kosten und Qualität sind messbar | M |
-
-`S`, `M` und `L` sind relative Größen und keine festen Zeitversprechen.
+Beide Bereiche verwenden dieselbe Kompetenz- und Adaptionslogik. Private Lerndaten und betriebliche Daten bleiben jedoch technisch, organisatorisch und in der Benutzeroberfläche klar getrennt.
 
 ---
 
-## R0 — Stabilität und Adminschutz
+## 1. Produktversprechen
+
+Die Plattform beantwortet für Lernende fortlaufend:
+
+- Was ist jetzt die sinnvollste Aufgabe?
+- Wie lange dauert sie ungefähr?
+- Warum wurde genau diese Aufgabe ausgewählt?
+- Wie viel Unterstützung benötige ich?
+- Kann ich das Wissen nur wiedergeben oder praktisch anwenden?
+- Welche beruflichen Möglichkeiten eröffnet mir die Fähigkeit?
+- Was ist der nächste realistische Schritt?
+
+Für Unternehmen beantwortet sie:
+
+- Welche Fähigkeiten benötigt eine Rolle tatsächlich?
+- Was bringt ein neuer oder wechselnder Mitarbeiter bereits mit?
+- Welche Inhalte können übersprungen werden?
+- Wo sind Erklärung, Übung, Mentoring oder eine Freigabe notwendig?
+- Wann kann eine Aufgabe sicher und selbstständig ausgeführt werden?
+- Wie lässt sich Onboarding beschleunigen, ohne menschliche Führung zu ersetzen?
+
+Der Produktkern lautet:
+
+> Sag uns, wie viel Zeit und Energie du gerade hast. Wir geben dir die sinnvollste nächste Mission, zeigen deinen praktischen Fortschritt und führen dich zu deinem nächsten realistischen Ziel.
+
+---
+
+## 2. Problem und Nutzen
+
+### 2.1 Probleme auf Seiten der Lernenden
+
+- Formale Abschlüsse sagen wenig darüber aus, was praktisch gelernt wurde.
+- Die Ausbildungsqualität hängt häufig vom Ausbildungsbetrieb und den dort möglichen Aufgaben ab.
+- Junioren und Quereinsteiger können vorhandene Fähigkeiten schwer glaubwürdig demonstrieren.
+- Zertifikatslernen ist häufig theoretisch, linear und wenig alltagsnah.
+- Lernende wissen nicht, was sie als Nächstes lernen sollten.
+- Große Lerneinheiten erzeugen unnötige Einstiegshürden.
+- Karrierewechsel scheitern oft an fehlenden Brücken zwischen vorhandenen und geforderten Fähigkeiten.
+- KI kann Aufgaben erledigen, ohne dass der Nutzer Verständnis oder Urteilskraft entwickelt.
+
+### 2.2 Probleme auf Seiten der Unternehmen
+
+- Onboarding ist uneinheitlich und stark von einzelnen Mentoren abhängig.
+- Erfahrene Mitarbeiter wiederholen dieselben Erklärungen für neue Kollegen.
+- Kursabschlüsse zeigen nicht zuverlässig, ob jemand eine Tätigkeit sicher ausführen kann.
+- Neue Mitarbeiter werden häufig entweder überfordert oder mit bereits bekannten Grundlagen gelangweilt.
+- Firmenwissen befindet sich in Dokumentationen, Köpfen, Tickets und informellen Abläufen.
+- Rollenanforderungen sind oft als Stellenbeschreibung, aber nicht als überprüfbares Kompetenzmodell formuliert.
+- Pflichtschulungen liefern Teilnahmebestätigungen, aber wenig nachhaltigen Transfer.
+- Interne Rollenwechsel werden schlechter unterstützt als externe Einstellungen.
+
+### 2.3 Gemeinsamer Nutzen
+
+Die Plattform soll eine Kompetenzbrücke schaffen zwischen:
+
+1. formaler Qualifikation,
+2. aktuellem Wissen,
+3. praktischer Anwendung,
+4. betrieblichem Kontext,
+5. menschlicher Beobachtung,
+6. sicherer selbstständiger Tätigkeit und
+7. langfristiger beruflicher Entwicklung.
+
+---
+
+## 3. Leitprinzipien
+
+### 3.1 Lernen beginnt mit Handeln
+
+- Lernende versuchen Aufgaben zunächst selbst.
+- Hinweise werden progressiv und nur bei Bedarf angeboten.
+- Erklärungen sind zunächst kurz und können vertieft werden.
+- Praktische Entscheidungen und Fehlersuche haben Vorrang vor langen Textblöcken.
+
+### 3.2 Zeit und Energie sind echte Eingaben
+
+- Sessions werden für 2, 5, 10 und 20 Minuten angeboten.
+- Optional kann der Energiezustand angegeben werden.
+- Jede Mission zeigt vorab ihre ungefähre Dauer.
+- Missionen lassen sich unterbrechen und exakt fortsetzen.
+- Ein Modus „Nur eine Aufgabe“ verhindert Überforderung.
+- Pausen werden nicht bestraft.
+- Nach längerer Inaktivität beginnt ein sanfter Wiedereinstieg.
+
+### 3.3 Adaptivität muss erklärbar sein
+
+Jede Empfehlung nennt nachvollziehbare Gründe, zum Beispiel:
+
+> Diese Mission wurde gewählt, weil das Thema für dein Ziel relevant ist, deine letzte Anwendung sechs Tage zurückliegt und du dabei zwei Hinweise benötigt hast.
+
+Nutzer können jederzeit wählen:
+
+- leichter,
+- schwieriger,
+- weniger Führung,
+- anders erklären,
+- heute nicht oder
+- anderes Aufgabenformat.
+
+### 3.4 Schwierigkeit ist mehrdimensional
+
+Schwierigkeit bedeutet nicht nur mehr Fragen. Sie kann erhöht werden durch:
+
+- weniger Führung,
+- mehr Kontext,
+- höhere Mehrdeutigkeit,
+- mehr beteiligte Systeme,
+- größere Auswirkungen einer Entscheidung,
+- tiefere Begründungsanforderungen,
+- zusätzliche Kommunikationsanforderungen,
+- höhere Eigenverantwortung oder
+- Übertragung auf unbekannte Situationen.
+
+### 3.5 Gute Lernende bekommen einen kürzeren, nicht einen längeren Weg
+
+Wer vorhandene Kompetenz zuverlässig demonstriert:
+
+- überspringt bekannte Grundlagen,
+- erhält weniger Hinweise,
+- bearbeitet komplexere Transferfälle,
+- muss Entscheidungen stärker begründen und
+- erreicht relevante Praxisaufgaben schneller.
+
+### 3.6 Menschen bleiben Teil betrieblicher Qualifizierung
+
+Die Plattform unterstützt Mentoren und Vorgesetzte. Sie ersetzt nicht:
+
+- persönliche Einführung,
+- Zusammenarbeit im Team,
+- Shadowing,
+- Feedback,
+- beaufsichtigte Realaufgaben,
+- Verantwortung des Arbeitgebers oder
+- betriebliche Freigaben.
+
+### 3.7 Nachweise werden nicht vermischt
+
+Folgende Aussagen bleiben getrennt:
+
+1. Inhalt bearbeitet,
+2. Wissen korrekt abgerufen,
+3. Fähigkeit in einer Simulation angewendet,
+4. Fähigkeit auf einen neuen Fall übertragen,
+5. Fähigkeit von der App eingeschätzt,
+6. Fähigkeit von einem Menschen beobachtet,
+7. offizielle Zertifizierung bestanden,
+8. formale Qualifikation erworben,
+9. für eine betriebliche Tätigkeit freigegeben.
+
+### 3.8 KI unterstützt, bestimmt aber nicht die fachliche Wahrheit
+
+- Offizielle und redaktionell geprüfte Quellen sind die fachliche Grundlage.
+- Bewertete Prüfungsfragen stammen aus freigegebenen Bausteinen.
+- Dynamisch erzeugte Inhalte werden als solche gekennzeichnet.
+- KI darf Erklärungen, Varianten, Hinweise, Szenarien und Geschichten erzeugen.
+- Quellenbindung, Antwortschema und Bewertungsregeln werden automatisch geprüft.
+- Kritische Inhalte und repräsentative Varianten werden redaktionell kontrolliert.
+
+### 3.9 KI darf Denken nicht unsichtbar ersetzen
+
+> KI darf die Ausführung beschleunigen, aber nicht unsichtbar Denken, Kontrolle und Verantwortung ersetzen.
+
+### 3.10 Datenschutz ist Teil des Produktdesigns
+
+Das zentrale Versprechen lautet:
+
+> Wir verkaufen keine Daten, zeigen keine personalisierte Werbung und verwenden Lerndaten nicht zum Training fremder KI-Modelle.
+
+Adaptives Lernen benötigt Daten. Deshalb erklärt die Plattform transparent:
+
+- welche Daten gespeichert werden,
+- warum sie benötigt werden,
+- wer sie sehen kann,
+- wo sie verarbeitet werden,
+- wie lange sie gespeichert bleiben und
+- was an KI-Anbieter übertragen wird.
+
+---
+
+## 4. Zielgruppen und erster Markteintritt
+
+### 4.1 Private Zielgruppen
+
+- Lernende in der Zertifikatsvorbereitung
+- Junioren mit unterschiedlich breiter Ausbildungserfahrung
+- Quereinsteiger
+- Arbeitssuchende mit fehlenden praktischen Nachweisen
+- Berufstätige mit Weiterbildungsziel
+- Professionals und Seniors mit gewünschtem Rollenwechsel
+- Beschäftigte, die sich zum Beispiel in Richtung Cloud, Security, SRE oder Platform Engineering entwickeln möchten
+
+### 4.2 Betriebliche Zielgruppen
+
+- IT-Systemhäuser
+- Managed Service Provider
+- interne IT-Abteilungen
+- technische Serviceorganisationen
+- Ausbildungsbetriebe
+- Unternehmen mit wiederkehrendem technischen Onboarding
+- Unternehmen mit Bedarf an dokumentierter Security Awareness
+- Unternehmen mit internen Rollen- und Technologieübergängen
+
+### 4.3 Empfohlener erster B2B-Fokus
+
+Für den ersten Pilot wird bewusst ein enger Markt gewählt:
+
+- Region: DACH
+- Unternehmensart: IT-Systemhaus oder Managed Service Provider
+- Größe: ungefähr 50 bis 500 Mitarbeiter
+- erste Rolle: Junior IT Infrastructure Engineer
+- erster Anwendungsfall: technisches Onboarding
+- ergänzender Anwendungsfall: jährliche Security-Grundschulung
+
+### 4.4 Erster privater Fokus
+
+- eine konkrete Zertifizierung
+- 20 bis 30 klar definierte Fähigkeiten
+- vier Missionsarten
+- ein zusammenhängendes Praxisprojekt
+- drei bis fünf exportierbare Arbeitsproben
+- drei angrenzende Berufsrollen
+
+---
+
+## 5. Produktbereiche
+
+## 5.1 Private Space
+
+Der Private Space gehört dem Lernenden.
+
+Funktionen:
+
+- Zertifikatsvorbereitung
+- persönliche Lernziele
+- adaptive Wiederholungen
+- Zeit- und Energieauswahl
+- Praxisprojekte
+- privates Kompetenzportfolio
+- Rollen- und Skill-Gap-Analyse
+- persönliche Karriereziele
+- Export und selektives Teilen
+- Gastmodus mit lokaler Speicherung
+- freiwillige Synchronisierung
+- Wiedereinstieg nach längerer Pause
+
+Private Ziele und Nachweise werden nicht automatisch einem Arbeitgeber zugänglich gemacht.
+
+## 5.2 Company Space
+
+Der Company Space bildet konkrete betriebliche Anforderungen ab.
+
+Funktionen:
+
+- Organisationen, Teams und Standorte
+- Rollen- und Kompetenzprofile
+- Onboarding-Pfade
+- firmeninterne Quellen, Prozesse und Systeme
+- Challenge Gates zum Überspringen bekannter Inhalte
+- rollenabhängige Erklärungs- und Verantwortungsstufen
+- Sandbox-Missionen
+- Mentor-Checkpoints
+- Shadowing und begleitete Realaufgaben
+- betriebliche Freigaben
+- Security-Awareness-Programme
+- interne Rollenwechsel
+- aggregierte Kompetenz- und Onboarding-Analyse
+
+Der Company Space ist kein vollständiges HR-System und kein automatisiertes System für Personalentscheidungen.
+
+## 5.3 Datenschutzgrenze zwischen beiden Bereichen
+
+Standardmäßig sieht ein Unternehmen nur:
+
+- zugewiesene Inhalte,
+- Status begonnen, abgeschlossen oder überfällig,
+- vereinbarte Nachweise,
+- erforderliche menschliche Freigaben,
+- arbeitsbezogene Kompetenzstände und
+- aggregierte Teamlücken.
+
+Standardmäßig nicht sichtbar sind:
+
+- private Karriereziele,
+- private Notizen,
+- nicht geteilte Portfolioinhalte,
+- jede einzelne falsche Antwort,
+- jede verwendete Hilfestellung,
+- private Zertifikatskurse und
+- Lernverhalten außerhalb des Company Space.
+
+---
+
+## 6. Zentrale Produktmodelle
+
+### 6.1 Skill Graph
+
+Die zentrale Einheit ist langfristig nicht der Kurs, sondern die Fähigkeit.
+
+Eine Fähigkeit kann verbunden sein mit:
+
+- Lernzielen,
+- Zertifikats-Objectives,
+- Missionen,
+- Praxisprojekten,
+- Unternehmensprozessen,
+- Berufsrollen,
+- Evidenzen,
+- menschlichen Freigaben und
+- Aktualisierungsanforderungen.
+
+### 6.2 Kompetenzzustand
+
+Der Kompetenzzustand berücksichtigt mindestens:
+
+- Korrektheit,
+- Qualität der Begründung,
+- benötigte Hinweise,
+- Sicherheit der Selbsteinschätzung,
+- zeitliche Stabilität,
+- Anwendung in neuen Kontexten,
+- Aufgabenkomplexität,
+- Selbstständigkeit,
+- menschliche Beobachtung und
+- Aktualität der zugrunde liegenden Inhalte.
+
+### 6.3 Rollenmodell
+
+Folgende Dimensionen bleiben getrennt:
+
+- aktuelle Stellenbezeichnung,
+- vorhandene Kompetenzen,
+- angestrebte Rolle,
+- benötigter Unterstützungsgrad,
+- erwartetes Entscheidungsverhalten und
+- betriebliche Berechtigung.
+
+### 6.4 Rollenbezogene Arbeitsweisen
+
+| Junior | Professional | Senior |
+| --- | --- | --- |
+| sicher ausführen | selbstständig analysieren | systemisch entscheiden |
+| Runbooks verwenden | Hypothesen bilden | Risiken und Trade-offs bewerten |
+| korrekt dokumentieren | Lösungen priorisieren | Entscheidungen vertreten |
+| rechtzeitig eskalieren | Teams koordinieren | Incidents führen |
+| mehr Erklärungen | weniger Führung | hohe Mehrdeutigkeit |
+
+Alle Rollen können auf dasselbe Grundlagenwissen hinarbeiten. Führung, Kontext, Verantwortung und Begründungstiefe unterscheiden sich.
+
+### 6.5 Mission
+
+Eine Mission enthält mindestens:
+
+- Lern- oder Praxisziel,
+- zugeordnete Fähigkeiten,
+- erwartete Dauer,
+- erforderliches Vorwissen,
+- Kontext,
+- erlaubte Hilfsmittel,
+- Unterstützungsstufe,
+- Bewertungsrubrik,
+- mögliche Hinweise,
+- erwartete Evidenz,
+- Quellen- und Versionsbezug und
+- Abbruch- und Fortsetzungszustand.
+
+### 6.6 Evidenz
+
+Eine Evidenz dokumentiert:
+
+- welche Fähigkeit gezeigt wurde,
+- in welchem Kontext sie gezeigt wurde,
+- welches Artefakt entstanden ist,
+- wie viel Unterstützung benötigt wurde,
+- anhand welcher Rubrik bewertet wurde,
+- ob die Bewertung durch App, Lernenden oder Menschen erfolgte,
+- wann sie entstanden ist und
+- ob sie noch aktuell ist.
+
+---
+
+## 7. Releaseübersicht
+
+| Release | Schwerpunkt | Ergebnis | Priorität |
+| --- | --- | --- | --- |
+| R0 | Stabilität und Adminschutz | sichere technische Basis | Muss |
+| R1 | Blueprint-Import und Source Grounding | verifizierbare Zertifikatsinhalte | Muss |
+| R2 | Adaptive Sessions und Wiederholung | sinnvolle nächste Lerneinheit | Muss |
+| R3 | Lernanalyse und Readiness | nachvollziehbarer Lernverlauf | Muss |
+| R4 | Offline und Synchronisation | Lernen ohne stabile Verbindung | Soll |
+| R5 | Suche, Notizen und Lesezeichen | persönliche Wissensorganisation | Soll |
+| R6 | Betrieb und Qualitätssteuerung | messbarer, sicherer Betrieb | Muss, parallel |
+| R7 | Skill Graph und Mission Engine | Adaptivität über Quizfragen hinaus | Muss |
+| R8 | Praxisnachweise und Portfolio | demonstrierbare Fähigkeiten | Muss |
+| R9 | Private Career Space | Rollen- und Entwicklungspfade | Soll |
+| R10 | Company Foundation | mandantenfähiger Unternehmensbereich | Muss für B2B |
+| R11 | Adaptives Onboarding | rollenbezogene Kompetenzbrücken | Muss für B2B |
+| R12 | AI Literacy und Nachweisintegrität | KI kompetent und prüfbar einsetzen | Muss |
+| R13 | Security Awareness | rollenbezogene Pflichtschulungen | Soll |
+| R14 | Interne Mobilität | Übergänge zwischen Rollen | Später |
+| R15 | Enterprise Governance und Integrationen | audit- und integrationsfähiger Betrieb | Nach Pilotbedarf |
+
+R0 bis R6 führen die bestehende technische Roadmap fort. R7 bis R15 erweitern das Produkt zum Lern-, Praxis-, Karriere- und Onboarding-System.
+
+---
+
+## 8. R0 — Stabilität und Adminschutz
 
 ### Ziel
 
-Die vorhandene Anwendung wird vor der Erweiterung abgesichert. Aktuell genügt eine
-beliebige Anmeldung, um den Adminbereich zu verwenden. Damit könnten normale Nutzer
-Kurse verändern oder kostenpflichtige KI-Jobs starten.
+Die vorhandene Anwendung wird abgesichert, bevor sensible Lern- und Unternehmensdaten verarbeitet werden.
 
 ### Arbeitspakete
 
-#### R0.1 Generator stabilisieren
-
-- [x] Offenen Fix für normalisierte Schwierigkeitswerte integrieren und
-      testen. (`ObjectiveProgressService.calculateDifficultyWeight` prüfte
-      vorher "hard"/"medium"/"easy", was nie zu den echten Werten
-      beginner/intermediate/advanced passte - Fix war schon im Code, jetzt
-      mit Unit-Tests in `lib/server/progress/service.test.ts` abgesichert.
-      Erstes Test-Setup dafür neu: `vitest`, `npm test`.)
-- [x] Einen abgebrochenen Generierungslauf ab dem nächsten fehlenden Objective
-      fortsetzen können. War durch die bestehende Idempotenz der Skripte
-      (`scripts/generate-curriculum-draft.ts`,
-      `scripts/generate-lessons-and-questions.ts` - überspringen bereits
-      vorhandene Domains/Objectives, ergänzen fehlende Sections/Fragen eines
-      teilweise fertigen Objectives) schon gegeben; R0.3 hat das nutzbar
-      gemacht, indem ein nach App-Neustart unterbrochener Job automatisch als
-      "failed/interrupted" markiert wird und "Erneut versuchen" denselben
-      idempotenten Lauf neu startet.
-- [x] Pro Zertifizierung höchstens einen aktiven Generierungsjob erlauben.
-      (Bereits in R0.3 umgesetzt: Unique Partial Index
-      `content_generation_jobs_active_per_cert`.)
-- [x] Fehlerklassen im UI unterscheiden: Schemafehler, Rate Limit, Kontingent,
-      Provider-Ausfall und interner Fehler. (`errorClass`-Spalte +
-      `classifyGenerationError()` in `lib/server/admin/content-generation.ts`,
-      mit Tests; `ContentGenerationControl` zeigt Ursache + nächsten Schritt,
-      rohen Output nur noch eingeklappt.)
-- [x] Vom Provider geliefertes `retryDelay` bei HTTP 429 berücksichtigen.
-      (`parseProviderRetryDelayMs()` in `lib/ai/generate.ts` liest Googles
-      RetryInfo aus der 429-Fehlerantwort und nutzt sie statt der reinen
-      Schätzung per exponentiellem Backoff, mit Tests.)
-- [x] Teilweise erzeugte Inhalte als Teilerfolg anzeigen und nicht verwerfen.
-      War durch die Persistenz pro Objective schon gegeben (bereits fertige
-      Objectives bleiben in der DB und für Lernende nutzbar, auch wenn ein
-      späteres Objective den Job scheitern lässt); die R0.3-Schätzung
-      (`estimateGenerationWork`) macht den Fortschritt jetzt auch nach einem
-      Fehlschlag sichtbar (verbleibende Domains/Objectives statt nur
-      "fehlgeschlagen").
-
-#### R0.2 Rollenmodell
-
-- [x] Benutzerrolle einführen: `learner` oder `admin`. (`users.role`,
-      Migration `drizzle/0003_charming_sentry.sql`)
-- [ ] Bestehenden Betreiber kontrolliert zum ersten Administrator machen.
-      Werkzeug dafür steht bereit (`npm run user:set-role`, siehe
-      DOCKER_DEPLOYMENT.md), muss aber noch einmal gegen die echte
-      Produktions-DB ausgeführt werden.
-- [x] Gemeinsamen serverseitigen Guard `requireAdmin()` bereitstellen.
-      (`lib/server/auth-guards.ts`: `requireAdminPage()` für Server
-      Components/Actions, `requireAdminApi()` für Route Handler; Rolle wird
-      bei jedem Aufruf frisch aus der DB gelesen statt aus dem JWT.)
-- [x] `/admin`, alle Admin-API-Routen und Server Actions damit schützen.
-- [x] Admin-Link im Header nur für Administratoren anzeigen.
-- [x] Nicht berechtigte Zugriffe mit 403 beantworten; nicht nur die UI
-      ausblenden. (Next.js `forbidden()`/`app/forbidden.tsx`,
-      `experimental.authInterrupts` in next.config.ts; API-Routen liefern
-      401/403 als JSON.)
-- [x] Einen dokumentierten Weg zur Vergabe und zum Entzug einer Adminrolle
-      anbieten. (`scripts/set-user-role.ts`, `npm run user:set-role -- <email>
-      <admin|learner>`.)
-
-#### R0.3 Schutz kostenpflichtiger Aktionen
-
-- [x] Start eines Generierungsjobs mit Benutzer-ID protokollieren.
-      (`content_generation_jobs.started_by_user_id` + Log-Zeile beim Start.)
-- [x] Doppelklicks und parallele Starts idempotent behandeln. (Unique
-      Partial Index `content_generation_jobs_active_per_cert` erzwingt
-      höchstens einen aktiven Job pro Zertifizierung DB-seitig; die
-      Anwendungsprüfung bleibt nur als schneller Vorab-Check.)
-- [x] Einfaches serverseitiges Rate Limit für Generierungsaktionen
-      einführen. (`lib/server/admin/rate-limit.ts`, in-process, 5 Starts/h
-      pro Nutzer - siehe Kommentar dort zu den Grenzen bei Multi-Instanz-
-      Deployments.)
-- [x] Vor dem Start anzeigen, welche Objectives fehlen und ungefähr wie viele
-      KI-Aufrufe notwendig sind. (`estimateGenerationWork()`, angezeigt in
-      `ContentGenerationControl`.)
-
-### Datenmodell
-
-- `users.role`: `learner | admin`, Standard `learner`
-- Optional `admin_audit_events`: Akteur, Aktion, Ziel, Zeitpunkt, Ergebnis, Metadaten
-- Unique/partial constraint oder Transaktionssperre für einen aktiven Job je Kurs
-
-### Tests
-
-- Nicht angemeldete Nutzer erhalten bei Adminseiten und -APIs 401.
-- Angemeldete Lernende erhalten 403.
-- Administratoren können anzeigen, validieren und generieren.
-- Zwei fast gleichzeitige Startanfragen erzeugen nur einen Job.
-- Ein nach Objective 3 abgebrochener Lauf überspringt beim Neustart Objectives 1–3.
+- Generatorfehler klassifizieren und verständlich darstellen
+- Generierungsjobs wiederaufnehmbar und idempotent machen
+- parallele Generierung pro Kurs verhindern
+- Rollen `learner` und `admin` serverseitig absichern
+- kostenpflichtige Aktionen limitieren und protokollieren
+- Änderungen an Inhalten und Rollen auditierbar machen
+- Eingaben an allen Servergrenzen validieren
+- sichere Uploadverarbeitung
+- Backup- und Wiederanlaufverfahren dokumentieren
 
 ### Abnahmekriterien
 
-- Kein Admin-Endpunkt verlässt sich ausschließlich auf die Sichtbarkeit eines Buttons.
-- Ein Generierungsfehler nennt Ursache und sinnvollen nächsten Schritt.
-- Bereits gespeicherte valide Inhalte bleiben nach einem Teilfehler verwendbar.
+- Kein Admin-Endpunkt verlässt sich ausschließlich auf die Benutzeroberfläche.
+- Unterbrochene Jobs können ohne doppelte Inhalte fortgesetzt werden.
+- Berechtigungsfehler liefern eindeutige Antworten.
+- Kostenpflichtige Aktionen sind begrenzt und nachvollziehbar.
 
 ---
 
-## R1 — Offizieller Blueprint-Import und Source Grounding
+## 9. R1 — Offizieller Blueprint-Import und Source Grounding
 
 ### Ziel
 
-Ein neuer Kurs wird nicht mehr durch manuelles Raten von Slug, Prüfungsversion,
-Domains und Gewichtungen angelegt. Der Administrator liefert eine offizielle Quelle;
-die Anwendung erstellt daraus einen überprüfbaren Importvorschlag.
+Offizielle Unterlagen bilden die Quelle der Wahrheit für Zertifikatskurse.
+
+### Arbeitspakete
+
+- offizielle PDF- oder URL-Quelle importieren
+- Anbieter, Prüfungscode, Version, Domains und Objectives extrahieren
+- Quellen in Abschnitte aufteilen und referenzierbar speichern
+- Extraktion als editierbaren Vorschlag anzeigen
+- niedrige Extraktionssicherheit manuell bestätigen
+- Freigabe und Entwurf trennen
+- Quellen-, Modell- und Prompt-Version speichern
+- Fragen und Lessons mit Quellen verknüpfen
+- unbelegte Aussagen verwerfen oder in eine Review-Queue geben
+- neue Blueprint-Versionen vergleichen
+- betroffene Inhalte als veraltet markieren
+- alte Lernverläufe lesbar halten
+
+### Abnahmekriterien
+
+- Jeder veröffentlichte Objective-Datensatz verweist auf eine freigegebene Quelle.
+- Lernende erkennen offizielle Prüfungsstruktur und dynamische Erklärung als unterschiedliche Ebenen.
+- Neue Quellenversionen machen betroffene Inhalte nachvollziehbar überprüfbar.
+
+---
+
+## 10. R2 — Adaptive Sessions und Spaced Repetition
+
+### Ziel
+
+Die Startseite beantwortet: „Was passt gerade und was ist jetzt am sinnvollsten?“
 
 ### Nutzerablauf
 
-1. Im Adminbereich „Kurs aus Quelle importieren“ öffnen.
-2. Offizielle URL angeben oder PDF hochladen.
-3. Provider und Dokumenttyp bestätigen.
-4. Extraktion als Hintergrundjob starten.
-5. Erkannte Metadaten und Objectives in einer Diff-/Vorschau prüfen.
-6. Fehler korrigieren und Import freigeben.
-7. Erst danach Curriculum und Lerninhalte generieren.
+1. Nutzer wählt 2, 5, 10 oder 20 Minuten.
+2. Optional wird die Energie angegeben.
+3. Die Plattform erstellt eine Session aus Review, Schwachstelle, Transfer oder neuem Stoff.
+4. Die Aufgabe wird zunächst selbst versucht.
+5. Hinweise erscheinen progressiv.
+6. Nach der Mission werden Ergebnis, Begründung und nächster Schritt gezeigt.
+7. Die Wiederholung wird automatisch geplant.
 
 ### Arbeitspakete
 
-#### R1.1 Quellenverwaltung
-
-- [x] Quelle per PDF-Upload unterstützen. (`POST /api/admin/sources`,
-      multipart/form-data; Admin-UI unter
-      `/admin/certifications/[slug]/sources`.)
-- [ ] Quelle per URL unterstützen, sofern Abruf und Nutzungsbedingungen dies
-      erlauben. Bewusst zurückgestellt, bis geklärt ist, von welchen
-      Anbietern automatisiert abgerufen werden darf - `sourceType` im
-      Datenmodell erlaubt `url` bereits, damit dafür keine weitere Migration
-      nötig wird.
-- [x] Dateigröße, MIME-Type und PDF-Signatur validieren.
-      (`validatePdfUpload()` in `lib/server/admin/sources.ts`, mit Tests -
-      prüft alle drei, weil ein clientseitig gesetzter MIME-Type allein
-      fälschbar ist.)
-- [x] SHA-256-Prüfsumme speichern, um Duplikate zu erkennen.
-      (`certification_sources.checksum` + Unique Index auf
-      `(certification_id, checksum)`; Storage ist zusätzlich
-      inhaltsadressiert, siehe `lib/server/storage/local-disk.ts`.)
-- [x] Titel, Provider, Veröffentlichungsdatum, Abrufdatum, URL und lokale
-      Version erfassen. (`certification_sources`: title, provider,
-      publishedAt, retrievedAt, sourceUrl, versionLabel - `sourceUrl`/
-      `versionLabel` bleiben leer, bis URL-Import bzw. der Freigabe-Workflow
-      aus R1.3 sie befüllen.)
-- [x] Text seitenweise extrahieren und Seitenbezug erhalten.
-      (`POST /api/admin/sources/:id/parse`, `extractSourceContent()` in
-      `lib/server/admin/source-extraction.ts` - Text pro Seite in
-      `source_chunks` mit `pageNumber`; Test mit echtem, per `pdf-lib`
-      erzeugtem PDF als Roundtrip statt nur gemockt.)
-- [x] Quelle als `uploaded`, `parsed`, `reviewed`, `approved`, `superseded`
-      oder `failed` kennzeichnen. (`certification_sources.status` mit
-      Check-Constraint; R1.1 nutzt `uploaded`/`parsed`/`failed`, der Rest
-      gehört zum Review-Workflow aus R1.3.)
-
-**Speicher-Entscheidung:** hochgeladene PDFs liegen in einem lokalen,
-benannten Docker-Volume (`source_uploads_data`, siehe docker-compose.yml und
-`lib/server/storage/local-disk.ts`), nicht in einem externen Objektspeicher -
-passend zum aktuellen Single-Instance-Deployment. Bei Bedarf für
-Mehrinstanz-Betrieb später auf S3-kompatiblen Speicher migrierbar, ohne das
-Datenmodell zu ändern (`storageKey` bleibt ein opaker String).
-
-#### R1.2 Strukturierte Blueprint-Extraktion
-
-- [x] Striktes Schema für Zertifizierungsmetadaten definieren.
-      (`blueprintExtractionSchema`/`blueprintDomainSchema`/
-      `blueprintObjectiveSchema` in `lib/server/ai/schemas.ts`.)
-- [x] Domains, Gewichtungen, Objective-Codes, Titel und Beschreibungen
-      extrahieren. (`generateBlueprintDraft()` in `lib/server/ai/service.ts` -
-      EIN Gemini-Aufruf über den seitenmarkierten Quelltext aus R1.1;
-      Ergebnis in `blueprint_drafts.content`.)
-- [x] Prozentwerte auf Plausibilität prüfen; Summe sollte typischerweise 100
-      ergeben. (`validateBlueprintDraft()` in `lib/server/admin/blueprint.ts`,
-      Toleranz ±2 Prozentpunkte, mit Tests.)
-- [x] Doppelte Objective-Codes, Lücken und ungewöhnliche Reihenfolgen
-      markieren. (Dieselbe Funktion; Lücken-Erkennung ist ein
-      Best-Effort-Heuristik auf `<Domain>.<Laufnummer>`-Codes.)
-- [x] Für jedes Feld Seiten- oder Abschnittsreferenz speichern.
-      (`locator` pro Objective, muss laut Prompt auf eine tatsächliche
-      `== Seite N ==`-Markierung im Quelltext verweisen statt erfunden zu sein.)
-- [x] Niedrige Extraktionssicherheit sichtbar machen und manuelle Bestätigung
-      verlangen. Sichtbarkeit war schon da (Confidence-Badge pro Objective);
-      jetzt zusätzlich hart erzwungen: `validateBlueprintDraft()`
-      (`lib/server/admin/blueprint.ts`) erzeugt für jedes Objective mit
-      confidence < 0.5 einen blockierenden Error, solange sein Positions-Key
-      (`lowConfidenceObjectiveKey()`) nicht in
-      `blueprint_drafts.confirmedLowConfidenceObjectives` steht. In
-      `BlueprintReview` erscheint dafür eine Pflicht-Checkbox direkt am
-      betroffenen Objective; "Blueprint freigeben" bleibt disabled, bis alle
-      niedrig-konfidenten Objectives einzeln bestätigt sind - geprüft sowohl
-      client- als auch serverseitig (`approveBlueprintDraft()`). Eine
-      Neu-Extraktion setzt die Bestätigungen zurück, da sie sich auf jetzt
-      überschriebene Objectives an denselben Positionen bezogen.
-- [x] Slug aus Name und Prüfungscode vorschlagen, aber editierbar lassen.
-      (`suggestSlug()`, editierbares Feld in der Admin-UI, gespeichert über
-      `PATCH /api/admin/sources/:id/blueprint`.)
-- [x] Prüfungsrealismus-Ergänzung: reales Prüfungsformat (Fragenanzahl,
-      Zeitlimit, Bestehensgrenze, Skala) mit extrahieren statt es weiterhin
-      global hartzukodieren. `blueprintExtractionSchema` (dieselbe
-      "nicht raten, sonst `null`"-Regel wie bei `weightPercent`), editierbar
-      in `BlueprintReview`, bei Freigabe non-destruktiv (nur belegte Felder)
-      nach `certifications.examQuestionCount`/`examDurationMinutes`/
-      `passingScore`/`scoreScale` übernommen (`blueprint-approval.ts`).
-      `buildExamBlueprint()`/`generateFinalExam()` (`lib/server/exam/`)
-      nutzen das statt der vorherigen festen `90` für jede Zertifizierung;
-      `ExamSession` skaliert das Zeitlimit entsprechend, mit Fallback auf den
-      bisherigen Wert, solange eine Zertifizierung das (noch) nicht hat.
-
-**Bewusste Vereinfachungen für R1.2:** Extraktion läuft synchron in einem
-Request (ein einzelner Gemini-Aufruf, ratenbegrenzt wie R0.3, aber kein
-Hintergrundjob) und der an die KI übergebene Quelltext ist auf ~60.000
-Zeichen gedeckelt (`buildSourceText`, `truncatedSource`-Flag statt stiller
-Kürzung) - für sehr lange Dokumente reicht das ggf. nicht für das gesamte
-Dokument; eine Chunking-/Retrieval-Strategie über mehrere Aufrufe ist erst
-nötig, sobald das in der Praxis zum Problem wird.
-
-#### R1.3 Review- und Freigabeoberfläche
-
-- [x] Originalquelle und extrahierte Struktur nebeneinander anzeigen.
-      (`/admin/certifications/[slug]/sources/[sourceId]/review`,
-      `BlueprintReview`: linke Spalte der seitenweise extrahierte Originaltext
-      aus `GET /api/admin/sources/:id/text`, rechte Spalte die editierbare
-      Struktur.)
-- [x] Felder inline korrigierbar machen. (Zertifizierungsname/Anbieter/
-      Exam-Code, Domain-Name/-Gewichtung, Objective-Code/-Titel/-Beschreibung
-      direkt im Formular; Locator/Confidence bleiben absichtlich read-only als
-      KI-Attribution. Hinzufügen/Entfernen von Domains/Objectives ist bewusst
-      nicht Teil dieses Arbeitspakets - nur Feldkorrektur, keine
-      Strukturänderung.)
-- [x] Validierungsfehler von Hinweisen unterscheiden.
-      (`validateBlueprintDraft()` liefert jetzt `{ errors, warnings }` statt
-      einer flachen Liste; nur doppelte Objective-Codes INNERHALB derselben
-      Domain sind ein Error, der die Freigabe blockiert - alles andere bleibt
-      ein übergehbarer Hinweis. In der UI rot/blockierend vs. gelb/informativ
-      getrennt dargestellt.)
-- [x] „Entwurf speichern“ und „Blueprint freigeben“ getrennt anbieten.
-      (`PATCH /api/admin/sources/:id/blueprint` für Korrekturen,
-      `POST /api/admin/sources/:id/approve` für die Freigabe - Freigabe
-      speichert zuerst den aktuellen Stand, damit nie ein von der Anzeige
-      abweichender Entwurf freigegeben wird.)
-- [x] Freigabe mit Admin-ID und Zeitpunkt protokollieren.
-      (`certification_sources.approvedBy`/`approvedAt`, seit R1.1 im Schema
-      vorhanden, jetzt erstmals tatsächlich befüllt.)
-- [x] Nach Freigabe versehentliche Änderungen verhindern oder versionieren.
-      Für "verhindern" entschieden (Versionierung ist explizit R1.5):
-      `BlueprintLockedError`, sobald `certification_sources.status` auf
-      `approved`/`superseded` steht - blockiert erneute Extraktion und
-      PATCH-Korrekturen serverseitig (nicht nur UI-seitig deaktiviert).
-
-**Was die Freigabe konkret tut:** `approveBlueprintDraft()`
-(`lib/server/admin/blueprint-approval.ts`) übernimmt die Domains/Objectives
-des Drafts in die echten `domains`/`objectives`-Tabellen (Match per Name
-bzw. Code, Update bei Treffer, sonst Insert - löscht nie etwas), blockt bei
-verbleibenden Errors, und setzt erst danach `status = approved`. Das macht
-"freigegebene Objectives" für R1.4 (quellengebundene Generierung) zum ersten
-Mal zu echten, abfragbaren Datensätzen statt nur zu KI-Entwurfstext.
-
-**Nachtrag geschlossen:** "Niedrige Extraktionssicherheit ... manuelle
-Bestätigung verlangen" (R1.2) blockiert die Freigabe jetzt tatsächlich
-(`validateBlueprintDraft()` liefert dafür einen Error, solange nicht jedes
-Objective mit confidence < 0.5 einzeln bestätigt wurde) - siehe R1.2 oben.
-
-**Nicht abgedeckt (bewusst außerhalb des Merge-Umfangs):** `applyBlueprintDraft()`
-läuft gegen eine echte Postgres-Transaktion und ist in dieser Sandbox mangels
-laufender DB nicht End-to-End getestet - nur die vorgelagerte
-Validierungslogik (`validateBlueprintDraft`) hat Unit-Tests. Vor dem ersten
-produktiven Freigabe-Lauf einmal manuell gegen eine echte DB verifizieren.
-
-#### R1.4 Quellengebundene Generierung
-
-- [x] Generierungs-Prompts nur mit freigegebenen Objectives und relevanten
-      Quellenausschnitten aufrufen. Genauer: WENN ein Objective freigegebene
-      Quellenausschnitte hat (`objective_source_refs`, aus R1.3 befüllt),
-      wird ausschließlich damit generiert
-      (`generateGroundedLessonsAndQuestionsForObjective`); Zertifizierungen
-      ganz ohne hochgeladene Quelle nutzen weiterhin den bisherigen freien
-      KI-Weg (roadmap2.md) als Fallback, statt komplett zu blockieren.
-- [x] Jede Lesson mit Blueprint-Version, Modell- und Prompt-Version
-      verknüpfen. (`lessons.sourceVersionId` - zeigt auf die jeweilige
-      `certification_sources`-Zeile als "Blueprint-Version" -, `modelVersion`,
-      `promptVersion`.)
-- [x] Jede Frage mit einer konkreten Quellenreferenz versehen. Gilt für
-      quellengebunden generierte Fragen (`questions.sourceChunkId` als echte
-      Relation + `sourceReference` als lesbarer Text); Fragen aus dem
-      ungegroundeten Fallback-Pfad bleiben wie bisher ohne Referenz.
-- [x] Aussagen ohne ausreichende Grundlage verwerfen oder als Review-Fall
-      markieren. Für Fragen "verwerfen" (nie gespeichert, siehe
-      `discard`-Logik im Skript), für Lessons "als Review-Fall markieren"
-      (`reviewStatus = "needs_review"` statt `"grounded"`).
-- [x] Quellenabdeckung validieren: Jedes Objective benötigt mindestens eine
-      Referenz. (`ContentValidationService.validateSourceCoverage()`, nur
-      relevant sobald die Zertifizierung eine freigegebene Quelle hat.)
-- [x] Quellenangaben in der Lernansicht knapp, im Adminbereich vollständig
-      anzeigen. Lernansicht: `QuizQuestionCard` zeigt nach der Antwort knapp
-      "Quelle: S. 4". Adminbereich: die Validierungsseite listet Objectives
-      ohne Referenz vollständig auf; eine Ansicht mit dem vollen zitierten
-      Quellentext pro Frage existiert noch nicht (Nachtrag, falls sich das
-      als nötig erweist - `objective_source_refs`/`source_chunks` tragen
-      die Daten dafür bereits).
-
-#### R1.5 Versionen und Aktualisierungen
-
-- [x] Neue Ausgabe eines Blueprints als neue Version importieren.
-      (`certification_sources.supersedesSourceId`, im Upload-Formular als
-      "Ersetzt bereits freigegebene Quelle" wählbar.)
-- [x] Added/changed/removed Domains und Objectives als Diff darstellen.
-      (`diffBlueprintAgainstObjectives()` in `lib/server/admin/blueprint-diff.ts`,
-      pur und getestet; Vorschau vor der Freigabe über
-      `GET /api/admin/sources/:id/diff`, angezeigt in der Review-Oberfläche.)
-- [x] Betroffene Lessons und Fragen als `stale` markieren.
-      (`markStaleContentForDiff()` in `blueprint-approval.ts`: geänderte oder
-      entfernte Objectives -> `lessons.reviewStatus = "stale"` /
-      `questions.stale = true`. Neu hinzugekommene Objectives haben
-      naturgemäß noch nichts, das stale sein könnte.)
-- [x] Gezielte Neugenerierung nur der betroffenen Inhalte ermöglichen.
-      `scripts/generate-lessons-and-questions.ts` zählt stale Lessons/Fragen
-      nicht mehr als "bereits vorhanden": stale Lessons werden in-place
-      aktualisiert (eine Section darf wegen des Unique-Constraints nur eine
-      Lesson haben), stale Fragen bleiben unangetastet stehen (siehe
-      nächster Punkt) und werden durch neue ergänzt. Veraltete Fragen werden
-      außerdem aus neuen Prüfungen (`exam/generator.ts`) und aus der
-      Lernansicht (`section/[sectionId]/page.tsx`) herausgefiltert, damit
-      "stale" tatsächlich wirkt statt nur ein Label zu sein.
-- [x] Alte Kursversionen für vorhandene Lernverläufe lesbar halten.
-      Durch Konstruktion erfüllt: nichts in der gesamten R1-Pipeline löscht
-      jemals eine Lesson oder Frage (nur Insert/Update/stale-Markierung) -
-      `quiz_answers`/`exam_questions`, die auf eine jetzt veraltete Frage
-      verweisen, bleiben unverändert lesbar. Keine separate
-      "Kursversions-Snapshot"-Funktion (wäre eine deutlich größere
-      Datenmodell-Änderung) - bislang nicht verlangt, da bestehende
-      Lernverläufe schon allein durch das Nie-Löschen intakt bleiben.
-
-### Datenmodell
-
-Empfohlene neue Tabellen beziehungsweise Felder:
-
-- `certification_sources`
-  - `id`, `certificationId`, `sourceType`, `title`, `provider`
-  - `sourceUrl`, `storageKey`, `checksum`, `publishedAt`, `retrievedAt`
-  - `status`, `versionLabel`, `approvedBy`, `approvedAt`
-- `source_chunks`
-  - `sourceId`, `pageNumber`, `sectionPath`, `content`, `contentHash`
-- `objective_source_refs`
-  - `objectiveId`, `sourceChunkId`, `locator`, `confidence`
-- `lessons.sourceVersionId` und `lessons.reviewStatus`
-- `questions.sourceReference` zu einer echten Relation weiterentwickeln
-- `certifications.contentStatus`: `draft | review | published | stale`
-
-### APIs und Hintergrundjobs
-
-- `POST /api/admin/sources` — Upload oder URL registrieren
-- `POST /api/admin/sources/:id/parse` — Extraktion starten
-- `GET /api/admin/sources/:id/status` — Jobstatus abrufen
-- `GET /api/admin/sources/:id/blueprint` — Importvorschlag anzeigen
-- `PATCH /api/admin/sources/:id/blueprint` — Korrekturen speichern
-- `POST /api/admin/sources/:id/approve` — Version freigeben
-- Generierungsjob um Phasen `source`, `extract`, `review`, `curriculum`, `lessons`,
-  `questions`, `validate` und `complete` erweitern
-
-### Tests
-
-- PDF mit PCA-Blueprint liefert erwartete Metadaten, Domains und Objectives.
-- Wiederholter Upload derselben Datei erzeugt keinen unbemerkten Doppelimport.
-- Manipulierte oder übergroße Datei wird abgewiesen.
-- Ohne freigegebene Quelle kann kein Kurs als „verifiziert“ veröffentlicht werden.
-- Eine neue Quellenversion markiert nur tatsächlich betroffene Inhalte als veraltet.
-- Quellenreferenzen bleiben nach Neugenerierung nachvollziehbar.
+- Zeitbudget als primäre Session-Eingabe
+- optionaler Energiezustand
+- Prüfungstermin und Lerntage
+- „Nur eine Aufgabe“-Modus
+- Session unterbrechen und fortsetzen
+- sanfter Comeback-Modus
+- Review-Scheduler mit nachvollziehbarem Algorithmus
+- schwache und prüfungsrelevante Bereiche priorisieren
+- Rückstau bei Wiederholungen berücksichtigen
+- keine strafenden täglichen Serien
+- Empfehlungen mit Gründen anzeigen
+- Nutzerfeedback auf Empfehlungen erfassen
+- Sicherheit der eigenen Antwort abfragen
+- benötigte Hinweise protokollieren
+- Antwortgeschwindigkeit nur als schwaches Signal verwenden
+- Auswahl ohne normalen KI-Aufruf deterministisch ermöglichen
 
 ### Abnahmekriterien
 
-- Für PCA ist kein manuelles Abschreiben der Domains erforderlich.
-- Jeder veröffentlichte Objective-Datensatz verweist auf die offizielle Quelle.
-- Admins können sehen, wann und anhand welcher Version ein Inhalt geprüft wurde.
-- Der Lernende kann offizielle Struktur und KI-Erklärung klar unterscheiden.
+- Innerhalb von zwei Interaktionen startet eine sinnvolle Mission.
+- Jede Auswahl ist begründbar.
+- Ein Reload verändert eine laufende Session nicht.
+- Pausen verschlechtern keine künstliche Serienwertung.
+- Der Nutzer kann Schwierigkeit und Erklärungsart beeinflussen.
 
 ---
 
-## R2 — Adaptiver Tagesplan und Spaced Repetition
+## 11. R3 — Lernanalyse, Readiness und Kompetenztransparenz
 
 ### Ziel
 
-Die Startseite beantwortet jeden Tag eine klare Frage: „Was soll ich jetzt lernen?“
-Statt nur den zuletzt geöffneten Kurs zu zeigen, erstellt die App eine kurze Session
-aus fälligen Wiederholungen, schwachen Objectives und neuem Stoff.
-
-### Nutzerablauf
-
-1. Lernziel festlegen: Prüfungstermin, Lerntage und Minuten pro Tag.
-2. Dashboard zeigt „Heute lernen“, Anzahl fälliger Wiederholungen und Zeitbedarf.
-3. Session startet mit einer Mischung aus Wiederholung und neuem Inhalt.
-4. Nach jeder Frage werden Korrektheit, Schwierigkeit und Aktualität berücksichtigt.
-5. Am Ende sieht der Nutzer Fortschritt, nächste Fälligkeit und Schwachstellen.
+Lernende verstehen ihren Fortschritt, ohne dass eine Prozentzahl falsche Sicherheit erzeugt.
 
 ### Arbeitspakete
 
-#### R2.1 Lernprofil und Ziele
-
-- [x] Prüfungstermin optional speichern. (`study_profiles.examDate`, nullable.)
-- [x] Tägliches Zeit- oder Fragenziel festlegen. (`dailyGoalType`
-      "minutes"/"questions" + `dailyGoalValue` - genau eine der beiden
-      Einheiten gilt, kein gleichzeitiges Minuten- und Fragenziel.)
-- [x] Aktive Lerntage und bevorzugte Sprache speichern. (`activeDays`
-      (ISO-Wochentage 1-7), `preferredLocale` - Letzteres bewusst getrennt
-      vom UI-Sprachcookie in `lib/server/locale.ts`: eine Lernziel-Angabe je
-      Kurs, keine UI-Einstellung.)
-- [x] Ziel jederzeit änderbar machen, ohne bisherigen Fortschritt zu
-      verlieren. Ein Profil pro (Nutzer, Zertifizierung)
-      (`study_profiles_user_certification_unique`), `upsertStudyProfile()`
-      überschreibt es vollständig per PUT - strukturell unmöglich, dabei
-      Fortschritt zu verlieren, da die Tabelle nichts mit
-      objective_progress/review_items/quiz_attempts teilt.
-      `validateStudyProfileInput()` (reine Funktion, vollständig getestet)
-      blockt ungültige Werte, bevor sie gespeichert werden. UI:
-      `StudyGoalPanel` auf der Kursseite.
-
-#### R2.2 Review-Scheduler
-
-- [x] Für beantwortete Fragen einen Review-Zustand führen. Bewusst pro Frage,
-      nicht pro Objective (`review_items`, unique auf `(userId, questionId)`) -
-      sonst würde "Fragenrotation sicherstellen" (siehe unten) nicht
-      funktionieren: ein Objective mit mehreren Fragen wäre nach der ersten
-      richtigen Antwort komplett erledigt, statt die einzelnen Fragen wirklich
-      rotieren zu lassen.
-- [x] Zunächst einen nachvollziehbaren Leitner-/SM-2-ähnlichen Algorithmus
-      verwenden. (`computeNextReview()` in `lib/server/review/scheduler.ts` -
-      reine, vollständig getestete Funktion: Ease-Faktor 1.3–2.8, Intervalle
-      1 Tag / 6 Tage / `Intervall × Ease-Faktor` ab der dritten Wiederholung.)
-- [x] Falsche Antwort kurzfristig erneut einplanen. (Sofort wieder fällig -
-      `intervalDays = 0` bei "incorrect", zusätzlich sinkt der Ease-Faktor.)
-- [x] Richtige Antworten mit wachsendem Abstand einplanen. (Repetitions-Zähler
-      + wachsendes Intervall, siehe oben - getestet mit drei aufeinanderfolgenden
-      richtigen Antworten.)
-- [x] Schwierigkeit ... berücksichtigen. (`difficultyMultiplier()`: "advanced"
-      verkürzt das Intervall, "beginner" verlängert es.) "... letzte Versuche
-      und Objective-Gewichtung berücksichtigen" teilweise: letzte Versuche
-      fließen über `repetitions`/`easeFactor` bereits ein; Objective-/Domain-
-      Gewichtung ist als Sortierkriterium in `getDueReviewItems()` vorhanden
-      (Tiebreaker bei gleicher Fälligkeit), eine echte gewichtete Auswahl
-      unter mehreren fälligen Objectives ist aber erst mit dem Session Builder
-      (R2.3) sinnvoll umsetzbar.
-- [x] Fragenrotation sicherstellen. Ergibt sich strukturell aus dem
-      Fälligkeits-Sortiment in `getDueReviewItems()` (fälligste zuerst) -
-      eine gerade beantwortete Frage springt sofort auf ein späteres `dueAt`
-      und rückt damit automatisch hinter andere fällige Fragen.
-- [x] Neue Inhalte begrenzen, wenn viele Wiederholungen überfällig sind. Wie
-      hier vorgemerkt in R2.3 umgesetzt: `computeSessionComposition()`
-      (`lib/server/study/session-builder.ts`) lässt neuen Stoff auf 0 fallen
-      und Review den frei werdenden Anteil übernehmen, sobald der
-      Rückstau (`dueCount`, aus `getDueReviewCount()`) den regulären
-      60-%-Anteil übersteigt.
-
-#### R2.3 Session Builder
-
-- [x] Session anhand des Zeitbudgets erstellen. `estimateTargetQuestionCount()`
-      übersetzt das Tagesziel aus `study_profiles` (R2.1) in eine
-      Ziel-Fragenanzahl (bei einem Zeitziel über eine dokumentierte
-      Minuten-pro-Frage-Schätzung, `MINUTES_PER_SESSION_QUESTION`).
-- [x] Empfohlener Startmix: 60 % fällige Wiederholungen, 25 % schwache
-      Bereiche, 15 % neuer Stoff. `computeSessionComposition()`, reine
-      Funktion, vollständig getestet (inkl. Pool-Kappung und Umverteilung
-      bei zu kleinen Kategorien).
-- [x] Prüfungstermin und Domaingewichtung in die Priorisierung einbeziehen.
-      Domaingewichtung: `selectNewQuestions()`/`getDueReviewItems()` (R2.2)
-      sortieren nach `domains.weightPercent`. Prüfungstermin: innerhalb von
-      `EXAM_URGENCY_WINDOW_DAYS` (7 Tage) vor der Prüfung reallokiert
-      `reallocateForExamUrgency()` neuen Stoff zugunsten von Review/Weak -
-      bewusst nur soweit dort tatsächlich noch Plätze frei sind (an die real
-      abrufbaren Pools gebunden), damit die Session nie mehr verspricht, als
-      sie befüllen kann.
-- [x] Bei zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen.
-      `computeLessonFallbackCount()` + `selectFallbackLessonSections()`
-      füllen die Differenz zum Tagesziel mit Lesson-Links auf. "... oder
-      vorhandene Remediation" bewusst NICHT umgesetzt: dafür bräuchte es
-      eine Auswahllogik für "welche Remediation-Session ist noch relevant",
-      die es noch nicht gibt (Remediation-Sessions werden bislang nur direkt
-      über den "Bereiche benötigen Wiederholung"-Banner erreicht) - Lesson-
-      Fallback allein deckt den Fall "zu wenig Fragen" bereits ab.
-- [x] Session deterministisch speichern, damit ein Reload sie nicht
-      verändert. `study_sessions`/`study_session_items`, höchstens eine
-      aktive Session pro (Nutzer, Zertifizierung) (Unique-Partial-Index
-      `study_sessions_active_per_user_cert`, wie `content_generation_jobs`
-      in R0.3) - `getOrCreateStudySession()` liest eine bestehende (aktive
-      ODER von heute abgeschlossene/ausgesetzte) Session, statt sie neu zu
-      bauen.
-
-#### R2.4 Dashboard „Heute lernen“
-
-- [x] Primäre CTA mit geschätzter Dauer. `TodayDashboard`-Panel auf der
-      Kursseite, Link zur Session mit `estimateSessionMinutes()`-Schätzung
-      im Button-Text.
-- [x] Fällige Reviews, Lernserie und Tagesziel anzeigen. `getDueReviewCount()`
-      (R2.2), `getStudyStreak()` (`computeStreak()` über abgeschlossene
-      `study_sessions`), Zielwerte aus dem Session-Schnappschuss.
-- [x] Drei wichtigste schwache Objectives erklären. `getTopWeakObjectives()` -
-      niedrigste Mastery zuerst, mit Domain-Name und Mastery-Prozentzahl.
-- [x] „Später“, „Heute aussetzen“ und Zielanpassung ermöglichen. "Später"
-      bewusst ohne Persistenz (blendet die Karte nur für die aktuelle
-      Ansicht aus - kein Hydration-Mismatch-Risiko durch serverseitig
-      unbekannten Browser-Zustand); "Heute aussetzen" setzt den
-      Session-Status echt auf `skipped` (`POST /api/study-sessions/:id/skip`,
-      zählt entsprechend nicht in die Lernserie); Zielanpassung verlinkt auf
-      das `StudyGoalPanel` (R2.1) auf derselben Seite.
-- [x] Nach der Session eine kurze, motivierende Zusammenfassung zeigen.
-      Ergebnis-Ansicht in `StudySession` nach dem Einreichen (Score, Anzahl
-      richtig, ermutigender Text, Link zurück).
-
-#### R2.5 Readiness weiterentwickeln
-
-- [x] Readiness nicht nur aus einem einzelnen Exam-Versuch ableiten.
-      `computeReadiness()` (`lib/server/readiness/engine.ts`, reine Funktion,
-      vollständig getestet) ersetzt dafür NICHT die bestehende
-      Einzelversuchs-Readiness aus `lib/server/exam/scoring.ts` (die
-      beantwortet weiterhin "wie lief dieser eine Versuch" direkt nach einer
-      Prüfung) - `ReadinessCard` auf der Kursseite zeigt die neue,
-      ganzheitliche Einschätzung.
-- [x] Objective-Abdeckung, Aktualität, Anzahl der Versuche und Probeprüfungen
-      einbeziehen. Abdeckung × Ø-Mastery der geübten Objectives
-      (`contentScore`, damit hohe Mastery auf wenigen Objectives die
-      Readiness nicht künstlich hochzieht), Aktualität als abklingender
-      Faktor (`recencyFactor`, ab 30 Tagen ohne Übung reduziert), Anzahl der
-      Versuche über `review_items` (deckt Quiz-, Session- und Exam-Antworten
-      einheitlich ab, da `recordReviewOutcomes()` von allen drei Wegen
-      aufgerufen wird), Trend der letzten bis zu drei Probeprüfungen
-      (`examTrend`, fließt bei Vorhandensein zur Hälfte in den Score ein).
-- [x] Unsicherheit bei zu wenig Daten deutlich anzeigen. Eigene Konfidenz
-      (0-1) aus Antwortmenge, Abdeckung und Probeprüfungs-Anzahl; unterhalb
-      einer Mindestschwelle liefert `computeReadiness()` bewusst KEINE
-      Prozentzahl (`score: null`, Level `INSUFFICIENT_DATA`) statt einer, die
-      mehr Präzision vortäuscht als die Datenlage hergibt -
-      `ReadinessCard` zeigt dafür "Noch zu wenig Daten" plus einen
-      Sicherheits-Hinweis (niedrig/mittel/hoch).
-- [x] Begründung liefern: „Warum ist meine Readiness 68 %?“ `breakdown` in
-      `ReadinessResult` liefert alle Teilwerte einzeln; `ReadinessCard`
-      zeigt sie in einem aufklappbaren "Warum diese Einschätzung?"-Abschnitt
-      (natives `<details>`, kein Client-JS nötig).
-
-### Datenmodell
-
-- `study_profiles`: Nutzer, Kurs, Prüfungstermin, Tagesziel, Lerntage
-- `review_items`: Nutzer, Objective/Frage, Fälligkeit, Intervall, Wiederholungen,
-  Stabilität/Ease, letzter Ausgang
-- `study_sessions`: Nutzer, Kurs, Status, geplant/gestartet/beendet, Zielumfang
-- `study_session_items`: Session, Typ, Referenz-ID, Reihenfolge, Ergebnis
-
-### Tests
-
-- Falsche Antworten werden früher fällig als richtige.
-- Mehrfach richtige Antworten verlängern das Intervall.
-- Sessiongröße hält das gewählte Tagesziel annähernd ein.
-- Reload oder Gerätewechsel erzeugt keine zweite parallele Session.
-- Kurse und Nutzer beeinflussen einander nicht.
-- Zu wenig Daten führen nicht zu einer übertrieben sicheren Readiness-Aussage.
-
-### Abnahmekriterien
-
-- Ein Nutzer kann innerhalb von zwei Klicks eine sinnvolle Tages-Session starten.
-- Jede Auswahl ist durch Fälligkeit, Schwäche oder neues Curriculum erklärbar.
-- Nach Abschluss sind Fortschritt und nächster Schritt sichtbar.
-- Der Scheduler benötigt für normale Sessions keinen KI-Aufruf.
-
----
-
-## R3 — Prüfungshistorie und Lernanalyse
-
-### Ziel
-
-Bereits gespeicherte Quiz- und Exam-Versuche werden für Lernende sichtbar. Entwicklung,
-wiederkehrende Fehler und Readiness-Trends lassen sich nachvollziehen.
-
-### Arbeitspakete
-
-- [x] Seite „Meine Prüfungen“ mit Datum, Ergebnis, Dauer und Readiness bauen.
-      (`app/cert/[id]/history/page.tsx`, `listExamAttempts()`. Voraussetzung
-      dafür neu geschaffen: `exam_answers` persistiert seit dieser Änderung
-      die einzelnen Antworten eines Exam-Versuchs - vorher wurden sie beim
-      Einreichen nur transient berechnet und nie gespeichert, eine
-      Detailauswertung wäre danach nicht mehr rekonstruierbar gewesen.
-      `durationSeconds` wird jetzt clientseitig gemessen (Sessionstart bis
-      Einreichen) und mitgeschickt.)
-- [x] Detailseite pro Versuch mit Domain- und Objective-Auswertung ergänzen.
-      (`app/cert/[id]/history/[attemptId]/page.tsx`, `getExamAttemptDetail()`
-      rekonstruiert die Auswertung eines vergangenen Versuchs aus
-      `exam_answers` über dieselbe `ExamScoringService.scoreExam()`-Logik wie
-      direkt nach dem Einreichen - keine zweite Implementierung. Bewusst kein
-      Fragewortlaut sichtbar, siehe Regel unten.)
-- [x] Vergleich mit dem vorherigen Versuch anzeigen. (`previousScore` -
-      `null`, wenn keiner existiert, statt mit 0 zu verwechseln, siehe
-      "Fehlende Daten"-Regel unten.)
-- [x] Wiederholt falsch beantwortete Themen hervorheben.
-      (`repeatedWeakObjectiveCodes`: Objective-Codes, die sowohl im
-      aktuellen als auch im unmittelbar vorherigen Versuch als schwach
-      galten - eigenes Badge in der Detailansicht.)
-- [x] Direkten Einstieg in Remediation oder Tagesplan anbieten. Jedes
-      schwache Objective verlinkt auf die bestehende Remediation-Seite,
-      zusätzlich ein "Heute lernen"-Link zur R2.3-Session.
-- [x] 7-/30-/90-Tage-Trend für Mastery und Übungsaktivität anzeigen.
-      `computeActivityTrends()` (`lib/server/analytics/trends.ts`, reine
-      Funktion, vollständig getestet) - bewusst aus `quiz_attempts`/
-      `exam_attempts` statt aus `review_items` gespeist: Letzteres hält pro
-      (Nutzer, Frage) nur den LETZTEN Zustand (Upsert, siehe R2.2) und kann
-      daher keine echte Historie über die Zeit liefern, die beiden
-      Versuchs-Tabellen sind dagegen echte Ereignis-Logs (eine Zeile pro
-      Versuch). "Mastery" wird hier als Durchschnittsergebnis der Quiz-/
-      Exam-Versuche im jeweiligen Fenster angenähert - `study_sessions`
-      fließen mangels eigenem Score-Feld nur in die Aktivitätszahl ein,
-      nicht in die Genauigkeit.
-- [x] Aktivitätskalender beziehungsweise Lernserie ergänzen.
-      `buildActivityCalendar()` (84-Tage-Heatmap, Tage ohne Aktivität
-      explizit mit `count: 0` statt zu fehlen) + die bereits aus R2.4
-      bestehende `getStudyStreak()` - beides auf der "Meine Prüfungen"-Seite
-      (`ActivityTrends`-Komponente).
-- [x] Datenexport als JSON oder CSV optional vorsehen. JSON gewählt (CSV
-      hätte die verschachtelte Trend-/Versuchsstruktur ohne Informations-
-      verlust nicht flach genug abbilden können) - `GET /api/exams/:certId/export`,
-      Download-Link auf derselben Seite.
+- Quiz- und Prüfungshistorie
+- Domain- und Objective-Trends
+- wiederkehrende Fehler hervorheben
+- zeitliche Aktualität berücksichtigen
+- Datenunsicherheit sichtbar machen
+- Readiness begründen
+- Lernaktivität exportieren
+- Empfehlung aus jeder Schwachstelle starten
+- erste Trennung von Wissen, Anwendung und Transfer
+- private Fehler- und Hinweisanalyse
 
 ### Regeln
 
-- Keine Rangliste ohne echten Mehrwert und ausdrückliches Opt-in.
-- Keine Bestehenswahrscheinlichkeit vortäuschen.
-- Fragewortlaut nach einer Prüfung nur anzeigen, wenn dies mit der gewünschten
-  Wiederverwendungsstrategie der Fragen vereinbar ist.
-- Fehlende Daten als fehlende Daten zeigen, nicht als Nullleistung.
+- Readiness ist keine Bestehensgarantie.
+- Fehlende Daten werden nicht als Nullleistung dargestellt.
+- Es gibt keine öffentliche Rangliste ohne ausdrückliches Opt-in und nachgewiesenen Nutzen.
+- Eine hohe Quizleistung gilt nicht automatisch als praktische Kompetenz.
 
 ### Abnahmekriterien
 
-- Jeder abgeschlossene Exam-Versuch ist wieder auffindbar.
-- Der Nutzer erkennt, welche Domains sich verbessert oder verschlechtert haben.
+- Jeder Prüfungsversuch ist wieder auffindbar.
+- Fortschritt und Unsicherheit sind getrennt sichtbar.
 - Aus jedem Schwachpunkt führt eine konkrete Aktion zum nächsten Lernschritt.
 
 ---
 
-### Konsolidierung vor R4: Altes Dexie-System entfernt
-
-Vor R4 wurde das alte, parallel existierende v1-Frontend (IndexedDB/Dexie via
-`lib/db.ts`, `lib/hooks/queries.ts`, `lib/hooks/mutations.ts`) inklusive der
-dazugehörigen, aus keiner Navigation mehr erreichbaren Seiten
-(`app/cert/[id]/exam`, `app/cert/[id]/day/[day]`, `AddCertModal`,
-`CertificateCard`) und der nur von diesen genutzten Live-Generierungs-Routen
-(`app/api/generate/chapter|curriculum|mock-exam`) vollständig entfernt.
-Postgres (v2) ist damit die alleinige Datenquelle des Frontends. Geteilte
-Bausteine, die sowohl v1 als auch das aktive v2-System nutzten
-(`localizedStringSchema`/`localizedStringArraySchema` in `lib/ai/schemas.ts`,
-`Locale`/`Localized`/`QuizQuestion` in `lib/types.ts`, `lib/ai/generate.ts`,
-`lib/ai/http.ts`, `lib/gemini.ts`), wurden unverändert beibehalten. Die
-`dexie`/`dexie-react-hooks`-Abhängigkeiten wurden aus `package.json` entfernt.
-Damit entfällt für R4.2 der ursprünglich vorgesehene Schritt „Vorhandenes
-IndexedDB/Dexie-Konzept auf Backend-Inhalte abstimmen" - R4 baut die
-Offline-Datenhaltung direkt und ausschließlich auf den v2-Postgres-Inhalten
-neu auf, ohne ein bestehendes Altsystem migrieren zu müssen.
-
----
-
-## R4 — Offline-Kurse und Synchronisation
+## 12. R4 — Offline-Kurse und Synchronisation
 
 ### Ziel
 
-Ein veröffentlichter Kurs kann bewusst auf ein Gerät geladen werden. Lessons,
-Tages-Session und Quizantworten funktionieren ohne Verbindung; Ergebnisse werden
-nach Wiederherstellung des Netzes genau einmal synchronisiert.
+Ausgewählte Kurse und Missionen funktionieren offline und synchronisieren Ergebnisse genau einmal.
 
 ### Arbeitspakete
 
-#### R4.1 Offline-Paket
-
-- [x] „Für offline speichern“ pro Kurs anbieten. *(Neue Route `/cert/[id]/offline`, verlinkt von der Kursseite; `OfflinePackageManager`-Komponente.)*
-- [x] Versioniertes Manifest mit Lessons, Fragen und benötigten Assets erzeugen. *(`GET /api/cert/[certId]/offline-package`, `lib/server/offline/manifest.ts` - Version ist bewusst eine Näherung aus dem jüngsten `lessons.updatedAt`/`certifications.updatedAt` statt eines exakten Inhalts-Hash, siehe Kommentar dort. Nur Domains/Objectives/Sections mit bereits generierter Lesson werden aufgenommen, ebenso wie die Live-Kursseite es bereits filtert.)*
-- [x] Downloadfortschritt, Größe und Aktualisierungsdatum anzeigen. *(Streaming-Download mit Byte-Fortschritt, `lib/client/offline-download.ts`; ein separater, günstiger Versions-Endpunkt (`.../offline-package/version`) prüft auf Aktualisierungen, ohne das ganze Paket neu zu laden.)*
-- [x] App-Shell und veröffentlichte Inhalte gezielt cachen. *(App-Shell/statische Assets weiterhin über den bestehenden Service Worker, `app/sw.ts`, Stale-While-Revalidate; die eigentlichen Kursinhalte laufen bewusst NICHT über den SW-Cache, sondern über das explizite, versionierte IndexedDB-Paket - nachvollziehbarer für Nutzer als impliziertes HTTP-Caching, siehe R4.2. `/api/*` ist im SW jetzt explizit NetworkOnly.)*
-- [x] Veraltete Kursversion erst nach erfolgreichem Ersatz löschen. *(Das neue Paket wird erst nach vollständigem Download+Parse in IndexedDB geschrieben und ersetzt dabei atomar den alten Eintrag - ein Abbruch/Fehler lässt die bisherige, funktionierende Version unangetastet.)*
-
-#### R4.2 Lokale Datenhaltung
-
-- [x] Vorhandenes IndexedDB/Dexie-Konzept auf Backend-Inhalte abstimmen. *(Konsolidierung vor R4: Altsystem entfernt statt migriert - R4.2 startet direkt mit einer neuen, v2-Postgres-basierten lokalen Datenhaltung.)*
-- [x] Keine Passwort- oder Session-Secrets in der Offline-Datenbank speichern. *(`lib/client/offline-db.ts` speichert ausschließlich Kursinhalt - Lessons/Fragen -, keine Auth-/Session-Daten.)*
-- [x] Inhalte nach Nutzer und Kursversion partitionieren. *(IndexedDB-Schlüssel `${userId}:${certificationId}`, Version im Datensatz mitgeführt - mehrere Nutzer auf demselben Gerät teilen sich keine Downloads.)*
-- [x] „Offline-Daten löschen“ in den Einstellungen anbieten. *(Es gibt noch keine allgemeine Einstellungsseite in der App - der Löschen-Button sitzt stattdessen direkt auf `/cert/[id]/offline`, wo auch heruntergeladen wird. Funktional identisch, nur ohne eigene globale Einstellungsseite.)*
-- [x] Bei Logout nutzerbezogene lokale Daten entfernen. *(`SignOutButton`-Client-Komponente räumt IndexedDB vor dem eigentlichen Sign-out auf - der bisherige reine Server-Action-Form-Submit hatte keinen Zugriff auf Browser-Storage.)*
-
-#### R4.3 Sync Queue
-
-- [x] Offline-Quiz- und Session-Ergebnisse mit clientseitiger Ereignis-ID speichern. *(`lib/client/sync-queue.ts::enqueueSyncEvent()`, IndexedDB-Store `pendingSyncEvents` in `lib/client/offline-db.ts` - `clientEventId` per `crypto.randomUUID()`. Das Abschnittsquiz UND die heutige, bereits vor dem Download bestehende Session sind jetzt beide offline abschließbar, jeweils sofort clientseitig ausgewertet.)*
-- [x] Idempotenten Sync-Endpunkt implementieren. *(`POST /api/sync`, `lib/server/sync/service.ts`. "Insert-first, apply-second": eine `sync_events`-Zeile (Unique-Index auf `(userId, clientEventId)`) wird VOR der eigentlichen Logik als Claim eingefügt - ein per Playwright nachgestellter echter Wettlauf zweier gleichzeitiger Sync-Aufrufe für dasselbe Ereignis hat ohne dieses Insert-first-Muster tatsächlich zu einem doppelten `quiz_attempts`-Eintrag geführt, siehe Testprotokoll unten.)*
-- [x] Automatisch bei `online`, App-Start und manuellem Sync übertragen. *(`SyncStatusBadge`, global im Header montiert: löst `runSync()` bei Mount, beim `online`-Event und per Klick aus. Ein clientseitiger `inFlightSyncs`-Guard verhindert zusätzlich überlappende Sync-Aufrufe für denselben Nutzer.)*
-- [x] Konflikte nach Ereigniszeit und Serverstatus nachvollziehbar lösen. *(Ein Sync-Versuch für eine bereits (anderswo) abgeschlossene Session liefert `status: "conflict"` mit Klartext-Fehlermeldung statt eines stillen Fehlschlags oder einer Doppelverbuchung - per Playwright gegen eine echte, bereits abgeschlossene Session verifiziert.)*
-- [x] Fehlgeschlagene Einträge mit Retry und sichtbarem Status behalten. *(Netzwerk-/Serverfehler setzen den lokalen Eintrag auf `status: "failed"` mit `attempts`/`lastError`, bleiben in der Warteschlange und werden beim nächsten Sync automatisch erneut versucht; ein dauerhafter Konflikt bleibt sichtbar, bis der Nutzer ihn über `discardPendingSyncEvent()` verwirft.)*
-
-#### R4.4 UX
-
-- [x] Online-, Offline- und Sync-Status anzeigen. *(`SyncStatusBadge` im Header: Online/Offline-Icon, ausstehende/fehlgeschlagene/im-Konflikt-Anzahl, aufklappbares Detail-Panel.)*
-- [x] Funktionen, die online bleiben müssen, verständlich deaktivieren. *(`lib/client/use-online-status.ts` - Generierungs- und Quellenimport-Buttons im Adminbereich sind offline deaktiviert, mit erklärendem Hinweistext.)*
-- [x] Generierung und Quellenimport ausdrücklich nicht offline anbieten. *(`ContentGenerationControl`/`SourcesManager` - siehe oben.)*
-- [x] Speicherplatz und zuletzt synchronisierten Zeitpunkt anzeigen. *(Speicherplatz weiterhin auf `/cert/[id]/offline` je Kurs (R4.1); "zuletzt synchronisiert" im `SyncStatusBadge`-Panel, aus `localStorage` - bewusst nur ein informativer Anzeigewert, kein Bestandteil der eigentlichen Sync-Garantie, die vollständig serverseitig in `sync_events` liegt.)*
-
-R4 ist damit vollständig: Lessons, Abschnittsquiz UND die bereits online
-geladene Tages-Session funktionieren ohne Verbindung, Ergebnisse werden
-nach Wiederherstellung des Netzes synchronisiert (genau einmal, per
-Server-seitigem Claim-Mechanismus statt nur eines Best-Effort-Dedups).
-Bewusst außerhalb des Umfangs: eine komplett NEUE Session lässt sich nicht
-offline bauen (das bräuchte Live-Zugriff auf Fälligkeits-/Schwachstellen-
-Daten) - nur eine bereits vor dem Download bestehende.
-
-### Tests
-
-- Installierte PWA startet im Flugmodus.
-- Heruntergeladene Lesson und Quiz funktionieren offline.
-- Derselbe Versuch wird nach mehreren Retries nur einmal gespeichert.
-- Logout entfernt lokale nutzerbezogene Daten.
-- Wechsel der Kursversion beschädigt keine bereits synchronisierten Versuche.
+- versionierte Offline-Pakete
+- lokale Partitionierung nach Nutzer und Kursversion
+- Offline-Sessions und Quizantworten
+- idempotente Sync Queue
+- sichtbarer Online-, Offline- und Sync-Status
+- lokale Daten bei Logout entfernen
+- manuelle Löschung lokaler Daten
+- Konflikte nachvollziehbar behandeln
+- Missionen auf Offline-Fähigkeit kennzeichnen
 
 ### Abnahmekriterien
 
-- Eine vollständige Tages-Session lässt sich ohne Netz absolvieren.
-- Nach Reconnect stimmen Serverfortschritt und lokaler Status überein.
-- Der Nutzer sieht jederzeit, ob Daten noch nicht synchronisiert wurden.
+- Eine vollständige Session kann im Flugmodus bearbeitet werden.
+- Wiederholte Sync-Versuche erzeugen keine doppelten Ergebnisse.
+- Nutzer erkennen jederzeit noch nicht synchronisierte Daten.
 
 ---
 
-## R5 — Suche, Lesezeichen und Notizen
+## 13. R5 — Suche, Notizen und persönliche Wissensorganisation
 
 ### Ziel
 
-Lernende finden Inhalte schnell wieder und können persönliche Bezüge festhalten.
+Lernende finden Inhalte und eigene Erkenntnisse schnell wieder.
 
 ### Arbeitspakete
 
-- [ ] Volltextsuche über Kurse, Domains, Objectives und Lessons.
-- [ ] Filter nach Kurs, Domain, Sprache und Inhaltstyp.
-- [ ] Suchtreffer mit Textausschnitt und direktem Sprung zur Fundstelle.
-- [ ] Lesezeichen für Lessons, Objectives und Fragen.
-- [ ] Private Notizen an Lessons und Objectives.
-- [ ] Übersichtsseite „Gespeichert“ mit Suche und Filtern.
-- [ ] Notizen in Offline-Paket und Sync Queue integrieren.
-- [ ] Export und vollständiges Löschen persönlicher Notizen ermöglichen.
-
-### Datenmodell
-
-- `bookmarks`: Nutzer, Entitätstyp, Entität-ID, erstellt am
-- `notes`: Nutzer, Entitätstyp, Entität-ID, Text, erstellt/geändert am
-- Eindeutiger Index für ein Lesezeichen je Nutzer und Entität
-- PostgreSQL-Volltextindex als Start; externe Suchengine erst bei nachgewiesenem Bedarf
+- Volltextsuche
+- Filter nach Kurs, Skill, Domain, Sprache und Inhaltstyp
+- Lesezeichen
+- private Notizen
+- Übersicht „Gespeichert“
+- Offline-Synchronisation
+- Export und Löschung
+- Notizen standardmäßig privat halten
 
 ### Abnahmekriterien
 
-- Ein Begriff liefert innerhalb eines Kurses relevante Fundstellen.
-- Lesezeichen und Notizen sind ausschließlich für ihren Besitzer sichtbar.
-- Offline erstellte Notizen werden konfliktarm synchronisiert.
+- Relevante Inhalte sind über wenige Schritte auffindbar.
+- Private Notizen sind ausschließlich für ihren Besitzer sichtbar.
 
 ---
 
-## R6 — Betrieb, Observability und Qualitätssteuerung
+## 14. R6 — Betrieb, Observability und Qualitätssteuerung
 
 ### Ziel
 
-Die Anwendung zeigt nicht nur Nutzerfortschritt, sondern auch ihren eigenen Zustand.
-Ausfälle, KI-Kosten und problematische Inhalte werden früh erkannt.
+Technik, Kosten, Inhaltsqualität und Lernwirkung werden nachvollziehbar betrieben.
 
 ### Arbeitspakete
 
-#### R6.1 Technische Telemetrie
+#### Technische Telemetrie
 
-- [ ] Strukturierte Logs mit Request-/Job-ID einführen.
-- [ ] Metriken für API-Latenz, Fehlerquote, DB-Verbindungen und Authfehler erfassen.
-- [ ] Generierungsjobs nach Dauer, Status, Providerfehler und Retry zählen.
-- [ ] Health- und Readiness-Endpunkte für App und Datenbank bereitstellen.
-- [ ] Keine Prompts, Antworten, Tokens oder personenbezogenen Daten unkontrolliert loggen.
+- strukturierte Logs mit Request- und Job-ID
+- API-, Datenbank-, Auth- und Jobmetriken
+- Health- und Readiness-Endpunkte
+- keine unkontrollierten Prompts, Antworten oder personenbezogenen Daten in Logs
 
-#### R6.2 KI-Kosten und Kontingente
+#### KI-Kosten
 
-- [ ] Modell, Tokenverbrauch und geschätzte Kosten pro Job speichern.
-- [ ] Kosten nach Kurs, Phase und Zeitraum aggregieren.
-- [ ] Warnschwellen für Tages-/Monatsbudget konfigurieren.
-- [ ] Bei erreichtem Budget neue Jobs sauber blockieren, vorhandene Inhalte aber
-      weiter ausliefern.
-- [ ] Cache-Treffer und vermiedene Generierungen sichtbar machen.
+- Modell, Tokenverbrauch und geschätzte Kosten pro Job
+- Budgetgrenzen
+- Kosten je veröffentlichter Lesson, Mission und akzeptierter Frage
+- vorhandene Inhalte auch bei erreichtem KI-Budget weiter ausliefern
 
-#### R6.3 Content-Qualität
+#### Content-Qualität
 
-- [ ] Erfolgsquote und Trennschärfe von Fragen aus echten Antworten berechnen.
-- [ ] Zu leichte, zu schwere oder missverständliche Fragen markieren.
-- [ ] Meldemöglichkeit „Inhalt ist falsch/unklar/veraltet“ anbieten.
-- [ ] Admin-Queue für gemeldete und automatisch auffällige Inhalte bauen.
-- [ ] Änderungshistorie und erneute Freigabe nach Bearbeitung verlangen.
+- auffällige Fragen markieren
+- Inhalte als falsch, unklar oder veraltet melden
+- Review-Queue
+- Änderungshistorie
+- erneute Freigabe nach relevanten Änderungen
 
-#### R6.4 Dashboard und Alerts
+#### Lernwirkung
 
-- [ ] Technisches Dashboard für App, Postgres, Tunnel und KI-Jobs erstellen.
-- [ ] Alarm bei hoher 5xx-Rate, fehlgeschlagenen Jobs und nicht erreichbarer DB.
-- [ ] Inhaltliche Warnungen getrennt von Infrastrukturwarnungen behandeln.
-- [ ] Runbook mit Diagnosebefehlen und Wiederanlauf dokumentieren.
+- Behaltensleistung nach 7, 30 und 90 Tagen
+- Transferleistung auf unbekannte Fälle
+- benötigte Hinweise
+- Verbesserung wiederkehrender Fehler
+- Abbruchgründe
+- Qualität adaptiver Empfehlungen
 
 ### Abnahmekriterien
 
-- Ein fehlgeschlagener Job lässt sich über eine ID vollständig nachvollziehen.
-- Betreiber sehen Kosten und Kontingent vor einem überraschenden Provider-Stopp.
-- Fehlerhafte Fragen gelangen über einen definierten Weg in die Review-Queue.
-- Alarmierung enthält Ursache, betroffenen Dienst und ersten Prüfschritt.
+- Betreiber können technische und fachliche Fehler nachvollziehen.
+- Kostenüberschreitungen werden vor einem Provider-Stopp sichtbar.
+- Gemeldete Inhalte gelangen in einen definierten Prüfprozess.
+- Lernwirkung wird nicht nur über Bildschirmzeit gemessen.
 
 ---
 
-## Querschnitt: Datenschutz, Sicherheit und Barrierefreiheit
+## 15. R7 — Skill Graph und Mission Engine
 
-Diese Punkte gelten für jeden Release:
+### Ziel
 
-- [ ] Eingaben mit Zod oder gleichwertig an jeder Servergrenze validieren.
-- [ ] Objektzugriffe immer mit Nutzer- beziehungsweise Adminberechtigung prüfen.
-- [ ] Uploads isoliert verarbeiten und niemals als ausführbare Dateien bereitstellen.
-- [ ] Rate Limits für Auth, Upload, Suche und kostenpflichtige KI-Endpunkte vorsehen.
-- [ ] Datenexport und Kontolöschung konzeptionell berücksichtigen.
-- [ ] Tastaturbedienung, Fokuszustände, semantische Labels und ausreichende Kontraste testen.
-- [ ] Deutsche und englische UI-Texte gemeinsam ausliefern.
-- [ ] Mobile Darstellung und installierte PWA für jede neue Kernstrecke prüfen.
+Die Plattform plant nicht mehr nur Fragen, sondern Lern-, Praxis- und Transfermissionen auf Basis einzelner Fähigkeiten.
 
-## Empfohlene technische Reihenfolge
+### Erste Missionsarten
 
-1. Generatorfix und Adminrollen abschließen.
-2. Quellen-, Versions- und Freigabe-Datenmodell migrieren.
-3. PDF-Import und deterministische Extraktion bauen.
-4. Review-UI und quellengebundene Generierung anschließen.
-5. PCA als ersten End-to-End-Referenzkurs importieren und validieren.
-6. Review-Scheduler und Tages-Session auf vorhandenen Quizdaten aufbauen.
-7. Prüfungshistorie und erklärbare Readiness ergänzen.
-8. Erst danach Offline-Sync auf die stabilen Server-APIs setzen.
-9. Suche, Notizen und vertiefte Betriebsmetriken hinzufügen.
+1. Wissensabruf
+2. Fehlersuche
+3. Entscheidungsszenario
+4. praktische Arbeitsprobe
 
-## Release-Gates
+Später möglich:
+
+- Sortier- und Zuordnungsaufgaben
+- adaptive Dialoge
+- Simulationen
+- Erklärung in eigenen Worten
+- Blitzrunden
+- Kampagnen
+- Boss-Szenarien
+- kooperative Herausforderungen
+
+### Arbeitspakete
+
+- `skills` als zentrale Entität
+- Zertifikats-Objectives mit Skills verbinden
+- Missionen mit Skills und Quellen verbinden
+- Voraussetzungen zwischen Skills modellieren
+- Missionsdauer schätzen
+- Unterstützungsstufe speichern
+- progressive Hinweise
+- Bewertungsrubriken
+- Lösungsweg und Begründung erfassen
+- Transferfälle mit verändertem Kontext
+- Missionsversionierung
+- pausierbare Missionen
+- Empfehlung anhand Skill-Zustand und Kontext
+- multidimensionale Schwierigkeit
+- Challenge Gate zum Überspringen bekannter Inhalte
+
+### Adaptionssignale
+
+- fachliche Korrektheit
+- Qualität der Begründung
+- benötigte Hinweise
+- Antwortsicherheit
+- zeitliche Stabilität
+- Transferleistung
+- erfolgreiche Aufgabenformen
+- Fehlerserie und Ermüdung
+- Prüfungsrelevanz
+- Zielrollenrelevanz
+- betriebliches Risiko
+
+### Abnahmekriterien
+
+- Mindestens vier Missionsarten verwenden dieselbe Kompetenzlogik.
+- Ein Nutzer mit sicherer Vorerfahrung kann bekannte Inhalte überspringen.
+- Eine schwierigere Mission erhöht Verantwortung oder Komplexität, nicht nur Umfang.
+- Die Auswahl einer Mission ist erklärbar.
+
+---
+
+## 16. R8 — Praxisnachweise und privates Kompetenzportfolio
+
+### Ziel
+
+Lernende besitzen nachvollziehbare Nachweise darüber, dass sie Wissen praktisch angewendet haben.
+
+### Mögliche Artefakte
+
+- Incident Report
+- Projektplan
+- Netzwerkkonzept
+- Datenanalyse
+- Architekturentscheidung
+- Change-Dokumentation
+- Unterrichtsentwurf
+- dokumentierter Lösungsweg
+
+### Arbeitspakete
+
+- Evidenzmodell
+- Artefakte aus Missionen speichern
+- Entstehungskontext und Hilfsmittel dokumentieren
+- App-Bewertung und menschliche Bewertung trennen
+- Bewertung anhand versionierter Rubriken
+- Evidenz mit Skills verbinden
+- Gültigkeit und Aktualität anzeigen
+- privates Portfolio
+- selektives Teilen
+- Freigabe widerrufen
+- Export in maschinenlesbarer und menschenlesbarer Form
+- Portabilität beim Verlassen eines Unternehmens
+
+### Abnahmekriterien
+
+- Portfolioeinträge zeigen Kontext, Skill, Bewertungsart und Unterstützungsgrad.
+- Eine Simulation wird nicht als offizielle Qualifikation dargestellt.
+- Nutzer entscheiden, welche privaten Nachweise geteilt werden.
+
+---
+
+## 17. R9 — Private Career Space
+
+### Ziel
+
+Fähigkeiten, Zertifikate, Praxisprojekte und Berufsrollen werden zu nachvollziehbaren Entwicklungspfaden verbunden.
+
+### Arbeitspakete
+
+- Berufsrollen und Skill-Anforderungen
+- Zielrolle auswählen
+- Skill-Gap-Analyse
+- vorhandene übertragbare Fähigkeiten erkennen
+- passende Missionen und Praxisprojekte empfehlen
+- Zertifizierungen als mögliche Nachweise einordnen
+- Junior-, Professional- und Senior-Erwartungen darstellen
+- drei angrenzende Rollen pro Referenzpfad
+- Karriereziele privat halten
+- freiwilliges Teilen einzelner Ziele oder Nachweise
+- Quellen und Region für Arbeitsmarkt- oder Gehaltsdaten
+
+### Regeln für Gehaltsdaten
+
+- Quelle nennen
+- Region nennen
+- Erhebungsjahr nennen
+- Median oder Spannweite erläutern
+- keine individuelle Gehaltszusage ableiten
+- klarstellen, dass Zertifikate allein weder Beschäftigung noch Einkommen garantieren
+
+### Abnahmekriterien
+
+- Nutzer erkennen, welche Fähigkeiten bereits übertragbar sind.
+- Der nächste Schritt ist kleiner und konkreter als eine vollständige Umschulung.
+- Karriereziele sind ohne aktive Freigabe für Arbeitgeber unsichtbar.
+
+---
+
+## 18. Pilot-Gate — Markt- und Wirkungsvalidierung
+
+Vor dem vollständigen Company-Ausbau wird ein enger Pilot durchgeführt.
+
+### Pilotumfang
+
+- eine Zertifizierung
+- eine Zielrolle: Junior IT Infrastructure Engineer
+- 20 bis 30 Skills
+- vier Missionsarten
+- ein Praxisprojekt
+- drei bis fünf Portfolioartefakte
+- ein Unternehmen
+- ein realer Onboarding-Pfad
+- zwei bis drei Mentor-Checkpoints
+- eine begrenzte Nutzergruppe
+
+### Zu validierende Annahmen
+
+- Lernende akzeptieren die Zeit- und Energieauswahl.
+- Challenge Gates erkennen belastbare Vorerfahrung ausreichend gut.
+- Missionen messen mehr als Erinnerungswissen.
+- Mentoren sparen wiederkehrende Erklärungszeit.
+- Neue Mitarbeiter erreichen relevante Aufgaben schneller.
+- Datenschutzgrenzen werden von Mitarbeitern als vertrauenswürdig verstanden.
+- Unternehmen sind bereit, Rollenanforderungen und Quellen zu pflegen.
+- Der Einrichtungsaufwand steht in einem sinnvollen Verhältnis zum Nutzen.
+
+### Zentrale Pilotkennzahl
+
+> Time to First Safe Independent Task
+
+Gemessen wird der Zeitpunkt, an dem ein Mitarbeiter erstmals eine relevante Aufgabe sicher, nachvollziehbar und mit angemessener Selbstständigkeit erledigt.
+
+---
+
+## 19. R10 — Company Foundation
+
+### Ziel
+
+Unternehmen erhalten einen technisch und datenschutzrechtlich getrennten Arbeitsbereich.
+
+### Arbeitspakete
+
+- Mandantenfähigkeit
+- Organisationen, Teams und Standorte
+- Einladungen und Mitgliedschaften
+- Rollen `company_admin`, `content_editor`, `mentor`, `employee` und `auditor`
+- serverseitige Mandantentrennung
+- Datenzugriffe protokollieren
+- Identitäts- und Lerndaten logisch trennen
+- Aufbewahrungsfristen
+- Export- und Löschprozesse
+- Unternehmensquellen importieren
+- Quellen nach Team und Rolle freigeben
+- firmeninterne Inhalte versionieren
+- sensible Inhalte nach dem Least-Privilege-Prinzip bereitstellen
+- synthetische Trainingsdaten und Sandbox-Kontexte
+- private und betriebliche Profile sichtbar trennen
+
+### Sicherheitsregel
+
+Mitarbeiter müssen keine sensiblen Netzwerkkennungen oder geheimen Systemdetails auswendig lernen. Missionen trainieren das Verständnis von Architektur, Dokumentation, Change-Prozess, Sicherheitsgrenzen und Eskalation. Produktionsdaten werden nur verwendet, wenn dies erforderlich, freigegeben und abgesichert ist.
+
+### Abnahmekriterien
+
+- Daten eines Mandanten sind für andere Mandanten nicht erreichbar.
+- Private Lernziele erscheinen nicht im Company Space.
+- Unternehmensquellen besitzen Eigentümer, Version und Freigabestatus.
+- Jeder administrative Zugriff ist nachvollziehbar.
+
+---
+
+## 20. R11 — Rollen- und Onboarding-Designer
+
+### Ziel
+
+Unternehmen beschreiben, was eine Person in einer Rolle wissen, anwenden, entscheiden und verantworten können muss.
+
+### Arbeitspakete
+
+- Rollenprofile
+- erforderliche und optionale Skills
+- Voraussetzungen
+- betriebsspezifisches Wissen
+- erwartete Evidenzen
+- Risikostufe pro Tätigkeit
+- Junior-, Professional- und Senior-Modi
+- Onboarding-Vorlagen
+- Pflicht- und Wahlmissionen
+- Challenge Gates
+- adaptive Einstiegsmessung
+- Versionsverwaltung der Rollenanforderungen
+- differenzierte Lernpfade ohne starre Tagespläne
+- Begründung für jede Zuweisung
+
+### Erkennung vorhandener Erfahrung
+
+Die Plattform bewertet nicht allein richtige Antworten. Belastbare Vorerfahrung zeigt sich durch:
+
+- korrekte Entscheidungen,
+- passende Begründungen,
+- wenige oder keine Hinweise,
+- angemessene Sicherheit,
+- konsistente Leistung,
+- Übertragung auf veränderte Fälle,
+- Erkennen von Risiken und Grenzen,
+- sinnvolle Eskalation und
+- verständliche Dokumentation.
+
+### Abnahmekriterien
+
+- Zwei Mitarbeiter derselben Rolle können unterschiedliche, begründete Pfade erhalten.
+- Ein erfahrener Junior wird schneller zu Transfer- und Praxisaufgaben geführt.
+- Ein unerfahrener Junior erhält zusätzliche Erklärung und Übung ohne negative Kennzeichnung.
+- Rollenstufe und tatsächliche Kompetenz werden getrennt dargestellt.
+
+---
+
+## 21. R12 — Hybrides Onboarding und menschliche Freigaben
+
+### Ziel
+
+Die Plattform macht Onboarding effizienter, ohne es vollständig zu automatisieren.
+
+### Standardprozess
+
+1. adaptive Vorbereitung,
+2. Buddy- oder Mentor-Kontakt,
+3. Sandbox-Mission,
+4. Shadowing,
+5. begleitete Realaufgabe,
+6. Feedback,
+7. nächste adaptive Mission,
+8. betriebliche Freigabe.
+
+### Arbeitspakete
+
+- Mentor-Checkpoints
+- gemeinsame Missionen
+- Shadowing dokumentieren
+- beaufsichtigte Realaufgaben
+- Feedback und Reflexion
+- Eskalation an Menschen
+- menschliche Sign-offs
+- Freigaben mit Gültigkeitsbereich und Ablaufdatum
+- Erinnerungen an offene Mentoraufgaben
+- Blocker im Onboarding sichtbar machen
+- betriebliche Berechtigung getrennt vom Skill-Score
+- Pflicht zu bezahlter Lern- und Betreuungszeit in Pilotvereinbarungen berücksichtigen
+
+### Sichtbarkeit für Unternehmen
+
+Erlaubt:
+
+- zugewiesen,
+- fällig,
+- abgeschlossen,
+- vereinbarte Evidenz,
+- erforderliche Freigabe,
+- aggregierte Kompetenzlücke.
+
+Nicht standardmäßig erlaubt:
+
+- jeder Fehlversuch,
+- jede Hilfestellung,
+- private Notizen,
+- private Karriereziele,
+- nicht freigegebene Portfolioinhalte.
+
+### Abnahmekriterien
+
+- Kritische Tätigkeiten können nicht allein durch einen App-Score freigegeben werden.
+- Jeder Onboarding-Pfad enthält definierte menschliche Berührungspunkte.
+- Mentoren erkennen schnell, wo ihr Eingreifen tatsächlich erforderlich ist.
+
+---
+
+## 22. R13 — AI Literacy und Nachweisintegrität
+
+### Ziel
+
+Nutzer lernen, KI produktiv einzusetzen, Ergebnisse zu prüfen und Verantwortung zu behalten.
+
+### Modus A: Lernmodus
+
+- KI darf erklären.
+- KI darf Hinweise geben.
+- KI darf Beispiele und alternative Darstellungen erzeugen.
+- Der Nutzer versucht die Aufgabe zunächst selbst.
+
+### Modus B: AI Workbench
+
+- KI ist ausdrücklich Teil der Aufgabe.
+- Prompting wird als Werkzeugkompetenz bewertet.
+- Der Nutzer muss Ergebnisse prüfen, korrigieren und begründen.
+- Quellen und Unsicherheiten werden kontrolliert.
+
+### Modus C: Evidence Mode
+
+- erlaubte Hilfsmittel sind definiert.
+- Aufgaben werden variiert.
+- Lösungswege müssen erklärt werden.
+- interaktive Rückfragen prüfen Verständnis und Transfer.
+- kritische Nachweise benötigen menschliche Beobachtung oder Sign-off.
+
+### Getrennte Bewertungsdimensionen
+
+- Fachwissen
+- Selbstständigkeit
+- KI-Kompetenz
+- Verifikation
+- Transfer
+- Ausführung
+- Kommunikation
+- Verantwortungsbewusstsein
+
+### Nicht einsetzen
+
+- invasive Bildschirmüberwachung
+- pauschale Verbote sinnvoller KI-Werkzeuge
+- unzuverlässige automatische AI-Detektoren
+- automatische Täuschungsvorwürfe
+
+### Abnahmekriterien
+
+- Eine mit KI gelöste Aufgabe kann Verifikation und Verständnis getrennt bewerten.
+- Nutzer wissen vorab, welche Hilfsmittel erlaubt sind.
+- Kritische Kompetenznachweise beruhen nicht nur auf einem statischen Antwortfeld.
+
+---
+
+## 23. R14 — Rollenbezogene Security Awareness
+
+### Ziel
+
+Jeder Mitarbeiter erkennt relevante Sicherheitsrisiken, ohne durch Lernanalysen bloßgestellt zu werden.
+
+### Arbeitspakete
+
+- jährlicher Basiskurs
+- rollenbezogene Varianten für Sales, Finance, HR, Infrastructure, Observability und Management
+- Phishing- und Entscheidungssimulationen
+- adaptive Wiederholung persönlicher Schwachstellen
+- kurze Auffrischungen
+- Abschlussstatus für Verantwortliche
+- persönliche Fehleranalyse nur für den Mitarbeiter
+- aggregierte Risikothemen für Teams
+- Versionierung von Richtlinien
+- erneute Zuweisung nach relevanten Änderungen
+
+### Abnahmekriterien
+
+- Verantwortliche sehen primär absolviert, nicht absolviert oder überfällig.
+- Persönliche Fehlerdetails bleiben standardmäßig privat.
+- Teamberichte enthalten keine unnötige individuelle Rangfolge.
+
+---
+
+## 24. R15 — Interne Mobilität und Rollenwechsel
+
+### Ziel
+
+Beschäftigte können sich nachvollziehbar auf neue Rollen vorbereiten, ohne bei null anzufangen.
+
+### Beispielpfade
+
+- Infrastructure Engineer zu Site Reliability Engineer
+- Helpdesk zu System Administration
+- System Administration zu Cloud Engineering
+- Developer zu Platform Engineering
+- Operations zu Security Operations
+
+### Arbeitspakete
+
+- aktuelle und gewünschte Rolle vergleichen
+- übertragbare Skills erkennen
+- Kompetenzlücken priorisieren
+- individuelles Brückenprogramm
+- Transfermissionen
+- Mentor aus dem Zielteam
+- Shadowing und Projektaufgabe
+- freiwillige Offenlegung des Wechselwunsches
+- Nachweise aus dem Private Space selektiv übernehmen
+- keine automatische Ablehnung oder Beförderung anhand eines Scores
+
+### Abnahmekriterien
+
+- Vorhandene Fähigkeiten werden wiederverwendet.
+- Persönliche Wechselziele bleiben bis zur Freigabe privat.
+- Der Entwicklungsweg enthält praktische Nachweise aus dem Zielkontext.
+
+---
+
+## 25. R16 — Enterprise Governance, Audits und Integrationen
+
+### Ziel
+
+Der Company Space wird für einen seriösen Unternehmenseinsatz auditierbar und integrationsfähig.
+
+### Governance-Arbeitspakete
+
+- dokumentiertes Rollen- und Berechtigungskonzept
+- Datenschutz- und Löschkonzept
+- Verzeichnis relevanter Datenverarbeitungen
+- dokumentierte Speicherfristen
+- Datenschutz-Folgenabschätzung prüfen und bei Erforderlichkeit durchführen
+- Betriebsrat beziehungsweise Mitarbeitervertretung frühzeitig einbeziehen
+- Risiko- und Einsatzbewertung nach anwendbarem KI-Recht
+- Verbot vollautomatischer nachteiliger Personalentscheidungen
+- nachvollziehbare KI-Anbieter, Datenflüsse und Verträge
+- Support-, Beschwerde- und Meldeprozess
+- Modell- und Inhaltsänderungen dokumentieren
+
+### Sicherheitsprüfungen
+
+- regelmäßige Bedrohungsmodellierung
+- Prüfung der Mandantentrennung
+- Berechtigungs- und Zugriffsaudits
+- Penetrationstests vor breiter B2B-Einführung
+- Abhängigkeits- und Schwachstellenmanagement
+- Backup- und Restore-Tests
+- Incident-Response-Übungen
+- sichere Software-Lieferkette
+- Geheimnis- und Schlüsselverwaltung
+
+### Barrierefreiheit
+
+- WCAG 2.2 AA als Produktziel
+- Tastaturbedienung
+- sichtbare Fokuszustände
+- semantische Beschriftungen
+- ausreichende Kontraste
+- Screenreader-Tests
+- reduzierte Bewegung
+- verständliche Sprache und alternative Erklärungen
+
+### Mögliche Integrationen nach Pilotbedarf
+
+- Single Sign-on
+- SCIM-Provisionierung
+- LMS-Schnittstellen
+- HRIS-Schnittstellen
+- Kalender und Erinnerungen
+- Ticket-, Dokumentations- oder Sandbox-Systeme
+- standardisierte Lernereignisse
+
+### Formale Zertifizierungen
+
+ISO 27001, SOC 2 oder vergleichbare Nachweise werden nicht automatisch als frühe MVP-Anforderung gesetzt. Zuerst werden Kontrollen, Dokumentation und Auditfähigkeit aufgebaut. Eine formale Zertifizierung wird priorisiert, wenn Zielkunden, Verträge oder Ausschreibungen sie tatsächlich verlangen.
+
+### Abnahmekriterien
+
+- Zugriffe, Freigaben und relevante Änderungen sind auditierbar.
+- Löschung und Export wurden praktisch getestet.
+- Mandantentrennung und kritische Berechtigungen wurden unabhängig geprüft.
+- KI-gestützte Empfehlungen sind erklärbar und anfechtbar.
+
+---
+
+## 26. Datenmodell — geplante Erweiterungen
+
+Die genauen Namen können während der Implementierung angepasst werden. Die fachlichen Trennungen müssen erhalten bleiben.
+
+### Lern- und Kompetenzmodell
+
+- `skills`
+- `skill_prerequisites`
+- `objective_skills`
+- `skill_states`
+- `skill_state_events`
+- `missions`
+- `mission_versions`
+- `mission_skills`
+- `mission_steps`
+- `mission_attempts`
+- `mission_responses`
+- `hint_events`
+- `confidence_ratings`
+- `assessment_rubrics`
+- `rubric_versions`
+- `assessment_results`
+
+### Evidenz und Portfolio
+
+- `evidence_items`
+- `evidence_artifacts`
+- `evidence_skill_links`
+- `evidence_reviews`
+- `evidence_shares`
+- `human_observations`
+- `operational_signoffs`
+
+### Karriere und Rollen
+
+- `career_roles`
+- `career_role_skills`
+- `career_goals`
+- `role_transition_paths`
+- `portfolio_profiles`
+
+### Company Space
+
+- `organizations`
+- `organization_memberships`
+- `organization_teams`
+- `organization_roles`
+- `company_job_profiles`
+- `company_job_profile_versions`
+- `company_role_skills`
+- `company_sources`
+- `onboarding_templates`
+- `onboarding_assignments`
+- `mentor_assignments`
+- `mentor_checkpoints`
+- `supervised_tasks`
+- `company_audit_events`
+
+### Grundregeln
+
+- Jede mandantenbezogene Tabelle besitzt eine eindeutige Organisationszuordnung.
+- Private und betriebliche Skill-Zustände werden nicht unkontrolliert zusammengeführt.
+- Bewertungsrubriken und Rollenanforderungen sind versioniert.
+- App-Einschätzungen, menschliche Beobachtungen und betriebliche Freigaben bleiben separate Datensätze.
+- Rohdaten werden nur so lange gespeichert, wie sie für den erklärten Zweck erforderlich sind.
+
+---
+
+## 27. Empfohlene technische Reihenfolge
+
+### Phase A — Verlässlicher Zertifikatskern
+
+1. R0 abschließen.
+2. R1 mit einem Referenzkurs vollständig validieren.
+3. R2 und R3 stabilisieren.
+4. R6 parallel für Betrieb und Content-Qualität aufbauen.
+
+### Phase B — Differenzierender Produktkern
+
+5. Skill Graph einführen.
+6. vier Missionsarten implementieren.
+7. Hinweise, Sicherheit, Transfer und Begründungen als Signale erfassen.
+8. Kompetenzzustände von Quiz-Mastery trennen.
+9. privates Portfolio mit wenigen Artefakttypen entwickeln.
+
+### Phase C — Marktvalidierung
+
+10. privaten Zertifikats- und Praxispfad testen.
+11. eine Unternehmensrolle modellieren.
+12. einen begrenzten Onboarding-Pilot durchführen.
+13. Zeitersparnis, Mentoraufwand und sichere Selbstständigkeit messen.
+14. Datenschutz- und Akzeptanzfeedback auswerten.
+
+### Phase D — Company MVP
+
+15. Mandantenfähigkeit und Unternehmensrollen entwickeln.
+16. Onboarding-Designer und Challenge Gates entwickeln.
+17. Mentor-Checkpoints und betriebliche Sign-offs entwickeln.
+18. Security-Basismodul ergänzen.
+19. AI Workbench und Evidence Mode integrieren.
+
+### Phase E — Skalierung
+
+20. interne Mobilität ergänzen.
+21. Integrationen nach nachgewiesenem Kundenbedarf entwickeln.
+22. Governance und unabhängige Prüfungen vertiefen.
+23. weitere Rollen, Zertifikate und Branchen ergänzen.
+
+Offline, Suche und Notizen werden parallel priorisiert, wenn Nutzungsdaten zeigen, dass sie die Kernaktivierung oder Bindung wesentlich verbessern. Sie dürfen den Aufbau des Skill-, Missions- und Evidenzmodells nicht unnötig verzögern.
+
+---
+
+## 28. Release-Gates
 
 ### Gate A — Sicherer Betrieb
 
 - Admin-RBAC aktiv
-- Generator wiederaufnehmbar
-- keine parallelen Jobs pro Kurs
-- verständliche Fehler- und Quotenanzeige
+- wiederaufnehmbare Jobs
+- Rate Limits
+- nachvollziehbare Fehler
+- Auditierung kritischer Aktionen
 
 ### Gate B — Verifizierter Kurs
 
-- offizielle Quelle gespeichert und freigegeben
-- alle Objectives mit Quellenreferenz
-- Content-Validierung ohne Fehler
+- offizielle Quelle gespeichert
+- Objectives referenziert
+- Content-Validierung bestanden
 - Kursversion veröffentlicht
 
 ### Gate C — Adaptives Lernen
 
-- Tagesziel und fällige Reviews funktionieren
-- Scheduler ist durch Tests reproduzierbar
-- Nutzer versteht jede Empfehlung
-- keine KI-Abhängigkeit für normale Tages-Sessions
+- Zeitbudget und Wiederholungen funktionieren
+- Empfehlung wird begründet
+- laufende Session bleibt stabil
+- Nutzer kann Empfehlungen beeinflussen
 
-### Gate D — Offline-fähig
+### Gate D — Praktische Kompetenz
 
-- Flugmodus-Test auf mindestens einem Smartphone und Laptop bestanden
-- idempotenter Sync nach Verbindungsabbruch bestanden
-- lokale Daten werden bei Logout entfernt
-- Versionsupdate eines Offline-Kurses getestet
+- vier Missionsarten
+- versionierte Rubriken
+- Hinweise und Selbstständigkeit berücksichtigt
+- Transferfall vorhanden
+- Quizleistung und Praxisevidenz getrennt
 
-## Nicht Teil der nächsten Releases
+### Gate E — Portables Portfolio
 
-Folgende Funktionen sollten erst nach belastbaren Nutzungsdaten priorisiert werden:
+- mindestens drei Artefakttypen
+- selektives Teilen
+- Export und Widerruf
+- klare Nachweisstufen
 
-- soziale Ranglisten und Wettbewerbe
-- öffentliche Kurs-Marktplätze
-- bezahlte Abonnements
-- Live-Unterricht oder Video-Hosting
-- komplexe Gamification mit virtueller Währung
-- eigenes Foundation Model oder Fine-Tuning
-- Microservices-Aufteilung ohne nachgewiesenen Skalierungsbedarf
+### Gate F — Company Pilot
 
-## Erfolgsmessung
+- getestete Mandantentrennung
+- eine vollständige Unternehmensrolle
+- adaptive Einstiegsmessung
+- Mentor-Checkpoint
+- Sandbox-Aufgabe
+- begleitete Realaufgabe
+- menschliche Freigabe
 
-Technische und fachliche Kennzahlen werden pro Release eingeführt:
+### Gate G — Breiter B2B-Betrieb
 
-- Anteil veröffentlichter Objectives mit gültiger Quellenreferenz: Ziel 100 %
-- Erfolgreich abgeschlossene Generierungsjobs: Ziel mindestens 95 % ohne manuellen Eingriff
-- Anteil begonnener Tages-Sessions, die abgeschlossen werden
-- Wiederholungsquote nach 7 und 30 Tagen
-- Verbesserung schwacher Objectives nach einer Review-Woche
-- Anteil synchronisierter Offline-Ereignisse ohne manuellen Konflikt
-- Gemeldete Content-Probleme und mittlere Zeit bis zur Prüfung
-- KI-Kosten pro veröffentlichter Lesson und pro akzeptierter Frage
+- Datenschutz- und Berechtigungskonzept geprüft
+- Löschung und Export getestet
+- Penetrationstest durchgeführt
+- Incident-Prozess vorhanden
+- KI-Datenflüsse dokumentiert
+- Barrierefreiheit geprüft
+- messbarer Pilotnutzen
 
-## Definition of Done für jedes Arbeitspaket
+---
+
+## 29. Erfolgsmessung
+
+### 29.1 Lernwirkung
+
+- Abschlussquote begonnener Missionen
+- Wiederholung nach 7, 30 und 90 Tagen
+- Verbesserung schwacher Skills
+- Transfer auf veränderte Fälle
+- durchschnittlich benötigte Hinweise
+- Kalibrierung zwischen Antwortsicherheit und Korrektheit
+- Qualität der empfohlenen nächsten Mission
+
+### 29.2 Nutzen für Lernende
+
+- Zeit bis zum ersten praktischen Nachweis
+- Anzahl demonstrierter statt nur bearbeiteter Skills
+- nachvollziehbar geschlossene Rollenlücken
+- Nutzung und Export des Portfolios
+- erfolgreicher Wiedereinstieg nach Pausen
+- wahrgenommene Kontrolle über Daten und Empfehlungen
+
+### 29.3 Nutzen für Unternehmen
+
+- Time to First Safe Independent Task
+- Mentorzeit pro neuem Mitarbeiter
+- Zeit bis zur Rollenfreigabe
+- Nacharbeit und wiederkehrende Fehler
+- Anteil übersprungener, bereits beherrschter Inhalte
+- Abschluss notwendiger Pflichtmodule
+- interne statt externe Besetzung geeigneter Rollen
+
+### 29.4 Schutzkennzahlen
+
+- unzulässige Datenzugriffsversuche
+- Beschwerden über Empfehlungen oder Datenverwendung
+- fehlende menschliche Checkpoints
+- Lernaufwand außerhalb bezahlter Arbeitszeit
+- fehlerhafte Kompetenzbewertungen
+- überfällige Inhalts- und Rollenprüfungen
+
+### 29.5 ROI-Modell für Pilotkunden
+
+Der wirtschaftliche Nutzen wird als überprüfbare Annahme dargestellt:
+
+`Nutzen = frühere produktive Mitarbeit + eingesparte Mentorzeit + vermiedene Nacharbeit + Nutzen interner Mobilität`
+
+`Nettonutzen = Nutzen - Einrichtung - Lizenzen - Inhalts- und Pflegeaufwand`
+
+Die Plattform gibt keine pauschale Amortisationsgarantie. Jeder Pilot definiert Ausgangswerte, Zielwerte und Messzeitraum vor Beginn.
+
+---
+
+## 30. Risiken und Gegenmaßnahmen
+
+### Verlagerung von Ausbildungskosten auf Bewerber
+
+**Risiko:** Unternehmen verlangen umfangreiche unbezahlte Vorbereitung.  
+**Gegenmaßnahme:** Company-Onboarding findet als bezahlte Tätigkeit statt; externe Nachweise bleiben freiwillig und portabel.
+
+### Überwachung und falsche Objektivität
+
+**Risiko:** Lerntelemetrie wird als universeller Mitarbeiterwert verwendet.  
+**Gegenmaßnahme:** Zweckbindung, Sichtbarkeitsgrenzen, getrennte Nachweisarten, kein universeller Score und keine automatisierten Personalentscheidungen.
+
+### Pseudokompetenz
+
+**Risiko:** Gute Simulationsergebnisse werden mit produktiver Einsatzfähigkeit verwechselt.  
+**Gegenmaßnahme:** getrennte Evidenzstufen, menschliche Beobachtung und betriebliche Sign-offs.
+
+### Abbau menschlicher Begleitung
+
+**Risiko:** Arbeitgeber ersetzen Mentoring durch Kurse.  
+**Gegenmaßnahme:** verpflichtende Checkpoints in kritischen Pfaden und Messung ausstehender Mentorinteraktionen.
+
+### Lohndruck und Austauschbarkeit
+
+**Risiko:** Standardisierte Lernpfade werden zur Abwertung von Beschäftigten verwendet.  
+**Gegenmaßnahme:** portables, lernendeneigenes Profil; Kontext, Verantwortung und Erfahrungswissen sichtbar machen; keine Marktwertzahl.
+
+### Offenlegung von Unternehmensgeheimnissen
+
+**Risiko:** sensible Infrastruktur landet in Trainingsinhalten oder bei KI-Anbietern.  
+**Gegenmaßnahme:** Least Privilege, synthetische Szenarien, Klassifizierung, Redaction, getrennte Datenflüsse und Freigaben.
+
+### KI übernimmt die Aufgabe vollständig
+
+**Risiko:** Nutzer erzeugen Antworten ohne Verständnis.  
+**Gegenmaßnahme:** Modustrennung, Lösungsbegründung, Transferfragen, Verifikation und menschliche Beobachtung statt pauschalem KI-Verbot.
+
+### Überstandardisierung
+
+**Risiko:** Rollen werden auf starre Checklisten reduziert.  
+**Gegenmaßnahme:** versionierbare Rollenmodelle, lokale Anpassung, qualitative Evidenz und menschliches Urteil.
+
+---
+
+## 31. Nicht Teil des ersten erweiterten MVP
+
+- automatisierte Bewerberauswahl
+- automatisierte Beförderungs- oder Kündigungsempfehlungen
+- universeller Mitarbeiter- oder Marktwert-Score
+- öffentliches Ranking
+- Job-Marktplatz
+- vollständiges HRIS
+- vollständiges LMS für alle Unternehmensbereiche
+- Gehaltsversprechen auf Basis von Zertifikaten
+- invasive Prüfungsüberwachung
+- automatischer Täuschungsvorwurf durch AI Detection
+- alle Branchen und Rollen gleichzeitig
+- komplexe virtuelle Währungen
+- suchtähnliche Belohnungsmechaniken
+- eigenes Foundation Model
+- Microservice-Aufteilung ohne nachgewiesenen Bedarf
+
+---
+
+## 32. Definition of Done
 
 Ein Arbeitspaket gilt erst als abgeschlossen, wenn:
 
-- Implementierung und Datenmigration vorhanden sind,
-- Berechtigungen und Eingabevalidierung geprüft wurden,
-- automatisierte Tests für Kern- und Fehlerfälle bestehen,
-- deutsche und englische Oberfläche vollständig sind,
+- Implementierung und notwendige Migrationen vorhanden sind,
+- Berechtigungen serverseitig geprüft werden,
+- Eingaben validiert werden,
+- Kern- und Fehlerfälle automatisiert getestet sind,
+- deutsche und englische Oberfläche berücksichtigt sind,
 - mobile Darstellung geprüft wurde,
+- Barrierefreiheit berücksichtigt wurde,
+- Datenschutz- und Sichtbarkeitsfolgen geprüft wurden,
 - Betriebs- und Fehlerverhalten dokumentiert ist,
-- keine bestehenden Lernverläufe beschädigt werden,
-- Roadmap und relevante Projektdokumentation aktualisiert wurden.
+- Messereignisse für die relevanten Erfolgskriterien vorhanden sind,
+- bestehende Lernverläufe nicht beschädigt werden,
+- Quellen- und Versionsbezüge erhalten bleiben und
+- Roadmap sowie relevante Projektdokumentation aktualisiert wurden.
+
+Für Company-Funktionen zusätzlich:
+
+- Mandantentrennung getestet,
+- Sichtbarkeit für Mitarbeiter und Unternehmen dokumentiert,
+- Audit Events vorhanden,
+- Export und Löschung berücksichtigt,
+- keine automatische betriebliche Freigabe aus einem App-Score und
+- notwendige menschliche Verantwortung ausdrücklich festgelegt.
+
+---
+
+## 33. Nächster konkreter Produktumfang
+
+Der nächste marktfähige Schritt soll bewusst kleiner sein als die vollständige Vision:
+
+1. eine konkrete Zertifizierung,
+2. eine Zielrolle: Junior IT Infrastructure Engineer,
+3. 20 bis 30 Skills,
+4. vier Missionsarten,
+5. Sessions für 2, 5, 10 und 20 Minuten,
+6. adaptive Wiederholungen,
+7. progressive Hinweise und Selbsteinschätzung,
+8. ein Praxisprojekt,
+9. drei bis fünf private Portfolioartefakte,
+10. Challenge Gates für vorhandene Erfahrung,
+11. ein einfacher Company Space,
+12. ein Onboarding-Template,
+13. zwei bis drei Mentor-Checkpoints,
+14. eine Sandbox-Aufgabe,
+15. eine begleitete Realaufgabe,
+16. eine menschliche betriebliche Freigabe,
+17. lokaler Gastmodus und freiwillige Synchronisierung,
+18. nachvollziehbare Quellen und Inhaltsversionen und
+19. ein begrenzter Pilot mit vorher definierten Erfolgskennzahlen.
+
+Wenn diese Erfahrung nachweislich funktioniert, wird die Plattform schrittweise auf weitere Zertifikate, Rollen, Unternehmen, Schulfächer und berufliche Übergänge erweitert.
+
+---
+
+## 34. Langfristiges Zielbild
+
+Die Plattform soll weder digitales Schulbuch noch automatisches HR-Bewertungssystem sein.
+
+Sie soll Menschen ermöglichen:
+
+- vorhandene Fähigkeiten sichtbar zu machen,
+- Lücken gezielt zu schließen,
+- unabhängig von der Qualität früherer Lern- oder Ausbildungsumgebungen Chancen zu erhalten,
+- KI kompetent und verantwortungsvoll einzusetzen,
+- praktische Nachweise aufzubauen und
+- sich in neue Rollen zu entwickeln.
+
+Unternehmen soll sie ermöglichen:
+
+- Anforderungen verständlich zu formulieren,
+- vorhandene Kompetenz anzuerkennen,
+- Onboarding adaptiver und effizienter zu gestalten,
+- Mentoren gezielter einzusetzen,
+- sichere Selbstständigkeit statt bloßer Kursabschlüsse zu messen und
+- interne Entwicklung zu fördern.
+
+Das langfristige Produktversprechen lautet:
+
+> Wir machen nicht nur sichtbar, was jemand gelernt hat. Wir helfen Menschen und Unternehmen nachzuvollziehen, was jemand bereits kann, was als Nächstes sinnvoll ist und welche Unterstützung noch benötigt wird, um eine reale Aufgabe sicher und selbstständig zu übernehmen.
 
