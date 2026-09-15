@@ -193,6 +193,12 @@ export default async function CertDetailPage({
               {locale === "de" ? "Meine Prüfungen" : "My exams"}
             </Link>
             <Link
+              href={`/cert/${slug}/offline`}
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
+            >
+              {locale === "de" ? "Offline verfügbar" : "Available offline"}
+            </Link>
+            <Link
               href={`/cert/${slug}/final-exam`}
               className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent/10"
             >

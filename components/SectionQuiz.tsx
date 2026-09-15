@@ -25,9 +25,14 @@ interface SectionQuizProps {
   questions: SectionQuizQuestion[];
   certSlug: string;
   locale: Locale;
+  /** R4.1/4.2 (roadmap.md): im Offline-Reader gesetzt - unterdrückt den
+   * Versuch, das Ergebnis an den Server zu senden (der ohnehin fehlschlagen
+   * würde) und zeigt stattdessen einen Hinweis, dass die Synchronisierung
+   * erst mit R4.3 folgt. */
+  offline?: boolean;
 }
 
-export function SectionQuiz({ sectionId, questions, certSlug, locale }: SectionQuizProps) {
+export function SectionQuiz({ sectionId, questions, certSlug, locale, offline = false }: SectionQuizProps) {
   const [quizIndex, setQuizIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [hasAnsweredCurrent, setHasAnsweredCurrent] = useState(false);
@@ -73,11 +78,13 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale }: SectionQ
       setQuizFinished(true);
       const score = Math.round(((correctCount + (pendingAnswer ? 0 : 0)) / questions.length) * 100);
       setFinalScore(score);
-      fetch(`/api/sections/${sectionId}/attempt`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: nextAnswers }),
-      }).catch(() => {});
+      if (!offline) {
+        fetch(`/api/sections/${sectionId}/attempt`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: nextAnswers }),
+        }).catch(() => {});
+      }
     } else {
       setAnswers(nextAnswers);
       setQuizIndex((i) => i + 1);
@@ -95,6 +102,13 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale }: SectionQ
         <p className="mb-6 text-foreground/70">
           {correctCount} / {questions.length} correct
         </p>
+        {offline && (
+          <p className="mb-6 text-xs text-foreground/50">
+            {locale === "de"
+              ? "Offline-Modus: Dieses Ergebnis wird noch nicht mit dem Server synchronisiert."
+              : "Offline mode: this result is not yet synced with the server."}
+          </p>
+        )}
         <Link
           href={`/cert/${certSlug}`}
           className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"

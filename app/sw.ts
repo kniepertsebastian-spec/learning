@@ -11,8 +11,12 @@ declare const self: ServiceWorkerGlobalScope;
 
 const runtimeCaching: RuntimeCaching[] = [
   {
-    // KI-API-Aufrufe niemals aus dem Cache bedienen.
-    matcher: ({ url }) => url.pathname.startsWith("/api/generate"),
+    // API-Antworten niemals aus dem Cache bedienen - insbesondere das R4.1-
+    // Offline-Paket (app/api/cert/[certId]/offline-package) muss bei jedem
+    // Download frisch von der DB kommen; die eigentliche Offline-Speicherung
+    // läuft über IndexedDB (lib/client/offline-db.ts), nicht über den
+    // Service-Worker-Cache.
+    matcher: ({ url }) => url.pathname.startsWith("/api/"),
     handler: new NetworkOnly(),
   },
   {
