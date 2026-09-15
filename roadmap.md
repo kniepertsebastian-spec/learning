@@ -563,11 +563,33 @@ aus fälligen Wiederholungen, schwachen Objectives und neuem Stoff.
 
 #### R2.5 Readiness weiterentwickeln
 
-- [ ] Readiness nicht nur aus einem einzelnen Exam-Versuch ableiten.
-- [ ] Objective-Abdeckung, Aktualität, Anzahl der Versuche und Probeprüfungen
-      einbeziehen.
-- [ ] Unsicherheit bei zu wenig Daten deutlich anzeigen.
-- [ ] Begründung liefern: „Warum ist meine Readiness 68 %?“
+- [x] Readiness nicht nur aus einem einzelnen Exam-Versuch ableiten.
+      `computeReadiness()` (`lib/server/readiness/engine.ts`, reine Funktion,
+      vollständig getestet) ersetzt dafür NICHT die bestehende
+      Einzelversuchs-Readiness aus `lib/server/exam/scoring.ts` (die
+      beantwortet weiterhin "wie lief dieser eine Versuch" direkt nach einer
+      Prüfung) - `ReadinessCard` auf der Kursseite zeigt die neue,
+      ganzheitliche Einschätzung.
+- [x] Objective-Abdeckung, Aktualität, Anzahl der Versuche und Probeprüfungen
+      einbeziehen. Abdeckung × Ø-Mastery der geübten Objectives
+      (`contentScore`, damit hohe Mastery auf wenigen Objectives die
+      Readiness nicht künstlich hochzieht), Aktualität als abklingender
+      Faktor (`recencyFactor`, ab 30 Tagen ohne Übung reduziert), Anzahl der
+      Versuche über `review_items` (deckt Quiz-, Session- und Exam-Antworten
+      einheitlich ab, da `recordReviewOutcomes()` von allen drei Wegen
+      aufgerufen wird), Trend der letzten bis zu drei Probeprüfungen
+      (`examTrend`, fließt bei Vorhandensein zur Hälfte in den Score ein).
+- [x] Unsicherheit bei zu wenig Daten deutlich anzeigen. Eigene Konfidenz
+      (0-1) aus Antwortmenge, Abdeckung und Probeprüfungs-Anzahl; unterhalb
+      einer Mindestschwelle liefert `computeReadiness()` bewusst KEINE
+      Prozentzahl (`score: null`, Level `INSUFFICIENT_DATA`) statt einer, die
+      mehr Präzision vortäuscht als die Datenlage hergibt -
+      `ReadinessCard` zeigt dafür "Noch zu wenig Daten" plus einen
+      Sicherheits-Hinweis (niedrig/mittel/hoch).
+- [x] Begründung liefern: „Warum ist meine Readiness 68 %?“ `breakdown` in
+      `ReadinessResult` liefert alle Teilwerte einzeln; `ReadinessCard`
+      zeigt sie in einem aufklappbaren "Warum diese Einschätzung?"-Abschnitt
+      (natives `<details>`, kein Client-JS nötig).
 
 ### Datenmodell
 

@@ -16,8 +16,11 @@ import {
   getTopWeakObjectives,
 } from "@/lib/server/study/session-service";
 import { getDueReviewCount } from "@/lib/server/review/service";
+import { getReadiness } from "@/lib/server/readiness/service";
+import type { ReadinessResult } from "@/lib/server/readiness/engine";
 import { StudyGoalPanel, type StudyGoalState } from "@/components/StudyGoalPanel";
 import { TodayDashboard, type TodayDashboardData } from "@/components/TodayDashboard";
+import { ReadinessCard } from "@/components/ReadinessCard";
 
 interface ProgressData {
   [key: string]: { masteryScore: number; status: string };
@@ -79,19 +82,31 @@ export default async function CertDetailPage({
   let needsRemediation: Array<{ objectiveId: string; objectiveTitle: string }> = [];
   let studyGoal: StudyGoalState | null = null;
   let todayDashboard: TodayDashboardData | null = null;
+  let readiness: ReadinessResult | null = null;
   if (session?.user?.id) {
-    const [progress, remediationTargets, studyProfile, sessionSummary, dueCount, streak, weakObjectives] =
-      await Promise.all([
-        db.select().from(objectiveProgress).where(eq(objectiveProgress.userId, session.user.id)),
-        RemediationService.findObjectivesNeedingRemediation(session.user.id),
-        getStudyProfile(session.user.id, cert.id),
-        // R2.3/R2.4: liest die aktuell gültige Session (baut sie bei Bedarf) -
-        // Grundlage für das "Heute lernen"-Dashboard unten.
-        getOrCreateStudySession(session.user.id, cert.id),
-        getDueReviewCount(session.user.id, cert.id),
-        getStudyStreak(session.user.id, cert.id),
-        getTopWeakObjectives(session.user.id, cert.id),
-      ]);
+    const [
+      progress,
+      remediationTargets,
+      studyProfile,
+      sessionSummary,
+      dueCount,
+      streak,
+      weakObjectives,
+      readinessResult,
+    ] = await Promise.all([
+      db.select().from(objectiveProgress).where(eq(objectiveProgress.userId, session.user.id)),
+      RemediationService.findObjectivesNeedingRemediation(session.user.id),
+      getStudyProfile(session.user.id, cert.id),
+      // R2.3/R2.4: liest die aktuell gültige Session (baut sie bei Bedarf) -
+      // Grundlage für das "Heute lernen"-Dashboard unten.
+      getOrCreateStudySession(session.user.id, cert.id),
+      getDueReviewCount(session.user.id, cert.id),
+      getStudyStreak(session.user.id, cert.id),
+      getTopWeakObjectives(session.user.id, cert.id),
+      // R2.5: ganzheitliche Readiness (nicht nur der letzte Exam-Versuch).
+      getReadiness(session.user.id, cert.id),
+    ]);
+    readiness = readinessResult;
     progressData = Object.fromEntries(
       progress.map((p) => [p.objectiveId, { masteryScore: Number(p.masteryScore), status: p.status }])
     );
@@ -198,6 +213,8 @@ export default async function CertDetailPage({
       {session && todayDashboard && (
         <TodayDashboard certSlug={slug} locale={locale} data={todayDashboard} />
       )}
+
+      {session && readiness && <ReadinessCard locale={locale} readiness={readiness} />}
 
       {session && <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} />}
 
