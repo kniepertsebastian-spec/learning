@@ -5,7 +5,7 @@ import { GraduationCap } from "lucide-react";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
-import { logoutAction } from "@/app/actions/auth";
+import { SignOutButton } from "@/components/SignOutButton";
 
 export default async function DashboardPage() {
   const db = getDb();
@@ -23,15 +23,8 @@ export default async function DashboardPage() {
             : "Certifications"}
         </h1>
         <div className="flex items-center gap-2">
-          {session ? (
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-surface"
-              >
-                Sign out
-              </button>
-            </form>
+          {session?.user?.id ? (
+            <SignOutButton userId={session.user.id} />
           ) : (
             <>
               <Link

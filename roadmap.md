@@ -720,19 +720,30 @@ nach Wiederherstellung des Netzes genau einmal synchronisiert.
 
 #### R4.1 Offline-Paket
 
-- [ ] „Für offline speichern“ pro Kurs anbieten.
-- [ ] Versioniertes Manifest mit Lessons, Fragen und benötigten Assets erzeugen.
-- [ ] Downloadfortschritt, Größe und Aktualisierungsdatum anzeigen.
-- [ ] App-Shell und veröffentlichte Inhalte gezielt cachen.
-- [ ] Veraltete Kursversion erst nach erfolgreichem Ersatz löschen.
+- [x] „Für offline speichern“ pro Kurs anbieten. *(Neue Route `/cert/[id]/offline`, verlinkt von der Kursseite; `OfflinePackageManager`-Komponente.)*
+- [x] Versioniertes Manifest mit Lessons, Fragen und benötigten Assets erzeugen. *(`GET /api/cert/[certId]/offline-package`, `lib/server/offline/manifest.ts` - Version ist bewusst eine Näherung aus dem jüngsten `lessons.updatedAt`/`certifications.updatedAt` statt eines exakten Inhalts-Hash, siehe Kommentar dort. Nur Domains/Objectives/Sections mit bereits generierter Lesson werden aufgenommen, ebenso wie die Live-Kursseite es bereits filtert.)*
+- [x] Downloadfortschritt, Größe und Aktualisierungsdatum anzeigen. *(Streaming-Download mit Byte-Fortschritt, `lib/client/offline-download.ts`; ein separater, günstiger Versions-Endpunkt (`.../offline-package/version`) prüft auf Aktualisierungen, ohne das ganze Paket neu zu laden.)*
+- [x] App-Shell und veröffentlichte Inhalte gezielt cachen. *(App-Shell/statische Assets weiterhin über den bestehenden Service Worker, `app/sw.ts`, Stale-While-Revalidate; die eigentlichen Kursinhalte laufen bewusst NICHT über den SW-Cache, sondern über das explizite, versionierte IndexedDB-Paket - nachvollziehbarer für Nutzer als impliziertes HTTP-Caching, siehe R4.2. `/api/*` ist im SW jetzt explizit NetworkOnly.)*
+- [x] Veraltete Kursversion erst nach erfolgreichem Ersatz löschen. *(Das neue Paket wird erst nach vollständigem Download+Parse in IndexedDB geschrieben und ersetzt dabei atomar den alten Eintrag - ein Abbruch/Fehler lässt die bisherige, funktionierende Version unangetastet.)*
 
 #### R4.2 Lokale Datenhaltung
 
 - [x] Vorhandenes IndexedDB/Dexie-Konzept auf Backend-Inhalte abstimmen. *(Konsolidierung vor R4: Altsystem entfernt statt migriert - R4.2 startet direkt mit einer neuen, v2-Postgres-basierten lokalen Datenhaltung.)*
-- [ ] Keine Passwort- oder Session-Secrets in der Offline-Datenbank speichern.
-- [ ] Inhalte nach Nutzer und Kursversion partitionieren.
-- [ ] „Offline-Daten löschen“ in den Einstellungen anbieten.
-- [ ] Bei Logout nutzerbezogene lokale Daten entfernen.
+- [x] Keine Passwort- oder Session-Secrets in der Offline-Datenbank speichern. *(`lib/client/offline-db.ts` speichert ausschließlich Kursinhalt - Lessons/Fragen -, keine Auth-/Session-Daten.)*
+- [x] Inhalte nach Nutzer und Kursversion partitionieren. *(IndexedDB-Schlüssel `${userId}:${certificationId}`, Version im Datensatz mitgeführt - mehrere Nutzer auf demselben Gerät teilen sich keine Downloads.)*
+- [x] „Offline-Daten löschen“ in den Einstellungen anbieten. *(Es gibt noch keine allgemeine Einstellungsseite in der App - der Löschen-Button sitzt stattdessen direkt auf `/cert/[id]/offline`, wo auch heruntergeladen wird. Funktional identisch, nur ohne eigene globale Einstellungsseite.)*
+- [x] Bei Logout nutzerbezogene lokale Daten entfernen. *(`SignOutButton`-Client-Komponente räumt IndexedDB vor dem eigentlichen Sign-out auf - der bisherige reine Server-Action-Form-Submit hatte keinen Zugriff auf Browser-Storage.)*
+
+Bewusst noch nicht Teil von R4.1/R4.2: Das Abschnittsquiz ist im Offline-
+Reader bereits benutzbar und wird sofort clientseitig ausgewertet (dieselbe
+`isCorrect`-Information, die das Live-Quiz ohnehin an den Client schickt),
+aber das Ergebnis wird noch nirgends gespeichert oder synchronisiert - dafür
+fehlt die Sync-Infrastruktur aus R4.3. Der Offline-Reader zeigt das explizit
+an ("Dieses Ergebnis wird noch nicht mit dem Server synchronisiert."). Die
+"Tages-Session" offline zu laden/abzuschließen ist ebenfalls auf R4.3
+verschoben, da `completeStudySession()` neben der reinen Auswertung auch
+lebende Server-Logik ausführt (SM-2-Zustand in `review_items` aktualisieren)
+- das braucht denselben Sync-Endpunkt wie die Quizergebnisse.
 
 #### R4.3 Sync Queue
 

@@ -25,6 +25,8 @@ interface SectionContentProps {
     examFocusPoints: Localized<string[]> | null;
   };
   questions: SectionQuizQuestion[];
+  /** R4.1/4.2: siehe SectionQuiz - wird im Offline-Reader gesetzt. */
+  offline?: boolean;
 }
 
 export function SectionContent({
@@ -36,6 +38,7 @@ export function SectionContent({
   domainName,
   lesson,
   questions,
+  offline = false,
 }: SectionContentProps) {
   const { locale } = useLocale();
   const [showQuiz, setShowQuiz] = useState(false);
@@ -114,6 +117,7 @@ export function SectionContent({
             questions={questions}
             certSlug={certSlug}
             locale={locale}
+            offline={offline}
           />
         </section>
       )}
