@@ -200,6 +200,53 @@ function extractJson(text: string): string {
   return text.slice(start);
 }
 
+/**
+ * Gemini gelegentlich Antworten mit rohen Steuerzeichen (z. B. einem
+ * buchstäblichen Zeilenumbruch statt \n) innerhalb eines String-Literals
+ * zurück - JSON.parse lehnt das mit "Bad control character in string
+ * literal" ab, obwohl der Rest der Antwort valide ist. Läuft mit derselben
+ * String-Zustandsverfolgung wie extractJson() und escaped jedes rohe
+ * Steuerzeichen (< 0x20), das innerhalb eines String-Literals auftaucht.
+ */
+export function sanitizeJsonControlChars(text: string): string {
+  let result = "";
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const code = text.charCodeAt(i);
+    if (inString && !escaped && code < 0x20) {
+      switch (ch) {
+        case "\n":
+          result += "\\n";
+          break;
+        case "\r":
+          result += "\\r";
+          break;
+        case "\t":
+          result += "\\t";
+          break;
+        default:
+          result += `\\u${code.toString(16).padStart(4, "0")}`;
+      }
+      continue;
+    }
+    result += ch;
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+    } else if (ch === '"') {
+      inString = true;
+    }
+  }
+  return result;
+}
+
 const DIFFICULTY_ALIASES: Record<string, "beginner" | "intermediate" | "advanced"> = {
   beginner: "beginner",
   basic: "beginner",
@@ -336,7 +383,7 @@ export async function generateStructured<T>(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(extractJson(rawText));
+      parsed = JSON.parse(sanitizeJsonControlChars(extractJson(rawText)));
     } catch (err) {
       if (attempt === maxAttempts) {
         throw new AIGenerationError("KI-Antwort konnte nicht als JSON geparst werden.", err);

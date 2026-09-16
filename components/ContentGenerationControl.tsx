@@ -231,6 +231,11 @@ export function ContentGenerationControl({
                     <p className="mt-1 whitespace-pre-wrap text-xs">{job.error}</p>
                   </details>
                 )}
+                <p className="mt-2 text-xs text-red-600/70">
+                  {locale === "de"
+                    ? "\"Erneut versuchen\" oben wiederholt nur das Fehlende - bereits erzeugte Lektionen und Fragen werden nicht neu generiert."
+                    : "\"Try again\" above only redoes what's missing - lessons and questions already generated are not recreated."}
+                </p>
               </div>
             );
           })()}
