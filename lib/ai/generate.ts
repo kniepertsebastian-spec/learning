@@ -1,4 +1,5 @@
 import { z, type ZodType } from "zod";
+import { Type } from "@google/genai";
 import { GEMINI_MODEL, getGeminiClient } from "@/lib/gemini";
 
 export class AIGenerationError extends Error {
@@ -103,60 +104,86 @@ export function parseProviderRetryDelayMs(error: unknown): number | undefined {
   return undefined;
 }
 
-const GEMINI_JSON_SCHEMA_KEYS = new Set([
-  "$id",
-  "$defs",
-  "$ref",
-  "$anchor",
-  "type",
-  "format",
-  "title",
-  "description",
-  "enum",
-  "items",
-  "prefixItems",
-  "minItems",
-  "maxItems",
-  "minimum",
-  "maximum",
-  "anyOf",
-  "oneOf",
-  "properties",
-  "additionalProperties",
-  "required",
-  "propertyOrdering",
-]);
+const JSON_SCHEMA_TYPE_TO_GEMINI: Record<string, Type> = {
+  string: Type.STRING,
+  number: Type.NUMBER,
+  integer: Type.INTEGER,
+  boolean: Type.BOOLEAN,
+  array: Type.ARRAY,
+  object: Type.OBJECT,
+  null: Type.NULL,
+};
 
-function sanitizeGeminiJsonSchema(
-  value: unknown,
-  isPropertyMap = false,
-): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => sanitizeGeminiJsonSchema(item));
-  }
+/**
+ * responseJsonSchema (das neuere, JSON-Schema-basierte Feld) wurde in diesem
+ * Deployment bei JEDEM einzelnen Aufruf mit 400 INVALID_ARGUMENT abgelehnt
+ * (siehe modelsWithoutStructuredOutputSupport) - laut Kommentar zu
+ * maybeMoveToResponseJsonSchema in node_modules/@google/genai existiert das
+ * ältere responseSchema (Googles eigenes, GROSSGESCHRIEBENES OpenAPI-3.0-
+ * Subset) schon deutlich länger und wird daher von mehr Modellen unterstützt.
+ * Wandelt das ohnehin vorhandene Draft-07-JSON-Schema (z.toJSONSchema) in
+ * dieses Format um, statt eine zweite, parallele Schema-Repräsentation zu
+ * pflegen. Keine unserer Schemas nutzt $ref/$defs/oneOf/prefixItems (siehe
+ * Zod-Definitionen in lib/server/ai/schemas.ts) - die werden hier bewusst
+ * nicht übernommen, Google's Schema-Typ unterstützt sie ohnehin nicht.
+ */
+export function toGeminiSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(toGeminiSchema);
   if (!value || typeof value !== "object") return value;
 
-  const sanitized: Record<string, unknown> = {};
+  const result: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
-    if (!isPropertyMap && !GEMINI_JSON_SCHEMA_KEYS.has(key)) continue;
-    sanitized[key] = sanitizeGeminiJsonSchema(
-      child,
-      key === "properties" || key === "$defs",
-    );
+    switch (key) {
+      case "type":
+        if (typeof child === "string" && child in JSON_SCHEMA_TYPE_TO_GEMINI) {
+          result.type = JSON_SCHEMA_TYPE_TO_GEMINI[child];
+        }
+        break;
+      case "properties":
+        result.properties = Object.fromEntries(
+          Object.entries(child as Record<string, unknown>).map(([k, v]) => [k, toGeminiSchema(v)]),
+        );
+        break;
+      case "items":
+        result.items = toGeminiSchema(child);
+        break;
+      case "enum":
+        // Google verlangt zusätzlich format:"enum", damit enum überhaupt
+        // ausgewertet wird (siehe Schema-Doku in node_modules/@google/genai).
+        result.enum = child;
+        result.format = "enum";
+        break;
+      case "minItems":
+      case "maxItems":
+      case "minLength":
+      case "maxLength":
+        // Bei Google sind das (anders als minimum/maximum) string-Felder.
+        result[key] = typeof child === "number" ? String(child) : child;
+        break;
+      case "required":
+      case "minimum":
+      case "maximum":
+      case "description":
+      case "title":
+      case "pattern":
+        result[key] = child;
+        break;
+      default:
+        // $schema, $id, $defs, $ref, $anchor, oneOf, prefixItems,
+        // additionalProperties, propertyOrdering: von Google's Schema-Typ
+        // nicht unterstützt bzw. hier nicht benötigt.
+        break;
+    }
   }
-  return sanitized;
+  return result;
 }
 
-function toGeminiJsonSchema<T>(schema: ZodType<T>): Record<string, unknown> {
+function buildGeminiSchema<T>(schema: ZodType<T>): Record<string, unknown> {
   const jsonSchema = z.toJSONSchema(schema, {
     target: "draft-07",
     unrepresentable: "any",
   });
-
-  // Zod emits full Draft-07 (for example `minLength`), while Gemini accepts
-  // only the subset documented by @google/genai. Unsupported keywords make
-  // the entire request fail with an otherwise opaque 400 INVALID_ARGUMENT.
-  return sanitizeGeminiJsonSchema(jsonSchema) as Record<string, unknown>;
+  return toGeminiSchema(jsonSchema) as Record<string, unknown>;
 }
 
 /**
@@ -311,7 +338,7 @@ const QUESTION_TYPE_ALIASES: Record<
 };
 
 /**
- * Gemini ignoriert ein Enum gelegentlich (v. a. wenn responseJsonSchema
+ * Gemini ignoriert ein Enum gelegentlich (v. a. wenn responseSchema
  * nicht unterstützt wird, siehe modelsWithoutStructuredOutputSupport) und
  * liefert stattdessen ein Synonym (z. B. "medium") oder einen völlig
  * anderen Wert statt des exakten vom Schema geforderten Tokens - das hat
@@ -343,7 +370,7 @@ export function normalizeGeneratedAliases(value: unknown): unknown {
 }
 
 /**
- * Manche Gemini-Modelle lehnen responseJsonSchema grundsätzlich ab (400
+ * Manche Gemini-Modelle lehnen responseSchema grundsätzlich ab (400
  * INVALID_ARGUMENT), unabhängig vom konkreten Schema-Inhalt - siehe den
  * Fallback weiter unten. Ohne dieses Set würde ein Skriptlauf wie
  * content:draft-lessons (viele Dutzend generateStructured()-Aufrufe
@@ -356,7 +383,7 @@ const modelsWithoutStructuredOutputSupport = new Set<string>();
 async function requestJson(
   systemPrompt: string,
   userPrompt: string,
-  responseJsonSchema: Record<string, unknown>,
+  responseSchema: Record<string, unknown>,
 ): Promise<string> {
   const client = getGeminiClient();
   const maxAttempts = positiveIntegerFromEnv(
@@ -377,7 +404,7 @@ async function requestJson(
         config: {
           systemInstruction: systemPrompt,
           responseMimeType: "application/json",
-          ...(schemaEnabled ? { responseJsonSchema } : {}),
+          ...(schemaEnabled ? { responseSchema } : {}),
           maxOutputTokens: 16000,
         },
       });
@@ -443,8 +470,8 @@ export async function generateStructured<T>(
   schema: ZodType<T>,
 ): Promise<T> {
   const jsonSystemPrompt = `${systemPrompt}${JSON_ONLY_INSTRUCTION}`;
-  const responseJsonSchema = toGeminiJsonSchema(schema);
-  let rawText = await requestJson(jsonSystemPrompt, userPrompt, responseJsonSchema);
+  const responseSchema = buildGeminiSchema(schema);
+  let rawText = await requestJson(jsonSystemPrompt, userPrompt, responseSchema);
 
   const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -458,7 +485,7 @@ export async function generateStructured<T>(
       rawText = await requestJson(
         jsonSystemPrompt,
         `Deine vorherige Antwort war kein valides JSON:\n${rawText}\n\nBitte antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
-        responseJsonSchema,
+        responseSchema,
       );
       continue;
     }
@@ -474,7 +501,7 @@ export async function generateStructured<T>(
     rawText = await requestJson(
       jsonSystemPrompt,
       `Deine vorherige Antwort erfüllte das erwartete Schema nicht (${result.error.message}):\n${rawText}\n\nBitte korrigiere sie und antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
-      responseJsonSchema,
+      responseSchema,
     );
   }
 
