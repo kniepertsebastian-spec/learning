@@ -287,6 +287,17 @@ function normalizeGeneratedAliases(value: unknown): unknown {
   );
 }
 
+/**
+ * Manche Gemini-Modelle lehnen responseJsonSchema grundsätzlich ab (400
+ * INVALID_ARGUMENT), unabhängig vom konkreten Schema-Inhalt - siehe den
+ * Fallback weiter unten. Ohne dieses Set würde ein Skriptlauf wie
+ * content:draft-lessons (viele Dutzend generateStructured()-Aufrufe
+ * hintereinander) bei JEDEM einzelnen Objective erneut denselben
+ * garantiert scheiternden Versuch samt Netzwerk-Roundtrip bezahlen, statt
+ * es sich für den Rest des Prozesslaufs zu merken.
+ */
+const modelsWithoutStructuredOutputSupport = new Set<string>();
+
 async function requestJson(
   systemPrompt: string,
   userPrompt: string,
@@ -301,7 +312,7 @@ async function requestJson(
     process.env.GEMINI_RETRY_BASE_MS,
     DEFAULT_RETRY_BASE_MS,
   );
-  let schemaEnabled = true;
+  let schemaEnabled = !modelsWithoutStructuredOutputSupport.has(GEMINI_MODEL);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -331,6 +342,7 @@ async function requestJson(
         // Fall back to the explicit JSON prompt + normal Zod validation rather
         // than making the entire offline content-generation job unusable.
         schemaEnabled = false;
+        modelsWithoutStructuredOutputSupport.add(GEMINI_MODEL);
         console.warn(
           "Gemini hat das strukturierte Ausgabeschema abgelehnt; erneuter Versuch mit Prompt-Validierung ...",
         );
