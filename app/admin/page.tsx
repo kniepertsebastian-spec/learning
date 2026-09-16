@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { ArrowRight, Terminal } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getServerLocale } from "@/lib/server/locale";
 import { getCertificationsWithStats } from "@/lib/server/admin/stats";
@@ -81,16 +81,29 @@ export default async function AdminDashboard() {
           {certifications.some((cert) => cert.stats.lessons === 0) && (
             <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
               <div className="flex gap-3">
-                <Terminal className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
+                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
                 <div>
                   <p className="font-medium">
                     {locale === "de" ? "Lerninhalte müssen noch erzeugt werden" : "Learning content still needs generation"}
                   </p>
                   <p className="mt-1 text-sm text-foreground/70">
                     {locale === "de"
-                      ? "Führe für den jeweiligen Slug zuerst content:draft-curriculum und danach content:draft-lessons im App-Container aus."
-                      : "For the relevant slug, run content:draft-curriculum and then content:draft-lessons in the app container."}
+                      ? "Kurs öffnen und dort auf \"Inhalte generieren\" klicken - läuft im Hintergrund mit Fortschrittsanzeige, kein Terminal-/CLI-Zugriff nötig:"
+                      : "Open the course and click \"Generate content\" there - runs in the background with a progress bar, no terminal/CLI access needed:"}
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {certifications
+                      .filter((cert) => cert.stats.lessons === 0)
+                      .map((cert) => (
+                        <Link
+                          key={cert.id}
+                          href={`/admin/certifications/${cert.slug}`}
+                          className="rounded-md border border-yellow-500/40 bg-white px-2.5 py-1 text-xs font-medium text-yellow-800 hover:bg-yellow-100"
+                        >
+                          {cert.name}
+                        </Link>
+                      ))}
+                  </div>
                 </div>
               </div>
             </div>
