@@ -42,6 +42,33 @@ export function estimateCostUsd(promptTokens: number, completionTokens: number):
   );
 }
 
+export interface AiBudgetStatus {
+  limitUsd: number;
+  spentUsd: number;
+  exceeded: boolean;
+}
+
+/**
+ * R6 (roadmap.md): "Budgetgrenzen" - harte Grenze für NEUE Generierungsjobs,
+ * sobald die Summe aller bisherigen `estimatedCostUsd` (auch fehlgeschlagener
+ * Jobs, da der Anbieter pro Aufruf abrechnet, nicht pro Erfolg) die
+ * konfigurierte Grenze erreicht. NULL solange GEMINI_BUDGET_USD nicht gesetzt
+ * ist, dann gilt keine Grenze. Bereits generierte/veröffentlichte Inhalte
+ * werden unabhängig davon weiter ausgeliefert, da Auslieferung und
+ * Generierung ohnehin getrennte Pfade sind (siehe R6-Umsetzungsstand).
+ */
+export async function getAiBudgetStatus(): Promise<AiBudgetStatus | null> {
+  const limitUsd = Number(process.env.GEMINI_BUDGET_USD) || 0;
+  if (limitUsd <= 0) return null;
+
+  const rows = await getDb()
+    .select({ estimatedCostUsd: contentGenerationJobs.estimatedCostUsd })
+    .from(contentGenerationJobs);
+  const spentUsd = rows.reduce((sum, row) => sum + Number(row.estimatedCostUsd ?? 0), 0);
+
+  return { limitUsd, spentUsd, exceeded: spentUsd >= limitUsd };
+}
+
 async function updateJob(
   jobId: string,
   values: Partial<typeof contentGenerationJobs.$inferInsert>,

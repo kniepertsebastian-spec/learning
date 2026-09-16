@@ -6,6 +6,7 @@ import { certifications, contentGenerationJobs } from "@/lib/server/db/schema";
 import {
   estimateGenerationWork,
   findActiveContentGenerationJob,
+  getAiBudgetStatus,
   getLatestContentGenerationJob,
   startContentGenerationJob,
 } from "@/lib/server/admin/content-generation";
@@ -42,11 +43,12 @@ export async function GET(
   const result = await adminAndCertification(certId);
   if ("error" in result) return result.error;
 
-  const [job, estimate] = await Promise.all([
+  const [job, estimate, budget] = await Promise.all([
     getLatestContentGenerationJob(certId),
     estimateGenerationWork(certId),
+    getAiBudgetStatus(),
   ]);
-  return NextResponse.json({ job, estimate }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ job, estimate, budget }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(
@@ -74,6 +76,20 @@ export async function POST(
   const activeJob = await findActiveContentGenerationJob(certId);
   if (activeJob) {
     return NextResponse.json({ job: activeJob }, { status: 409 });
+  }
+
+  // R6: harte Budgetgrenze für neue Jobs (siehe getAiBudgetStatus). Bereits
+  // generierte Inhalte bleiben davon unberührt, da sie über eigene Pfade
+  // ausgeliefert werden.
+  const budget = await getAiBudgetStatus();
+  if (budget?.exceeded) {
+    return NextResponse.json(
+      {
+        error: `KI-Budget erreicht ($${budget.spentUsd.toFixed(2)} von $${budget.limitUsd.toFixed(2)}). Neue Generierungen sind gesperrt, bis das Budget erhöht wird.`,
+        budget,
+      },
+      { status: 402 },
+    );
   }
 
   let job: typeof contentGenerationJobs.$inferSelect;
