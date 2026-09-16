@@ -103,35 +103,92 @@ export default async function AdminDashboard() {
           </h2>
           <p className="mb-4 text-sm text-foreground/60">
             {locale === "de"
-              ? "Eine Domain pro Zeile, optional mit Gewichtung: Name | 20"
-              : "One domain per line, optionally weighted: Name | 20"}
+              ? "Legt nur die Kursstruktur an (Domains). Lektionen/Fragen folgen später per content:draft-curriculum."
+              : "Only creates the course structure (domains). Lessons/questions follow later via content:draft-curriculum."}
           </p>
           <form action={createCertificationAction} className="space-y-3">
             <label className="block text-sm">
               <span className="mb-1 block font-medium">{locale === "de" ? "Name" : "Name"}</span>
-              <input name="name" required className="w-full rounded-md border border-border bg-background px-3 py-2" />
+              <input
+                name="name"
+                required
+                placeholder="CompTIA Network+"
+                className="w-full rounded-md border border-border bg-background px-3 py-2"
+              />
+              <span className="mt-1 block text-xs text-foreground/50">
+                {locale === "de" ? "Anzeigename des Kurses." : "Display name of the course."}
+              </span>
             </label>
             <label className="block text-sm">
               <span className="mb-1 block font-medium">Slug</span>
-              <input name="slug" required placeholder="network-plus-n10-009" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" className="w-full rounded-md border border-border bg-background px-3 py-2" />
+              <input
+                name="slug"
+                required
+                placeholder="network-plus-n10-009"
+                pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                title="Nur a-z, 0-9 und Bindestriche, z. B. network-plus-n10-009"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono"
+              />
+              <span className="mt-1 block text-xs text-foreground/50">
+                {locale === "de"
+                  ? <>Erlaubt: <code className="rounded bg-background px-1">a-z 0-9 -</code> - erscheint in der URL, z. B. /cert/network-plus-n10-009</>
+                  : <>Allowed: <code className="rounded bg-background px-1">a-z 0-9 -</code> - appears in the URL, e.g. /cert/network-plus-n10-009</>}
+              </span>
             </label>
             <label className="block text-sm">
               <span className="mb-1 block font-medium">Provider</span>
-              <input name="provider" required className="w-full rounded-md border border-border bg-background px-3 py-2" />
+              <input
+                name="provider"
+                required
+                placeholder="CompTIA"
+                className="w-full rounded-md border border-border bg-background px-3 py-2"
+              />
             </label>
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
                 <span className="mb-1 block font-medium">{locale === "de" ? "Prüfung" : "Exam"}</span>
-                <input name="examName" required className="w-full rounded-md border border-border bg-background px-3 py-2" />
+                <input
+                  name="examName"
+                  required
+                  placeholder="Network+"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2"
+                />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block font-medium">{locale === "de" ? "Version" : "Version"}</span>
-                <input name="examVersion" required className="w-full rounded-md border border-border bg-background px-3 py-2" />
+                <input
+                  name="examVersion"
+                  required
+                  placeholder="N10-009"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2"
+                />
               </label>
             </div>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium">Domains</span>
-              <textarea name="domains" required rows={5} placeholder={"Networking Concepts | 23\nNetwork Security | 20"} className="w-full rounded-md border border-border bg-background px-3 py-2" />
+              <span className="mb-1 block font-medium">
+                Domains
+                <span className="ml-1.5 font-normal text-foreground/50">
+                  {locale === "de" ? "- eine Zeile pro Domain" : "- one line per domain"}
+                </span>
+              </span>
+              <div className="mb-1.5 rounded-md border border-dashed border-border bg-background px-3 py-2 font-mono text-xs text-foreground/60">
+                Name<span className="text-accent"> | </span>Gewichtung
+                <span className="ml-2 text-foreground/40">
+                  {locale === "de" ? "(Gewichtung optional, Zahl 0-100)" : "(weight optional, number 0-100)"}
+                </span>
+              </div>
+              <textarea
+                name="domains"
+                required
+                rows={5}
+                placeholder={"Networking Concepts | 23\nNetwork Security | 20\nNetwork Troubleshooting"}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono"
+              />
+              <span className="mt-1 block text-xs text-foreground/50">
+                {locale === "de"
+                  ? "Ohne \"| Zahl\" wird die Gewichtung auf 0 gesetzt. Leerzeilen werden ignoriert."
+                  : "Without \"| number\" the weight defaults to 0. Blank lines are ignored."}
+              </span>
             </label>
             <button type="submit" className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90">
               {locale === "de" ? "Kursstruktur anlegen" : "Create course structure"}
