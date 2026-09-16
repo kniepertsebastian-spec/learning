@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { normalizeGeneratedAliases, parseProviderRetryDelayMs, sanitizeJsonControlChars } from "./generate";
+import { z } from "zod";
+import {
+  normalizeGeneratedAliases,
+  parseProviderRetryDelayMs,
+  sanitizeJsonControlChars,
+  toGeminiSchema,
+} from "./generate";
 
 function geminiErrorWithDetails(details: unknown[]): Error {
   return new Error(
@@ -129,5 +135,58 @@ describe("normalizeGeneratedAliases", () => {
         { difficulty: "advanced", type: "knowledge" },
       ],
     });
+  });
+});
+
+describe("toGeminiSchema", () => {
+  function jsonSchemaFor(schema: z.ZodType): unknown {
+    return z.toJSONSchema(schema, { target: "draft-07", unrepresentable: "any" });
+  }
+
+  it("uppercases JSON Schema types to Gemini's Type enum", () => {
+    const schema = z.object({
+      name: z.string(),
+      age: z.number().int(),
+      active: z.boolean(),
+      tags: z.array(z.string()),
+    });
+    const result = toGeminiSchema(jsonSchemaFor(schema)) as Record<string, unknown>;
+    expect(result.type).toBe("OBJECT");
+    const properties = result.properties as Record<string, { type: unknown; items?: { type: unknown } }>;
+    expect(properties.name.type).toBe("STRING");
+    expect(properties.age.type).toBe("INTEGER");
+    expect(properties.active.type).toBe("BOOLEAN");
+    expect(properties.tags.type).toBe("ARRAY");
+    expect(properties.tags.items?.type).toBe("STRING");
+  });
+
+  it("sets format:'enum' alongside enum, as Gemini's Schema type requires", () => {
+    const schema = z.object({ difficulty: z.enum(["beginner", "intermediate", "advanced"]) });
+    const result = toGeminiSchema(jsonSchemaFor(schema)) as { properties: { difficulty: Record<string, unknown> } };
+    expect(result.properties.difficulty.enum).toEqual(["beginner", "intermediate", "advanced"]);
+    expect(result.properties.difficulty.format).toBe("enum");
+  });
+
+  it("converts minItems/maxItems to strings (Gemini's Schema type, unlike JSON Schema, declares them as strings)", () => {
+    const schema = z.object({ options: z.array(z.string()).length(4) });
+    const result = toGeminiSchema(jsonSchemaFor(schema)) as { properties: { options: Record<string, unknown> } };
+    expect(result.properties.options.minItems).toBe("4");
+    expect(result.properties.options.maxItems).toBe("4");
+  });
+
+  it("drops keys Gemini's Schema type does not support ($schema, additionalProperties)", () => {
+    const schema = z.object({ a: z.string() });
+    const result = toGeminiSchema(jsonSchemaFor(schema)) as Record<string, unknown>;
+    expect(result.$schema).toBeUndefined();
+    expect(result.additionalProperties).toBeUndefined();
+  });
+
+  it("keeps required, matching the real lessons/questions response schema shape", () => {
+    const schema = z.object({
+      lessons: z.array(z.object({ content: z.string() })).min(1),
+      questions: z.array(z.object({ difficulty: z.enum(["beginner", "intermediate", "advanced"]) })).min(5).max(10),
+    });
+    const result = toGeminiSchema(jsonSchemaFor(schema)) as { required: string[] };
+    expect(result.required).toEqual(["lessons", "questions"]);
   });
 });
