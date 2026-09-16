@@ -120,7 +120,10 @@ export default async function AdminDashboard() {
               </span>
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium">Slug</span>
+              <span className="mb-1 block font-medium">
+                {locale === "de" ? "URL-Name" : "URL name"}
+                <span className="ml-1 font-normal text-foreground/40">(Slug)</span>
+              </span>
               <input
                 name="slug"
                 required
