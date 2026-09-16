@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Sparkles, Zap } from "lucide-react";
-import type { Locale } from "@/lib/types";
+import { BatteryFull, BatteryLow, BatteryMedium, Loader2, Sparkles, Zap } from "lucide-react";
+import type { EnergyLevel, Locale } from "@/lib/types";
 
 const TIME_BUDGETS = [2, 5, 10, 20];
+
+const ENERGY_OPTIONS: Array<{ level: EnergyLevel; Icon: typeof BatteryLow; label: Record<Locale, string> }> = [
+  { level: "low", Icon: BatteryLow, label: { de: "Wenig Energie", en: "Low energy" } },
+  { level: "medium", Icon: BatteryMedium, label: { de: "Geht so", en: "Okay" } },
+  { level: "high", Icon: BatteryFull, label: { de: "Fit", en: "Energized" } },
+];
 
 /**
  * R2 (roadmap.md, neue Fassung): "Nutzer wählt 2, 5, 10 oder 20 Minuten" -
@@ -16,6 +22,12 @@ const TIME_BUDGETS = [2, 5, 10, 20];
  * Der "Nur eine Aufgabe"-Modus braucht keine eigene Session-Builder-Logik:
  * goalType "questions" mit goalValue 1 reicht bereits, das rechnet
  * estimateTargetQuestionCount() direkt auf eine Zielgröße von 1 um.
+ *
+ * "Optionaler Energiezustand" (dieselbe Roadmap-Liste): rein lokaler
+ * Auswahlzustand, keine eigene Bestätigung nötig - ein Klick auf einen der
+ * Zeitbudget-Buttons sendet die zuletzt gewählte Energie einfach mit, ohne
+ * Auswahl bleibt sie unberücksichtigt (Abnahmekriterium "Innerhalb von zwei
+ * Interaktionen startet eine sinnvolle Mission" bleibt damit erfüllt).
  */
 export function StartSessionPicker({
   certSlug,
@@ -29,6 +41,7 @@ export function StartSessionPicker({
   const router = useRouter();
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [energy, setEnergy] = useState<EnergyLevel | null>(null);
 
   async function handleStart(key: string, goalType: "minutes" | "questions", goalValue: number) {
     if (starting !== null) return;
@@ -38,7 +51,7 @@ export function StartSessionPicker({
       const response = await fetch("/api/study-sessions/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ certificationId, goalValue, goalType }),
+        body: JSON.stringify({ certificationId, goalValue, goalType, energyLevel: energy ?? undefined }),
       });
       if (!response.ok && response.status !== 409) {
         throw new Error(`Status ${response.status}`);
@@ -86,6 +99,31 @@ export function StartSessionPicker({
           {locale === "de" ? "Nur eine Aufgabe" : "Just one task"}
         </button>
       </div>
+
+      <p className="mb-1.5 mt-3 text-xs text-foreground/50">
+        {locale === "de" ? "Wie viel Energie hast du? (optional)" : "How much energy do you have? (optional)"}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {ENERGY_OPTIONS.map(({ level, Icon, label }) => (
+          <button
+            key={level}
+            type="button"
+            onClick={() => setEnergy((current) => (current === level ? null : level))}
+            disabled={starting !== null}
+            aria-pressed={energy === level}
+            title={label[locale]}
+            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60 ${
+              energy === level
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border bg-surface text-foreground/60 hover:border-accent/50"
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            {label[locale]}
+          </button>
+        ))}
+      </div>
+
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );

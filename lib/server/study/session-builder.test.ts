@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  COMEBACK_GAP_DAYS,
   computeLessonFallbackCount,
   computeSessionComposition,
   computeStreak,
   estimateSessionMinutes,
   estimateTargetQuestionCount,
+  isComebackSession,
   MINUTES_PER_SESSION_QUESTION,
-  reallocateForExamUrgency,
+  reallocateTowardFamiliarContent,
 } from "./session-builder";
 
 describe("estimateTargetQuestionCount", () => {
@@ -69,28 +71,28 @@ describe("computeSessionComposition", () => {
   });
 });
 
-describe("reallocateForExamUrgency", () => {
+describe("reallocateTowardFamiliarContent", () => {
   it("moves new-content slots into review first, then spills the rest into weak", () => {
-    const result = reallocateForExamUrgency({ review: 5, weak: 3, new: 4 }, 8, 100);
+    const result = reallocateTowardFamiliarContent({ review: 5, weak: 3, new: 4 }, 8, 100);
     // Review absorbs 3 (headroom 8-5), the last reclaimed slot spills into weak.
     expect(result).toEqual({ review: 8, weak: 4, new: 0 });
   });
 
   it("spills remaining reclaimed slots into weak once review is full", () => {
-    const result = reallocateForExamUrgency({ review: 5, weak: 3, new: 4 }, 6, 10);
+    const result = reallocateTowardFamiliarContent({ review: 5, weak: 3, new: 4 }, 6, 10);
     // Review can only take 1 more (headroom 6-5=1), remaining 3 go to weak.
     expect(result).toEqual({ review: 6, weak: 6, new: 0 });
   });
 
   it("leaves new content in place when review and weak have no headroom", () => {
-    const result = reallocateForExamUrgency({ review: 5, weak: 3, new: 4 }, 5, 3);
+    const result = reallocateTowardFamiliarContent({ review: 5, weak: 3, new: 4 }, 5, 3);
     expect(result).toEqual({ review: 5, weak: 3, new: 4 });
   });
 
   it("never changes the total item count", () => {
     const composition = { review: 5, weak: 3, new: 4 };
     const total = composition.review + composition.weak + composition.new;
-    const result = reallocateForExamUrgency(composition, 20, 20);
+    const result = reallocateTowardFamiliarContent(composition, 20, 20);
     expect(result.review + result.weak + result.new).toBe(total);
   });
 });
@@ -151,5 +153,31 @@ describe("computeStreak", () => {
       new Date("2026-01-14T08:00:00Z"),
     ];
     expect(computeStreak(dates, TODAY)).toBe(2);
+  });
+});
+
+describe("isComebackSession", () => {
+  const NOW = new Date("2026-01-15T09:00:00Z");
+
+  it("is not a comeback when there is no prior activity at all", () => {
+    expect(isComebackSession(null, NOW)).toBe(false);
+  });
+
+  it("is not a comeback right after the last session", () => {
+    expect(isComebackSession(new Date("2026-01-14T09:00:00Z"), NOW)).toBe(false);
+  });
+
+  it("is not a comeback just under the gap threshold", () => {
+    const justUnder = new Date(NOW.getTime() - (COMEBACK_GAP_DAYS * 24 * 60 * 60 * 1000 - 1));
+    expect(isComebackSession(justUnder, NOW)).toBe(false);
+  });
+
+  it("is a comeback exactly at the gap threshold", () => {
+    const exactly = new Date(NOW.getTime() - COMEBACK_GAP_DAYS * 24 * 60 * 60 * 1000);
+    expect(isComebackSession(exactly, NOW)).toBe(true);
+  });
+
+  it("is a comeback after a long pause", () => {
+    expect(isComebackSession(new Date("2025-12-01T09:00:00Z"), NOW)).toBe(true);
   });
 });

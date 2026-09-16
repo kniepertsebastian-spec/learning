@@ -14,7 +14,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { AnswerConfidence, Locale, Localized } from "@/lib/types";
+import type { AnswerConfidence, EnergyLevel, Locale, Localized } from "@/lib/types";
 
 /** R0.2 (roadmap.md): learner is the default, admin unlocks /admin and every
  * admin API route/server action. */
@@ -418,6 +418,20 @@ export const studySessions = pgTable(
     status: text("status").$type<StudySessionStatus>().notNull().default("planned"),
     goalType: text("goal_type").$type<StudyGoalType>().notNull(),
     goalValue: integer("goal_value").notNull(),
+    /** R2 (roadmap.md): "optionaler Energiezustand" - vom Nutzer beim
+     * Sessionstart freiwillig angegeben (siehe StartSessionPicker), NULL
+     * wenn übersprungen. `low` reduziert den Anteil neuen Stoffs zugunsten
+     * von Wiederholung, siehe reallocateTowardFamiliarContent() in
+     * session-builder.ts. */
+    energyLevel: text("energy_level").$type<EnergyLevel>(),
+    /** R2 (roadmap.md): "sanfter Comeback-Modus nach Pause" - ob beim Bau
+     * dieser Session eine lange Lernpause erkannt und die Zusammensetzung
+     * entsprechend sanfter gestaltet wurde (siehe isComebackSession() in
+     * session-builder.ts). Als Snapshot gespeichert statt live neu berechnet,
+     * aus demselben Grund wie goalType/goalValue oben: die Begründungs-UI
+     * muss auch nach dem Bau noch erklären können, WARUM die Session so
+     * zusammengesetzt wurde. */
+    isComeback: boolean("is_comeback").notNull().default(false),
     plannedAt: timestamp("planned_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -433,6 +447,10 @@ export const studySessions = pgTable(
       sql`${table.status} in ('planned', 'in_progress', 'completed', 'skipped', 'abandoned')`,
     ),
     check("study_sessions_goal_type_check", sql`${table.goalType} in ('minutes', 'questions')`),
+    check(
+      "study_sessions_energy_level_check",
+      sql`${table.energyLevel} is null or ${table.energyLevel} in ('low', 'medium', 'high')`,
+    ),
   ],
 );
 
