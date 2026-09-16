@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseProviderRetryDelayMs, sanitizeJsonControlChars } from "./generate";
+import { normalizeGeneratedAliases, parseProviderRetryDelayMs, sanitizeJsonControlChars } from "./generate";
 
 function geminiErrorWithDetails(details: unknown[]): Error {
   return new Error(
@@ -85,5 +85,49 @@ describe("sanitizeJsonControlChars", () => {
   it("does not double-escape an already-escaped backslash-n", () => {
     const raw = '{"a":"already\\nescaped"}';
     expect(sanitizeJsonControlChars(raw)).toBe(raw);
+  });
+});
+
+describe("normalizeGeneratedAliases", () => {
+  it("leaves an already-valid difficulty untouched", () => {
+    expect(normalizeGeneratedAliases({ difficulty: "advanced" })).toEqual({ difficulty: "advanced" });
+  });
+
+  it("maps a known difficulty synonym to the exact schema token", () => {
+    expect(normalizeGeneratedAliases({ difficulty: "Medium" })).toEqual({ difficulty: "intermediate" });
+    expect(normalizeGeneratedAliases({ difficulty: "hard" })).toEqual({ difficulty: "advanced" });
+    expect(normalizeGeneratedAliases({ difficulty: "easy" })).toEqual({ difficulty: "beginner" });
+  });
+
+  it("falls back to intermediate for a completely unrecognized difficulty instead of failing validation", () => {
+    expect(normalizeGeneratedAliases({ difficulty: "super-duper-hard" })).toEqual({
+      difficulty: "intermediate",
+    });
+  });
+
+  it("maps a known question-type synonym to the exact schema token", () => {
+    expect(normalizeGeneratedAliases({ type: "understanding" })).toEqual({ type: "comprehension" });
+    expect(normalizeGeneratedAliases({ type: "debugging" })).toEqual({ type: "troubleshooting" });
+  });
+
+  it("falls back to knowledge for a completely unrecognized question type instead of failing validation", () => {
+    expect(normalizeGeneratedAliases({ type: "something-unexpected" })).toEqual({ type: "knowledge" });
+  });
+
+  it("normalizes fields nested inside arrays and objects, matching the real questions[] shape", () => {
+    const input = {
+      lessons: [{ content: "x" }],
+      questions: [
+        { difficulty: "beginner", type: "knowledge" },
+        { difficulty: "Hard", type: "unexpected-value" },
+      ],
+    };
+    expect(normalizeGeneratedAliases(input)).toEqual({
+      lessons: [{ content: "x" }],
+      questions: [
+        { difficulty: "beginner", type: "knowledge" },
+        { difficulty: "advanced", type: "knowledge" },
+      ],
+    });
   });
 });

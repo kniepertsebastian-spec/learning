@@ -251,28 +251,79 @@ const DIFFICULTY_ALIASES: Record<string, "beginner" | "intermediate" | "advanced
   beginner: "beginner",
   basic: "beginner",
   easy: "beginner",
+  simple: "beginner",
   entry: "beginner",
   foundational: "beginner",
   novice: "beginner",
   anfänger: "beginner",
   anfaenger: "beginner",
+  leicht: "beginner",
   intermediate: "intermediate",
   medium: "intermediate",
   moderate: "intermediate",
+  standard: "intermediate",
   mittel: "intermediate",
   advanced: "advanced",
   difficult: "advanced",
   expert: "advanced",
   hard: "advanced",
+  complex: "advanced",
   schwierig: "advanced",
+  schwer: "advanced",
+  fortgeschritten: "advanced",
+};
+
+const QUESTION_TYPE_ALIASES: Record<
+  string,
+  "knowledge" | "comprehension" | "application" | "scenario" | "troubleshooting"
+> = {
+  knowledge: "knowledge",
+  recall: "knowledge",
+  fact: "knowledge",
+  factual: "knowledge",
+  definition: "knowledge",
+  memorization: "knowledge",
+  wissen: "knowledge",
+  comprehension: "comprehension",
+  understanding: "comprehension",
+  conceptual: "comprehension",
+  concept: "comprehension",
+  verständnis: "comprehension",
+  verstaendnis: "comprehension",
+  application: "application",
+  applied: "application",
+  practical: "application",
+  anwendung: "application",
+  scenario: "scenario",
+  "case-study": "scenario",
+  case: "scenario",
+  situational: "scenario",
+  "real-world": "scenario",
+  szenario: "scenario",
+  troubleshooting: "troubleshooting",
+  debugging: "troubleshooting",
+  debug: "troubleshooting",
+  diagnostic: "troubleshooting",
+  diagnosis: "troubleshooting",
+  "problem-solving": "troubleshooting",
+  fehlersuche: "troubleshooting",
+  fehlerbehebung: "troubleshooting",
 };
 
 /**
- * Gemini occasionally ignores an enum when structured output is unavailable
- * and returns a common synonym such as `medium`. Normalize only known,
- * semantically equivalent aliases; unknown values still fail Zod validation.
+ * Gemini ignoriert ein Enum gelegentlich (v. a. wenn responseJsonSchema
+ * nicht unterstützt wird, siehe modelsWithoutStructuredOutputSupport) und
+ * liefert stattdessen ein Synonym (z. B. "medium") oder einen völlig
+ * anderen Wert statt des exakten vom Schema geforderten Tokens - das hat
+ * bisher die gesamte Content-Generierung mitten in einem Lauf mit einem
+ * Zod-Validierungsfehler abgebrochen. Normalisiert bekannte Synonyme UND
+ * fällt bei einem weiterhin unbekannten Wert auf einen sinnvollen Default
+ * zurück, damit diese beiden Enum-Felder IMMER validieren - eine falsch
+ * eingeordnete Schwierigkeit/Frageart im seltenen Fall eines unbekannten
+ * Werts kostet deutlich weniger als der komplette Verlust ansonsten guter
+ * Lessons/Fragen für ein Objective durch einen harten Abbruch.
  */
-function normalizeGeneratedAliases(value: unknown): unknown {
+export function normalizeGeneratedAliases(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalizeGeneratedAliases);
   if (!value || typeof value !== "object") return value;
 
@@ -280,7 +331,11 @@ function normalizeGeneratedAliases(value: unknown): unknown {
     Object.entries(value).map(([key, child]) => {
       if (key === "difficulty" && typeof child === "string") {
         const normalized = child.trim().toLowerCase();
-        return [key, DIFFICULTY_ALIASES[normalized] ?? child];
+        return [key, DIFFICULTY_ALIASES[normalized] ?? "intermediate"];
+      }
+      if (key === "type" && typeof child === "string") {
+        const normalized = child.trim().toLowerCase();
+        return [key, QUESTION_TYPE_ALIASES[normalized] ?? "knowledge"];
       }
       return [key, normalizeGeneratedAliases(child)];
     }),
