@@ -13,6 +13,7 @@ import { ContentGenerationControl } from "@/components/ContentGenerationControl"
 import { ContentReportQueue } from "@/components/ContentReportQueue";
 import {
   estimateGenerationWork,
+  getAiBudgetStatus,
   getLatestContentGenerationJob,
 } from "@/lib/server/admin/content-generation";
 
@@ -48,9 +49,10 @@ export default async function AdminCertificationPage({
   }
 
   const cert = certRows[0];
-  const [initialGenerationJob, initialEstimate] = await Promise.all([
+  const [initialGenerationJob, initialEstimate, initialBudget] = await Promise.all([
     getLatestContentGenerationJob(cert.id),
     estimateGenerationWork(cert.id),
+    getAiBudgetStatus(),
   ]);
 
   // Run validation
@@ -110,6 +112,7 @@ export default async function AdminCertificationPage({
             : null
         }
         initialEstimate={initialEstimate}
+        initialBudget={initialBudget}
       />
 
       <div className="grid gap-6">

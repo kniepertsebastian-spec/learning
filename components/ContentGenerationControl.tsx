@@ -54,21 +54,30 @@ interface GenerationEstimate {
   missingObjectiveCodes: string[];
 }
 
+interface AiBudgetStatus {
+  limitUsd: number;
+  spentUsd: number;
+  exceeded: boolean;
+}
+
 export function ContentGenerationControl({
   certificationId,
   locale,
   initialJob,
   initialEstimate,
+  initialBudget,
 }: {
   certificationId: string;
   locale: "de" | "en";
   initialJob: Job | null;
   initialEstimate: GenerationEstimate;
+  initialBudget: AiBudgetStatus | null;
 }) {
   const router = useRouter();
   const online = useOnlineStatus();
   const [job, setJob] = useState<Job | null>(initialJob);
   const [estimate, setEstimate] = useState<GenerationEstimate>(initialEstimate);
+  const [budget, setBudget] = useState<AiBudgetStatus | null>(initialBudget);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const active = job?.status === "queued" || job?.status === "running";
@@ -80,9 +89,14 @@ export function ContentGenerationControl({
         { cache: "no-store" },
       );
       if (!response.ok) throw new Error(`Status ${response.status}`);
-      const data = (await response.json()) as { job: Job | null; estimate: GenerationEstimate };
+      const data = (await response.json()) as {
+        job: Job | null;
+        estimate: GenerationEstimate;
+        budget: AiBudgetStatus | null;
+      };
       setJob(data.job);
       setEstimate(data.estimate);
+      setBudget(data.budget);
       setRequestError(null);
       if (data.job?.status === "succeeded") router.refresh();
     } catch {
@@ -149,7 +163,7 @@ export function ContentGenerationControl({
         <button
           type="button"
           onClick={startGeneration}
-          disabled={loading || active || !online}
+          disabled={loading || active || !online || budget?.exceeded === true}
           className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {active || loading ? (
@@ -164,6 +178,22 @@ export function ContentGenerationControl({
               : locale === "de" ? "Inhalte generieren" : "Generate content"}
         </button>
       </div>
+
+      {/* R6 (roadmap.md): "Budgetgrenzen" - blockt nur neue Jobs, bereits
+          erzeugte Inhalte bleiben unabhängig davon verfügbar. */}
+      {budget && (
+        <p
+          className={`mt-3 text-xs ${budget.exceeded ? "text-red-600 dark:text-red-400" : "text-foreground/60"}`}
+        >
+          {locale === "de"
+            ? `KI-Budget: $${budget.spentUsd.toFixed(2)} von $${budget.limitUsd.toFixed(2)} verbraucht.`
+            : `AI budget: $${budget.spentUsd.toFixed(2)} of $${budget.limitUsd.toFixed(2)} spent.`}
+          {budget.exceeded &&
+            (locale === "de"
+              ? " Neue Generierungen sind gesperrt; vorhandene Inhalte bleiben verfügbar."
+              : " New generations are blocked; existing content remains available.")}
+        </p>
+      )}
 
       {/* R4.4 (roadmap.md): "Generierung ... ausdrücklich nicht offline anbieten". */}
       {!online && (
