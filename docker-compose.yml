@@ -57,6 +57,14 @@ services:
       - source_uploads_data:/app/data/sources
     networks:
       - learning_network
+    healthcheck:
+      # busybox wget (kommt bereits mit node:alpine, kein zusätzliches Paket
+      # nötig) statt curl - siehe app/api/health/route.ts.
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # Cloudflare Tunnel (exposes the app without a public port)
   cloudflared:
@@ -67,7 +75,12 @@ services:
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
     depends_on:
-      - app
+      app:
+        # Verhindert 502 Bad Gateway direkt nach dem Start: ohne
+        # service_healthy leitet cloudflared bereits weiter, sobald der
+        # app-Container GESTARTET ist, nicht sobald Next.js tatsächlich auf
+        # Port 3000 lauscht (das dauert laut Log ca. 2s).
+        condition: service_healthy
     networks:
       - learning_network
 
