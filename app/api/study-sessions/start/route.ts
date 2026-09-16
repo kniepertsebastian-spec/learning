@@ -14,6 +14,9 @@ const startSessionSchema = z.object({
   certificationId: z.string().uuid(),
   goalValue: z.number().int().min(1).max(180),
   goalType: z.enum(["minutes", "questions"]).optional(),
+  /** R2 (roadmap.md): "optionaler Energiezustand" - freiwillig, wird beim
+   * Fehlen einfach nicht berücksichtigt (siehe buildAndPersistSession). */
+  energyLevel: z.enum(["low", "medium", "high"]).optional(),
 });
 
 function isUniqueViolation(error: unknown): boolean {
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
-  const { certificationId, goalValue, goalType } = parsed.data;
+  const { certificationId, goalValue, goalType, energyLevel } = parsed.data;
 
   const existing = await peekActiveOrTodaySession(session.user.id, certificationId);
   if (existing) {
@@ -47,7 +50,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const built = await startStudySession(session.user.id, certificationId, goalValue, goalType);
+    const built = await startStudySession(session.user.id, certificationId, goalValue, goalType, energyLevel);
     return NextResponse.json({ session: built }, { status: 201 });
   } catch (error) {
     if (isUniqueViolation(error)) {

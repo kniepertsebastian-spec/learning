@@ -134,6 +134,13 @@
       "when": 1789497095546,
       "tag": "0018_remarkable_eddie_brock",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789596726441,
+      "tag": "0019_rare_thanos",
+      "breakpoints": true
     }
   ]
 }

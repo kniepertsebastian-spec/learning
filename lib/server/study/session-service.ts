@@ -18,7 +18,7 @@ import {
   type StudySessionItemCategory,
   type StudySessionStatus,
 } from "@/lib/server/db/schema";
-import type { AnswerConfidence, Localized } from "@/lib/types";
+import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
 import { getDueReviewCount, getDueReviewItems, recordReviewOutcomes } from "@/lib/server/review/service";
 import {
   computeLessonFallbackCount,
@@ -26,7 +26,8 @@ import {
   computeStreak,
   estimateSessionMinutes,
   estimateTargetQuestionCount,
-  reallocateForExamUrgency,
+  isComebackSession,
+  reallocateTowardFamiliarContent,
   toDayKey,
   type SessionComposition,
 } from "./session-builder";
@@ -42,7 +43,7 @@ const DEFAULT_GOAL_VALUE = 15;
 const CANDIDATE_POOL_LIMIT = 200;
 /** "Prüfungstermin ... in die Priorisierung einbeziehen" (roadmap.md):
  * innerhalb dieses Fensters vor der Prüfung tritt neuer Stoff zugunsten von
- * Wiederholung/Schwachstellen zurück - siehe reallocateForExamUrgency(). */
+ * Wiederholung/Schwachstellen zurück - siehe reallocateTowardFamiliarContent(). */
 const EXAM_URGENCY_WINDOW_DAYS = 7;
 
 export class StudySessionNotFoundError extends Error {}
@@ -55,10 +56,17 @@ export interface StudySessionSummary {
   goalValue: number;
   itemCount: number;
   estimatedMinutes: number;
+  isComeback: boolean;
 }
 
 function toSummary(
-  session: { id: string; status: StudySessionStatus; goalType: StudyGoalType; goalValue: number },
+  session: {
+    id: string;
+    status: StudySessionStatus;
+    goalType: StudyGoalType;
+    goalValue: number;
+    isComeback: boolean;
+  },
   itemCount: number,
 ): StudySessionSummary {
   return {
@@ -68,6 +76,7 @@ function toSummary(
     goalValue: session.goalValue,
     itemCount,
     estimatedMinutes: estimateSessionMinutes(itemCount),
+    isComeback: session.isComeback,
   };
 }
 
@@ -144,8 +153,9 @@ export async function startStudySession(
   certificationId: string,
   goalValue: number,
   goalType: StudyGoalType = "minutes",
+  energyLevel?: EnergyLevel,
 ): Promise<StudySessionSummary> {
-  return buildAndPersistSession(userId, certificationId, { goalType, goalValue });
+  return buildAndPersistSession(userId, certificationId, { goalType, goalValue, energyLevel });
 }
 
 async function countSessionItems(sessionId: string): Promise<number> {
@@ -263,7 +273,7 @@ export async function getStudySessionWithContent(
 async function buildAndPersistSession(
   userId: string,
   certificationId: string,
-  goalOverride?: { goalType: StudyGoalType; goalValue: number },
+  goalOverride?: { goalType: StudyGoalType; goalValue: number; energyLevel?: EnergyLevel },
 ): Promise<StudySessionSummary> {
   const db = getDb();
 
@@ -279,7 +289,25 @@ async function buildAndPersistSession(
 
   const goalType = goalOverride?.goalType ?? profile?.dailyGoalType ?? DEFAULT_GOAL_TYPE;
   const goalValue = goalOverride?.goalValue ?? profile?.dailyGoalValue ?? DEFAULT_GOAL_VALUE;
+  const energyLevel = goalOverride?.energyLevel ?? null;
   const targetQuestionCount = estimateTargetQuestionCount(goalType, goalValue);
+
+  // "Sanfter Comeback-Modus nach Pause": updatedAt statt completedAt, damit
+  // sowohl eine abgeschlossene als auch eine "heute ausgesetzte" Session als
+  // letzte Aktivität zählt (skipStudySession setzt nur updatedAt).
+  const [lastActivity] = await db
+    .select({ updatedAt: studySessions.updatedAt })
+    .from(studySessions)
+    .where(
+      and(
+        eq(studySessions.userId, userId),
+        eq(studySessions.certificationId, certificationId),
+        inArray(studySessions.status, ["completed", "skipped"]),
+      ),
+    )
+    .orderBy(desc(studySessions.updatedAt))
+    .limit(1);
+  const isComeback = isComebackSession(lastActivity?.updatedAt ?? null);
 
   const [dueCount, dueItems] = await Promise.all([
     getDueReviewCount(userId, certificationId),
@@ -312,12 +340,14 @@ async function buildAndPersistSession(
   const examIsImminent =
     profile?.examDate != null &&
     profile.examDate.getTime() - Date.now() <= EXAM_URGENCY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-  if (examIsImminent) {
+  if (examIsImminent || energyLevel === "low" || isComeback) {
     // Reallokation ist bewusst an die tatsächlich ABRUFBAREN Pools gebunden
     // (dueItems.length/weakCandidates.length, nicht der ungedeckelte
     // dueCount), damit sie nie mehr Fragen verspricht, als gleich auch
-    // tatsächlich befüllt werden.
-    composition = reallocateForExamUrgency(composition, dueItems.length, weakCandidates.length);
+    // tatsächlich befüllt werden. Drei unabhängige Auslöser (Prüfung steht
+    // an, wenig Energie, Comeback nach Pause) teilen sich denselben Hebel -
+    // siehe reallocateTowardFamiliarContent().
+    composition = reallocateTowardFamiliarContent(composition, dueItems.length, weakCandidates.length);
   }
 
   const items: Array<{
@@ -358,7 +388,7 @@ async function buildAndPersistSession(
 
   const [session] = await db
     .insert(studySessions)
-    .values({ userId, certificationId, status: "planned", goalType, goalValue })
+    .values({ userId, certificationId, status: "planned", goalType, goalValue, energyLevel, isComeback })
     .returning();
 
   if (items.length > 0) {

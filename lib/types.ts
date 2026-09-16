@@ -9,6 +9,12 @@ export type Localized<T> = Record<Locale, T>;
  * genannten Lernwirkungs-Kennzahlen). */
 export type AnswerConfidence = "guessed" | "unsure" | "sure";
 
+/** R2 (roadmap.md): "optionaler Energiezustand" - freiwillige Angabe beim
+ * Sessionstart, wie viel Energie gerade da ist. `low` lässt den Session
+ * Builder mehr Wiederholung statt neuen Stoffs einplanen (siehe
+ * reallocateTowardFamiliarContent() in session-builder.ts). */
+export type EnergyLevel = "low" | "medium" | "high";
+
 export interface QuizQuestion {
   id: string;
   question: Localized<string>;

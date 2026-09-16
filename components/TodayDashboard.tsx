@@ -31,6 +31,11 @@ export interface TodayDashboardData {
   weakObjectives: TodayDashboardWeakObjective[];
   categoryBreakdown: TodayDashboardCategoryBreakdown;
   feedback: boolean | null;
+  /** R2 (roadmap.md): "sanfter Comeback-Modus nach Pause" - ob diese Session
+   * nach einer längeren Lernpause gebaut wurde (siehe isComebackSession() in
+   * session-builder.ts), dann bewusst mit mehr Wiederholung statt neuem
+   * Stoff zusammengesetzt. */
+  isComeback: boolean;
 }
 
 /** R2 (roadmap.md, neue Fassung): "Empfehlungen mit Gründen anzeigen" - baut
@@ -166,6 +171,14 @@ export function TodayDashboard({
           </span>
         )}
       </div>
+
+      {data.isComeback && (
+        <p className="mb-3 text-xs text-foreground/70">
+          {locale === "de"
+            ? "Schön, dass du wieder da bist! Wir starten sanft mit mehr Wiederholung statt neuem Stoff."
+            : "Welcome back! We're starting gently with more review instead of new material."}
+        </p>
+      )}
 
       <div className="mb-3 flex flex-wrap gap-4 text-xs text-foreground/70">
         <span className="flex items-center gap-1">

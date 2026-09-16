@@ -82,16 +82,25 @@ export function computeSessionComposition(
 }
 
 /**
- * "Prüfungstermin ... in die Priorisierung einbeziehen" (roadmap.md), wenn
- * die Prüfung bald ansteht: neuer Stoff tritt zugunsten von Wiederholung/
- * Schwachstellen zurück - aber nur soweit dort tatsächlich noch Plätze frei
- * sind (`dueAvailable`/`weakAvailable` = tatsächlich abrufbare Fragen, nicht
- * das ursprüngliche Ziel), damit die Session nie mehr Fragen verspricht, als
- * am Ende tatsächlich befüllt werden können. Review zuerst auffüllen, dann
- * Weak - was danach an neuem Stoff übrig bleibt, bleibt neuer Stoff (besser
- * als Plätze ungenutzt zu lassen).
+ * Verschiebt neuen Stoff zugunsten von Wiederholung/Schwachstellen - aber
+ * nur soweit dort tatsächlich noch Plätze frei sind (`dueAvailable`/
+ * `weakAvailable` = tatsächlich abrufbare Fragen, nicht das ursprüngliche
+ * Ziel), damit die Session nie mehr Fragen verspricht, als am Ende
+ * tatsächlich befüllt werden können. Review zuerst auffüllen, dann Weak -
+ * was danach an neuem Stoff übrig bleibt, bleibt neuer Stoff (besser als
+ * Plätze ungenutzt zu lassen).
+ *
+ * Drei roadmap.md-Auslöser teilen sich denselben Hebel, daher ein
+ * gemeinsamer, auslöserunabhängiger Name statt einer "ExamUrgency"-Funktion,
+ * die auch für Energie/Comeback zweckentfremdet würde:
+ * - "Prüfungstermin ... in die Priorisierung einbeziehen" (Prüfung steht
+ *   bald an - neuer, noch nicht gefestigter Stoff ist riskanter).
+ * - "optionaler Energiezustand" (wenig Energie -> vertrautes Wiederholen
+ *   statt anstrengendem Neuem).
+ * - "sanfter Comeback-Modus nach Pause" (nach einer Lernpause ist
+ *   Wiedereinstieg über Bekanntes leichter als über neuen Stoff).
  */
-export function reallocateForExamUrgency(
+export function reallocateTowardFamiliarContent(
   composition: SessionComposition,
   dueAvailable: number,
   weakAvailable: number,
@@ -162,4 +171,23 @@ export function computeStreak(completedDates: Date[], today: Date = new Date()):
  * bauen) oder von einem früheren Tag (dann schon). */
 export function toDayKey(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+/** Ab dieser Lücke (in Kalendertagen) seit der letzten abgeschlossenen/
+ * ausgesetzten Session gilt der Wiedereinstieg als "nach einer Pause" -
+ * 3 Tage, deutlich über einer normalen Lernpause an einem einzelnen Tag,
+ * aber noch früh genug, um den sanften Wiedereinstieg zu rechtfertigen. */
+export const COMEBACK_GAP_DAYS = 3;
+
+/**
+ * "Sanfter Comeback-Modus nach Pause" (R2, roadmap.md). `lastActivityAt`
+ * ist der Zeitpunkt der letzten abgeschlossenen/ausgesetzten Session dieser
+ * Zertifizierung, `null` wenn es noch nie eine gab - eine ERSTE Session ist
+ * kein "Comeback" (dafür fehlt ja eine vorherige Aktivität, zu der man
+ * zurückkehrt), sondern schlicht ein normaler Einstieg.
+ */
+export function isComebackSession(lastActivityAt: Date | null, now: Date = new Date()): boolean {
+  if (!lastActivityAt) return false;
+  const gapMs = now.getTime() - lastActivityAt.getTime();
+  return gapMs >= COMEBACK_GAP_DAYS * 24 * 60 * 60 * 1000;
 }

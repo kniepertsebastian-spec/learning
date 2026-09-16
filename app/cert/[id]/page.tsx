@@ -146,6 +146,7 @@ export default async function CertDetailPage({
         weakObjectives,
         categoryBreakdown,
         feedback,
+        isComeback: sessionSummary.isComeback,
       };
     }
   }
