@@ -13,6 +13,13 @@ interface Job {
   message: string | null;
   error: string | null;
   errorClass: string | null;
+  /** R6 (roadmap.md): "Modell, Tokenverbrauch und geschätzte Kosten pro
+   * Job" - model ist erst gesetzt, sobald der erste Gemini-Aufruf
+   * zurückkam, totalTokens/estimatedCostUsd wachsen live mit (siehe
+   * trackUsageLine() in content-generation.ts). */
+  model: string | null;
+  totalTokens: number;
+  estimatedCostUsd: string | null;
 }
 
 /** R0.1 (roadmap.md): Ursache + sinnvoller nächster Schritt pro Fehlerklasse,
@@ -201,6 +208,16 @@ export function ContentGenerationControl({
             />
           </div>
           {job.message && <p className="mt-2 text-xs text-foreground/60">{job.message}</p>}
+
+          {job.totalTokens > 0 && (
+            <p className="mt-1 text-xs text-foreground/50">
+              {job.model && <span className="font-mono">{job.model}</span>}
+              {job.model && " · "}
+              {job.totalTokens.toLocaleString(locale)} {locale === "de" ? "Tokens" : "tokens"}
+              {job.estimatedCostUsd !== null &&
+                ` · ~$${Number(job.estimatedCostUsd).toFixed(4)}`}
+            </p>
+          )}
 
           {job.status === "succeeded" && (
             <p className="mt-3 flex items-center gap-1.5 text-sm text-green-600">

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { classifyGenerationError } from "./content-generation";
+import { afterEach, describe, expect, it } from "vitest";
+import { classifyGenerationError, estimateCostUsd } from "./content-generation";
 
 describe("classifyGenerationError", () => {
   it("classifies an exhausted daily quota as 'quota', not just 'rate_limit'", () => {
@@ -42,5 +42,43 @@ describe("classifyGenerationError", () => {
     expect(
       classifyGenerationError("GeminiConfigError: GEMINI_API_KEY ist nicht gesetzt"),
     ).toBe("internal");
+  });
+});
+
+describe("estimateCostUsd", () => {
+  const ENV_KEYS = [
+    "GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD",
+    "GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD",
+  ] as const;
+  const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
+
+  afterEach(() => {
+    for (const key of ENV_KEYS) {
+      if (originalEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = originalEnv[key];
+    }
+  });
+
+  it("returns null when no pricing is configured, rather than inventing a number", () => {
+    delete process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD;
+    delete process.env.GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD;
+    expect(estimateCostUsd(1_000_000, 1_000_000)).toBeNull();
+  });
+
+  it("computes cost linearly from configured per-million prices", () => {
+    process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
+    process.env.GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "2";
+    expect(estimateCostUsd(500_000, 250_000)).toBeCloseTo(0.5 * 1 + 0.25 * 2, 6);
+  });
+
+  it("uses only the configured side when the other price is unset", () => {
+    process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
+    delete process.env.GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD;
+    expect(estimateCostUsd(1_000_000, 999_999_999)).toBeCloseTo(3, 6);
+  });
+
+  it("returns 0 for zero tokens when pricing is configured", () => {
+    process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "5";
+    expect(estimateCostUsd(0, 0)).toBe(0);
   });
 });

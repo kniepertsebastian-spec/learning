@@ -409,6 +409,21 @@ async function requestJson(
         },
       });
 
+      // R6 (roadmap.md): "Modell, Tokenverbrauch ... pro Job" - maschinell
+      // parsbare Zeile (siehe USAGE_LINE_PATTERN in
+      // lib/server/admin/content-generation.ts), die den kompletten
+      // Prozessbaum überlebt: content:draft-curriculum/-lessons laufen als
+      // Kindprozess, stdout ist der einzige Kanal zurück zum Job-Tracking.
+      // Wird für JEDEN Antwortversuch geloggt, nicht nur bei Erfolg -
+      // abgelehnte/verworfene Antworten wurden vom Anbieter trotzdem
+      // abgerechnet.
+      const usage = response.usageMetadata;
+      if (usage) {
+        console.log(
+          `USAGE model=${GEMINI_MODEL} promptTokens=${usage.promptTokenCount ?? 0} completionTokens=${usage.candidatesTokenCount ?? 0} totalTokens=${usage.totalTokenCount ?? 0}`,
+        );
+      }
+
       const text = response.text;
       if (!text) {
         throw new AIGenerationError("Gemini hat keine Textantwort zurückgegeben.");

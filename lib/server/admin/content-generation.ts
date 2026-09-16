@@ -24,6 +24,24 @@ function truncate(value: string, maxLength = 4_000): string {
   return value.length <= maxLength ? value : value.slice(value.length - maxLength);
 }
 
+/** Passend zur USAGE-Zeile aus lib/ai/generate.ts's requestJson(). */
+const USAGE_LINE_PATTERN =
+  /^USAGE model=(\S+) promptTokens=(\d+) completionTokens=(\d+) totalTokens=(\d+)$/;
+
+/** R6 (roadmap.md): "geschätzte Kosten pro Job" - NULL solange keine Preise
+ * konfiguriert sind (env unset -> 0), damit nie eine erfundene Zahl in der
+ * Admin-UI landet. Bewusst linear und ohne Zwischenspeicher-/Batch-Rabatte -
+ * eine grobe Schätzung, keine Rechnungskopie. */
+export function estimateCostUsd(promptTokens: number, completionTokens: number): number | null {
+  const pricePerMillionPrompt = Number(process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD) || 0;
+  const pricePerMillionCompletion = Number(process.env.GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD) || 0;
+  if (pricePerMillionPrompt === 0 && pricePerMillionCompletion === 0) return null;
+  return (
+    (promptTokens / 1_000_000) * pricePerMillionPrompt +
+    (completionTokens / 1_000_000) * pricePerMillionCompletion
+  );
+}
+
 async function updateJob(
   jobId: string,
   values: Partial<typeof contentGenerationJobs.$inferInsert>,
@@ -82,6 +100,31 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
       .catch((error) => console.error("Content job progress update failed:", error));
   };
 
+  let usageModel: string | null = null;
+  let promptTokens = 0;
+  let completionTokens = 0;
+  let totalTokens = 0;
+  /** Erkennt eine USAGE-Zeile in der Stdout/Stderr-Ausgabe der Kindprozesse
+   * und liefert bei Treffer die zu mergenden Job-Spalten - null sonst, damit
+   * der Aufrufer sie einfach per Spread in sein reguläres queueUpdate()
+   * einbauen kann, ohne einen zweiten UPDATE pro Zeile auszulösen. */
+  function trackUsageLine(line: string): Partial<typeof contentGenerationJobs.$inferInsert> | null {
+    const match = USAGE_LINE_PATTERN.exec(line);
+    if (!match) return null;
+    usageModel = match[1];
+    promptTokens += Number(match[2]);
+    completionTokens += Number(match[3]);
+    totalTokens += Number(match[4]);
+    const estimatedCostUsd = estimateCostUsd(promptTokens, completionTokens);
+    return {
+      model: usageModel,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      estimatedCostUsd: estimatedCostUsd === null ? null : estimatedCostUsd.toString(),
+    };
+  }
+
   await updateJob(jobId, {
     status: "running",
     phase: "curriculum",
@@ -99,6 +142,7 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
   let completedDomains = 0;
 
   await runNpmScript("content:draft-curriculum", slug, (line) => {
+    const usageValues = trackUsageLine(line);
     if (/^Domain \d+ .*(: hat bereits Objectives|Sections gespeichert)/.test(line)) {
       completedDomains++;
     }
@@ -106,6 +150,7 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
       phase: "curriculum",
       progress: Math.min(42, 5 + Math.round((completedDomains / totalDomains) * 37)),
       message: truncate(line, 500),
+      ...usageValues,
     });
   });
   await updateQueue;
@@ -127,6 +172,7 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
   });
 
   await runNpmScript("content:draft-lessons", slug, (line) => {
+    const usageValues = trackUsageLine(line);
     if (/^Objective .*(: bereits vorhanden|Fragen gespeichert)/.test(line)) {
       completedObjectives++;
     }
@@ -134,6 +180,7 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
       phase: "lessons",
       progress: Math.min(97, 45 + Math.round((completedObjectives / totalObjectives) * 52)),
       message: truncate(line, 500),
+      ...usageValues,
     });
   });
   await updateQueue;
