@@ -141,6 +141,13 @@
       "when": 1789596726441,
       "tag": "0019_rare_thanos",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789597300816,
+      "tag": "0020_typical_solo",
+      "breakpoints": true
     }
   ]
 }
