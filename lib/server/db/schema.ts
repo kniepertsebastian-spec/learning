@@ -502,6 +502,21 @@ export const contentGenerationJobs = pgTable(
     /** R0.1 (roadmap.md): grobe Fehlerklasse für die Admin-UI, siehe
      * classifyGenerationError() in content-generation.ts. */
     errorClass: text("error_class").$type<GenerationErrorClass>(),
+    /** R6 (roadmap.md): "Modell, Tokenverbrauch und geschätzte Kosten pro
+     * Job" - läuft über den kompletten Job (curriculum + lessons Skript,
+     * beide als Kindprozess, siehe runNpmScript() in content-generation.ts)
+     * hoch, nicht erst am Ende: bei einem Absturz mitten im Job bleibt der
+     * bis dahin tatsächlich verbrauchte Verbrauch erhalten (jede
+     * `USAGE`-Zeile aus lib/ai/generate.ts aktualisiert die Zeile sofort). */
+    model: text("model"),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    /** NULL solange keine Preise konfiguriert sind (siehe
+     * GEMINI_PRICE_PER_MILLION_*_TOKENS_USD) - eine geschätzte Zahl, die
+     * nicht mit der tatsächlichen Rechnung des Anbieters verwechselt werden
+     * darf, ist schlechter als gar keine. */
+    estimatedCostUsd: numeric("estimated_cost_usd", { precision: 10, scale: 4 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),

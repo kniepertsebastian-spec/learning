@@ -103,6 +103,9 @@ export default async function AdminCertificationPage({
                 message: initialGenerationJob.message,
                 error: initialGenerationJob.error,
                 errorClass: initialGenerationJob.errorClass,
+                model: initialGenerationJob.model,
+                totalTokens: initialGenerationJob.totalTokens,
+                estimatedCostUsd: initialGenerationJob.estimatedCostUsd,
               }
             : null
         }

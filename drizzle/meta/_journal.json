@@ -148,6 +148,13 @@
       "when": 1789597300816,
       "tag": "0020_typical_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789599303766,
+      "tag": "0021_lumpy_genesis",
+      "breakpoints": true
     }
   ]
 }
