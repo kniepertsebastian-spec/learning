@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Flag, Loader2 } from "lucide-react";
 import type { AnswerConfidence, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 
@@ -10,6 +10,14 @@ const CONFIDENCE_LABEL: Record<AnswerConfidence, { de: string; en: string }> = {
   guessed: { de: "Geraten", en: "Guessed" },
   unsure: { de: "Unsicher", en: "Unsure" },
   sure: { de: "Sicher", en: "Sure" },
+};
+
+type ReportReason = "incorrect" | "unclear" | "outdated";
+
+const REPORT_REASON_LABEL: Record<ReportReason, { de: string; en: string }> = {
+  incorrect: { de: "Falsch", en: "Incorrect" },
+  unclear: { de: "Unklar", en: "Unclear" },
+  outdated: { de: "Veraltet", en: "Outdated" },
 };
 
 interface SessionQuestionItem {
@@ -73,6 +81,24 @@ export function StudySession({
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<StudySessionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reportOpenForItem, setReportOpenForItem] = useState<string | null>(null);
+  const [reportedItems, setReportedItems] = useState<Set<string>>(() => new Set());
+
+  async function handleReport(questionId: string, itemId: string, reason: ReportReason) {
+    if (reportedItems.has(itemId)) return;
+    setReportedItems((prev) => new Set(prev).add(itemId));
+    setReportOpenForItem(null);
+    try {
+      await fetch("/api/content-reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetType: "question", targetId: questionId, reason }),
+      });
+    } catch {
+      // R6 (roadmap.md): eine fehlgeschlagene Meldung darf den Lernfluss
+      // nicht unterbrechen, siehe QuizQuestionCard für dasselbe Muster.
+    }
+  }
 
   async function handleSubmit() {
     if (submitting || result) return;
@@ -260,6 +286,39 @@ export function StudySession({
             </div>
           </div>
         )}
+
+        <div className="mt-3 border-t border-border pt-2">
+          {reportedItems.has(item.itemId) ? (
+            <p className="text-xs text-foreground/50">
+              {locale === "de" ? "Danke, diese Frage wurde gemeldet." : "Thanks, this question was reported."}
+            </p>
+          ) : reportOpenForItem === item.itemId ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-foreground/50">
+                {locale === "de" ? "Was stimmt nicht?" : "What's wrong?"}
+              </span>
+              {(Object.keys(REPORT_REASON_LABEL) as ReportReason[]).map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => void handleReport(item.questionId, item.itemId, reason)}
+                  className="rounded-md border border-border px-2 py-0.5 text-xs hover:border-accent hover:bg-background"
+                >
+                  {REPORT_REASON_LABEL[reason][locale]}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setReportOpenForItem(item.itemId)}
+              className="flex items-center gap-1 text-xs text-foreground/40 hover:text-foreground/70"
+            >
+              <Flag className="h-3 w-3" aria-hidden="true" />
+              {locale === "de" ? "Problem melden" : "Report a problem"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between">

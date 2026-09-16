@@ -10,6 +10,7 @@ import { getServerLocale } from "@/lib/server/locale";
 import { ContentValidationService } from "@/lib/server/admin/validation";
 import { AnalyticsService } from "@/lib/server/analytics/service";
 import { ContentGenerationControl } from "@/components/ContentGenerationControl";
+import { ContentReportQueue } from "@/components/ContentReportQueue";
 import {
   estimateGenerationWork,
   getLatestContentGenerationJob,
@@ -298,20 +299,7 @@ export default async function AdminCertificationPage({
           )}
         </div>
 
-        {/* Content review workflow info */}
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <h3 className="mb-3 font-medium">
-            {locale === "de" ? "Inhalts-Review-Workflow" : "Content Review Workflow"}
-          </h3>
-          <div className="space-y-2 text-sm text-foreground/70">
-            <p>{locale === "de" ? "Status:" : "Status:"} <span className="font-medium">Generated</span></p>
-            <p className="mt-2 text-xs">
-              {locale === "de"
-                ? "Inhalte durchlaufen: Generated → Pending Review → Approved → Published"
-                : "Content flows through: Generated → Pending Review → Approved → Published"}
-            </p>
-          </div>
-        </div>
+        <ContentReportQueue certificationId={cert.id} locale={locale} />
       </div>
     </div>
   );

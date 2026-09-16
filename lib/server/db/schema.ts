@@ -863,3 +863,38 @@ export const sessionRecommendationFeedback = pgTable(
     unique("session_recommendation_feedback_session_unique").on(table.sessionId),
   ],
 );
+
+/** R6 (roadmap.md): "Inhalte als falsch, unklar oder veraltet melden" +
+ * "Review-Queue". `targetId` verweist je nach `targetType` auf `questions.id`
+ * oder `lessons.id` - bewusst OHNE DB-seitige FK (dasselbe Muster wie
+ * studySessionItems.referenceId/auditEvents.targetId: eine Spalte kann nicht
+ * auf zwei Tabellen verweisen, Integrität bleibt App-seitig in
+ * lib/server/content-reports/service.ts). Anders als
+ * sessionRecommendationFeedback bewusst OHNE Unique-Constraint - mehrere
+ * Meldungen zur selben Frage sind ein zusätzliches Signal (mehr Lerner sehen
+ * dasselbe Problem), keine Korrektur eines einzelnen Werts. */
+export type ContentReportTargetType = "question" | "lesson";
+export type ContentReportReason = "incorrect" | "unclear" | "outdated";
+export type ContentReportStatus = "open" | "resolved" | "dismissed";
+
+export const contentReports = pgTable(
+  "content_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reporterUserId: uuid("reporter_user_id").references(() => users.id, { onDelete: "set null" }),
+    targetType: text("target_type").$type<ContentReportTargetType>().notNull(),
+    targetId: uuid("target_id").notNull(),
+    reason: text("reason").$type<ContentReportReason>().notNull(),
+    status: text("status").$type<ContentReportStatus>().notNull().default("open"),
+    resolvedByUserId: uuid("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("content_reports_target_idx").on(table.targetType, table.targetId),
+    index("content_reports_status_idx").on(table.status),
+    check("content_reports_target_type_check", sql`${table.targetType} in ('question', 'lesson')`),
+    check("content_reports_reason_check", sql`${table.reason} in ('incorrect', 'unclear', 'outdated')`),
+    check("content_reports_status_check", sql`${table.status} in ('open', 'resolved', 'dismissed')`),
+  ],
+);

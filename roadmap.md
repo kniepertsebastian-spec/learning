@@ -687,6 +687,12 @@ Technik, Kosten, Inhaltsqualität und Lernwirkung werden nachvollziehbar betrieb
 - Abbruchgründe
 - Qualität adaptiver Empfehlungen
 
+### Umsetzungsstand
+
+Bereits umgesetzt: "Inhalte als falsch, unklar oder veraltet melden" + Review-Queue (neue `content_reports`-Tabelle, `targetType`/`targetId` ohne DB-FK nach demselben Muster wie `auditEvents`/`studySessionItems` - Lerner melden eine Frage mit einem von drei Gründen direkt an der aufgedeckten Antwort, sowohl in `QuizQuestionCard` (Section-Quiz/Remediation) als auch in `StudySession` (die tägliche Session, wo Korrektheit erst am Ende gezeigt wird - Meldung daher immer sichtbar, nicht erst nach Aufdeckung); Admin sieht offene Meldungen je Zertifizierung in einer echten Queue (`ContentReportQueue`, ersetzt eine zuvor rein statische Infobox) und schließt sie als "erledigt" oder "verworfen" ab, protokolliert im Audit-Log. "Auffällige Fragen markieren" ist bereits als automatische Analytik vorhanden (`contentAnalytics.problemQuestions` - niedrige Erfolgsquote), nicht als manuelles Markieren. Health-Endpunkt (`/api/health`, von `docker-compose.yml`s Healthcheck genutzt) existiert bereits aus R0.3/R4.
+
+Noch offen: strukturierte Logs mit Request-/Job-ID, API-/DB-/Auth-/Jobmetriken, Readiness-Endpunkt (Health ja, Readiness nein); KI-Kosten (Tokenverbrauch/geschätzte Kosten pro Job, Budgetgrenzen, Kosten je veröffentlichtem Inhalt); Änderungshistorie und erneute Freigabe nach relevanten Änderungen (aktuell nur `LessonReviewStatus`/`stale`-Markierung bei neuer Quellenversion, siehe R1, keine allgemeine Content-Versionshistorie); die gesamte Lernwirkungs-Kategorie (Behaltensleistung nach 7/30/90 Tagen, Transferleistung, benötigte Hinweise - setzt das noch offene Hint-System aus R2 voraus, Verbesserung wiederkehrender Fehler, Abbruchgründe, Qualität adaptiver Empfehlungen über das reine Daumen-hoch/-runter aus R2 hinaus).
+
 ### Abnahmekriterien
 
 - Betreiber können technische und fachliche Fehler nachvollziehen.

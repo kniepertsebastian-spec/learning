@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X } from "lucide-react";
+import { Check, Flag, X } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import type { AnswerConfidence, QuizQuestion } from "@/lib/types";
+
+type ReportReason = "incorrect" | "unclear" | "outdated";
+
+const REPORT_REASON_LABEL: Record<ReportReason, { de: string; en: string }> = {
+  incorrect: { de: "Falsch", en: "Incorrect" },
+  unclear: { de: "Unklar", en: "Unclear" },
+  outdated: { de: "Veraltet", en: "Outdated" },
+};
 
 interface QuizQuestionCardProps {
   question: QuizQuestion;
@@ -36,6 +44,8 @@ export function QuizQuestionCard({
   const { locale, t } = useLocale();
   const [selected, setSelected] = useState<number | null>(null);
   const [confidence, setConfidence] = useState<AnswerConfidence | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportedAs, setReportedAs] = useState<ReportReason | null>(null);
 
   const revealed = askConfidence ? confidence !== null : selected !== null;
 
@@ -51,6 +61,22 @@ export function QuizQuestionCard({
     if (selected === null || confidence !== null) return;
     setConfidence(level);
     onAnswered(selected === question.correctIndex, selected, level);
+  }
+
+  async function handleReport(reason: ReportReason) {
+    if (reportedAs !== null) return;
+    setReportedAs(reason);
+    try {
+      await fetch("/api/content-reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetType: "question", targetId: question.id, reason }),
+      });
+    } catch {
+      // R6 (roadmap.md): eine fehlgeschlagene Meldung darf den Lernfluss
+      // nicht unterbrechen - die Bestätigung bleibt stehen, ein erneuter
+      // Versuch beim nächsten Mal ist unschädlich (keine Unique-Sperre).
+    }
   }
 
   return (
@@ -123,6 +149,39 @@ export function QuizQuestionCard({
               {locale === "de" ? "Quelle" : "Source"}: {sourceReference}
             </p>
           )}
+
+          <div className="mt-3 border-t border-border pt-2">
+            {reportedAs ? (
+              <p className="text-xs text-foreground/50">
+                {locale === "de" ? "Danke, diese Frage wurde gemeldet." : "Thanks, this question was reported."}
+              </p>
+            ) : reportOpen ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-foreground/50">
+                  {locale === "de" ? "Was stimmt nicht?" : "What's wrong?"}
+                </span>
+                {(Object.keys(REPORT_REASON_LABEL) as ReportReason[]).map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => void handleReport(reason)}
+                    className="rounded-md border border-border px-2 py-0.5 text-xs hover:border-accent hover:bg-surface"
+                  >
+                    {REPORT_REASON_LABEL[reason][locale]}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                className="flex items-center gap-1 text-xs text-foreground/40 hover:text-foreground/70"
+              >
+                <Flag className="h-3 w-3" aria-hidden="true" />
+                {locale === "de" ? "Problem melden" : "Report a problem"}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
