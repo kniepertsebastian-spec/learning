@@ -21,7 +21,11 @@ Dieses Dokument wurde unmittelbar nach der vollständigen Migration von Gemini a
 
 ### Umsetzungsstand
 
-Phase 0 (dieses Dokument aus `new_course.md` übernehmen, mit bestehendem Code abgleichen) ist abgeschlossen. Phasen 1-8 (Abschnitt 16) sind noch offen und werden - wie bei `roadmap.md` - schrittweise in eigenen, validierten Pull Requests umgesetzt, mit Fortschrittsvermerk an dieser Stelle nach jeder abgeschlossenen Phase.
+Phase 0 (dieses Dokument aus `new_course.md` übernehmen, mit bestehendem Code abgleichen) ist abgeschlossen.
+
+**Phase 1 (Verträge und Importer) ist abgeschlossen.** `CourseBlueprintV1`/`CoursePackageV1` als Zod-Schemata implementiert (`lib/server/course-generation/schemas.ts`, inkl. Schema-Versionierung über `schemaVersion`-Literal), mit bewussten Ergänzungen gegenüber der ursprünglichen TS-Skizze (siehe Dateikommentar dort: `provider`, `code` je Objective, Prüfungsformat-Felder). Transaktionaler Importer (`lib/server/course-generation/importer.ts::importCoursePackage()`) bildet `CoursePackageV1` 1:1 auf die bestehenden Tabellen ab (`certifications`/`domains`/`objectives`/`sections`/`lessons`/`questions`/`question_options` - KEINE neuen Tabellen in Phase 1, das komplette Zielschema existierte bereits) und läuft in einer einzigen `db.transaction()`. Ein bestehender Beispielkurs als Fixture (`lib/server/course-generation/fixtures.ts::buildSampleCoursePackage()`, 1 Domain/2 Objectives/2 Sections/8 Fragen) plus `npm run course:import-fixture` erfüllen die Abnahme "ein vollständiger Kurs lässt sich ausschließlich aus CoursePackageV1 reproduzierbar importieren" - real gegen Postgres verifiziert (siehe PR): korrekte Gewichtungs-Umrechnung (Anteil 0-1 → Prozent), korrekte `humanId`-Sequenz über mehrere Objectives hinweg, Duplikat-Slug wird VOR der Transaktion sauber abgelehnt (kein Teil-Import), Cascade-Delete beim Aufräumen ohne verwaiste Zeilen.
+
+Noch offen: Phasen 2-8 (Abschnitt 16) - Jobmodell/Statusmaschine, PWA/Admin-API, Claude-Pro-Routine-Anbindung, Haiku-Worker mit Preflight/Canary/Circuit-Breaker, Qualitäts-/Reparaturpipeline, automatische Veröffentlichung, Härtung/Rollout.
 
 ## 1. Zielbild
 

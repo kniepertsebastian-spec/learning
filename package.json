@@ -15,7 +15,8 @@
     "user:reset-password": "tsx scripts/reset-user-password.ts",
     "cert:add": "tsx scripts/add-certification.ts",
     "content:draft-curriculum": "tsx scripts/generate-curriculum-draft.ts",
-    "content:draft-lessons": "tsx scripts/generate-lessons-and-questions.ts"
+    "content:draft-lessons": "tsx scripts/generate-lessons-and-questions.ts",
+    "course:import-fixture": "tsx scripts/import-course-package-fixture.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
