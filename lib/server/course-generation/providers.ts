@@ -85,7 +85,7 @@ const BLUEPRINT_SYSTEM_PROMPT = [
 /**
  * Erste, sofort nutzbare Implementierung von `BlueprintProvider` - nutzt den
  * bestehenden, bereits getesteten Claude-API-Pfad (CURRICULUM_MODEL =
- * claude-sonnet-4-5, siehe lib/claude.ts) statt einer Claude-Pro-Routine.
+ * claude-sonnet-5, siehe lib/claude.ts) statt einer Claude-Pro-Routine.
  * Funktional vollständig, aber NICHT der in course_generation.md Abschnitt 12
  * beschriebene kostenlose Pfad - siehe RoutineBlueprintProvider für den
  * eigentlichen Kosteneinsparungs-Hebel dieses Dokuments, der eine
@@ -137,7 +137,7 @@ export const anthropicSonnetBlueprintProvider: BlueprintProvider = {
  */
 export const routineBlueprintProvider: BlueprintProvider = {
   name: "claude-routine-sonnet",
-  model: "claude-sonnet-4-5",
+  model: "claude-sonnet-5",
   async generateBlueprint() {
     if (!process.env.CLAUDE_ROUTINE_TRIGGER_URL) {
       throw new Error(
@@ -233,7 +233,7 @@ export const anthropicHaikuContentProvider: CourseContentProvider = {
 /**
  * Abschnitt 11 Punkt 6: "Alle schwierigen Lernziele eines Kurses werden in
  * einer einzigen Sonnet-Reparaturroutine gesammelt" - nutzt CURRICULUM_MODEL
- * (claude-sonnet-4-5), aber über die metered API (nicht die Routine, siehe
+ * (claude-sonnet-5), aber über die metered API (nicht die Routine, siehe
  * routineBlueprintProvider-Kommentar oben zur selben Einschränkung).
  */
 export const anthropicSonnetRepairProvider: CourseContentProvider = {

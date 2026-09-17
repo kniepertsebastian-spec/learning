@@ -6,7 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
  * (generateBlueprintDraft) - beide brauchen eher Design-/Extraktions-Urteil
  * als reine Textgenerierung, daher das teurere Modell.
  */
-export const CURRICULUM_MODEL = process.env.CLAUDE_CURRICULUM_MODEL || "claude-sonnet-4-5";
+export const CURRICULUM_MODEL = process.env.CLAUDE_CURRICULUM_MODEL || "claude-sonnet-5";
 
 /**
  * content:draft-lessons (Lektionen + Fragen pro Objective, viele Dutzend
