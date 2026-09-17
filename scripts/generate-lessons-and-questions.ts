@@ -16,6 +16,7 @@ import {
   generateGroundedLessonsAndQuestionsForObjective,
   generateLessonsAndQuestionsForObjective,
 } from "../lib/server/ai/service";
+import { LESSONS_MODEL } from "../lib/claude";
 import { getObjectiveSourceExcerpts } from "../lib/server/admin/objective-sources";
 import { QualityCheckService } from "../lib/server/admin/quality-checks";
 import type { Localized } from "../lib/types";
@@ -25,12 +26,14 @@ import type { LessonReviewStatus } from "../lib/server/db/schema";
  * Erzeugt Lesson-Inhalt (Dev-Order Schritt 6) und einen Fragen-Pool
  * (Dev-Order Schritt 7) für jedes Objective, das noch keine hat - EIN Call pro
  * Objective (siehe generateLessonsAndQuestionsForObjective: ursprünglich zwei
- * Calls, zusammengelegt nachdem Geminis Free-Tier live ein hartes Limit von
- * 20 Requests/Tag pro Modell zeigte). Idempotent pro Objective, läuft auf
- * bereits von scripts/generate-curriculum-draft.ts erzeugten
- * Objectives/Sections. Bei RESOURCE_EXHAUSTED (429, Tageslimit) bricht das
- * Skript einfach ab - erneutes Ausführen (auch an einem späteren Tag) setzt
- * dank Idempotenz beim nächsten unfertigen Objective fort.
+ * Calls, zusammengelegt nachdem Geminis, dem ursprünglichen KI-Anbieter
+ * (siehe roadmap2.md), Free-Tier live ein hartes Limit von 20 Requests/Tag
+ * pro Modell zeigte - nach dem Wechsel zur Anthropic Claude API weiterhin so
+ * kombiniert, da es die Anzahl nötiger Calls halbiert). Idempotent pro
+ * Objective, läuft auf bereits von scripts/generate-curriculum-draft.ts
+ * erzeugten Objectives/Sections. Bei einem Rate-Limit (429) bricht das
+ * Skript einfach ab - erneutes Ausführen setzt dank Idempotenz beim nächsten
+ * unfertigen Objective fort.
  *
  * Zertifikat wird per CLI-Argument gewählt (Default: security-plus-sy0-701,
  * damit bestehende Aufrufe ohne Argument weiterlaufen). Der humanId-Präfix
@@ -255,7 +258,7 @@ async function main() {
         keyTakeaways: draft.keyTakeaways,
         examFocusPoints: draft.examFocusPoints,
         promptVersion: grounded ? "v2-grounded" : "v2",
-        modelVersion: process.env.GEMINI_MODEL || "gemini-3.6-flash",
+        modelVersion: LESSONS_MODEL,
         sourceVersionId,
         reviewStatus: draft.reviewStatus,
       };

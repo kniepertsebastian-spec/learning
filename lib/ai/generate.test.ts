@@ -1,59 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
 import {
   normalizeGeneratedAliases,
-  parseProviderRetryDelayMs,
+  parseRetryAfterHeaderMs,
   sanitizeJsonControlChars,
-  toGeminiSchema,
 } from "./generate";
 
-function geminiErrorWithDetails(details: unknown[]): Error {
-  return new Error(
-    JSON.stringify({
-      error: {
-        code: 429,
-        message: "You exceeded your current quota, please check your plan and billing details.",
-        status: "RESOURCE_EXHAUSTED",
-        details,
-      },
-    }),
-  );
+function anthropicErrorWithRetryAfter(retryAfter: string | null): unknown {
+  return { status: 429, headers: new Headers(retryAfter !== null ? { "retry-after": retryAfter } : {}) };
 }
 
-describe("parseProviderRetryDelayMs", () => {
-  it("reads the RetryInfo retryDelay (in seconds) from a Gemini 429 error body", () => {
-    const error = geminiErrorWithDetails([
-      { "@type": "type.googleapis.com/google.rpc.QuotaFailure", violations: [] },
-      { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "21s" },
-    ]);
-    expect(parseProviderRetryDelayMs(error)).toBe(21_000);
+describe("parseRetryAfterHeaderMs", () => {
+  it("reads the retry-after header (in seconds) from a 429 error", () => {
+    const error = anthropicErrorWithRetryAfter("21");
+    expect(parseRetryAfterHeaderMs(error)).toBe(21_000);
   });
 
   it("handles fractional-second delays", () => {
-    const error = geminiErrorWithDetails([
-      { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "1.5s" },
-    ]);
-    expect(parseProviderRetryDelayMs(error)).toBe(1_500);
+    const error = anthropicErrorWithRetryAfter("1.5");
+    expect(parseRetryAfterHeaderMs(error)).toBe(1_500);
   });
 
   it("caps an implausibly long provider delay instead of sleeping forever", () => {
-    const error = geminiErrorWithDetails([
-      { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "9999s" },
-    ]);
-    expect(parseProviderRetryDelayMs(error)).toBe(120_000);
+    const error = anthropicErrorWithRetryAfter("9999");
+    expect(parseRetryAfterHeaderMs(error)).toBe(120_000);
   });
 
-  it("returns undefined when there is no RetryInfo detail", () => {
-    const error = geminiErrorWithDetails([
-      { "@type": "type.googleapis.com/google.rpc.QuotaFailure", violations: [] },
-    ]);
-    expect(parseProviderRetryDelayMs(error)).toBeUndefined();
+  it("returns undefined when there is no retry-after header", () => {
+    const error = anthropicErrorWithRetryAfter(null);
+    expect(parseRetryAfterHeaderMs(error)).toBeUndefined();
   });
 
-  it("returns undefined for a non-JSON or unrelated error message", () => {
-    expect(parseProviderRetryDelayMs(new Error("ECONNRESET"))).toBeUndefined();
-    expect(parseProviderRetryDelayMs("not an error object")).toBeUndefined();
-    expect(parseProviderRetryDelayMs(null)).toBeUndefined();
+  it("returns undefined for an error without a headers object", () => {
+    expect(parseRetryAfterHeaderMs(new Error("ECONNRESET"))).toBeUndefined();
+    expect(parseRetryAfterHeaderMs("not an error object")).toBeUndefined();
+    expect(parseRetryAfterHeaderMs(null)).toBeUndefined();
   });
 });
 
@@ -72,9 +52,9 @@ describe("sanitizeJsonControlChars", () => {
   });
 
   it("escapes an arbitrary control character as \\u00XX", () => {
-    const raw = '{"a":"xy"}';
+    const raw = '{"a":"xy"}';
     const sanitized = sanitizeJsonControlChars(raw);
-    expect(JSON.parse(sanitized)).toEqual({ a: "xy" });
+    expect(JSON.parse(sanitized)).toEqual({ a: "xy" });
   });
 
   it("leaves already-valid JSON untouched", () => {
@@ -135,58 +115,5 @@ describe("normalizeGeneratedAliases", () => {
         { difficulty: "advanced", type: "knowledge" },
       ],
     });
-  });
-});
-
-describe("toGeminiSchema", () => {
-  function jsonSchemaFor(schema: z.ZodType): unknown {
-    return z.toJSONSchema(schema, { target: "draft-07", unrepresentable: "any" });
-  }
-
-  it("uppercases JSON Schema types to Gemini's Type enum", () => {
-    const schema = z.object({
-      name: z.string(),
-      age: z.number().int(),
-      active: z.boolean(),
-      tags: z.array(z.string()),
-    });
-    const result = toGeminiSchema(jsonSchemaFor(schema)) as Record<string, unknown>;
-    expect(result.type).toBe("OBJECT");
-    const properties = result.properties as Record<string, { type: unknown; items?: { type: unknown } }>;
-    expect(properties.name.type).toBe("STRING");
-    expect(properties.age.type).toBe("INTEGER");
-    expect(properties.active.type).toBe("BOOLEAN");
-    expect(properties.tags.type).toBe("ARRAY");
-    expect(properties.tags.items?.type).toBe("STRING");
-  });
-
-  it("sets format:'enum' alongside enum, as Gemini's Schema type requires", () => {
-    const schema = z.object({ difficulty: z.enum(["beginner", "intermediate", "advanced"]) });
-    const result = toGeminiSchema(jsonSchemaFor(schema)) as { properties: { difficulty: Record<string, unknown> } };
-    expect(result.properties.difficulty.enum).toEqual(["beginner", "intermediate", "advanced"]);
-    expect(result.properties.difficulty.format).toBe("enum");
-  });
-
-  it("converts minItems/maxItems to strings (Gemini's Schema type, unlike JSON Schema, declares them as strings)", () => {
-    const schema = z.object({ options: z.array(z.string()).length(4) });
-    const result = toGeminiSchema(jsonSchemaFor(schema)) as { properties: { options: Record<string, unknown> } };
-    expect(result.properties.options.minItems).toBe("4");
-    expect(result.properties.options.maxItems).toBe("4");
-  });
-
-  it("drops keys Gemini's Schema type does not support ($schema, additionalProperties)", () => {
-    const schema = z.object({ a: z.string() });
-    const result = toGeminiSchema(jsonSchemaFor(schema)) as Record<string, unknown>;
-    expect(result.$schema).toBeUndefined();
-    expect(result.additionalProperties).toBeUndefined();
-  });
-
-  it("keeps required, matching the real lessons/questions response schema shape", () => {
-    const schema = z.object({
-      lessons: z.array(z.object({ content: z.string() })).min(1),
-      questions: z.array(z.object({ difficulty: z.enum(["beginner", "intermediate", "advanced"]) })).min(5).max(10),
-    });
-    const result = toGeminiSchema(jsonSchemaFor(schema)) as { required: string[] };
-    expect(result.required).toEqual(["lessons", "questions"]);
   });
 });

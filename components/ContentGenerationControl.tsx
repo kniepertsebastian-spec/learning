@@ -14,7 +14,7 @@ interface Job {
   error: string | null;
   errorClass: string | null;
   /** R6 (roadmap.md): "Modell, Tokenverbrauch und geschätzte Kosten pro
-   * Job" - model ist erst gesetzt, sobald der erste Gemini-Aufruf
+   * Job" - model ist erst gesetzt, sobald der erste Claude-Aufruf
    * zurückkam, totalTokens/estimatedCostUsd wachsen live mit (siehe
    * trackUsageLine() in content-generation.ts). */
   model: string | null;

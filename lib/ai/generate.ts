@@ -1,6 +1,7 @@
-import { z, type ZodType } from "zod";
-import { Type } from "@google/genai";
-import { GEMINI_MODEL, getGeminiClient } from "@/lib/gemini";
+import type { ZodType } from "zod";
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { getClaudeClient } from "@/lib/claude";
 
 export class AIGenerationError extends Error {
   constructor(
@@ -12,10 +13,13 @@ export class AIGenerationError extends Error {
   }
 }
 
-const RETRYABLE_HTTP_STATUSES = new Set([429, 500, 502, 503, 504]);
+// Anthropic 429 (rate_limit_error) und >=500 (api_error/overloaded_error)
+// sind transient - siehe error-codes.md des claude-api-Skills.
+const RETRYABLE_HTTP_STATUSES = new Set([429, 500, 529]);
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RETRY_BASE_MS = 2_000;
 const MAX_RETRY_DELAY_MS = 30_000;
+const MAX_PROVIDER_RETRY_DELAY_MS = 120_000;
 
 function positiveIntegerFromEnv(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
@@ -24,36 +28,17 @@ function positiveIntegerFromEnv(value: string | undefined, fallback: number): nu
 
 function errorStatus(error: unknown): number | undefined {
   if (!error || typeof error !== "object") return undefined;
-
-  for (const key of ["status", "code"] as const) {
-    const value = Reflect.get(error, key);
-    if (typeof value === "number") return value;
-  }
-
-  const nested = Reflect.get(error, "error");
-  if (nested && typeof nested === "object") {
-    const value = Reflect.get(nested, "code");
-    if (typeof value === "number") return value;
-  }
-
-  return undefined;
+  const value = Reflect.get(error, "status");
+  return typeof value === "number" ? value : undefined;
 }
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function isRetryableGeminiError(error: unknown): boolean {
+function isRetryableAnthropicError(error: unknown): boolean {
   const status = errorStatus(error);
   const message = errorMessage(error);
-
-  // A daily free-tier quota cannot recover within this process. Preserve the
-  // existing fail-fast behavior so the idempotent content script can resume
-  // on a later day instead of sleeping and issuing guaranteed-to-fail calls.
-  if (status === 429 && /requests?perday|perdayperproject|daily quota/i.test(message)) {
-    return false;
-  }
-
   return (
     (status !== undefined && RETRYABLE_HTTP_STATUSES.has(status)) ||
     /ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i.test(message)
@@ -64,126 +49,24 @@ function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-const MAX_PROVIDER_RETRY_DELAY_MS = 120_000;
-
 /**
- * Extrahiert Googles RetryInfo (google.rpc.RetryInfo, z. B. `{"retryDelay":
- * "21s"}` innerhalb von `error.details[]`) aus einer Gemini-429-Antwort. Das
- * @google/genai-SDK gibt keine strukturierten Details her - `ApiError.message`
- * ist der per JSON.stringify() serialisierte komplette Fehler-Body (siehe
- * node_modules/@google/genai .../throwErrorIfNotOK), daher wird hier erneut
- * geparst. Ohne das würde bei kurzzeitigem Rate Limiting immer nur die eigene
- * (ggf. zu kurze oder zu lange) exponentielle Schätzung verwendet statt der
- * vom Provider vorgegebenen Wartezeit (R0.1 in roadmap.md).
+ * Liest den `retry-after`-Header (Sekunden) einer 429-Antwort aus - die
+ * Anthropic-SDK-Fehlerklassen legen die Response-Headers als `.headers`
+ * (Web-`Headers`-Objekt) auf den Error. Ohne das würde bei kurzzeitigem Rate
+ * Limiting immer nur die eigene (ggf. zu kurze oder zu lange) exponentielle
+ * Schätzung verwendet statt der vom Provider vorgegebenen Wartezeit (R0.1 in
+ * roadmap.md).
  */
-export function parseProviderRetryDelayMs(error: unknown): number | undefined {
-  const message = errorMessage(error);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(message);
-  } catch {
-    return undefined;
-  }
-  if (!parsed || typeof parsed !== "object") return undefined;
+export function parseRetryAfterHeaderMs(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const headers = Reflect.get(error, "headers");
+  if (!headers || typeof (headers as Headers).get !== "function") return undefined;
 
-  const details = Reflect.get(Reflect.get(parsed, "error") ?? {}, "details");
-  if (!Array.isArray(details)) return undefined;
-
-  for (const detail of details) {
-    if (!detail || typeof detail !== "object") continue;
-    const retryDelay = Reflect.get(detail, "retryDelay");
-    if (typeof retryDelay !== "string") continue;
-
-    const match = /^(\d+(?:\.\d+)?)s$/.exec(retryDelay.trim());
-    if (!match) continue;
-    const seconds = Number.parseFloat(match[1]);
-    if (Number.isFinite(seconds) && seconds >= 0) {
-      return Math.min(seconds * 1_000, MAX_PROVIDER_RETRY_DELAY_MS);
-    }
-  }
-  return undefined;
-}
-
-const JSON_SCHEMA_TYPE_TO_GEMINI: Record<string, Type> = {
-  string: Type.STRING,
-  number: Type.NUMBER,
-  integer: Type.INTEGER,
-  boolean: Type.BOOLEAN,
-  array: Type.ARRAY,
-  object: Type.OBJECT,
-  null: Type.NULL,
-};
-
-/**
- * responseJsonSchema (das neuere, JSON-Schema-basierte Feld) wurde in diesem
- * Deployment bei JEDEM einzelnen Aufruf mit 400 INVALID_ARGUMENT abgelehnt
- * (siehe modelsWithoutStructuredOutputSupport) - laut Kommentar zu
- * maybeMoveToResponseJsonSchema in node_modules/@google/genai existiert das
- * ältere responseSchema (Googles eigenes, GROSSGESCHRIEBENES OpenAPI-3.0-
- * Subset) schon deutlich länger und wird daher von mehr Modellen unterstützt.
- * Wandelt das ohnehin vorhandene Draft-07-JSON-Schema (z.toJSONSchema) in
- * dieses Format um, statt eine zweite, parallele Schema-Repräsentation zu
- * pflegen. Keine unserer Schemas nutzt $ref/$defs/oneOf/prefixItems (siehe
- * Zod-Definitionen in lib/server/ai/schemas.ts) - die werden hier bewusst
- * nicht übernommen, Google's Schema-Typ unterstützt sie ohnehin nicht.
- */
-export function toGeminiSchema(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(toGeminiSchema);
-  if (!value || typeof value !== "object") return value;
-
-  const result: Record<string, unknown> = {};
-  for (const [key, child] of Object.entries(value)) {
-    switch (key) {
-      case "type":
-        if (typeof child === "string" && child in JSON_SCHEMA_TYPE_TO_GEMINI) {
-          result.type = JSON_SCHEMA_TYPE_TO_GEMINI[child];
-        }
-        break;
-      case "properties":
-        result.properties = Object.fromEntries(
-          Object.entries(child as Record<string, unknown>).map(([k, v]) => [k, toGeminiSchema(v)]),
-        );
-        break;
-      case "items":
-        result.items = toGeminiSchema(child);
-        break;
-      case "enum":
-        // Google verlangt zusätzlich format:"enum", damit enum überhaupt
-        // ausgewertet wird (siehe Schema-Doku in node_modules/@google/genai).
-        result.enum = child;
-        result.format = "enum";
-        break;
-      case "minItems":
-      case "maxItems":
-      case "minLength":
-      case "maxLength":
-        // Bei Google sind das (anders als minimum/maximum) string-Felder.
-        result[key] = typeof child === "number" ? String(child) : child;
-        break;
-      case "required":
-      case "minimum":
-      case "maximum":
-      case "description":
-      case "title":
-      case "pattern":
-        result[key] = child;
-        break;
-      default:
-        // $schema, $id, $defs, $ref, $anchor, oneOf, prefixItems,
-        // additionalProperties, propertyOrdering: von Google's Schema-Typ
-        // nicht unterstützt bzw. hier nicht benötigt.
-        break;
-    }
-  }
-  return result;
-}
-
-function buildGeminiSchema<T>(schema: ZodType<T>): Record<string, unknown> {
-  const jsonSchema = z.toJSONSchema(schema, {
-    target: "draft-07",
-    unrepresentable: "any",
-  });
-  return toGeminiSchema(jsonSchema) as Record<string, unknown>;
+  const raw = (headers as Headers).get("retry-after");
+  if (!raw) return undefined;
+  const seconds = Number.parseFloat(raw);
+  if (!Number.isFinite(seconds) || seconds < 0) return undefined;
+  return Math.min(seconds * 1_000, MAX_PROVIDER_RETRY_DELAY_MS);
 }
 
 /**
@@ -228,10 +111,10 @@ function extractJson(text: string): string {
 }
 
 /**
- * Gemini gelegentlich Antworten mit rohen Steuerzeichen (z. B. einem
- * buchstäblichen Zeilenumbruch statt \n) innerhalb eines String-Literals
- * zurück - JSON.parse lehnt das mit "Bad control character in string
- * literal" ab, obwohl der Rest der Antwort valide ist. Läuft mit derselben
+ * Verteidigungslinie gegen rohe Steuerzeichen (z. B. einen buchstäblichen
+ * Zeilenumbruch statt \n) innerhalb eines String-Literals der KI-Antwort -
+ * JSON.parse lehnt das mit "Bad control character in string literal" ab,
+ * obwohl der Rest der Antwort valide ist. Läuft mit derselben
  * String-Zustandsverfolgung wie extractJson() und escaped jedes rohe
  * Steuerzeichen (< 0x20), das innerhalb eines String-Literals auftaucht.
  */
@@ -338,17 +221,15 @@ const QUESTION_TYPE_ALIASES: Record<
 };
 
 /**
- * Gemini ignoriert ein Enum gelegentlich (v. a. wenn responseSchema
- * nicht unterstützt wird, siehe modelsWithoutStructuredOutputSupport) und
- * liefert stattdessen ein Synonym (z. B. "medium") oder einen völlig
- * anderen Wert statt des exakten vom Schema geforderten Tokens - das hat
- * bisher die gesamte Content-Generierung mitten in einem Lauf mit einem
- * Zod-Validierungsfehler abgebrochen. Normalisiert bekannte Synonyme UND
- * fällt bei einem weiterhin unbekannten Wert auf einen sinnvollen Default
- * zurück, damit diese beiden Enum-Felder IMMER validieren - eine falsch
- * eingeordnete Schwierigkeit/Frageart im seltenen Fall eines unbekannten
- * Werts kostet deutlich weniger als der komplette Verlust ansonsten guter
- * Lessons/Fragen für ein Objective durch einen harten Abbruch.
+ * Verteidigungslinie gegen ein Enum-Feld, das trotz Structured-Output-Zwang
+ * (`output_config.format`, siehe requestJson) ein Synonym (z. B. "medium")
+ * oder einen unbekannten Wert statt des exakten vom Schema geforderten
+ * Tokens enthält. Normalisiert bekannte Synonyme UND fällt bei einem
+ * weiterhin unbekannten Wert auf einen sinnvollen Default zurück, damit diese
+ * beiden Enum-Felder IMMER validieren - eine falsch eingeordnete
+ * Schwierigkeit/Frageart im seltenen Fall eines unbekannten Werts kostet
+ * deutlich weniger als der komplette Verlust ansonsten guter Lessons/Fragen
+ * für ein Objective durch einen harten Abbruch.
  */
 export function normalizeGeneratedAliases(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalizeGeneratedAliases);
@@ -369,44 +250,30 @@ export function normalizeGeneratedAliases(value: unknown): unknown {
   );
 }
 
-/**
- * Manche Gemini-Modelle lehnen responseSchema grundsätzlich ab (400
- * INVALID_ARGUMENT), unabhängig vom konkreten Schema-Inhalt - siehe den
- * Fallback weiter unten. Ohne dieses Set würde ein Skriptlauf wie
- * content:draft-lessons (viele Dutzend generateStructured()-Aufrufe
- * hintereinander) bei JEDEM einzelnen Objective erneut denselben
- * garantiert scheiternden Versuch samt Netzwerk-Roundtrip bezahlen, statt
- * es sich für den Rest des Prozesslaufs zu merken.
- */
-const modelsWithoutStructuredOutputSupport = new Set<string>();
-
 async function requestJson(
   systemPrompt: string,
   userPrompt: string,
-  responseSchema: Record<string, unknown>,
+  outputFormat: Anthropic.JSONOutputFormat,
+  model: string,
 ): Promise<string> {
-  const client = getGeminiClient();
+  const client = getClaudeClient();
   const maxAttempts = positiveIntegerFromEnv(
-    process.env.GEMINI_MAX_ATTEMPTS,
+    process.env.ANTHROPIC_MAX_ATTEMPTS,
     DEFAULT_MAX_ATTEMPTS,
   );
   const retryBaseMs = positiveIntegerFromEnv(
-    process.env.GEMINI_RETRY_BASE_MS,
+    process.env.ANTHROPIC_RETRY_BASE_MS,
     DEFAULT_RETRY_BASE_MS,
   );
-  let schemaEnabled = !modelsWithoutStructuredOutputSupport.has(GEMINI_MODEL);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await client.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: userPrompt,
-        config: {
-          systemInstruction: systemPrompt,
-          responseMimeType: "application/json",
-          ...(schemaEnabled ? { responseSchema } : {}),
-          maxOutputTokens: 16000,
-        },
+      const response = await client.messages.create({
+        model,
+        max_tokens: 16000,
+        system: systemPrompt,
+        output_config: { format: outputFormat },
+        messages: [{ role: "user", content: userPrompt }],
       });
 
       // R6 (roadmap.md): "Modell, Tokenverbrauch ... pro Job" - maschinell
@@ -416,42 +283,31 @@ async function requestJson(
       // Kindprozess, stdout ist der einzige Kanal zurück zum Job-Tracking.
       // Wird für JEDEN Antwortversuch geloggt, nicht nur bei Erfolg -
       // abgelehnte/verworfene Antworten wurden vom Anbieter trotzdem
-      // abgerechnet.
-      const usage = response.usageMetadata;
-      if (usage) {
-        console.log(
-          `USAGE model=${GEMINI_MODEL} promptTokens=${usage.promptTokenCount ?? 0} completionTokens=${usage.candidatesTokenCount ?? 0} totalTokens=${usage.totalTokenCount ?? 0}`,
-        );
-      }
+      // abgerechnet. Anthropic liefert keine "total"-Summe wie Gemini, daher
+      // hier selbst addiert.
+      const usage = response.usage;
+      const promptTokens = usage.input_tokens ?? 0;
+      const completionTokens = usage.output_tokens ?? 0;
+      console.log(
+        `USAGE model=${model} promptTokens=${promptTokens} completionTokens=${completionTokens} totalTokens=${promptTokens + completionTokens}`,
+      );
 
-      const text = response.text;
-      if (!text) {
-        throw new AIGenerationError("Gemini hat keine Textantwort zurückgegeben.");
+      const textBlock = response.content.find(
+        (block): block is Anthropic.TextBlock => block.type === "text",
+      );
+      if (!textBlock?.text) {
+        throw new AIGenerationError("Claude hat keine Textantwort zurückgegeben.");
       }
-      return text;
+      return textBlock.text;
     } catch (error) {
-      if (
-        schemaEnabled &&
-        errorStatus(error) === 400 &&
-        /invalid argument/i.test(errorMessage(error))
-      ) {
-        // Older/limited Gemini models may reject structured-output schemas.
-        // Fall back to the explicit JSON prompt + normal Zod validation rather
-        // than making the entire offline content-generation job unusable.
-        schemaEnabled = false;
-        modelsWithoutStructuredOutputSupport.add(GEMINI_MODEL);
-        console.warn(
-          "Gemini hat das strukturierte Ausgabeschema abgelehnt; erneuter Versuch mit Prompt-Validierung ...",
-        );
-        continue;
-      }
+      if (error instanceof AIGenerationError) throw error;
 
-      if (attempt === maxAttempts || !isRetryableGeminiError(error)) {
+      if (attempt === maxAttempts || !isRetryableAnthropicError(error)) {
         throw error;
       }
 
       const providerDelayMs =
-        errorStatus(error) === 429 ? parseProviderRetryDelayMs(error) : undefined;
+        errorStatus(error) === 429 ? parseRetryAfterHeaderMs(error) : undefined;
       const exponentialDelay = Math.min(
         retryBaseMs * 2 ** (attempt - 1),
         MAX_RETRY_DELAY_MS,
@@ -459,7 +315,7 @@ async function requestJson(
       const baseDelayMs = providerDelayMs ?? exponentialDelay;
       const delayMs = Math.round(baseDelayMs * (1 + Math.random() * 0.25));
       console.warn(
-        `Gemini vorübergehend nicht verfügbar (${errorStatus(error) ?? "Netzwerkfehler"}). ` +
+        `Claude vorübergehend nicht verfügbar (${errorStatus(error) ?? "Netzwerkfehler"}). ` +
           `Neuer Versuch ${attempt + 1}/${maxAttempts} in ${Math.ceil(delayMs / 1_000)}s` +
           (providerDelayMs !== undefined ? " (vom Provider vorgegeben)" : "") +
           " ...",
@@ -468,25 +324,30 @@ async function requestJson(
     }
   }
 
-  throw new AIGenerationError("Gemini-Anfrage konnte nicht verarbeitet werden.");
+  throw new AIGenerationError("Claude-Anfrage konnte nicht verarbeitet werden.");
 }
 
 const JSON_ONLY_INSTRUCTION =
   "\n\nAntworte AUSSCHLIESSLICH mit validem JSON, ohne Markdown-Codeblöcke und ohne Erklärtext davor oder danach.";
 
 /**
- * Fordert von Gemini striktes JSON an und validiert es gegen ein Zod-Schema.
- * Bei fehlerhafter Ausgabe (kein valides JSON oder Schema-Verstoß) wird einmal
- * eine Reparatur-Anfrage gestellt, bevor endgültig ein AIGenerationError geworfen wird.
+ * Fordert von Claude strukturiertes JSON an (`output_config.format`, per
+ * Zod-Schema aus `@anthropic-ai/sdk/helpers/zod` gebaut, zwingt das Modell
+ * bereits beim Dekodieren auf das Schema statt es nur im Prompt zu verlangen)
+ * und validiert die Antwort zusätzlich selbst gegen dasselbe Zod-Schema. Bei
+ * fehlerhafter Ausgabe (kein valides JSON oder Schema-Verstoß) wird einmal
+ * eine Reparatur-Anfrage gestellt, bevor endgültig ein AIGenerationError
+ * geworfen wird.
  */
 export async function generateStructured<T>(
   systemPrompt: string,
   userPrompt: string,
   schema: ZodType<T>,
+  model: string,
 ): Promise<T> {
   const jsonSystemPrompt = `${systemPrompt}${JSON_ONLY_INSTRUCTION}`;
-  const responseSchema = buildGeminiSchema(schema);
-  let rawText = await requestJson(jsonSystemPrompt, userPrompt, responseSchema);
+  const outputFormat = zodOutputFormat(schema);
+  let rawText = await requestJson(jsonSystemPrompt, userPrompt, outputFormat, model);
 
   const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -500,7 +361,8 @@ export async function generateStructured<T>(
       rawText = await requestJson(
         jsonSystemPrompt,
         `Deine vorherige Antwort war kein valides JSON:\n${rawText}\n\nBitte antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
-        responseSchema,
+        outputFormat,
+        model,
       );
       continue;
     }
@@ -516,7 +378,8 @@ export async function generateStructured<T>(
     rawText = await requestJson(
       jsonSystemPrompt,
       `Deine vorherige Antwort erfüllte das erwartete Schema nicht (${result.error.message}):\n${rawText}\n\nBitte korrigiere sie und antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
-      responseSchema,
+      outputFormat,
+      model,
     );
   }
 

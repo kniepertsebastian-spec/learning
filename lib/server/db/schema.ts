@@ -507,15 +507,20 @@ export const contentGenerationJobs = pgTable(
      * beide als Kindprozess, siehe runNpmScript() in content-generation.ts)
      * hoch, nicht erst am Ende: bei einem Absturz mitten im Job bleibt der
      * bis dahin tatsächlich verbrauchte Verbrauch erhalten (jede
-     * `USAGE`-Zeile aus lib/ai/generate.ts aktualisiert die Zeile sofort). */
+     * `USAGE`-Zeile aus lib/ai/generate.ts aktualisiert die Zeile sofort).
+     * Curriculum- und Lessons-Phase nutzen unterschiedliche Claude-Modelle
+     * (siehe lib/claude.ts) - `model` listet alle in diesem Job tatsächlich
+     * verwendeten Modelle kommagetrennt, siehe trackUsageLine() in
+     * content-generation.ts. */
     model: text("model"),
     promptTokens: integer("prompt_tokens").notNull().default(0),
     completionTokens: integer("completion_tokens").notNull().default(0),
     totalTokens: integer("total_tokens").notNull().default(0),
     /** NULL solange keine Preise konfiguriert sind (siehe
-     * GEMINI_PRICE_PER_MILLION_*_TOKENS_USD) - eine geschätzte Zahl, die
-     * nicht mit der tatsächlichen Rechnung des Anbieters verwechselt werden
-     * darf, ist schlechter als gar keine. */
+     * ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_*_TOKENS_USD /
+     * ANTHROPIC_LESSONS_PRICE_PER_MILLION_*_TOKENS_USD) - eine geschätzte
+     * Zahl, die nicht mit der tatsächlichen Rechnung des Anbieters
+     * verwechselt werden darf, ist schlechter als gar keine. */
     estimatedCostUsd: numeric("estimated_cost_usd", { precision: 10, scale: 4 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),

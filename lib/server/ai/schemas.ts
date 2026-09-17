@@ -73,10 +73,10 @@ export const draftQuestionSchema = draftQuestionBaseSchema.refine(
 
 /**
  * Lessons + Questions in EINEM Call statt zwei (Dev-Order Schritt 6+7 kombiniert)
- * - Gemini's Free-Tier hat ein hartes Limit von 20 Requests/Tag pro Modell,
- * gemessen live über einen 429 "RESOURCE_EXHAUSTED" (Metric
- * `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, quotaValue 20). Halbiert
- * die Anzahl nötiger Calls (23 statt 46 für alle Objectives).
+ * - ursprünglich um Geminis (dem ursprünglichen KI-Anbieter, siehe
+ * roadmap2.md) hartes Free-Tier-Limit von 20 Requests/Tag pro Modell zu
+ * umgehen. Nach dem Wechsel zur Anthropic Claude API weiterhin so kombiniert,
+ * da es die Anzahl nötiger Calls halbiert (23 statt 46 für alle Objectives).
  */
 export const lessonsAndQuestionsForObjectiveResponseSchema = z.object({
   lessons: z.array(draftLessonSchema).min(1),

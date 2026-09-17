@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { GEMINI_MODEL } from "@/lib/gemini";
+import { CURRICULUM_MODEL } from "@/lib/claude";
 import { getDb } from "@/lib/server/db/client";
 import { blueprintDrafts, certificationSources, sourceChunks } from "@/lib/server/db/schema";
 import { generateBlueprintDraft, type BlueprintExtraction } from "@/lib/server/ai/service";
@@ -22,7 +22,7 @@ const MAX_SOURCE_TEXT_CHARS = 60_000;
  * erlaubte Quelle für generateBlueprintDraft() bekommt (siehe dort:
  * `locator` MUSS sich auf eine "== Seite N =="-Markierung beziehen). Für sehr
  * lange Dokumente wird bei `MAX_SOURCE_TEXT_CHARS` abgeschnitten statt den
- * gesamten Text zu senden (Kostenschutz + Gemini-Kontextgrenze) - `truncated`
+ * gesamten Text zu senden (Kostenschutz + Kontextgrenze des Modells) - `truncated`
  * macht das sichtbar, statt einen Teil des Dokuments still zu ignorieren.
  */
 export function buildSourceText(
@@ -253,7 +253,7 @@ export async function generateAndStoreBlueprintDraft(
       validationErrors: errors,
       warnings,
       truncatedSource: truncated,
-      modelVersion: GEMINI_MODEL,
+      modelVersion: CURRICULUM_MODEL,
       promptVersion: "v1",
       generatedByUserId: userId,
     })
@@ -269,7 +269,7 @@ export async function generateAndStoreBlueprintDraft(
         // überschriebene Objectives an denselben Positionen, siehe
         // lowConfidenceObjectiveKey() - müssen erneut geprüft werden.
         confirmedLowConfidenceObjectives: [],
-        modelVersion: GEMINI_MODEL,
+        modelVersion: CURRICULUM_MODEL,
         promptVersion: "v1",
         generatedByUserId: userId,
         editedByUserId: null,

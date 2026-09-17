@@ -33,7 +33,7 @@ export async function GET(
 
 /**
  * POST /api/admin/sources/:id/blueprint - R1.2: KI-Extraktion starten (ein
- * einzelner, kostenpflichtiger Gemini-Aufruf, daher rate-limited wie die
+ * einzelner, kostenpflichtiger Claude-Aufruf, daher rate-limited wie die
  * Content-Generierung in R0.3, mit eigenem Bucket).
  */
 export async function POST(
