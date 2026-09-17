@@ -1,17 +1,18 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/claude";
 import { classifyGenerationError, estimateCostUsd } from "./content-generation";
 
 describe("classifyGenerationError", () => {
   it("classifies an exhausted daily quota as 'quota', not just 'rate_limit'", () => {
     const output =
-      'ApiError: got status: 429. {"error":{"code":429,"message":"You exceeded your current quota",' +
-      '"status":"RESOURCE_EXHAUSTED","details":[{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}}';
+      'RateLimitError: 429 {"type":"error","error":{"type":"rate_limit_error",' +
+      '"message":"This request would exceed your organization\'s tokens per day limit"}}';
     expect(classifyGenerationError(output)).toBe("quota");
   });
 
   it("classifies a short-term 429 without daily-quota wording as 'rate_limit'", () => {
     const output =
-      'ApiError: got status: 429. {"error":{"code":429,"status":"RESOURCE_EXHAUSTED","message":"rate limit exceeded"}}';
+      'RateLimitError: 429 {"type":"error","error":{"type":"rate_limit_error","message":"Number of request tokens has exceeded your per-minute rate limit"}}';
     expect(classifyGenerationError(output)).toBe("rate_limit");
   });
 
@@ -27,9 +28,11 @@ describe("classifyGenerationError", () => {
   });
 
   it("classifies a 5xx or network failure as 'provider_outage'", () => {
-    expect(classifyGenerationError("ApiError: got status: 503. UNAVAILABLE")).toBe(
-      "provider_outage",
-    );
+    expect(
+      classifyGenerationError(
+        'InternalServerError: 529 {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}',
+      ),
+    ).toBe("provider_outage");
     expect(classifyGenerationError("FetchError: fetch failed (ECONNRESET)")).toBe(
       "provider_outage",
     );
@@ -40,15 +43,17 @@ describe("classifyGenerationError", () => {
       "internal",
     );
     expect(
-      classifyGenerationError("GeminiConfigError: GEMINI_API_KEY ist nicht gesetzt"),
+      classifyGenerationError("ClaudeConfigError: ANTHROPIC_API_KEY ist nicht gesetzt"),
     ).toBe("internal");
   });
 });
 
 describe("estimateCostUsd", () => {
   const ENV_KEYS = [
-    "GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD",
-    "GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD",
+    "ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD",
+    "ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD",
+    "ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD",
+    "ANTHROPIC_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD",
   ] as const;
   const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 
@@ -60,25 +65,39 @@ describe("estimateCostUsd", () => {
   });
 
   it("returns null when no pricing is configured, rather than inventing a number", () => {
-    delete process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD;
-    delete process.env.GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD;
-    expect(estimateCostUsd(1_000_000, 1_000_000)).toBeNull();
+    for (const key of ENV_KEYS) delete process.env[key];
+    expect(estimateCostUsd(1_000_000, 1_000_000, CURRICULUM_MODEL)).toBeNull();
   });
 
-  it("computes cost linearly from configured per-million prices", () => {
-    process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
-    process.env.GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "2";
-    expect(estimateCostUsd(500_000, 250_000)).toBeCloseTo(0.5 * 1 + 0.25 * 2, 6);
+  it("returns null for a model it has no price slot for, rather than guessing", () => {
+    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
+    process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
+    expect(estimateCostUsd(1_000_000, 1_000_000, "claude-opus-5")).toBeNull();
+  });
+
+  it("computes cost linearly from the curriculum model's configured per-million prices", () => {
+    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
+    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "2";
+    expect(estimateCostUsd(500_000, 250_000, CURRICULUM_MODEL)).toBeCloseTo(0.5 * 1 + 0.25 * 2, 6);
+  });
+
+  it("prices the lessons model independently from the curriculum model", () => {
+    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
+    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "15";
+    process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
+    process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "5";
+    expect(estimateCostUsd(1_000_000, 1_000_000, LESSONS_MODEL)).toBeCloseTo(1 + 5, 6);
+    expect(estimateCostUsd(1_000_000, 1_000_000, CURRICULUM_MODEL)).toBeCloseTo(3 + 15, 6);
   });
 
   it("uses only the configured side when the other price is unset", () => {
-    process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
-    delete process.env.GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD;
-    expect(estimateCostUsd(1_000_000, 999_999_999)).toBeCloseTo(3, 6);
+    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
+    delete process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD;
+    expect(estimateCostUsd(1_000_000, 999_999_999, CURRICULUM_MODEL)).toBeCloseTo(3, 6);
   });
 
   it("returns 0 for zero tokens when pricing is configured", () => {
-    process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "5";
-    expect(estimateCostUsd(0, 0)).toBe(0);
+    process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "5";
+    expect(estimateCostUsd(0, 0, LESSONS_MODEL)).toBe(0);
   });
 });

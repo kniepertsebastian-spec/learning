@@ -1,4 +1,5 @@
 import { generateStructured } from "@/lib/ai/generate";
+import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/claude";
 import {
   blueprintExtractionSchema,
   curriculumDraftForDomainResponseSchema,
@@ -63,6 +64,7 @@ export async function generateCurriculumDraftForDomain(
     systemPrompt,
     userPrompt,
     curriculumDraftForDomainResponseSchema,
+    CURRICULUM_MODEL,
   );
   return result.objectives;
 }
@@ -70,10 +72,11 @@ export async function generateCurriculumDraftForDomain(
 /**
  * Generiert Lerninhalt (alle Sections) UND den Fragen-Pool EINES Objectives in
  * einem einzigen Call (Dev-Order Schritt 6+7 kombiniert). Ursprünglich zwei
- * getrennte Calls - zusammengelegt, nachdem Geminis Free-Tier live ein hartes
- * Limit von 20 Requests/Tag pro Modell zeigte (429 RESOURCE_EXHAUSTED,
- * `GenerateRequestsPerDayPerProjectPerModel-FreeTier`). Halbiert die nötigen
- * Calls für alle 23 Objectives von 46 auf 23.
+ * getrennte Calls - zusammengelegt, nachdem Geminis (dem ursprünglichen
+ * KI-Anbieter, siehe roadmap2.md) Free-Tier live ein hartes Limit von 20
+ * Requests/Tag pro Modell zeigte. Nach dem Wechsel zur Anthropic Claude API
+ * weiterhin so kombiniert, da es die nötigen Calls für alle 23 Objectives
+ * von 46 auf 23 halbiert - unabhängig vom konkreten Anbieter sinnvoll.
  */
 export async function generateLessonsAndQuestionsForObjective(
   certificationName: string,
@@ -132,7 +135,12 @@ export async function generateLessonsAndQuestionsForObjective(
 
   const userPrompt = `Generiere Lerninhalt + Fragen-Pool für Objective "${objectiveTitle}".`;
 
-  return generateStructured(systemPrompt, userPrompt, lessonsAndQuestionsForObjectiveResponseSchema);
+  return generateStructured(
+    systemPrompt,
+    userPrompt,
+    lessonsAndQuestionsForObjectiveResponseSchema,
+    LESSONS_MODEL,
+  );
 }
 
 /**
@@ -185,7 +193,7 @@ export async function generateRemediationForObjective(
 
   const userPrompt = `Generiere Remediations-Lektion und Übungsfragen für "${objectiveTitle}".`;
 
-  return generateStructured(systemPrompt, userPrompt, remediationResponseSchema);
+  return generateStructured(systemPrompt, userPrompt, remediationResponseSchema, LESSONS_MODEL);
 }
 
 /**
@@ -233,7 +241,7 @@ export async function generateBlueprintDraft(sourceText: string): Promise<Bluepr
     sourceText,
   ].join("\n");
 
-  return generateStructured(systemPrompt, userPrompt, blueprintExtractionSchema);
+  return generateStructured(systemPrompt, userPrompt, blueprintExtractionSchema, CURRICULUM_MODEL);
 }
 
 export interface GroundedLessonsAndQuestions {
@@ -328,5 +336,10 @@ export async function generateGroundedLessonsAndQuestionsForObjective(
 
   const userPrompt = `Generiere quellengebundenen Lerninhalt + Fragen-Pool für Objective "${objectiveTitle}".`;
 
-  return generateStructured(systemPrompt, userPrompt, groundedLessonsAndQuestionsResponseSchema);
+  return generateStructured(
+    systemPrompt,
+    userPrompt,
+    groundedLessonsAndQuestionsResponseSchema,
+    LESSONS_MODEL,
+  );
 }

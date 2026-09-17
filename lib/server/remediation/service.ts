@@ -64,7 +64,7 @@ export class RemediationService {
    * objective if one exists (reuses its cached content, no AI call), or
    * generates one once and persists the content. Previously this generated
    * fresh content on every call (and the API route generated ANOTHER copy on
-   * top of that) - two live, billed Gemini calls per page load, discarded
+   * top of that) - two live, billed Claude calls per page load, discarded
    * after use. Now: one AI call per user+objective, ever, unless the learner
    * explicitly asks for a fresh one via `forceRegenerate`.
    */

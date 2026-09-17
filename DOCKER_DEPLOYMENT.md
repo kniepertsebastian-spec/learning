@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - Docker & Docker Compose installed
-- Gemini API key (get free tier at https://ai.google.dev)
+- Anthropic API key (https://console.anthropic.com/settings/keys)
 - Cloudflare Tunnel token (for the `cloudflared` service in docker-compose.yml)
 
 ## Quick Start (5 minutes)
@@ -24,7 +24,7 @@ nano .env
 # Set:
 # - DB_USER & DB_PASSWORD (used by both PostgreSQL and app)
 # - AUTH_SECRET (generate: openssl rand -base64 32)
-# - GEMINI_API_KEY (from Google AI Studio)
+# - ANTHROPIC_API_KEY (from https://console.anthropic.com/settings/keys)
 # - TUNNEL_TOKEN (for the cloudflared service)
 
 # Important: DB_USER and DB_PASSWORD are shared between PostgreSQL and the app's
@@ -218,7 +218,7 @@ server {
 | `DATABASE_URL` | Full connection string | Yes | App only | Auto-generated from DB_* vars |
 | `AUTH_SECRET` | Session encryption key (Auth.js) | Yes | App | Generate: `openssl rand -base64 32` |
 | `TUNNEL_TOKEN` | Cloudflare Tunnel token | Yes | cloudflared | From Zero Trust dashboard |
-| `GEMINI_API_KEY` | Google Gemini API key | No | App | From https://ai.google.dev |
+| `ANTHROPIC_API_KEY` | Anthropic Claude API key | No | App | From https://console.anthropic.com/settings/keys |
 | `NODE_ENV` | Environment mode | Yes | App | Set to `production` |
 
 **Important:** `DB_USER` and `DB_PASSWORD` are shared between PostgreSQL container (POSTGRES_USER, POSTGRES_PASSWORD) and the app's DATABASE_URL. They must match.

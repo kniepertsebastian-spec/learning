@@ -14,7 +14,7 @@ const registerRequestSchema = z.object({
 /**
  * Registration is gated by an email allowlist (comma-separated
  * REGISTRATION_ALLOWED_EMAILS env var). Without this, anyone who finds the
- * app can create accounts that trigger live, billed Gemini API calls (e.g.
+ * app can create accounts that trigger live, billed Claude API calls (e.g.
  * via the remediation endpoint) against the deployer's own key - there is no
  * per-user billing or invite system, so open registration means open access
  * to a paid API key. If the env var is unset, registration is closed

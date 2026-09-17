@@ -1,14 +1,14 @@
-import { ApiError } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { GeminiConfigError } from "@/lib/gemini";
+import { ClaudeConfigError } from "@/lib/claude";
 import { AIGenerationError } from "./generate";
 
 /**
  * Wandelt Fehler aus Request-Validierung und KI-Generierung in aussagekräftige
- * HTTP-Antworten um. Gemini's SDK (anders als die OpenAI-SDK) hat keine
- * getrennten Error-Klassen pro Fehlerart, nur die eine `ApiError` mit einem
- * HTTP-`status`-Feld - daher hier die Unterscheidung per Statuscode.
+ * HTTP-Antworten um. Die Anthropic-SDK hat pro HTTP-Status eine eigene
+ * Error-Klasse (siehe error-codes.md des claude-api-Skills) - daher hier von
+ * spezifisch zu allgemein geprüft, statt nur auf den Statuscode zu schauen.
  */
 export function toErrorResponse(error: unknown): NextResponse {
   if (error instanceof ZodError) {
@@ -22,26 +22,31 @@ export function toErrorResponse(error: unknown): NextResponse {
     return NextResponse.json({ error: error.message }, { status: 502 });
   }
 
-  if (error instanceof GeminiConfigError) {
+  if (error instanceof ClaudeConfigError) {
     return NextResponse.json(
-      { error: "Server ist nicht korrekt konfiguriert (GEMINI_API_KEY)." },
+      { error: "Server ist nicht korrekt konfiguriert (ANTHROPIC_API_KEY)." },
       { status: 500 },
     );
   }
 
-  if (error instanceof ApiError) {
-    if (error.status === 401 || error.status === 403) {
-      return NextResponse.json(
-        { error: "Server ist nicht korrekt konfiguriert (GEMINI_API_KEY)." },
-        { status: 500 },
-      );
-    }
-    if (error.status === 429) {
-      return NextResponse.json(
-        { error: "Rate-Limit der KI-API erreicht. Bitte später erneut versuchen." },
-        { status: 429 },
-      );
-    }
+  if (
+    error instanceof Anthropic.AuthenticationError ||
+    error instanceof Anthropic.PermissionDeniedError
+  ) {
+    return NextResponse.json(
+      { error: "Server ist nicht korrekt konfiguriert (ANTHROPIC_API_KEY)." },
+      { status: 500 },
+    );
+  }
+
+  if (error instanceof Anthropic.RateLimitError) {
+    return NextResponse.json(
+      { error: "Rate-Limit der KI-API erreicht. Bitte später erneut versuchen." },
+      { status: 429 },
+    );
+  }
+
+  if (error instanceof Anthropic.APIError) {
     return NextResponse.json({ error: error.message }, { status: 502 });
   }
 
