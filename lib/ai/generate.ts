@@ -250,11 +250,18 @@ export function normalizeGeneratedAliases(value: unknown): unknown {
   );
 }
 
+export interface AIUsage {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+}
+
 async function requestJson(
   systemPrompt: string,
   userPrompt: string,
   outputFormat: Anthropic.JSONOutputFormat,
   model: string,
+  onUsage?: (usage: AIUsage) => void,
 ): Promise<string> {
   const client = getClaudeClient();
   const maxAttempts = positiveIntegerFromEnv(
@@ -291,6 +298,10 @@ async function requestJson(
       console.log(
         `USAGE model=${model} promptTokens=${promptTokens} completionTokens=${completionTokens} totalTokens=${promptTokens + completionTokens}`,
       );
+      // Zusätzlicher Hook für In-Prozess-Aufrufer ohne Kindprozess-stdout
+      // (z.B. lib/server/course-generation/worker.ts) - die stdout-Zeile
+      // oben bleibt unverändert die Quelle für runNpmScript()-basierte Jobs.
+      onUsage?.({ model, promptTokens, completionTokens });
 
       const textBlock = response.content.find(
         (block): block is Anthropic.TextBlock => block.type === "text",
@@ -344,10 +355,11 @@ export async function generateStructured<T>(
   userPrompt: string,
   schema: ZodType<T>,
   model: string,
+  onUsage?: (usage: AIUsage) => void,
 ): Promise<T> {
   const jsonSystemPrompt = `${systemPrompt}${JSON_ONLY_INSTRUCTION}`;
   const outputFormat = zodOutputFormat(schema);
-  let rawText = await requestJson(jsonSystemPrompt, userPrompt, outputFormat, model);
+  let rawText = await requestJson(jsonSystemPrompt, userPrompt, outputFormat, model, onUsage);
 
   const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -363,6 +375,7 @@ export async function generateStructured<T>(
         `Deine vorherige Antwort war kein valides JSON:\n${rawText}\n\nBitte antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
         outputFormat,
         model,
+        onUsage,
       );
       continue;
     }
@@ -380,6 +393,7 @@ export async function generateStructured<T>(
       `Deine vorherige Antwort erfüllte das erwartete Schema nicht (${result.error.message}):\n${rawText}\n\nBitte korrigiere sie und antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
       outputFormat,
       model,
+      onUsage,
     );
   }
 

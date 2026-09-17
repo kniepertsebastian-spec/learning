@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getServerLocale } from "@/lib/server/locale";
 import { getCertificationsWithStats } from "@/lib/server/admin/stats";
+import { CourseGenerationPanel } from "@/components/CourseGenerationPanel";
 import { createCertificationAction } from "./actions";
 
 export default async function AdminDashboard() {
@@ -110,9 +111,12 @@ export default async function AdminDashboard() {
           )}
         </section>
 
-        <section className="h-fit rounded-xl border border-border bg-surface p-5">
+        <div className="flex h-fit flex-col gap-6">
+        <CourseGenerationPanel locale={locale} />
+
+        <section className="rounded-xl border border-border bg-surface p-5">
           <h2 className="mb-1 text-lg font-semibold">
-            {locale === "de" ? "Kurs hinzufügen" : "Add course"}
+            {locale === "de" ? "Kursstruktur manuell anlegen" : "Add course structure manually"}
           </h2>
           <p className="mb-4 text-sm text-foreground/60">
             {locale === "de"
@@ -211,6 +215,7 @@ export default async function AdminDashboard() {
             </button>
           </form>
         </section>
+        </div>
       </div>
     </div>
   );

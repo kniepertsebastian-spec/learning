@@ -918,3 +918,186 @@ export const contentReports = pgTable(
     check("content_reports_status_check", sql`${table.status} in ('open', 'resolved', 'dismissed')`),
   ],
 );
+
+/**
+ * course_generation.md Phase 2: Statuswerte aus Abschnitt 6, unverändert
+ * übernommen - der Job-Orchestrator (lib/server/course-generation/*) hält
+ * jeden Übergang idempotent (siehe dortige Kommentare), diese Liste ist nur
+ * die Menge gültiger Werte.
+ */
+export type CourseGenerationJobStatus =
+  | "queued"
+  | "preflight"
+  | "preflight_failed"
+  | "blueprint_requested"
+  | "blueprint_generating"
+  | "blueprint_validating"
+  | "cost_estimating"
+  | "blueprint_ready"
+  | "canary_generating"
+  | "canary_validating"
+  | "canary_failed"
+  | "content_generating"
+  | "batch_generating"
+  | "validating"
+  | "repairing"
+  | "circuit_breaker_open"
+  /** Nicht im ursprünglichen course_generation.md-Statuskatalog (Abschnitt 6) -
+   * ergänzt, da der Katalog keinen Zustand für "vollständig generiert und
+   * validiert, aber autoPublish=false" vorsieht. Terminal wie "published":
+   * der Job selbst ist fertig, der Import wartet auf eine manuelle
+   * Admin-Bestätigung (siehe retry-Endpunkt in Phase 3). */
+  | "package_ready"
+  | "importing"
+  | "published"
+  | "waiting_for_quota"
+  | "paused_budget"
+  | "cost_limit_reached"
+  | "failed"
+  | "cancelled";
+
+export const COURSE_GENERATION_JOB_STATUSES: CourseGenerationJobStatus[] = [
+  "queued",
+  "preflight",
+  "preflight_failed",
+  "blueprint_requested",
+  "blueprint_generating",
+  "blueprint_validating",
+  "cost_estimating",
+  "blueprint_ready",
+  "canary_generating",
+  "canary_validating",
+  "canary_failed",
+  "content_generating",
+  "batch_generating",
+  "validating",
+  "repairing",
+  "circuit_breaker_open",
+  "package_ready",
+  "importing",
+  "published",
+  "waiting_for_quota",
+  "paused_budget",
+  "cost_limit_reached",
+  "failed",
+  "cancelled",
+];
+
+/** Terminal = der Job nimmt keine weiteren Übergänge mehr vor (siehe
+ * isTerminalCourseGenerationStatus() in lib/server/course-generation/job-service.ts). */
+export const TERMINAL_COURSE_GENERATION_JOB_STATUSES: CourseGenerationJobStatus[] = [
+  "preflight_failed",
+  "canary_failed",
+  "package_ready",
+  "published",
+  "cost_limit_reached",
+  "failed",
+  "cancelled",
+];
+
+export type CourseGenerationObjectiveStatus =
+  | "pending"
+  | "generating"
+  | "validating"
+  | "repairing"
+  | "valid"
+  | "failed";
+
+/**
+ * course_generation.md Abschnitt 6: "CourseGenerationJob" - ein Auftrag für
+ * einen komplett neuen Kurs aus Quellen (siehe course_generation.md Abschnitt
+ * 0: koexistiert bewusst mit `content_generation_jobs`, das den anderen
+ * Anwendungsfall "fehlende Inhalte zu einem bestehenden Kurs ergänzen"
+ * bedient). `blueprintJson`/`packageJson` halten `CourseBlueprintV1` bzw. den
+ * bislang zusammengebauten Teil von `CoursePackageV1` (lose typisiert wie bei
+ * `blueprintDrafts.content` - konkrete Typisierung an den Lese-/
+ * Schreibstellen in lib/server/course-generation/). */
+export const courseGenerationJobs = pgTable(
+  "course_generation_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestedByUserId: uuid("requested_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    courseTitle: text("course_title").notNull(),
+    courseDescription: text("course_description").notNull(),
+    language: text("language").notNull(),
+    provider: text("provider").notNull(),
+    certificationVersion: text("certification_version"),
+    sourceUrls: jsonb("source_urls").$type<string[]>().notNull().default([]),
+    autoPublish: boolean("auto_publish").notNull().default(false),
+    initialCostLimitUsd: numeric("initial_cost_limit_usd", { precision: 10, scale: 2 }).notNull(),
+    absoluteCostLimitUsd: numeric("absolute_cost_limit_usd", { precision: 10, scale: 2 }).notNull(),
+    status: text("status").$type<CourseGenerationJobStatus>().notNull().default("queued"),
+    phase: text("phase").notNull().default("queued"),
+    message: text("message"),
+    blueprintProvider: text("blueprint_provider").notNull(),
+    /** Abschnitt 6: "routineSessionUrl" - erst befüllt, sobald ein
+     * BlueprintProvider tatsächlich eine Claude-Code-Cloud-Routine auslöst
+     * (siehe providers.ts::routineBlueprintProvider) - bleibt NULL beim
+     * aktuell aktiven anthropic-sonnet-Provider. */
+    routineSessionUrl: text("routine_session_url"),
+    blueprintJson: jsonb("blueprint_json").$type<Record<string, unknown>>(),
+    packageJson: jsonb("package_json").$type<Record<string, unknown>>(),
+    estimatedCostUsd: numeric("estimated_cost_usd", { precision: 10, scale: 4 }),
+    actualCostUsd: numeric("actual_cost_usd", { precision: 10, scale: 4 }).notNull().default("0"),
+    resultCertificationId: uuid("result_certification_id").references(() => certifications.id, {
+      onDelete: "set null",
+    }),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("course_generation_jobs_status_idx").on(table.status),
+    check(
+      "course_generation_jobs_status_check",
+      sql`${table.status} in ('queued', 'preflight', 'preflight_failed', 'blueprint_requested', 'blueprint_generating', 'blueprint_validating', 'cost_estimating', 'blueprint_ready', 'canary_generating', 'canary_validating', 'canary_failed', 'content_generating', 'batch_generating', 'validating', 'repairing', 'circuit_breaker_open', 'package_ready', 'importing', 'published', 'waiting_for_quota', 'paused_budget', 'cost_limit_reached', 'failed', 'cancelled')`,
+    ),
+  ],
+);
+
+/**
+ * course_generation.md Abschnitt 6: "CourseGenerationObjective" - Fortschritt,
+ * Kosten und Inhalt EINES Objectives innerhalb eines Jobs. `domainId`/
+ * `objectiveId` sind die blueprint-internen String-IDs (siehe
+ * courseBlueprintObjectiveSchema in lib/server/course-generation/schemas.ts),
+ * NICHT DB-UUIDs - die entstehen erst beim finalen Import
+ * (importCoursePackage()). Ein Unique-Constraint auf (jobId, objectiveId)
+ * verhindert, dass ein erneut angestoßener Worker-Lauf dasselbe Objective
+ * doppelt anlegt (Abschnitt 8: "Datenbank-Lock oder Lease verhindert, dass
+ * mehrere Worker dasselbe Lernziel gleichzeitig bearbeiten"). */
+export const courseGenerationObjectives = pgTable(
+  "course_generation_objectives",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => courseGenerationJobs.id, { onDelete: "cascade" }),
+    domainId: text("domain_id").notNull(),
+    objectiveId: text("objective_id").notNull(),
+    code: text("code").notNull(),
+    isCanary: boolean("is_canary").notNull().default(false),
+    status: text("status").$type<CourseGenerationObjectiveStatus>().notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    provider: text("provider"),
+    model: text("model"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    costUsd: numeric("cost_usd", { precision: 10, scale: 4 }),
+    contentJson: jsonb("content_json").$type<Record<string, unknown>>(),
+    validationErrorsJson: jsonb("validation_errors_json").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("course_generation_objectives_job_objective_unique").on(table.jobId, table.objectiveId),
+    index("course_generation_objectives_job_idx").on(table.jobId),
+    check(
+      "course_generation_objectives_status_check",
+      sql`${table.status} in ('pending', 'generating', 'validating', 'repairing', 'valid', 'failed')`,
+    ),
+  ],
+);

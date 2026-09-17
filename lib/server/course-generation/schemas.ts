@@ -147,3 +147,24 @@ export const coursePackageV1Schema = courseBlueprintV1Schema.extend({
   generation: coursePackageGenerationMetadataSchema,
 });
 export type CoursePackageV1 = z.infer<typeof coursePackageV1Schema>;
+
+/**
+ * Phase 4/5: Antwortformate für die tatsächlichen KI-Aufrufe.
+ * `courseBlueprintGenerationResponseSchema` lässt `requestId` weg - das setzt
+ * die App selbst, die KI kennt den Job nicht. `objectiveContentResponseSchema`
+ * ist bewusst NUR sections+questions - der Provider bekommt die restlichen
+ * Objective-Felder (title, requiredConcepts, ...) bereits aus dem Blueprint
+ * und soll sie nicht neu erfinden/wiederholen (spart Output-Tokens).
+ */
+export const courseBlueprintGenerationResponseSchema = courseBlueprintV1Schema.omit({
+  requestId: true,
+});
+export type CourseBlueprintGenerationResponse = z.infer<
+  typeof courseBlueprintGenerationResponseSchema
+>;
+
+export const objectiveContentResponseSchema = z.object({
+  sections: z.array(coursePackageSectionSchema).min(1),
+  questions: z.array(coursePackageQuestionSchema).min(1),
+});
+export type ObjectiveContentResponse = z.infer<typeof objectiveContentResponseSchema>;
