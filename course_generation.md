@@ -4,6 +4,25 @@ Stand: 17. September 2026
 Projekt: `learning`  
 Zieldatei: `course_generation.md`
 
+**Priorität:** Diese Roadmap wird vor der Weiterarbeit an `roadmap.md` umgesetzt (Nutzervorgabe). Sie beschreibt kein Greenfield-Projekt, sondern die Weiterentwicklung des bestehenden, gerade erst vollständig auf die Anthropic Claude API umgestellten Generierungspfads (siehe `roadmap.md` R6 „KI-Kosten"). Abschnitt 0 ordnet das Dokument in den bestehenden Code ein und wurde bei der Übernahme aus `new_course.md` ergänzt; der Rest des Dokuments ist inhaltlich unverändert.
+
+## 0. Bezug zum bestehenden System
+
+Dieses Dokument wurde unmittelbar nach der vollständigen Migration von Gemini auf die Anthropic Claude API übernommen (siehe `roadmap.md` R6, PR "Switch AI content generation from Gemini to the Anthropic Claude API"). Es überschneidet sich mit mehreren bereits existierenden Bausteinen, die bei der Umsetzung ab Phase 1 wiederverwendet statt neu gebaut werden sollen:
+
+- **Claude-Client und Modellwahl.** `lib/claude.ts` existiert bereits: `getClaudeClient()` liefert einen `Anthropic`-Singleton aus `ANTHROPIC_API_KEY`, `CURRICULUM_MODEL` (Default `claude-sonnet-4-5`) und `LESSONS_MODEL` (Default `claude-haiku-4-5`) sind bereits die exakten Modelle, die dieses Dokument für Blueprint (Sonnet) bzw. Massengenerierung (Haiku) vorsieht. `AnthropicHaikuProvider`/`AnthropicSonnetProvider` (Abschnitt 9) sollten diese Konstanten und diesen Client wiederverwenden, nicht neu konfigurieren.
+- **Strukturierte Generierung mit Retry.** `lib/ai/generate.ts`s `generateStructured()`/`requestJson()` implementiert bereits: Zod-Schema → `output_config.format` (native Claude-Structured-Outputs), Retry mit Backoff und `retry-after`-Header-Auswertung, JSON-Extraktion/-Reparatur, Enum-Alias-Normalisierung. `CourseContentProvider.generateObjective()`/`repairObjective()` sollten darauf aufbauen statt eine zweite Request-Pipeline zu bauen.
+- **Gemini-Fallback entfällt.** Abschnitt 9 nennt ursprünglich `GeminiProvider` als optionalen Fallback - Gemini (`@google/genai`) wurde vollständig aus dem Projekt entfernt, bevor dieses Dokument übernommen wurde. Die `CourseContentProvider`-Abstraktion bleibt sinnvoll (Austauschbarkeit, Tests), aber ein Gemini-Provider ist nicht mehr vorgesehen.
+- **Bestehender Blueprint-Mechanismus (R1).** `blueprintDrafts` (Tabelle) + `generateBlueprintDraft()` (`lib/server/ai/service.ts`) extrahieren bereits heute Domains/Objectives/Gewichtungen aus einer zuvor hochgeladenen offiziellen PDF-Quelle, inklusive Admin-Review/-Freigabe (`lib/server/admin/blueprint.ts`, `blueprint-approval.ts`). `CourseBlueprintV1` (Abschnitt 5.1) ist eine reichhaltigere Weiterentwicklung desselben Konzepts (zusätzlich `complexity`, `requiredConcepts`, `commonMisconceptions`, `lessonPlan`, `recommendedQuestions`, `requiredScenarios`), erzeugt über eine Claude-Pro-Routine statt eines bezahlten API-Aufrufs. Phase 1 muss klären, ob `CourseBlueprintV1` die bestehende `blueprintDrafts`-Struktur erweitert (Migration) oder als eigenständiges, paralleles Format eingeführt wird, das die bestehende Quellen-Review-UI (`BlueprintReview.tsx`) weiterhin nutzt.
+- **Bestehende freie Curriculum-Generierung wird abgelöst.** `content:draft-curriculum` (`generateCurriculumDraftForDomain()`) generiert aktuell einen ungebundenen Näherungs-Entwurf ohne Quellenbindung, bezahlt über die Sonnet-API. Der neue Ablauf ersetzt genau diesen bezahlten Sonnet-Aufruf durch eine kostenlose Claude-Pro-Routine (innerhalb des Abo-Kontingents) - das ist der zentrale Kosteneinsparungs-Hebel dieses Dokuments (Abschnitt 12).
+- **Bestehende Job-Infrastruktur bleibt parallel bestehen.** `content_generation_jobs` (Tabelle), `executeJob()`/`runNpmScript()` (`lib/server/admin/content-generation.ts`) und die Admin-UI (`ContentGenerationControl.tsx`) bedienen aktuell den Anwendungsfall „fehlende Inhalte zu einem bereits angelegten Kurs ergänzen". `CourseGenerationJob`/`CourseGenerationObjective` (Abschnitt 6) sind ein neues, umfassenderes Modell für den Anwendungsfall „kompletten neuen Kurs aus Quellen erzeugen". Beide Pfade sollen während des Rollouts (Phasen 1-8) nebeneinander funktionieren; eine Ablösung des alten Pfades ist nicht Teil dieser Roadmap und wird erst nach erfolgreichem Abschluss von Phase 8 entschieden.
+- **Claude-Pro-Routine = Claude Code Remote Routine.** Die in Abschnitt 3.2-3.3 beschriebene „Claude-Pro-Routine" entspricht technisch einer über die `claude-code-remote`-MCP-Werkzeuge erstellten Routine (`create_trigger`/`create_session`/`fire_trigger`), die bei Auslösung eine neue Session mit fest hinterlegtem Prompt startet und über den internen Callback-Endpunkt antwortet. Phase 4 sollte diese Werkzeuge als Ausgangspunkt für den Trigger-Mechanismus prüfen, statt eine eigene Anthropic-Routines-Integration von Grund auf zu bauen.
+- **Kosten-/Budget-Env-Vars nicht verwechseln.** Die in Abschnitt 12 vorgeschlagenen `INITIAL_COST_LIMIT_USD`/`ABSOLUTE_COST_LIMIT_USD` sind Job-spezifische Limits pro Kursauftrag (neu, `CourseGenerationJob`-Feld `estimatedCostUsd`/`actualCostUsd`). Sie ersetzen NICHT das bereits existierende globale `ANTHROPIC_BUDGET_USD` (plattformweite Obergrenze über alle `content_generation_jobs`, siehe `roadmap.md` R6) - beide Mechanismen greifen unabhängig voneinander und sollen in Phase 5 beide berücksichtigt werden.
+
+### Umsetzungsstand
+
+Phase 0 (dieses Dokument aus `new_course.md` übernehmen, mit bestehendem Code abgleichen) ist abgeschlossen. Phasen 1-8 (Abschnitt 16) sind noch offen und werden - wie bei `roadmap.md` - schrittweise in eigenen, validierten Pull Requests umgesetzt, mit Fortschrittsvermerk an dieser Stelle nach jeder abgeschlossenen Phase.
+
 ## 1. Zielbild
 
 Nach einem einzigen Klick in der PWA soll ein neuer Kurs vollständig automatisch entstehen:
@@ -477,8 +496,9 @@ Geplante Implementierungen:
 ```text
 AnthropicHaikuProvider
 AnthropicSonnetProvider
-GeminiProvider        optionaler Fallback
 ```
+
+Ein Gemini-Provider ist nicht mehr vorgesehen - Gemini wurde bereits vollständig aus dem Projekt entfernt (siehe Abschnitt 0). Die Abstraktion bleibt trotzdem sinnvoll, um `AnthropicHaikuProvider`/`AnthropicSonnetProvider` in Tests durch ein Fake zu ersetzen und um einen zukünftigen Providerwechsel nicht grundsätzlich auszuschließen.
 
 Für den ersten produktiven Stand:
 
