@@ -155,6 +155,13 @@
       "when": 1789599303766,
       "tag": "0021_lumpy_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789644349974,
+      "tag": "0022_lowly_hedge_knight",
+      "breakpoints": true
     }
   ]
 }
