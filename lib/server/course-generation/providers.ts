@@ -76,6 +76,8 @@ const BLUEPRINT_SYSTEM_PROMPT = [
   "Für jedes Objective: offizielle Notation (`code`, z.B. \"1.2\"), Titel, Beschreibung, Gewichtsanteil innerhalb der Domain (0-1),",
   "Komplexität (low/medium/high), 2-6 erforderliche Kernkonzepte, häufige Missverständnisse, eine grobe Lektionsgliederung (`lessonPlan`, 2-5 Schritte),",
   "die Quellenlocator, die dieses Objective belegen, eine empfohlene Fragenanzahl (4-15, mehr für wichtigere/komplexere Objectives) und ggf. erforderliche Szenarien.",
+  "`sourceLocators` MUSS mindestens einen Eintrag enthalten (nenne die am besten passenden Locator, auch wenn die Abdeckung nur teilweise ist) -",
+  "ein leeres Array führt dazu, dass bei der Ausarbeitung dieses Objectives ALLE Quellenausschnitte statt eines gezielten Auszugs verwendet werden (unnötig teuer).",
   "Setze `provider` auf den Anbieter/die Organisation der Zertifizierung (z.B. \"CompTIA\", \"AWS\").",
   "Setze `examQuestionCount`/`examDurationMinutes`/`passingScore`/`scoreScale` NUR, wenn explizit in den Quellen angegeben - sonst exakt `null`, niemals raten.",
 ].join("\n");
