@@ -9,7 +9,7 @@ import {
   type CourseGenerationJob,
   type CourseGenerationObjectiveRow,
 } from "./job-service";
-import { importCoursePackage } from "./importer";
+import { importCoursePackage, suggestCourseSlug } from "./importer";
 import {
   anthropicHaikuContentProvider,
   anthropicSonnetRepairProvider,
@@ -30,6 +30,9 @@ import {
 } from "./schemas";
 import { fetchSources, type FetchedSource } from "./sources";
 import { pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
+import { getDb } from "@/lib/server/db/client";
+import { certifications } from "@/lib/server/db/schema";
+import { eq } from "drizzle-orm";
 
 export class PreflightError extends Error {}
 export class BlueprintValidationError extends Error {}
@@ -328,6 +331,23 @@ export async function executeCourseGenerationJob(
     });
     if (job.sourceUrls.length === 0) {
       throw new PreflightError("Mindestens eine Quelle (sourceUrls) ist erforderlich.");
+    }
+    // Der Slug-Kollisionscheck in importCoursePackage() greift erst GANZ am
+    // Ende (nach Blueprint + allen Objective-Aufrufen) - ohne diesen
+    // Vorab-Check würde ein Titel, der auf eine bereits bestehende
+    // Zertifizierung slug-t, den kompletten (teuren) Lauf verschwenden, bevor
+    // der Import ihn verwirft. Prüft hier, VOR jeglichem KI-Aufruf.
+    const plannedSlug = suggestCourseSlug(job.courseTitle, job.certificationVersion ?? undefined);
+    const existingCert = await getDb()
+      .select({ id: certifications.id })
+      .from(certifications)
+      .where(eq(certifications.slug, plannedSlug))
+      .limit(1);
+    if (existingCert.length > 0) {
+      throw new PreflightError(
+        `Zertifizierung mit Slug "${plannedSlug}" existiert bereits - wähle einen anderen Titel/eine andere Zertifizierungsversion, ` +
+          `um sie nicht zu überschreiben (der Kurs-Generator legt immer eine neue, unabhängige Zertifizierung an - bestehende Inhalte werden nie ersetzt).`,
+      );
     }
     let sources: FetchedSource[];
     try {
