@@ -277,7 +277,14 @@ async function requestJson(
     try {
       const response = await client.messages.create({
         model,
-        max_tokens: 16000,
+        // War 16000 - ein ungrounded Objective ("frei, keine freigegebene
+        // Quelle") hat diese Grenze in der Praxis exakt getroffen und damit
+        // die JSON-Antwort mitten im String abgeschnitten
+        // (AIGenerationError "Unterminated string in JSON"). Anthropic-SDK
+        // skaliert den Non-Streaming-Timeout automatisch mit max_tokens
+        // (MODEL_NONSTREAMING_TOKENS betrifft nur bestimmte Opus-4-Modelle,
+        // nicht Haiku/Sonnet) - eine höhere Grenze ist also unkritisch.
+        max_tokens: 32000,
         system: systemPrompt,
         output_config: { format: outputFormat },
         messages: [{ role: "user", content: userPrompt }],
