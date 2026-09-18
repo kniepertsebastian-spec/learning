@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { localizedStringArraySchema, localizedStringSchema } from "@/lib/ai/schemas";
+import { lenientDifficultySchema, lenientQuestionTypeSchema } from "@/lib/ai/generate";
 
 /**
  * Struktur für einen KI-Entwurf von Objectives + Sections EINER Domain
@@ -16,7 +17,7 @@ import { localizedStringArraySchema, localizedStringSchema } from "@/lib/ai/sche
 export const draftSectionSchema = z.object({
   title: localizedStringSchema,
   estimatedMinutes: z.number().int().min(5).max(120),
-  difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+  difficulty: lenientDifficultySchema,
 });
 
 export const draftObjectiveSchema = z.object({
@@ -59,8 +60,8 @@ const exactlyOneCorrectOptionMessage = { message: "Exakt eine Option muss isCorr
  * `.extend()` erweitern können - ein `.refine()`-Ergebnis (ZodEffects) hat
  * kein `.extend()` mehr, daher hier getrennt von der Validierung. */
 const draftQuestionBaseSchema = z.object({
-  difficulty: z.enum(["beginner", "intermediate", "advanced"]),
-  type: z.enum(["knowledge", "comprehension", "application", "scenario", "troubleshooting"]),
+  difficulty: lenientDifficultySchema,
+  type: lenientQuestionTypeSchema,
   question: localizedStringSchema,
   options: z.array(draftQuestionOptionSchema).length(4),
   explanation: localizedStringSchema,

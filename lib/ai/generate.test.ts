@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  lenientDifficultySchema,
+  lenientQuestionTypeSchema,
   normalizeGeneratedAliases,
   parseRetryAfterHeaderMs,
   sanitizeJsonControlChars,
@@ -115,5 +117,43 @@ describe("normalizeGeneratedAliases", () => {
         { difficulty: "advanced", type: "knowledge" },
       ],
     });
+  });
+});
+
+// Anthropics eigene Structured-Output-Validierung gegen ein per
+// zodOutputFormat() übergebenes Schema läuft SDK-intern, bevor
+// normalizeGeneratedAliases() (Objekt-Postprocessing nach requestJson())
+// je zum Zug kommt - live beobachtet: ein von der KI trotz Schema-Zwang
+// geliefertes "difficulty": "medium" ließ die SDK selbst mit
+// "Invalid option: expected one of beginner|intermediate|advanced"
+// abbrechen. lenientDifficultySchema/lenientQuestionTypeSchema wenden
+// dieselbe Alias-Toleranz als z.preprocess() direkt im Schema an, damit sie
+// auch bei der SDK-internen Validierung greift.
+describe("lenientDifficultySchema", () => {
+  it("accepts the exact schema tokens unchanged", () => {
+    expect(lenientDifficultySchema.parse("advanced")).toBe("advanced");
+  });
+
+  it("normalizes a known synonym the API itself might reject", () => {
+    expect(lenientDifficultySchema.parse("medium")).toBe("intermediate");
+    expect(lenientDifficultySchema.parse("Hard")).toBe("advanced");
+  });
+
+  it("falls back to intermediate instead of failing validation", () => {
+    expect(lenientDifficultySchema.parse("super-duper-hard")).toBe("intermediate");
+  });
+});
+
+describe("lenientQuestionTypeSchema", () => {
+  it("accepts the exact schema tokens unchanged", () => {
+    expect(lenientQuestionTypeSchema.parse("scenario")).toBe("scenario");
+  });
+
+  it("normalizes a known synonym the API itself might reject", () => {
+    expect(lenientQuestionTypeSchema.parse("understanding")).toBe("comprehension");
+  });
+
+  it("falls back to knowledge instead of failing validation", () => {
+    expect(lenientQuestionTypeSchema.parse("something-unexpected")).toBe("knowledge");
   });
 });

@@ -1,4 +1,4 @@
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { getClaudeClient } from "@/lib/claude";
@@ -249,6 +249,31 @@ export function normalizeGeneratedAliases(value: unknown): unknown {
     }),
   );
 }
+
+/**
+ * Wie normalizeGeneratedAliases() oben, aber als Zod-`z.preprocess()` statt
+ * als Objekt-Postprocessing - normalizeGeneratedAliases() läuft erst NACH
+ * requestJson() (in generateStructured() unten), aber Anthropics eigene
+ * Structured-Output-Validierung gegen dasselbe Zod-Schema
+ * (`output_config.format`, siehe requestJson) passiert BEREITS INNERHALB
+ * des SDK-Streams (MessageStream._MessageStream_addStreamEvent ->
+ * parseMessage -> parseOutputFormat) - schlägt dort ein Enum fehl, wirft die
+ * SDK einen Fehler, BEVOR normalizeGeneratedAliases() je zum Zug kommt
+ * (live beobachtet: "Invalid option: expected one of beginner|intermediate|
+ * advanced" für einen Wert, den die KI trotz Schema-Zwang geliefert hat).
+ * Diese Schemas gehören daher direkt in `difficulty`/`type`-Felder, die mit
+ * zodOutputFormat() an die API gehen, damit dieselbe Toleranz auch bei der
+ * SDK-internen Validierung greift.
+ */
+export const lenientDifficultySchema = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  return DIFFICULTY_ALIASES[value.trim().toLowerCase()] ?? "intermediate";
+}, z.enum(["beginner", "intermediate", "advanced"]));
+
+export const lenientQuestionTypeSchema = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  return QUESTION_TYPE_ALIASES[value.trim().toLowerCase()] ?? "knowledge";
+}, z.enum(["knowledge", "comprehension", "application", "scenario", "troubleshooting"]));
 
 export interface AIUsage {
   model: string;
