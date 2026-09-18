@@ -38,6 +38,27 @@ describe("classifyGenerationError", () => {
     );
   });
 
+  it("classifies the Anthropic SDK's native structured-output parse failure as 'schema', not 'provider_outage'", () => {
+    // Realer Fehlerfall: eine Stacktrace-Zeilennummer wie
+    // "MessageStream.ts:505:43" traf zuvor auf den (mittlerweile entfernten)
+    // bare-\b5\d\d\b-Check und klassifizierte einen Zod-Validierungsfehler
+    // fälschlich als "provider_outage" ("KI-Anbieter nicht erreichbar").
+    const output =
+      'AnthropicError: Failed to parse structured output: Error: Failed to parse structured output: [...]\n' +
+      "    at parseOutputFormat (/app/node_modules/@anthropic-ai/sdk/src/lib/parser.ts:123:11)\n" +
+      "    at MessageStream._MessageStream_addStreamEvent (/app/node_modules/@anthropic-ai/sdk/src/lib/MessageStream.ts:505:43)";
+    expect(classifyGenerationError(output)).toBe("schema");
+  });
+
+  it("does not misclassify a bare 3-digit stacktrace line number as a rate limit or outage", () => {
+    expect(
+      classifyGenerationError("TypeError: x is not a function\n    at foo (/app/bar.ts:429:12)"),
+    ).toBe("internal");
+    expect(
+      classifyGenerationError("TypeError: x is not a function\n    at foo (/app/bar.ts:503:12)"),
+    ).toBe("internal");
+  });
+
   it("falls back to 'internal' for anything else", () => {
     expect(classifyGenerationError("TypeError: Cannot read properties of undefined")).toBe(
       "internal",

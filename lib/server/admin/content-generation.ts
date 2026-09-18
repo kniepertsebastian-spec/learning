@@ -280,21 +280,29 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
  * Output-Tail auf, unabhängig von der genauen Formatierung.
  */
 export function classifyGenerationError(outputTail: string): GenerationErrorClass {
+  // Bare `\b429\b`/`\b5\d\d\b`-Zahlenchecks wurden entfernt: sie trafen in
+  // der Praxis auf völlig unabhängige 3-stellige Zahlen im mitgelieferten
+  // Stacktrace (z.B. "MessageStream.ts:505:43" als Zeilennummer) und
+  // klassifizierten einen Zod-Validierungsfehler fälschlich als
+  // "provider_outage" ("KI-Anbieter nicht erreichbar") statt als "schema" -
+  // die spezifischen Anthropic-Fehlertyp-Strings (rate_limit_error,
+  // overloaded_error, api_error, ...) reichen aus und kommen nicht
+  // versehentlich in Stacktraces vor.
   if (/rate_limit_error/i.test(outputTail) && /per\s?day|daily quota|tokens per day/i.test(outputTail)) {
     return "quota";
   }
-  if (/rate_limit_error|\b429\b/.test(outputTail)) {
+  if (/rate_limit_error/i.test(outputTail)) {
     return "rate_limit";
   }
   if (
-    /entspricht nicht dem erwarteten Schema|konnte nicht als JSON geparst werden|invalid_request_error/i.test(
+    /entspricht nicht dem erwarteten Schema|konnte nicht als JSON geparst werden|invalid_request_error|failed to parse structured output/i.test(
       outputTail,
     )
   ) {
     return "schema";
   }
   if (
-    /overloaded_error|api_error|\b5\d\d\b|ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i.test(
+    /overloaded_error|api_error|ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i.test(
       outputTail,
     )
   ) {
