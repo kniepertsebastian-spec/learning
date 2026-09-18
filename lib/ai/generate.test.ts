@@ -1,5 +1,8 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import {
+  isRetryableAnthropicError,
+  isStructuredOutputParseFailure,
   lenientDifficultySchema,
   lenientQuestionTypeSchema,
   normalizeGeneratedAliases,
@@ -155,5 +158,46 @@ describe("lenientQuestionTypeSchema", () => {
 
   it("falls back to knowledge instead of failing validation", () => {
     expect(lenientQuestionTypeSchema.parse("something-unexpected")).toBe("knowledge");
+  });
+});
+
+// Live gefunden: Anthropics eigene Structured-Output-Validierung
+// (parseOutputFormat) wirft bei einem Schema-Verstoß (z.B. "questions: Too
+// small: expected array to have >=5 items") ein AnthropicError mit dem Text
+// "Failed to parse structured output" - ohne diese Erkennung bricht
+// requestJson() sofort ab statt es erneut zu versuchen, obwohl ein neuer
+// Sampling-Durchlauf oft genug Items liefert.
+describe("isStructuredOutputParseFailure", () => {
+  it("recognizes Anthropic's own structured-output validation failure", () => {
+    const error = new Anthropic.AnthropicError(
+      'Failed to parse structured output: Error: [{"code":"too_small","path":["questions"]}]',
+    );
+    expect(isStructuredOutputParseFailure(error)).toBe(true);
+  });
+
+  it("does not misfire on an unrelated AnthropicError", () => {
+    expect(isStructuredOutputParseFailure(new Anthropic.AnthropicError("Claude hat keine Textantwort zurückgegeben."))).toBe(
+      false,
+    );
+  });
+
+  it("does not misfire on a plain, non-Anthropic error", () => {
+    expect(isStructuredOutputParseFailure(new Error("Failed to parse structured output"))).toBe(false);
+  });
+});
+
+describe("isRetryableAnthropicError", () => {
+  it("treats a structured-output parse failure as retryable", () => {
+    const error = new Anthropic.AnthropicError("Failed to parse structured output: Error: [...]");
+    expect(isRetryableAnthropicError(error)).toBe(true);
+  });
+
+  it("still treats a genuine 5xx/network failure as retryable", () => {
+    expect(isRetryableAnthropicError({ status: 529 })).toBe(true);
+    expect(isRetryableAnthropicError(new Error("fetch failed (ECONNRESET)"))).toBe(true);
+  });
+
+  it("does not retry a non-retryable error", () => {
+    expect(isRetryableAnthropicError(new Error("Claude hat keine Textantwort zurückgegeben."))).toBe(false);
   });
 });
