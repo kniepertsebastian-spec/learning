@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { localizedStringArraySchema, localizedStringSchema } from "@/lib/ai/schemas";
+import { lenientDifficultySchema, lenientQuestionTypeSchema } from "@/lib/ai/generate";
 
 /**
  * Phase 1 (course_generation.md, Abschnitt 5): versionierte Datenverträge für
@@ -91,7 +92,7 @@ export type CourseBlueprintV1 = z.infer<typeof courseBlueprintV1Schema>;
 export const coursePackageSectionSchema = z.object({
   title: localizedStringSchema,
   estimatedMinutes: z.number().int().min(5).max(120),
-  difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+  difficulty: lenientDifficultySchema,
   content: localizedStringSchema,
   keyTakeaways: localizedStringArraySchema,
   examFocusPoints: localizedStringArraySchema,
@@ -109,8 +110,8 @@ const exactlyOneCorrectOptionMessage = { message: "Exakt eine Option muss isCorr
 
 export const coursePackageQuestionSchema = z
   .object({
-    difficulty: z.enum(["beginner", "intermediate", "advanced"]),
-    type: z.enum(["knowledge", "comprehension", "application", "scenario", "troubleshooting"]),
+    difficulty: lenientDifficultySchema,
+    type: lenientQuestionTypeSchema,
     question: localizedStringSchema,
     options: z.array(coursePackageQuestionOptionSchema).length(4),
     explanation: localizedStringSchema,
