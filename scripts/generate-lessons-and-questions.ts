@@ -46,6 +46,20 @@ function humanIdPrefix(slug: string): string {
   return slug.split("-")[0].substring(0, 3).toUpperCase();
 }
 
+/**
+ * Erkennt eine Postgres-23505-Verletzung (unique_violation) speziell auf
+ * `questions_human_id_unique` - siehe isDuplicateHumanIdError()-Aufrufstelle
+ * unten für den konkreten Fall, den das abfängt.
+ */
+function isDuplicateHumanIdError(error: unknown): boolean {
+  const cause = error && typeof error === "object" ? Reflect.get(error, "cause") : undefined;
+  if (!cause || typeof cause !== "object") return false;
+  return (
+    Reflect.get(cause, "code") === "23505" &&
+    Reflect.get(cause, "constraint_name") === "questions_human_id_unique"
+  );
+}
+
 async function main() {
   const db = getDb();
   const certSlug = process.argv[2] || "security-plus-sy0-701";
@@ -309,25 +323,44 @@ async function main() {
 
       const matchedExcerpt = draft.sourceLocator ? excerptByLocator.get(draft.sourceLocator) : undefined;
 
-      let humanId: string;
-      do {
-        humanId = `${humanIdPrefix(cert.slug)}-${objective.code}-Q${String(nextQuestionNumber).padStart(3, "0")}`;
-        nextQuestionNumber++;
-      } while (usedHumanIds.has(humanId));
-      usedHumanIds.add(humanId);
-      const [question] = await db
-        .insert(questions)
-        .values({
-          humanId,
-          objectiveId: objective.id,
-          difficulty: draft.difficulty,
-          type: draft.type,
-          question: draft.question,
-          explanation: draft.explanation,
-          sourceReference: matchedExcerpt?.locator ?? null,
-          sourceChunkId: matchedExcerpt?.chunkId ?? null,
-        })
-        .returning();
+      // Race-sicher statt nur "vorher prüfen, dann einfügen": usedHumanIds ist
+      // eine Momentaufnahme vom Start des Laufs - ein zweiter, paralleler Lauf
+      // (z.B. ein Retry über die Admin-UI während ein älterer CLI-Aufruf noch
+      // läuft) kann dieselbe ID in der Zwischenzeit belegen, ohne dass diese
+      // Momentaufnahme das sieht. Bei einer 23505-Verletzung genau auf
+      // questions_human_id_unique daher einfach die nächste ID versuchen,
+      // statt das ganze Objective/Skript abzubrechen (live beobachtet).
+      let question: typeof questions.$inferSelect | undefined;
+      for (let attempt = 0; !question && attempt < 20; attempt++) {
+        let humanId: string;
+        do {
+          humanId = `${humanIdPrefix(cert.slug)}-${objective.code}-Q${String(nextQuestionNumber).padStart(3, "0")}`;
+          nextQuestionNumber++;
+        } while (usedHumanIds.has(humanId));
+        usedHumanIds.add(humanId);
+        try {
+          [question] = await db
+            .insert(questions)
+            .values({
+              humanId,
+              objectiveId: objective.id,
+              difficulty: draft.difficulty,
+              type: draft.type,
+              question: draft.question,
+              explanation: draft.explanation,
+              sourceReference: matchedExcerpt?.locator ?? null,
+              sourceChunkId: matchedExcerpt?.chunkId ?? null,
+            })
+            .returning();
+        } catch (error) {
+          if (!isDuplicateHumanIdError(error)) throw error;
+        }
+      }
+      if (!question) {
+        throw new Error(
+          `Konnte für Objective ${objective.code} auch nach 20 Versuchen keine eindeutige humanId finden.`,
+        );
+      }
 
       await db.insert(questionOptions).values(
         draft.options.map((option, index) => ({
