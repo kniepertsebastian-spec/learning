@@ -36,12 +36,28 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function isRetryableAnthropicError(error: unknown): boolean {
+/**
+ * Anthropics eigene Structured-Output-Validierung (parseOutputFormat, siehe
+ * requestJson) wirft bei einem Schema-Verstoß ein generisches
+ * `Anthropic.AnthropicError` mit dem Text "Failed to parse structured
+ * output" - live beobachtet u.a. für eine KI-Antwort mit weniger Fragen als
+ * das Schema-Minimum verlangt. Das ist kein Transportfehler, aber genauso
+ * gut mit einem erneuten Versuch behebbar (die KI liefert bei einem neuen
+ * Sampling-Durchlauf oft ein ausreichend großes Array) - daher hier wie ein
+ * retrybares Fehlerbild behandelt statt das ganze Objective/Skript
+ * abzubrechen.
+ */
+export function isStructuredOutputParseFailure(error: unknown): boolean {
+  return error instanceof Anthropic.AnthropicError && /Failed to parse structured output/i.test(error.message);
+}
+
+export function isRetryableAnthropicError(error: unknown): boolean {
   const status = errorStatus(error);
   const message = errorMessage(error);
   return (
     (status !== undefined && RETRYABLE_HTTP_STATUSES.has(status)) ||
-    /ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i.test(message)
+    /ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i.test(message) ||
+    isStructuredOutputParseFailure(error)
   );
 }
 
