@@ -275,20 +275,26 @@ async function requestJson(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await client.messages.create({
+      // War client.messages.create() (non-streaming) mit max_tokens: 16000 -
+      // ein ungrounded Objective ("frei, keine freigegebene Quelle") hat
+      // diese Grenze exakt getroffen und die JSON-Antwort mitten im String
+      // abgeschnitten. Ein reines Anheben von max_tokens (Versuch: 32000)
+      // löste stattdessen einen harten SDK-Fehler aus: Anthropics Client
+      // lehnt JEDEN Non-Streaming-Request mit max_tokens > 21333 pauschal ab
+      // (calculateNonstreamingTimeout() in client.ts - Formel
+      // (60min*maxTokens)/128000 > 10min, modellunabhängig, nicht nur die
+      // MODEL_NONSTREAMING_TOKENS-Liste für einzelne Opus-4-Modelle, die
+      // fälschlich als einziger Guard angenommen wurde). Streaming ist daher
+      // keine Option, sondern die einzig korrekte Lösung für große Outputs
+      // (siehe Anthropic-SDK-Doku zu messages.stream()).
+      const stream = client.messages.stream({
         model,
-        // War 16000 - ein ungrounded Objective ("frei, keine freigegebene
-        // Quelle") hat diese Grenze in der Praxis exakt getroffen und damit
-        // die JSON-Antwort mitten im String abgeschnitten
-        // (AIGenerationError "Unterminated string in JSON"). Anthropic-SDK
-        // skaliert den Non-Streaming-Timeout automatisch mit max_tokens
-        // (MODEL_NONSTREAMING_TOKENS betrifft nur bestimmte Opus-4-Modelle,
-        // nicht Haiku/Sonnet) - eine höhere Grenze ist also unkritisch.
-        max_tokens: 32000,
+        max_tokens: 64000,
         system: systemPrompt,
         output_config: { format: outputFormat },
         messages: [{ role: "user", content: userPrompt }],
       });
+      const response = await stream.finalMessage();
 
       // R6 (roadmap.md): "Modell, Tokenverbrauch ... pro Job" - maschinell
       // parsbare Zeile (siehe USAGE_LINE_PATTERN in
