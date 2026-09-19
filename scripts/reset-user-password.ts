@@ -1,5 +1,10 @@
 import { config } from "dotenv";
-config({ path: ".env.local" });
+// .env (Basis, von docker-compose genutzt) zuerst laden, .env.local danach als
+// optionaler lokaler Override - vorher wurde ausschließlich .env.local
+// geladen, wodurch Setups mit nur .env (z.B. der Server) ohne Fehlermeldung
+// keine Env-Vars bekamen.
+config({ path: ".env" });
+config({ path: ".env.local", override: true });
 
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
