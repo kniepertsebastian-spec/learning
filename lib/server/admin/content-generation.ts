@@ -29,38 +29,36 @@ function truncate(value: string, maxLength = 4_000): string {
 const USAGE_LINE_PATTERN =
   /^USAGE model=(\S+) promptTokens=(\d+) completionTokens=(\d+) totalTokens=(\d+)$/;
 
-/**
- * R6 (roadmap.md): "geschätzte Kosten pro Job" - NULL solange für das
- * jeweilige Modell keine Preise konfiguriert sind (env unset -> 0), damit nie
- * eine erfundene Zahl in der Admin-UI landet. Bewusst linear und ohne
- * Zwischenspeicher-/Batch-Rabatte - eine grobe Schätzung, keine
- * Rechnungskopie.
- *
- * Curriculum- und Lessons-Phase nutzen unterschiedliche Claude-Modelle mit
- * unterschiedlichen Preisen (siehe lib/claude.ts) - daher preist diese
- * Funktion PRO AUFRUF anhand des tatsächlich genutzten Modells, statt einen
- * einzigen globalen Preis auf die über den gesamten Job kumulierten Tokens
- * anzuwenden (das würde bei gemischten Modellen einen falschen Betrag
- * ergeben). Ein unbekanntes Modell (z. B. nach einer Env-Var-Änderung
- * zwischen zwei Jobs) liefert bewusst `null` statt zu raten.
- */
 export function estimateCostUsd(
   promptTokens: number,
   completionTokens: number,
   model: string,
 ): number | null {
-  let pricePerMillionPrompt: number;
-  let pricePerMillionCompletion: number;
+  let pricePerMillionPrompt = 0;
+  let pricePerMillionCompletion = 0;
+
   if (model === CURRICULUM_MODEL) {
     pricePerMillionPrompt =
-      Number(process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD) || 0;
+      Number(
+        process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD ||
+          process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD,
+      ) || 0;
     pricePerMillionCompletion =
-      Number(process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD) || 0;
+      Number(
+        process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD ||
+          process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD,
+      ) || 0;
   } else if (model === LESSONS_MODEL) {
     pricePerMillionPrompt =
-      Number(process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD) || 0;
+      Number(
+        process.env.GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD ||
+          process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD,
+      ) || 0;
     pricePerMillionCompletion =
-      Number(process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD) || 0;
+      Number(
+        process.env.GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD ||
+          process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD,
+      ) || 0;
   } else {
     return null;
   }
@@ -78,17 +76,8 @@ export interface AiBudgetStatus {
   exceeded: boolean;
 }
 
-/**
- * R6 (roadmap.md): "Budgetgrenzen" - harte Grenze für NEUE Generierungsjobs,
- * sobald die Summe aller bisherigen `estimatedCostUsd` (auch fehlgeschlagener
- * Jobs, da der Anbieter pro Aufruf abrechnet, nicht pro Erfolg) die
- * konfigurierte Grenze erreicht. NULL solange ANTHROPIC_BUDGET_USD nicht
- * gesetzt ist, dann gilt keine Grenze. Bereits generierte/veröffentlichte
- * Inhalte werden unabhängig davon weiter ausgeliefert, da Auslieferung und
- * Generierung ohnehin getrennte Pfade sind (siehe R6-Umsetzungsstand).
- */
 export async function getAiBudgetStatus(): Promise<AiBudgetStatus | null> {
-  const limitUsd = Number(process.env.ANTHROPIC_BUDGET_USD) || 0;
+  const limitUsd = Number(process.env.GEMINI_BUDGET_USD || process.env.ANTHROPIC_BUDGET_USD) || 0;
   if (limitUsd <= 0) return null;
 
   const rows = await getDb()
@@ -163,16 +152,7 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
   let totalTokens = 0;
   let estimatedCostUsdSum = 0;
   let anyCostKnown = false;
-  /** Erkennt eine USAGE-Zeile in der Stdout/Stderr-Ausgabe der Kindprozesse
-   * und liefert bei Treffer die zu mergenden Job-Spalten - null sonst, damit
-   * der Aufrufer sie einfach per Spread in sein reguläres queueUpdate()
-   * einbauen kann, ohne einen zweiten UPDATE pro Zeile auszulösen.
-   *
-   * Curriculum- und Lessons-Phase laufen mit unterschiedlichen, unterschiedlich
-   * bepreisten Claude-Modellen (siehe lib/claude.ts) innerhalb DESSELBEN Jobs -
-   * die Kosten werden daher PRO ZEILE mit dem Preis von GENAU DIESEM Modell
-   * berechnet und aufsummiert, statt einmalig aus den job-weit kumulierten
-   * Tokens (das würde bei gemischten Modellen einen falschen Betrag ergeben). */
+
   function trackUsageLine(line: string): Partial<typeof contentGenerationJobs.$inferInsert> | null {
     const match = USAGE_LINE_PATTERN.exec(line);
     if (!match) return null;
@@ -268,30 +248,14 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
   });
 }
 
-/**
- * R0.1 (roadmap.md): grobe Fehlerklasse aus dem gecapturten Skript-Output
- * (stdout+stderr-Tail, siehe runNpmScript) ableiten, damit die Admin-UI
- * unterscheiden kann statt nur den rohen Fehlertext zu zeigen. Reihenfolge
- * ist wichtig: "quota" ist ein Spezialfall von "rate_limit", daher zuerst
- * geprüft. Die Anthropic-SDK-Fehler stringifizieren ihren `.type` (z. B.
- * `rate_limit_error`, `overloaded_error`, `api_error`, `invalid_request_error`)
- * sowohl in `Error.message` als auch (über Node's Standard-Fehlerausgabe) in
- * den zusätzlichen Objekt-Feldern - dieser String taucht daher zuverlässig im
- * Output-Tail auf, unabhängig von der genauen Formatierung.
- */
 export function classifyGenerationError(outputTail: string): GenerationErrorClass {
-  // Bare `\b429\b`/`\b5\d\d\b`-Zahlenchecks wurden entfernt: sie trafen in
-  // der Praxis auf völlig unabhängige 3-stellige Zahlen im mitgelieferten
-  // Stacktrace (z.B. "MessageStream.ts:505:43" als Zeilennummer) und
-  // klassifizierten einen Zod-Validierungsfehler fälschlich als
-  // "provider_outage" ("KI-Anbieter nicht erreichbar") statt als "schema" -
-  // die spezifischen Anthropic-Fehlertyp-Strings (rate_limit_error,
-  // overloaded_error, api_error, ...) reichen aus und kommen nicht
-  // versehentlich in Stacktraces vor.
-  if (/rate_limit_error/i.test(outputTail) && /per\s?day|daily quota|tokens per day/i.test(outputTail)) {
+  if (
+    /RESOURCE_EXHAUSTED|rate_limit|rate_limit_error/i.test(outputTail) &&
+    /per\s?day|daily quota|tokens per day|quota/i.test(outputTail)
+  ) {
     return "quota";
   }
-  if (/rate_limit_error/i.test(outputTail)) {
+  if (/RESOURCE_EXHAUSTED|rate_limit|rate_limit_error/i.test(outputTail)) {
     return "rate_limit";
   }
   if (
@@ -378,14 +342,6 @@ export interface GenerationEstimate {
   missingObjectiveCodes: string[];
 }
 
-/**
- * R0.3: zeigt vor dem Start an, welche Objectives fehlen und ungefähr wie
- * viele KI-Aufrufe nötig sind - ein Aufruf pro Domain ohne Objectives
- * (content:draft-curriculum) plus ein Aufruf pro Objective, dem noch Lessons
- * oder ein voller Fragenpool fehlen (content:draft-lessons). Spiegelt genau
- * die Skip-Bedingungen der beiden Skripte, damit die Schätzung nicht
- * abweicht.
- */
 export async function estimateGenerationWork(
   certificationId: string,
 ): Promise<GenerationEstimate> {

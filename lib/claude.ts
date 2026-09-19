@@ -1,33 +1,25 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 
-/**
- * content:draft-curriculum (Domain-Entwurf, siehe generateCurriculumDraftForDomain)
- * und die Prüfungsstruktur-Extraktion aus offiziellen Quellen
- * (generateBlueprintDraft) - beide brauchen eher Design-/Extraktions-Urteil
- * als reine Textgenerierung, daher das teurere Modell.
- */
-export const CURRICULUM_MODEL = process.env.CLAUDE_CURRICULUM_MODEL || "claude-sonnet-5";
+export const CURRICULUM_MODEL = process.env.GEMINI_CURRICULUM_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+export const LESSONS_MODEL = process.env.GEMINI_LESSONS_MODEL || "gemini-2.5-flash-lessons";
 
-/**
- * content:draft-lessons (Lektionen + Fragen pro Objective, viele Dutzend
- * Aufrufe pro Zertifizierung) und die synchrone, nutzerausgelöste
- * Remediation - hohes Aufrufvolumen, das günstigere Modell reicht.
- */
-export const LESSONS_MODEL = process.env.CLAUDE_LESSONS_MODEL || "claude-haiku-4-5";
+export class GeminiConfigError extends Error {}
+export const ClaudeConfigError = GeminiConfigError;
 
-export class ClaudeConfigError extends Error {}
+let client: GoogleGenAI | null = null;
 
-let client: Anthropic | null = null;
-
-/** Claude-Client-Singleton. Liest den API-Key aus `ANTHROPIC_API_KEY`. */
-export function getClaudeClient(): Anthropic {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new ClaudeConfigError(
-      "ANTHROPIC_API_KEY ist nicht gesetzt (siehe .env.example / .env.local).",
+/** Gemini-Client-Singleton. Liest den API-Key aus `GEMINI_API_KEY`. */
+export function getGeminiClient(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new GeminiConfigError(
+      "GEMINI_API_KEY ist nicht gesetzt (siehe .env.example / .env.local).",
     );
   }
   if (!client) {
-    client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    client = new GoogleGenAI({ apiKey });
   }
   return client;
 }
+
+export const getClaudeClient = getGeminiClient;
