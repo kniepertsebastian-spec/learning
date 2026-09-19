@@ -40,6 +40,13 @@ services:
       # Google Gemini API
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      # lib/claude.ts liest diese beiden zusätzlich (CURRICULUM_MODEL fällt
+      # auf GEMINI_MODEL zurück, LESSONS_MODEL sonst hart auf
+      # "gemini-2.5-flash-lessons") - ohne Weiterleitung hier lässt sich das
+      # Lessons-Modell nicht unabhängig testen, nur per .env zu setzen reicht
+      # nicht.
+      GEMINI_CURRICULUM_MODEL: ${GEMINI_CURRICULUM_MODEL:-}
+      GEMINI_LESSONS_MODEL: ${GEMINI_LESSONS_MODEL:-}
 
       # Uploaded certification source PDFs (R1.1, lib/server/storage/local-disk.ts)
       SOURCES_STORAGE_DIR: /app/data/sources
