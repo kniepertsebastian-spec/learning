@@ -1,46 +1,13 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import {
   isRetryableAnthropicError,
+  isRetryableError,
   isStructuredOutputParseFailure,
   lenientDifficultySchema,
   lenientQuestionTypeSchema,
   normalizeGeneratedAliases,
-  parseRetryAfterHeaderMs,
   sanitizeJsonControlChars,
 } from "./generate";
-
-function anthropicErrorWithRetryAfter(retryAfter: string | null): unknown {
-  return { status: 429, headers: new Headers(retryAfter !== null ? { "retry-after": retryAfter } : {}) };
-}
-
-describe("parseRetryAfterHeaderMs", () => {
-  it("reads the retry-after header (in seconds) from a 429 error", () => {
-    const error = anthropicErrorWithRetryAfter("21");
-    expect(parseRetryAfterHeaderMs(error)).toBe(21_000);
-  });
-
-  it("handles fractional-second delays", () => {
-    const error = anthropicErrorWithRetryAfter("1.5");
-    expect(parseRetryAfterHeaderMs(error)).toBe(1_500);
-  });
-
-  it("caps an implausibly long provider delay instead of sleeping forever", () => {
-    const error = anthropicErrorWithRetryAfter("9999");
-    expect(parseRetryAfterHeaderMs(error)).toBe(120_000);
-  });
-
-  it("returns undefined when there is no retry-after header", () => {
-    const error = anthropicErrorWithRetryAfter(null);
-    expect(parseRetryAfterHeaderMs(error)).toBeUndefined();
-  });
-
-  it("returns undefined for an error without a headers object", () => {
-    expect(parseRetryAfterHeaderMs(new Error("ECONNRESET"))).toBeUndefined();
-    expect(parseRetryAfterHeaderMs("not an error object")).toBeUndefined();
-    expect(parseRetryAfterHeaderMs(null)).toBeUndefined();
-  });
-});
 
 describe("sanitizeJsonControlChars", () => {
   it("escapes a raw newline inside a string literal so JSON.parse accepts it", () => {
@@ -123,15 +90,6 @@ describe("normalizeGeneratedAliases", () => {
   });
 });
 
-// Anthropics eigene Structured-Output-Validierung gegen ein per
-// zodOutputFormat() übergebenes Schema läuft SDK-intern, bevor
-// normalizeGeneratedAliases() (Objekt-Postprocessing nach requestJson())
-// je zum Zug kommt - live beobachtet: ein von der KI trotz Schema-Zwang
-// geliefertes "difficulty": "medium" ließ die SDK selbst mit
-// "Invalid option: expected one of beginner|intermediate|advanced"
-// abbrechen. lenientDifficultySchema/lenientQuestionTypeSchema wenden
-// dieselbe Alias-Toleranz als z.preprocess() direkt im Schema an, damit sie
-// auch bei der SDK-internen Validierung greift.
 describe("lenientDifficultySchema", () => {
   it("accepts the exact schema tokens unchanged", () => {
     expect(lenientDifficultySchema.parse("advanced")).toBe("advanced");
@@ -161,43 +119,29 @@ describe("lenientQuestionTypeSchema", () => {
   });
 });
 
-// Live gefunden: Anthropics eigene Structured-Output-Validierung
-// (parseOutputFormat) wirft bei einem Schema-Verstoß (z.B. "questions: Too
-// small: expected array to have >=5 items") ein AnthropicError mit dem Text
-// "Failed to parse structured output" - ohne diese Erkennung bricht
-// requestJson() sofort ab statt es erneut zu versuchen, obwohl ein neuer
-// Sampling-Durchlauf oft genug Items liefert.
 describe("isStructuredOutputParseFailure", () => {
-  it("recognizes Anthropic's own structured-output validation failure", () => {
-    const error = new Anthropic.AnthropicError(
-      'Failed to parse structured output: Error: [{"code":"too_small","path":["questions"]}]',
-    );
+  it("recognizes structured-output validation failure", () => {
+    const error = new Error('Failed to parse structured output: Error: [{"code":"too_small"}]');
     expect(isStructuredOutputParseFailure(error)).toBe(true);
   });
 
-  it("does not misfire on an unrelated AnthropicError", () => {
-    expect(isStructuredOutputParseFailure(new Anthropic.AnthropicError("Claude hat keine Textantwort zurückgegeben."))).toBe(
-      false,
-    );
-  });
-
-  it("does not misfire on a plain, non-Anthropic error", () => {
-    expect(isStructuredOutputParseFailure(new Error("Failed to parse structured output"))).toBe(false);
+  it("does not misfire on an unrelated error", () => {
+    expect(isStructuredOutputParseFailure(new Error("Gemini hat keine Textantwort zurückgegeben."))).toBe(false);
   });
 });
 
-describe("isRetryableAnthropicError", () => {
+describe("isRetryableError", () => {
   it("treats a structured-output parse failure as retryable", () => {
-    const error = new Anthropic.AnthropicError("Failed to parse structured output: Error: [...]");
+    const error = new Error("Failed to parse structured output: Error: [...]");
+    expect(isRetryableError(error)).toBe(true);
     expect(isRetryableAnthropicError(error)).toBe(true);
   });
 
   it("still treats a genuine 5xx/network failure as retryable", () => {
-    expect(isRetryableAnthropicError({ status: 529 })).toBe(true);
-    expect(isRetryableAnthropicError(new Error("fetch failed (ECONNRESET)"))).toBe(true);
+    expect(isRetryableError(new Error("fetch failed (ECONNRESET)"))).toBe(true);
   });
 
   it("does not retry a non-retryable error", () => {
-    expect(isRetryableAnthropicError(new Error("Claude hat keine Textantwort zurückgegeben."))).toBe(false);
+    expect(isRetryableError(new Error("Gemini hat keine Textantwort zurückgegeben."))).toBe(false);
   });
 });
