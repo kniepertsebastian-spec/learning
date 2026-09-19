@@ -218,7 +218,14 @@ export async function requestJson(
         contents: fullPrompt,
         config: {
           temperature: 0.1,
-          maxOutputTokens: 8192,
+          // War 8192 - bei Claude hat eine zu knappe Grenze (16000) nachweislich
+          // zu mitten im JSON abgeschnittenen Antworten geführt (siehe
+          // Git-Historie); 8192 ist für einen kompletten Kurs/Lessons+Fragen-
+          // Batch vermutlich noch knapper. Nicht live gegen Googles Doku
+          // verifiziert (ai.google.dev ist aus dieser Sandbox nicht
+          // erreichbar) - falls gemini-2.5-flash ein niedrigeres reales
+          // Limit hat, bitte anpassen.
+          maxOutputTokens: 32768,
           thinkingConfig: { thinkingBudget: 0 },
           responseMimeType: "application/json",
         },
