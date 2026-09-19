@@ -218,14 +218,15 @@ export async function requestJson(
         contents: fullPrompt,
         config: {
           temperature: 0.1,
-          // War 8192 - bei Claude hat eine zu knappe Grenze (16000) nachweislich
-          // zu mitten im JSON abgeschnittenen Antworten geführt (siehe
-          // Git-Historie); 8192 ist für einen kompletten Kurs/Lessons+Fragen-
-          // Batch vermutlich noch knapper. Nicht live gegen Googles Doku
-          // verifiziert (ai.google.dev ist aus dieser Sandbox nicht
-          // erreichbar) - falls gemini-2.5-flash ein niedrigeres reales
-          // Limit hat, bitte anpassen.
-          maxOutputTokens: 32768,
+          // gemini-2.5-flash erlaubt laut Google-Doku max. 65536 Output-Tokens
+          // pro Antwort - das ist das tatsächliche Modell-Limit, keine
+          // willkürliche Schätzung. Bei Claude hat eine zu knappe Grenze
+          // (16000) nachweislich zu mitten im JSON abgeschnittenen Antworten
+          // geführt (siehe Git-Historie); da Gemini 2.5 Flash pro Mio. Token
+          // günstig ist, lohnt sich hier kein Sparen am Limit - volles
+          // Modell-Maximum ausschöpfen, um dasselbe Trunkierungsproblem
+          // sicher zu vermeiden.
+          maxOutputTokens: 65536,
           thinkingConfig: { thinkingBudget: 0 },
           responseMimeType: "application/json",
         },
