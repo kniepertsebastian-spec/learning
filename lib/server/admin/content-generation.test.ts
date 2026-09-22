@@ -1,6 +1,35 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/claude";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { CURRICULUM_MODEL } from "@/lib/claude";
 import { classifyGenerationError, estimateCostUsd } from "./content-generation";
+
+/**
+ * CURRICULUM_MODEL und LESSONS_MODEL fallen beide auf dasselbe reale
+ * Gemini-Modell zurück, solange niemand GEMINI_LESSONS_MODEL abweichend
+ * konfiguriert (siehe lib/claude.ts) - für die "unabhängige Bepreisung"-Tests
+ * unten müssen sie deshalb künstlich auseinandergezogen werden, genau wie
+ * ein Admin es per Env-Var täte, der Lessons- und Curriculum-Kosten
+ * getrennt tracken will.
+ */
+async function withDistinctLessonsModel<T>(
+  fn: (models: {
+    curriculumModel: string;
+    lessonsModel: string;
+    estimateCostUsd: typeof estimateCostUsd;
+  }) => T | Promise<T>,
+): Promise<T> {
+  vi.resetModules();
+  vi.stubEnv("GEMINI_LESSONS_MODEL", "gemini-test-lessons-model");
+  try {
+    const { CURRICULUM_MODEL: curriculumModel, LESSONS_MODEL: lessonsModel } = await import(
+      "@/lib/claude"
+    );
+    const { estimateCostUsd: freshEstimateCostUsd } = await import("./content-generation");
+    return await fn({ curriculumModel, lessonsModel, estimateCostUsd: freshEstimateCostUsd });
+  } finally {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  }
+}
 
 describe("classifyGenerationError", () => {
   it("classifies an exhausted daily quota as 'quota', not just 'rate_limit'", () => {
@@ -102,13 +131,15 @@ describe("estimateCostUsd", () => {
     expect(estimateCostUsd(500_000, 250_000, CURRICULUM_MODEL)).toBeCloseTo(0.5 * 1 + 0.25 * 2, 6);
   });
 
-  it("prices the lessons model independently from the curriculum model", () => {
+  it("prices the lessons model independently from the curriculum model", async () => {
     process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
     process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "15";
     process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
     process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "5";
-    expect(estimateCostUsd(1_000_000, 1_000_000, LESSONS_MODEL)).toBeCloseTo(1 + 5, 6);
-    expect(estimateCostUsd(1_000_000, 1_000_000, CURRICULUM_MODEL)).toBeCloseTo(3 + 15, 6);
+    await withDistinctLessonsModel(({ curriculumModel, lessonsModel, estimateCostUsd: estimate }) => {
+      expect(estimate(1_000_000, 1_000_000, lessonsModel)).toBeCloseTo(1 + 5, 6);
+      expect(estimate(1_000_000, 1_000_000, curriculumModel)).toBeCloseTo(3 + 15, 6);
+    });
   });
 
   it("uses only the configured side when the other price is unset", () => {
@@ -117,8 +148,10 @@ describe("estimateCostUsd", () => {
     expect(estimateCostUsd(1_000_000, 999_999_999, CURRICULUM_MODEL)).toBeCloseTo(3, 6);
   });
 
-  it("returns 0 for zero tokens when pricing is configured", () => {
+  it("returns 0 for zero tokens when pricing is configured", async () => {
     process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "5";
-    expect(estimateCostUsd(0, 0, LESSONS_MODEL)).toBe(0);
+    await withDistinctLessonsModel(({ lessonsModel, estimateCostUsd: estimate }) => {
+      expect(estimate(0, 0, lessonsModel)).toBe(0);
+    });
   });
 });
