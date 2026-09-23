@@ -264,7 +264,11 @@ export async function generateStructured<T>(
 ): Promise<T> {
   let rawText = await requestJson(systemPrompt, userPrompt, model, onUsage);
 
-  const maxAttempts = 2;
+  // War 2 (= 1 Korrekturversuch) - bei gemini-3.6-flash traten in Produktion
+  // wiederholt ("Expected ',' or '}' after property value") JSON-Syntaxfehler
+  // auf, die auch den einen Korrekturversuch nicht immer behoben (siehe
+  // Git-Historie). 3 gibt der KI eine zweite Chance zur Selbstkorrektur.
+  const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let parsed: unknown;
     try {
@@ -275,7 +279,7 @@ export async function generateStructured<T>(
       }
       rawText = await requestJson(
         systemPrompt,
-        `Deine vorherige Antwort war kein valides JSON:\n${rawText}\n\nBitte antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
+        `Deine vorherige Antwort war kein valides JSON:\n${rawText}\n\nHäufigste Ursache: ein nicht escapetes Anführungszeichen (") innerhalb eines String-Werts. Bitte antworte erneut ausschließlich mit validem JSON (alle " innerhalb von Strings als \\" escapen) für folgende Anfrage:\n${userPrompt}`,
         model,
         onUsage,
       );
