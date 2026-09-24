@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Loader2, UploadCloud } from "lucide-react";
+import { FileText, Link as LinkIcon, Loader2, UploadCloud } from "lucide-react";
 import { BlueprintPanel } from "./BlueprintPanel";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
 
@@ -11,6 +11,8 @@ interface Source {
   title: string;
   provider: string;
   status: string;
+  sourceType: string;
+  sourceUrl: string | null;
   fileSizeBytes: number;
   publishedAt: string | Date | null;
   retrievedAt: string | Date;
@@ -56,6 +58,7 @@ export function SourcesManager({
   const router = useRouter();
   const online = useOnlineStatus();
   const [sources, setSources] = useState<Source[]>(initialSources);
+  const [sourceKind, setSourceKind] = useState<"pdf" | "url">("pdf");
   const [uploading, setUploading] = useState(false);
   const [parsingId, setParsingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -150,16 +153,48 @@ export function SourcesManager({
               className="w-full rounded-md border border-border bg-background px-3 py-2"
             />
           </label>
-          <label className="block text-sm sm:col-span-1">
-            <span className="mb-1 block font-medium">PDF</span>
-            <input
-              name="file"
-              type="file"
-              accept="application/pdf"
-              required
-              className="w-full rounded-md border border-border bg-background px-3 py-2"
-            />
-          </label>
+          <div className="block text-sm sm:col-span-1">
+            <span className="mb-1 block font-medium">
+              {locale === "de" ? "Quelle" : "Source"}
+            </span>
+            <div className="mb-2 flex gap-1 rounded-md border border-border p-0.5">
+              <button
+                type="button"
+                onClick={() => setSourceKind("pdf")}
+                className={`flex-1 rounded px-2 py-1 text-xs font-medium ${
+                  sourceKind === "pdf" ? "bg-accent text-white" : "hover:bg-background"
+                }`}
+              >
+                PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setSourceKind("url")}
+                className={`flex-1 rounded px-2 py-1 text-xs font-medium ${
+                  sourceKind === "url" ? "bg-accent text-white" : "hover:bg-background"
+                }`}
+              >
+                URL
+              </button>
+            </div>
+            {sourceKind === "pdf" ? (
+              <input
+                name="file"
+                type="file"
+                accept="application/pdf"
+                required
+                className="w-full rounded-md border border-border bg-background px-3 py-2"
+              />
+            ) : (
+              <input
+                name="url"
+                type="url"
+                required
+                placeholder="https://example.org/exam-guide.pdf"
+                className="w-full rounded-md border border-border bg-background px-3 py-2"
+              />
+            )}
+          </div>
           {approvedSources.length > 0 && (
             <label className="block text-sm sm:col-span-2">
               <span className="mb-1 block font-medium">
@@ -229,7 +264,11 @@ export function SourcesManager({
                 <div key={source.id} className="rounded-lg border border-border bg-surface p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-start gap-2">
-                      <FileText className="mt-0.5 h-4 w-4 shrink-0 text-foreground/40" aria-hidden="true" />
+                      {source.sourceType === "url" ? (
+                        <LinkIcon className="mt-0.5 h-4 w-4 shrink-0 text-foreground/40" aria-hidden="true" />
+                      ) : (
+                        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-foreground/40" aria-hidden="true" />
+                      )}
                       <div>
                         <p className="font-medium">{source.title}</p>
                         <p className="text-xs text-foreground/60">
@@ -238,6 +277,16 @@ export function SourcesManager({
                             ? ` · ${source.chunkCount} ${locale === "de" ? "Seiten extrahiert" : "pages extracted"}`
                             : ""}
                         </p>
+                        {source.sourceType === "url" && source.sourceUrl && (
+                          <a
+                            href={source.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-accent hover:underline"
+                          >
+                            {source.sourceUrl}
+                          </a>
+                        )}
                       </div>
                     </div>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor}`}>

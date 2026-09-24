@@ -29,8 +29,6 @@ export type GenerationErrorClass =
   | "provider_outage"
   | "internal";
 
-/** R1.1 (roadmap.md): "url" ist Teil des künftigen Datenmodells, wird aber
- * erstmal nicht angeboten - siehe Kommentar auf certificationSources.sourceType. */
 export type CertificationSourceType = "pdf" | "url";
 
 /** R1.1 (roadmap.md): Lebenszyklus einer certification_sources-Zeile. `parsed`
@@ -617,9 +615,10 @@ export const certificationSources = pgTable(
     certificationId: uuid("certification_id")
       .notNull()
       .references(() => certifications.id, { onDelete: "cascade" }),
-    /** Nur "pdf" wird aktuell angenommen (siehe R1.1-Entscheidung: URL-Import
-     * folgt erst, sobald geklärt ist, von welchen Anbietern automatisiert
-     * abgerufen werden darf). */
+    /** "pdf" (Datei-Upload) oder "url" (serverseitig abgerufen, siehe
+     * registerCertificationSourceFromUrl() in lib/server/admin/sources.ts,
+     * SSRF-abgesichert über lib/server/network/ssrf-guard.ts). Beide Typen
+     * landen in derselben Storage-/Extraktions-Pipeline. */
     sourceType: text("source_type").$type<CertificationSourceType>().notNull(),
     title: text("title").notNull(),
     provider: text("provider").notNull(),

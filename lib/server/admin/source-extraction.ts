@@ -9,6 +9,27 @@ import { certificationSources, sourceChunks } from "@/lib/server/db/schema";
 import { readSourceFile, sha256Hex } from "@/lib/server/storage/local-disk";
 import { getCertificationSource } from "./sources";
 
+/**
+ * Grobe HTML-Text-Extraktion für URL-Quellen ohne PDF-Inhalt - dieselbe
+ * Regex-Logik wie stripHtml() in lib/server/course-generation/sources.ts,
+ * hier lokal dupliziert statt importiert: course-generation/sources.ts
+ * importiert bereits extractPdfPages() AUS diesem Modul, ein Import in die
+ * Gegenrichtung wäre ein zyklischer Import zwischen den beiden Dateien.
+ */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<(br|\/p|\/div|\/li|\/h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export class SourceNotFoundError extends Error {}
 
 const execFileAsync = promisify(execFile);
@@ -91,11 +112,14 @@ export async function extractSourceContent(sourceId: string): Promise<void> {
 
   try {
     const data = await readSourceFile(source.storageKey);
-    const pages = await extractPdfPages(data);
+    const isPdf = source.mimeType === "application/pdf";
+    const pages = isPdf ? await extractPdfPages(data) : [{ pageNumber: 1, text: stripHtml(data.toString("utf-8")) }];
 
     if (pages.length === 0 || pages.every((page) => !page.text.trim())) {
       throw new Error(
-        "Aus der PDF-Datei konnte kein Text extrahiert werden (evtl. eingescannt/nur Bilder ohne OCR).",
+        isPdf
+          ? "Aus der PDF-Datei konnte kein Text extrahiert werden (evtl. eingescannt/nur Bilder ohne OCR)."
+          : "Aus der URL-Quelle konnte kein verwertbarer Text extrahiert werden.",
       );
     }
 

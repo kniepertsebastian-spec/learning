@@ -1,4 +1,6 @@
 import { extractPdfPages } from "@/lib/server/admin/source-extraction";
+import { fetchUrlSafely, UrlFetchError } from "@/lib/server/network/fetch-url";
+import { UnsafeUrlError } from "@/lib/server/network/ssrf-guard";
 
 export class SourceFetchError extends Error {}
 
@@ -27,7 +29,7 @@ export interface FetchedSource {
  * (Hobbyprojekt-Scope, siehe course_generation.md Abschnitt 22), kein
  * vollständiger Readability-Parser. Entfernt Skripte/Styles und Tags, lässt
  * Absätze als Zeilenumbrüche erkennbar. */
-function stripHtml(html: string): string {
+export function stripHtml(html: string): string {
   return html
     .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ")
     .replace(/<(br|\/p|\/div|\/li|\/h[1-6])>/gi, "\n")
@@ -50,31 +52,18 @@ function stripHtml(html: string): string {
  * buildSourceText() in lib/server/admin/blueprint.ts).
  */
 export async function fetchSource(id: string, url: string): Promise<FetchedSource> {
-  let response: Response;
+  let contentType: string;
+  let buffer: Buffer;
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    try {
-      response = await fetch(url, { signal: controller.signal });
-    } finally {
-      clearTimeout(timeout);
-    }
+    ({ buffer, contentType } = await fetchUrlSafely(url, {
+      timeoutMs: FETCH_TIMEOUT_MS,
+      maxBytes: MAX_SOURCE_BYTES,
+    }));
   } catch (error) {
-    throw new SourceFetchError(`Quelle "${url}" nicht erreichbar: ${(error as Error).message}`);
-  }
-  if (!response.ok) {
-    throw new SourceFetchError(`Quelle "${url}" antwortete mit Status ${response.status}.`);
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (buffer.byteLength > MAX_SOURCE_BYTES) {
-    throw new SourceFetchError(
-      `Quelle "${url}" ist größer als ${MAX_SOURCE_BYTES / (1024 * 1024)} MB.`,
-    );
-  }
-  if (buffer.byteLength === 0) {
-    throw new SourceFetchError(`Quelle "${url}" lieferte keinen Inhalt.`);
+    if (error instanceof UrlFetchError || error instanceof UnsafeUrlError) {
+      throw new SourceFetchError(error.message);
+    }
+    throw error;
   }
 
   const isPdf = contentType.includes("application/pdf") || url.toLowerCase().endsWith(".pdf");

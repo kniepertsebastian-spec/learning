@@ -1,7 +1,9 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { certificationSources, sourceChunks } from "@/lib/server/db/schema";
+import { certificationSources, sourceChunks, type CertificationSourceType } from "@/lib/server/db/schema";
 import { sha256Hex, storageKeyForChecksum, writeSourceFile } from "@/lib/server/storage/local-disk";
+import { fetchUrlSafely, UrlFetchError } from "@/lib/server/network/fetch-url";
+import { UnsafeUrlError } from "@/lib/server/network/ssrf-guard";
 
 export type CertificationSource = typeof certificationSources.$inferSelect;
 
@@ -55,26 +57,33 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }
 
-/**
- * Legt eine neue Quelle an oder gibt die vorhandene zurück, falls dieselbe
- * Zertifizierung dieselbe Datei (SHA-256) schon hat ("Wiederholter Upload
- * derselben Datei erzeugt keinen unbemerkten Doppelimport", R1.1-Test). Der
- * DB-Unique-Index (certification_id, checksum) ist die eigentliche Garantie,
- * der SELECT davor ist nur der schnelle, race-anfällige Vorab-Check - analog
- * zum Job-Schutz in R0.3.
- */
-export async function registerCertificationSource(input: {
+interface RegisterSourceInput {
   certificationId: string;
+  sourceType: CertificationSourceType;
   title: string;
   provider: string;
   publishedAt: Date | null;
   data: Buffer;
   mimeType: string;
+  sourceUrl?: string | null;
   /** R1.5: markiert diesen Upload als neue Ausgabe einer bereits
    * freigegebenen Quelle - approveBlueprintDraft() nutzt das für den Diff
    * und die stale-Markierung betroffener Lessons/Fragen. */
   supersedesSourceId?: string | null;
-}): Promise<{ source: CertificationSource; alreadyExisted: boolean }> {
+}
+
+/**
+ * Legt eine neue Quelle an oder gibt die vorhandene zurück, falls dieselbe
+ * Zertifizierung dieselben Bytes (SHA-256) schon hat ("Wiederholter Upload
+ * derselben Datei erzeugt keinen unbemerkten Doppelimport", R1.1-Test) -
+ * gilt unabhängig davon, ob die Bytes per Datei-Upload oder URL-Abruf
+ * hereinkamen. Der DB-Unique-Index (certification_id, checksum) ist die
+ * eigentliche Garantie, der SELECT davor ist nur der schnelle,
+ * race-anfällige Vorab-Check - analog zum Job-Schutz in R0.3.
+ */
+async function insertSourceRecord(
+  input: RegisterSourceInput,
+): Promise<{ source: CertificationSource; alreadyExisted: boolean }> {
   const db = getDb();
   const checksum = sha256Hex(input.data);
 
@@ -89,13 +98,14 @@ export async function registerCertificationSource(input: {
       .insert(certificationSources)
       .values({
         certificationId: input.certificationId,
-        sourceType: "pdf",
+        sourceType: input.sourceType,
         title: input.title,
         provider: input.provider,
         storageKey,
         mimeType: input.mimeType,
         fileSizeBytes: input.data.byteLength,
         checksum,
+        sourceUrl: input.sourceUrl ?? null,
         publishedAt: input.publishedAt,
         status: "uploaded",
         supersedesSourceId: input.supersedesSourceId ?? null,
@@ -109,6 +119,91 @@ export async function registerCertificationSource(input: {
     }
     throw error;
   }
+}
+
+export async function registerCertificationSource(input: {
+  certificationId: string;
+  title: string;
+  provider: string;
+  publishedAt: Date | null;
+  data: Buffer;
+  mimeType: string;
+  supersedesSourceId?: string | null;
+}): Promise<{ source: CertificationSource; alreadyExisted: boolean }> {
+  return insertSourceRecord({ ...input, sourceType: "pdf" });
+}
+
+const MAX_URL_SOURCE_BYTES = MAX_UPLOAD_BYTES;
+const URL_FETCH_TIMEOUT_MS = 30_000;
+const PDF_CONTENT_TYPE = "application/pdf";
+
+export interface UrlSourceValidationError {
+  code: "invalid_url";
+  message: string;
+}
+
+/**
+ * Formsynchrone Vorprüfung ohne Netzwerkzugriff (schnelles Feedback vor dem
+ * eigentlichen, DNS-abhängigen SSRF-Check in fetchUrlSafely()) - analog zu
+ * validatePdfUpload() oben.
+ */
+export function validateSourceUrlShape(url: string): UrlSourceValidationError | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { code: "invalid_url", message: `"${url}" ist keine gültige URL.` };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { code: "invalid_url", message: "Nur http(s)-URLs sind erlaubt." };
+  }
+  return null;
+}
+
+/**
+ * R1.1 (roadmap.md): "offizielle PDF- oder URL-Quelle importieren" -
+ * URL-Variante. Ruft die URL serverseitig ab (SSRF-abgesichert über
+ * fetchUrlSafely()/assertPublicHttpUrl()) und speichert die abgerufenen
+ * Bytes GENAUSO wie einen Datei-Upload (Checksum-Dedup, lokale
+ * Storage-Ablage) - die Quelle bleibt dadurch reproduzierbar, auch wenn die
+ * URL später offline geht, und die restliche Pipeline (Textextraktion,
+ * Blueprint, Review) kann PDF- und URL-Quellen identisch behandeln.
+ */
+export async function registerCertificationSourceFromUrl(input: {
+  certificationId: string;
+  title: string;
+  provider: string;
+  publishedAt: Date | null;
+  url: string;
+  supersedesSourceId?: string | null;
+}): Promise<{ source: CertificationSource; alreadyExisted: boolean }> {
+  const shapeError = validateSourceUrlShape(input.url);
+  if (shapeError) throw new UnsafeUrlError(shapeError.message);
+
+  const { buffer, contentType } = await fetchUrlSafely(input.url, {
+    timeoutMs: URL_FETCH_TIMEOUT_MS,
+    maxBytes: MAX_URL_SOURCE_BYTES,
+  });
+
+  const isPdf = contentType.includes(PDF_CONTENT_TYPE) || input.url.toLowerCase().endsWith(".pdf");
+  const mimeType = isPdf ? PDF_CONTENT_TYPE : "text/html";
+  if (isPdf && !buffer.subarray(0, PDF_MAGIC.length).equals(PDF_MAGIC)) {
+    throw new UrlFetchError(
+      `Quelle "${input.url}" gibt sich als PDF aus, beginnt aber nicht mit der PDF-Signatur (%PDF-).`,
+    );
+  }
+
+  return insertSourceRecord({
+    certificationId: input.certificationId,
+    sourceType: "url",
+    title: input.title,
+    provider: input.provider,
+    publishedAt: input.publishedAt,
+    data: buffer,
+    mimeType,
+    sourceUrl: input.url,
+    supersedesSourceId: input.supersedesSourceId,
+  });
 }
 
 async function findByCertificationAndChecksum(
