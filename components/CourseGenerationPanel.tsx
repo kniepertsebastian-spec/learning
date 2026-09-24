@@ -25,6 +25,10 @@ interface Objective {
   code: string;
   status: string;
   isCanary: boolean;
+  model: string | null;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: string | null;
 }
 
 const TERMINAL_STATUSES = new Set([
@@ -62,6 +66,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(true);
+  const [showObjectiveCosts, setShowObjectiveCosts] = useState(false);
 
   const active = job ? !TERMINAL_STATUSES.has(job.status) : false;
 
@@ -285,11 +290,54 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
           {job.message && <p className="text-xs text-foreground/60">{job.message}</p>}
 
           {objectives.length > 0 && (
-            <p className="text-xs text-foreground/50">
-              {locale === "de"
-                ? `${validCount}/${objectives.length} Lernziel(e) fertig${failedCount > 0 ? `, ${failedCount} fehlgeschlagen` : ""}`
-                : `${validCount}/${objectives.length} objective(s) done${failedCount > 0 ? `, ${failedCount} failed` : ""}`}
-            </p>
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowObjectiveCosts((v) => !v)}
+                className="text-xs text-foreground/50 underline decoration-dotted hover:text-foreground/80"
+              >
+                {locale === "de"
+                  ? `${validCount}/${objectives.length} Lernziel(e) fertig${failedCount > 0 ? `, ${failedCount} fehlgeschlagen` : ""}`
+                  : `${validCount}/${objectives.length} objective(s) done${failedCount > 0 ? `, ${failedCount} failed` : ""}`}
+                {" "}
+                {showObjectiveCosts
+                  ? locale === "de" ? "(Details ausblenden)" : "(hide details)"
+                  : locale === "de" ? "(Details/Kosten anzeigen)" : "(show details/cost)"}
+              </button>
+              {showObjectiveCosts && (
+                <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border">
+                  <table className="w-full text-left text-xs">
+                    <thead className="sticky top-0 bg-surface">
+                      <tr className="text-foreground/50">
+                        <th className="px-2 py-1 font-medium">Code</th>
+                        <th className="px-2 py-1 font-medium">{locale === "de" ? "Status" : "Status"}</th>
+                        <th className="px-2 py-1 text-right font-medium">Tokens</th>
+                        <th className="px-2 py-1 text-right font-medium">
+                          {locale === "de" ? "Kosten" : "Cost"}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {objectives.map((o) => (
+                        <tr key={o.id} className="border-t border-border/60">
+                          <td className="px-2 py-1 font-mono">
+                            {o.code}
+                            {o.isCanary && " 🐤"}
+                          </td>
+                          <td className="px-2 py-1">{o.status}</td>
+                          <td className="px-2 py-1 text-right">
+                            {(o.inputTokens + o.outputTokens).toLocaleString(locale)}
+                          </td>
+                          <td className="px-2 py-1 text-right">
+                            {o.costUsd !== null ? `$${Number(o.costUsd).toFixed(4)}` : "–"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           )}
 
           <p className="text-xs text-foreground/50">
