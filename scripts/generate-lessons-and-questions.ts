@@ -24,6 +24,8 @@ import {
 import { LESSONS_MODEL } from "../lib/claude";
 import { getObjectiveSourceExcerpts } from "../lib/server/admin/objective-sources";
 import { QualityCheckService } from "../lib/server/admin/quality-checks";
+import { recordObjectiveGenerationCost } from "../lib/server/admin/objective-costs";
+import type { AIUsage } from "../lib/ai/generate";
 import type { Localized } from "../lib/types";
 import type { LessonReviewStatus } from "../lib/server/db/schema";
 
@@ -184,6 +186,13 @@ async function main() {
     let normalizedLessons: NormalizedLesson[];
     let normalizedQuestions: NormalizedQuestion[];
 
+    // R6 (roadmap.md): "Kosten je veröffentlichter Lesson/Frage" - sammelt
+    // ALLE generateStructured()-Versuche für dieses Objective (inkl. interner
+    // JSON-Korrekturversuche, die ebenfalls abgerechnet werden), siehe
+    // recordObjectiveGenerationCost()-Aufruf unten.
+    const objectiveUsages: AIUsage[] = [];
+    const onUsage = (usage: AIUsage) => objectiveUsages.push(usage);
+
     if (grounded) {
       const { lessons: draftLessons, questions: draftQuestions } =
         await generateGroundedLessonsAndQuestionsForObjective(
@@ -197,6 +206,7 @@ async function main() {
             difficulty: s.difficulty ?? "intermediate",
           })),
           excerpts.map((e) => ({ locator: e.locator, text: e.text })),
+          onUsage,
         );
       normalizedLessons = draftLessons.map((draft) => ({
         sectionOrderNum: draft.sectionOrderNum,
@@ -228,6 +238,7 @@ async function main() {
             estimatedMinutes: s.estimatedMinutes ?? 20,
             difficulty: s.difficulty ?? "intermediate",
           })),
+          onUsage,
         );
       normalizedLessons = draftLessons.map((draft) => ({
         sectionOrderNum: draft.sectionOrderNum,
@@ -376,6 +387,16 @@ async function main() {
         })),
       );
       questionsSaved++;
+    }
+
+    if (objectiveUsages.length > 0) {
+      await recordObjectiveGenerationCost(objective.id, {
+        model: objectiveUsages.at(-1)?.model ?? LESSONS_MODEL,
+        promptTokens: objectiveUsages.reduce((sum, u) => sum + u.promptTokens, 0),
+        completionTokens: objectiveUsages.reduce((sum, u) => sum + u.completionTokens, 0),
+        acceptedLessonCount: lessonsSaved,
+        acceptedQuestionCount: questionsSaved,
+      });
     }
 
     done++;

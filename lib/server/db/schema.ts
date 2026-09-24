@@ -203,6 +203,38 @@ export const questionOptions = pgTable("question_options", {
   isCorrect: boolean("is_correct").notNull().default(false),
 });
 
+/**
+ * R6 (roadmap.md): "Kosten je veröffentlichter Lesson, Mission und
+ * akzeptierter Frage" - ein Snapshot statt einer Historie: das erzeugende
+ * Skript (scripts/generate-lessons-and-questions.ts) kennt keine
+ * content_generation_jobs-ID (läuft auch völlig eigenständig per CLI, ohne
+ * Job-Kontext - siehe runNpmScript() in lib/server/admin/content-generation.ts,
+ * das keine Job-ID an den Kindprozess weiterreicht), daher Zuordnung über
+ * objectiveId statt jobId. Ein erneuter Lauf überschreibt den Snapshot
+ * (ON CONFLICT), passend dazu, dass eine Regenerierung den vorherigen
+ * Lernstoff der Section/des Objectives ohnehin ersetzt (siehe R1.5). Die
+ * tatsächlichen Kosten EINER einzelnen Lesson/Frage sind nicht separat
+ * messbar (ein Aufruf erzeugt mehrere zusammen) - `estimatedCostUsd` bleibt
+ * der reale Batch-Betrag, ein Kosten-je-Element-Wert wird erst beim Lesen
+ * (geteilt durch acceptedLessonCount+acceptedQuestionCount) abgeleitet,
+ * statt eine erfundene Einzelzahl zu speichern.
+ */
+export const objectiveGenerationCosts = pgTable("objective_generation_costs", {
+  objectiveId: uuid("objective_id")
+    .primaryKey()
+    .references(() => objectives.id, { onDelete: "cascade" }),
+  model: text("model"),
+  promptTokens: integer("prompt_tokens").notNull().default(0),
+  completionTokens: integer("completion_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  /** NULL solange für das Modell keine Preise konfiguriert sind - siehe
+   * gleichlautender Kommentar auf contentGenerationJobs.estimatedCostUsd. */
+  estimatedCostUsd: numeric("estimated_cost_usd", { precision: 10, scale: 4 }),
+  acceptedLessonCount: integer("accepted_lesson_count").notNull().default(0),
+  acceptedQuestionCount: integer("accepted_question_count").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const quizzes = pgTable("quizzes", {
   id: uuid("id").primaryKey().defaultRandom(),
   sectionId: uuid("section_id")
