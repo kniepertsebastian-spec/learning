@@ -7,8 +7,12 @@ import { certifications, certificationSources } from "@/lib/server/db/schema";
 import {
   listCertificationSources,
   registerCertificationSource,
+  registerCertificationSourceFromUrl,
   validatePdfUpload,
+  validateSourceUrlShape,
 } from "@/lib/server/admin/sources";
+import { UnsafeUrlError } from "@/lib/server/network/ssrf-guard";
+import { UrlFetchError } from "@/lib/server/network/fetch-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,10 +32,10 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/admin/sources (multipart/form-data) - R1.1: Quelle per PDF-Upload
- * registrieren. Felder: certificationId, title, provider, file, optional
- * publishedAt (ISO-Datum). URL-Import ist bewusst (noch) nicht angeboten,
- * siehe roadmap.md R1.1.
+ * POST /api/admin/sources (multipart/form-data) - R1.1: Quelle registrieren,
+ * entweder per PDF-Upload (Feld "file") oder per URL-Abruf (Feld "url") -
+ * genau eines der beiden muss gesetzt sein. Gemeinsame Felder:
+ * certificationId, title, provider, optional publishedAt (ISO-Datum).
  */
 export async function POST(request: Request) {
   const guard = await requireAdminApi();
@@ -50,6 +54,7 @@ export async function POST(request: Request) {
   const publishedAtRaw = formData.get("publishedAt");
   const supersedesSourceIdRaw = formData.get("supersedesSourceId");
   const file = formData.get("file");
+  const urlRaw = formData.get("url");
 
   if (
     typeof certificationId !== "string" ||
@@ -57,10 +62,16 @@ export async function POST(request: Request) {
     typeof provider !== "string" ||
     !title.trim() ||
     !provider.trim() ||
-    !(file instanceof File)
+    (!(file instanceof File) && typeof urlRaw !== "string")
   ) {
     return NextResponse.json(
-      { error: "certificationId, title, provider und file sind erforderlich." },
+      { error: "certificationId, title, provider und entweder file oder url sind erforderlich." },
+      { status: 400 },
+    );
+  }
+  if (file instanceof File && typeof urlRaw === "string" && urlRaw.trim()) {
+    return NextResponse.json(
+      { error: "Bitte entweder eine Datei ODER eine URL angeben, nicht beides." },
       { status: 400 },
     );
   }
@@ -107,28 +118,55 @@ export async function POST(request: Request) {
     supersedesSourceId = supersededCandidate.id;
   }
 
-  const data = Buffer.from(await file.arrayBuffer());
-  const validationError = validatePdfUpload({
-    mimeType: file.type,
-    fileSizeBytes: data.byteLength,
-    data,
-  });
-  if (validationError) {
-    return NextResponse.json(
-      { error: validationError.message, code: validationError.code },
-      { status: 400 },
-    );
-  }
+  let source;
+  let alreadyExisted: boolean;
 
-  const { source, alreadyExisted } = await registerCertificationSource({
-    certificationId,
-    title: title.trim(),
-    provider: provider.trim(),
-    publishedAt,
-    data,
-    mimeType: file.type,
-    supersedesSourceId,
-  });
+  if (file instanceof File) {
+    const data = Buffer.from(await file.arrayBuffer());
+    const validationError = validatePdfUpload({
+      mimeType: file.type,
+      fileSizeBytes: data.byteLength,
+      data,
+    });
+    if (validationError) {
+      return NextResponse.json(
+        { error: validationError.message, code: validationError.code },
+        { status: 400 },
+      );
+    }
+
+    ({ source, alreadyExisted } = await registerCertificationSource({
+      certificationId,
+      title: title.trim(),
+      provider: provider.trim(),
+      publishedAt,
+      data,
+      mimeType: file.type,
+      supersedesSourceId,
+    }));
+  } else {
+    const url = (urlRaw as string).trim();
+    const shapeError = validateSourceUrlShape(url);
+    if (shapeError) {
+      return NextResponse.json({ error: shapeError.message, code: shapeError.code }, { status: 400 });
+    }
+
+    try {
+      ({ source, alreadyExisted } = await registerCertificationSourceFromUrl({
+        certificationId,
+        title: title.trim(),
+        provider: provider.trim(),
+        publishedAt,
+        url,
+        supersedesSourceId,
+      }));
+    } catch (error) {
+      if (error instanceof UnsafeUrlError || error instanceof UrlFetchError) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
+    }
+  }
 
   return NextResponse.json({ source, alreadyExisted }, { status: alreadyExisted ? 200 : 201 });
 }
