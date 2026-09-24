@@ -575,7 +575,9 @@ Lernende verstehen ihren Fortschritt, ohne dass eine Prozentzahl falsche Sicherh
 
 Bereits umgesetzt: Quiz-/Prüfungshistorie mit Detailauswertung pro Versuch, wiederkehrende Fehler (`getTopWeakObjectives`, wiederholte Schwachstellen in der Prüfungshistorie), zeitliche Aktualität (Recency-Decay im Readiness-Modell), Datenunsicherheit sichtbar (`INSUFFICIENT_DATA` unterhalb einer Konfidenzschwelle statt einer falschen Zahl), begründete Readiness („Warum diese Einschätzung?“), JSON-Export der Lernaktivität, Remediation-Link aus jeder Schwachstelle.
 
-Noch offen: Trends sind bisher kursweit (7/30/90 Tage), noch nicht nach Domain/Objective aufgeschlüsselt; die Trennung von Wissen, Anwendung und Transfer sowie eine echte Hinweis-Analyse setzen das neue Skill-/Mission-Modell (R7) bzw. ein Hint-System (R2) voraus.
+**Update 24. September 2026:** Domain-aufgeschlüsselter Trend ergänzt (`getActivityTrendsByDomain()` in `lib/server/analytics/learner-activity.ts`, neue Komponente `DomainActivityTrends.tsx` auf der Prüfungshistorie-Seite) - bewusst nur über `quiz_attempts`, nicht `exam_attempts` (eine Prüfung deckt typischerweise mehrere Domains gemischt ab, ein Section-Quiz gehört über `quizzes.sectionId -> sections.objectiveId -> objectives.domainId` eindeutig zu einer Domain). Bewusst auf Domain- statt echter Objective-Ebene (bei 20+ Objectives kaum noch lesbar) und nur das 30-Tage-Fenster statt aller drei (eine Domain-aufgeschlüsselte 7-/30-/90-Tage-Matrix über mehrere Domains wäre zu unübersichtlich).
+
+Noch offen: die Trennung von Wissen, Anwendung und Transfer sowie eine echte Hinweis-Analyse setzen das neue Skill-/Mission-Modell (R7) bzw. ein Hint-System (R2) voraus.
 
 ### Regeln
 
