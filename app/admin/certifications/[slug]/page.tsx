@@ -16,6 +16,7 @@ import {
   getAiBudgetStatus,
   getLatestContentGenerationJob,
 } from "@/lib/server/admin/content-generation";
+import { getObjectiveCostsForCertification } from "@/lib/server/admin/objective-costs";
 
 export default async function AdminCertificationPage({
   params,
@@ -58,11 +59,20 @@ export default async function AdminCertificationPage({
   // Run validation
   const validation = await ContentValidationService.validateCertificationContent(cert.id);
 
-  const [domainAnalytics, objectiveAnalytics, contentAnalytics] = await Promise.all([
+  const [domainAnalytics, objectiveAnalytics, contentAnalytics, objectiveCosts] = await Promise.all([
     AnalyticsService.getDomainAnalytics(cert.id),
     AnalyticsService.getObjectiveAnalytics(cert.id),
     AnalyticsService.getContentAnalytics(cert.id),
+    getObjectiveCostsForCertification(cert.id),
   ]);
+  const objectiveCostsWithData = objectiveCosts
+    .filter((o) => o.promptTokens > 0)
+    .sort((a, b) => (b.estimatedCostUsd ?? 0) - (a.estimatedCostUsd ?? 0));
+  const totalObjectiveCostUsd = objectiveCostsWithData.every((o) => o.estimatedCostUsd !== null)
+    ? objectiveCostsWithData.reduce((sum, o) => sum + (o.estimatedCostUsd ?? 0), 0)
+    : null;
+  const totalAcceptedLessons = objectiveCostsWithData.reduce((sum, o) => sum + o.acceptedLessonCount, 0);
+  const totalAcceptedQuestions = objectiveCostsWithData.reduce((sum, o) => sum + o.acceptedQuestionCount, 0);
 
   const errorIssues = validation.results.flatMap((r) => r.issues).filter((i) => i.severity === "error");
   const warningIssues = validation.results.flatMap((r) => r.issues).filter((i) => i.severity === "warning");
@@ -302,6 +312,77 @@ export default async function AdminCertificationPage({
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+
+        {/* R6 (roadmap.md): "Kosten je veröffentlichter Lesson, Mission und
+            akzeptierter Frage" - Snapshot je Objective, siehe
+            lib/server/admin/objective-costs.ts. */}
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <h3 className="mb-3 font-medium">
+            {locale === "de" ? "Kosten je Objective" : "Cost per objective"}
+          </h3>
+          {objectiveCostsWithData.length === 0 ? (
+            <p className="text-sm text-foreground/60">
+              {locale === "de"
+                ? "Noch keine Kostendaten (werden bei der nächsten Generierung erfasst)."
+                : "No cost data yet (recorded on the next generation run)."}
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-sm text-foreground/70">
+                {locale === "de"
+                  ? `Insgesamt ${totalObjectiveCostUsd !== null ? `$${totalObjectiveCostUsd.toFixed(4)}` : "unbekannt (Preise nicht konfiguriert)"} für ${totalAcceptedLessons} Lesson(s) und ${totalAcceptedQuestions} Frage(n) über ${objectiveCostsWithData.length} Objective(s).`
+                  : `$${totalObjectiveCostUsd !== null ? totalObjectiveCostUsd.toFixed(4) : "unknown (pricing not configured)"} total for ${totalAcceptedLessons} lesson(s) and ${totalAcceptedQuestions} question(s) across ${objectiveCostsWithData.length} objective(s).`}
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-xs text-foreground/50">
+                      <th className="pb-2 pr-3 font-medium">{locale === "de" ? "Objective" : "Objective"}</th>
+                      <th className="pb-2 pr-3 font-medium">{locale === "de" ? "Modell" : "Model"}</th>
+                      <th className="pb-2 pr-3 text-right font-medium">Tokens</th>
+                      <th className="pb-2 pr-3 text-right font-medium">
+                        {locale === "de" ? "Kosten" : "Cost"}
+                      </th>
+                      <th className="pb-2 pr-3 text-right font-medium">
+                        {locale === "de" ? "Lessons/Fragen" : "Lessons/questions"}
+                      </th>
+                      <th className="pb-2 text-right font-medium">
+                        {locale === "de" ? "~je Element" : "~per item"}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {objectiveCostsWithData.slice(0, 15).map((o) => (
+                      <tr key={o.objectiveId} className="border-t border-border/60">
+                        <td className="py-1.5 pr-3">
+                          <span className="font-mono text-xs">{o.objectiveCode}</span> {o.objectiveTitle}
+                        </td>
+                        <td className="py-1.5 pr-3 text-xs text-foreground/60">{o.model ?? "–"}</td>
+                        <td className="py-1.5 pr-3 text-right">{o.totalTokens.toLocaleString(locale)}</td>
+                        <td className="py-1.5 pr-3 text-right">
+                          {o.estimatedCostUsd !== null ? `$${o.estimatedCostUsd.toFixed(4)}` : "–"}
+                        </td>
+                        <td className="py-1.5 pr-3 text-right">
+                          {o.acceptedLessonCount}/{o.acceptedQuestionCount}
+                        </td>
+                        <td className="py-1.5 text-right">
+                          {o.estimatedCostPerItemUsd !== null ? `$${o.estimatedCostPerItemUsd.toFixed(4)}` : "–"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {objectiveCostsWithData.length > 15 && (
+                  <p className="mt-2 text-xs text-foreground/50">
+                    {locale === "de"
+                      ? `Und ${objectiveCostsWithData.length - 15} weitere.`
+                      : `And ${objectiveCostsWithData.length - 15} more.`}
+                  </p>
+                )}
+              </div>
+            </>
           )}
         </div>
 

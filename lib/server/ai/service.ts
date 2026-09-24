@@ -1,4 +1,4 @@
-import { generateStructured } from "@/lib/ai/generate";
+import { generateStructured, type AIUsage } from "@/lib/ai/generate";
 import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/claude";
 import {
   blueprintExtractionSchema,
@@ -83,6 +83,7 @@ export async function generateLessonsAndQuestionsForObjective(
   objectiveTitle: string,
   objectiveDescription: string,
   sections: { orderNum: number; titleEn: string; estimatedMinutes: number; difficulty: string }[],
+  onUsage?: (usage: AIUsage) => void,
 ): Promise<LessonsAndQuestions> {
   const systemPrompt = [
     `Du bist Dozent und Prüfungsfragen-Autor für die Zertifizierung "${certificationName}",`,
@@ -140,6 +141,7 @@ export async function generateLessonsAndQuestionsForObjective(
     userPrompt,
     lessonsAndQuestionsForObjectiveResponseSchema,
     LESSONS_MODEL,
+    onUsage,
   );
 }
 
@@ -271,6 +273,7 @@ export async function generateGroundedLessonsAndQuestionsForObjective(
   objectiveDescription: string,
   sections: { orderNum: number; titleEn: string; estimatedMinutes: number; difficulty: string }[],
   excerpts: SourceExcerpt[],
+  onUsage?: (usage: AIUsage) => void,
 ): Promise<GroundedLessonsAndQuestions> {
   const systemPrompt = [
     `Du bist Dozent und Prüfungsfragen-Autor für die Zertifizierung "${certificationName}",`,
@@ -341,5 +344,6 @@ export async function generateGroundedLessonsAndQuestionsForObjective(
     userPrompt,
     groundedLessonsAndQuestionsResponseSchema,
     LESSONS_MODEL,
+    onUsage,
   );
 }
