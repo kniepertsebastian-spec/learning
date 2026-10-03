@@ -1,12 +1,19 @@
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/lib/server/db/client";
 import { users } from "@/lib/server/db/schema";
+import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
+
+const REGISTER_WINDOW_MS = 60 * 60 * 1000;
+const REGISTER_LIMIT_PER_IP = 10;
 
 const registerRequestSchema = z.object({
-  email: z.string().email(),
+  // Normalisiert gespeichert, damit "Max@x.de" und "max@x.de" nicht zwei
+  // Konten ergeben (Login vergleicht ebenfalls kleingeschrieben, siehe
+  // lib/server/auth.ts).
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
   name: z.string().min(1).optional(),
 });
@@ -29,6 +36,18 @@ function isEmailAllowed(email: string): boolean {
 }
 
 export async function POST(request: Request) {
+  const limit = checkRateLimit(
+    `register:ip:${getClientIp(request.headers)}`,
+    REGISTER_LIMIT_PER_IP,
+    REGISTER_WINDOW_MS,
+  );
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Zu viele Versuche. Bitte später erneut versuchen." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
+
   try {
     const body = registerRequestSchema.parse(await request.json());
 
@@ -44,7 +63,7 @@ export async function POST(request: Request) {
     const [existing] = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.email, body.email))
+      .where(sql`lower(${users.email}) = ${body.email}`)
       .limit(1);
     if (existing) {
       return NextResponse.json({ error: "E-Mail bereits registriert." }, { status: 409 });

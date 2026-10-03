@@ -1,9 +1,17 @@
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { getDb } from "./db/client";
 import { users } from "./db/schema";
+import { checkRateLimit, getClientIp } from "./rate-limit";
+
+// Brute-Force-Schutz: pro Konto UND pro IP begrenzt - das Konto-Limit greift
+// auch, wenn ein Angreifer IPs wechselt, das IP-Limit auch beim Durchprobieren
+// vieler Konten.
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_LIMIT_PER_EMAIL = 10;
+const LOGIN_LIMIT_PER_IP = 30;
 
 /**
  * Credentials-Provider mit JWT-Sessions - kein Auth.js-Adapter/DB-Sessiontabellen
@@ -24,16 +32,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (credentials) => {
-        const email = typeof credentials?.email === "string" ? credentials.email : undefined;
+      authorize: async (credentials, request) => {
+        const email =
+          typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : undefined;
         const password =
           typeof credentials?.password === "string" ? credentials.password : undefined;
         if (!email || !password) return null;
 
+        const ip = getClientIp(request.headers);
+        if (
+          !checkRateLimit(`login:email:${email}`, LOGIN_LIMIT_PER_EMAIL, LOGIN_WINDOW_MS).ok ||
+          !checkRateLimit(`login:ip:${ip}`, LOGIN_LIMIT_PER_IP, LOGIN_WINDOW_MS).ok
+        ) {
+          return null;
+        }
+
+        // lower() auf beiden Seiten: Bestandskonten können noch mit
+        // Großbuchstaben gespeichert sein (vor der Normalisierung in
+        // /api/register), sollen aber unabhängig von der Schreibweise beim
+        // Login gefunden werden.
         const [user] = await getDb()
           .select()
           .from(users)
-          .where(eq(users.email, email))
+          .where(sql`lower(${users.email}) = ${email}`)
           .limit(1);
         if (!user) return null;
 

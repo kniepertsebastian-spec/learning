@@ -7,11 +7,16 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-learning_pwa}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      # Kein Default-Passwort: fehlt DB_PASSWORD, bricht docker compose mit
+      # einer Fehlermeldung ab, statt mit "postgres" zu starten.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss in .env gesetzt sein}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${DB_PORT:-5432}:5432"
+      # Nur auf localhost des Hosts (für db:migrate/psql vom Host aus) - die
+      # App erreicht Postgres über das interne Netzwerk, aus dem Internet ist
+      # der Port so nicht erreichbar.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
@@ -29,10 +34,10 @@ services:
     restart: always
     environment:
       # Database
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-learning_pwa}
-      
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?DB_PASSWORD muss in .env gesetzt sein}@postgres:5432/${DB_NAME:-learning_pwa}
+
       # Auth (Auth.js v5 reads AUTH_SECRET, see lib/server/auth.ts)
-      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET muss in .env gesetzt sein}
 
       # Comma-separated allowlist gating /api/register (see app/api/register/route.ts)
       REGISTRATION_ALLOWED_EMAILS: ${REGISTRATION_ALLOWED_EMAILS:-}
@@ -47,13 +52,25 @@ services:
       GEMINI_CURRICULUM_MODEL: ${GEMINI_CURRICULUM_MODEL:-}
       GEMINI_LESSONS_MODEL: ${GEMINI_LESSONS_MODEL:-}
 
+      # KI-Budget und Preise (lib/server/admin/content-generation.ts). Ohne
+      # Weiterleitung hier kommen sie im Container nie an - das Budget wäre
+      # dann trotz Eintrag in .env stillschweigend deaktiviert.
+      GEMINI_BUDGET_USD: ${GEMINI_BUDGET_USD:-}
+      GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD: ${GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD:-}
+      GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD: ${GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD:-}
+      GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD: ${GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD:-}
+      GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD: ${GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD:-}
+
       # Uploaded certification source PDFs (R1.1, lib/server/storage/local-disk.ts)
       SOURCES_STORAGE_DIR: /app/data/sources
 
       # Node env
       NODE_ENV: production
     ports:
-      - "${APP_PORT:-3000}:3000"
+      # Nur localhost: öffentlich erreichbar ist die App ausschließlich über
+      # den cloudflared-Tunnel (bzw. einen Reverse-Proxy auf dem Host, siehe
+      # deploy/Caddyfile). Ein offener Port würde Tunnel und Proxy umgehen.
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy
