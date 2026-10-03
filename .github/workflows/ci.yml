@@ -21,6 +21,11 @@ jobs:
           node-version: 20
           cache: npm
 
+      # pdftotext (Poppler) für die PDF-Extraktion und ihre Tests
+      # (lib/server/admin/source-extraction.ts) - wie im Dockerfile.
+      - name: Install Poppler
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
+
       - run: npm ci
 
       - name: Lint
