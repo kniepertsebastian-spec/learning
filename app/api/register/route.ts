@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/lib/server/db/client";
 import { users } from "@/lib/server/db/schema";
+import { checkRegistrationRateLimit, clientIp } from "@/lib/server/auth-rate-limit";
 import { normalizeEmail } from "@/lib/server/email";
 
 const registerRequestSchema = z.object({
@@ -30,6 +31,14 @@ function isEmailAllowed(email: string): boolean {
 }
 
 export async function POST(request: Request) {
+  const limit = checkRegistrationRateLimit(clientIp(request.headers));
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Zu viele Versuche. Bitte später erneut versuchen." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
+
   try {
     const body = registerRequestSchema.parse(await request.json());
 

@@ -17,7 +17,7 @@ export type RateLimitResult =
  * eines geteilten globalen Limits), damit z. B. viele Content-Generierungen
  * nicht die Blueprint-Extraktion blockieren und umgekehrt.
  */
-function checkRateLimit(
+export function checkRateLimit(
   bucket: string,
   userId: string,
   windowMs: number,

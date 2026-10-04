@@ -40,15 +40,17 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 ### Sicherheit
 - [ ] Rate-Limits für Login und Registrierung
-  - _Ist-Stand:_ `lib/server/admin/rate-limit.ts` deckt nur Admin-Routen ab
+  - _Stand:_ `lib/server/auth-rate-limit.ts` (Login 10/15 min je IP+E-Mail, Registrierung 5/h je IP, In-Process wie das Admin-Limit), in `auth.ts` und `/api/register` eingebunden; Limiter per Unit-Test geprüft, `tsc` sauber. **Ende-zu-Ende-Test gegen die laufende App steht aus** (Login-Sperre über Auth.js nicht live geprüft)
 - [ ] Rate-Limits und Tageskontingent pro Nutzer für alle KI-Routen
   - _Ist-Stand:_ nur Admin-Generierung; `/api/remediation/[objectiveId]` nicht abgedeckt
 - [ ] Remediation-Neugenerierung (`?regenerate=true`) auf `POST` mit Abklingzeit umstellen
   - _Ist-Stand:_ `app/api/remediation/[objectiveId]/route.ts` liest den Parameter per GET
 - [ ] KI-Budget auf Gemini-Preise umstellen (`ANTHROPIC_*_PRICE_*` ersetzen) inkl. Tests
   - _Ist-Stand:_ `lib/server/admin/content-generation.ts` und Test nutzen noch `ANTHROPIC_*`
-- [ ] Security-Header (CSP, HSTS, `frame-ancestors 'none'`, Referrer-Policy, Permissions-Policy)
-  - _Ist-Stand:_ `deploy/Caddyfile` setzt nur `encode`, `next.config.ts` ohne `headers()`
+- [x] Security-Header: HSTS, `frame-ancestors 'none'` (CSP + X-Frame-Options), `object-src`/`base-uri`/`form-action`, nosniff, Referrer-Policy, Permissions-Policy
+  - _Geprüft:_ Produktions-Build gestartet, `curl -I` auf `/login` und `/api/health` zeigt alle Header
+- [ ] Strikte CSP mit `script-src` (Nonce über `proxy.ts`)
+  - _Offen:_ erzwingt dynamisches Rendering aller Seiten und muss im Browser gegen die PWA (Service Worker, Theme-Skript) geprüft werden
 - [ ] Service Worker: angemeldete Seiten nicht cachen, `ui-cache` beim Logout leeren
   - _Ist-Stand:_ API ist `NetworkOnly`; Seiten in `ui-cache` (Stale-While-Revalidate), kein Leeren beim Logout
 - [ ] API-Fehler nach außen generisch, Details nur ins Log
