@@ -39,26 +39,14 @@ export function estimateCostUsd(
 
   if (model === CURRICULUM_MODEL) {
     pricePerMillionPrompt =
-      Number(
-        process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD ||
-          process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD,
-      ) || 0;
+      Number(process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD) || 0;
     pricePerMillionCompletion =
-      Number(
-        process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD ||
-          process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD,
-      ) || 0;
+      Number(process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD) || 0;
   } else if (model === LESSONS_MODEL) {
     pricePerMillionPrompt =
-      Number(
-        process.env.GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD ||
-          process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD,
-      ) || 0;
+      Number(process.env.GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD) || 0;
     pricePerMillionCompletion =
-      Number(
-        process.env.GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD ||
-          process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD,
-      ) || 0;
+      Number(process.env.GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD) || 0;
   } else {
     return null;
   }
@@ -77,7 +65,7 @@ export interface AiBudgetStatus {
 }
 
 export async function getAiBudgetStatus(): Promise<AiBudgetStatus | null> {
-  const limitUsd = Number(process.env.GEMINI_BUDGET_USD || process.env.ANTHROPIC_BUDGET_USD) || 0;
+  const limitUsd = Number(process.env.GEMINI_BUDGET_USD) || 0;
   if (limitUsd <= 0) return null;
 
   const rows = await getDb()

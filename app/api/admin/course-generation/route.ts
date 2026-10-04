@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
+import { checkCourseGenerationRateLimit } from "@/lib/server/admin/rate-limit";
 import { requireAdminApi } from "@/lib/server/auth-guards";
 import {
   createCourseGenerationJob,
@@ -44,6 +45,14 @@ export async function GET() {
 export async function POST(request: Request) {
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
+
+  const rateLimit = checkCourseGenerationRateLimit(guard.user.id);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Zu viele Kursgenerierungen. Bitte später erneut versuchen." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+    );
+  }
 
   let body: unknown;
   try {

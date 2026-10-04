@@ -41,12 +41,12 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 ### Sicherheit
 - [ ] Rate-Limits für Login und Registrierung
   - _Stand:_ `lib/server/auth-rate-limit.ts` (Login 10/15 min je IP+E-Mail, Registrierung 5/h je IP, In-Process wie das Admin-Limit), in `auth.ts` und `/api/register` eingebunden; Limiter per Unit-Test geprüft, `tsc` sauber. **Ende-zu-Ende-Test gegen die laufende App steht aus** (Login-Sperre über Auth.js nicht live geprüft)
-- [ ] Rate-Limits und Tageskontingent pro Nutzer für alle KI-Routen
-  - _Ist-Stand:_ nur Admin-Generierung; `/api/remediation/[objectiveId]` nicht abgedeckt
-- [ ] Remediation-Neugenerierung (`?regenerate=true`) auf `POST` mit Abklingzeit umstellen
-  - _Ist-Stand:_ `app/api/remediation/[objectiveId]/route.ts` liest den Parameter per GET
-- [ ] KI-Budget auf Gemini-Preise umstellen (`ANTHROPIC_*_PRICE_*` ersetzen) inkl. Tests
-  - _Ist-Stand:_ `lib/server/admin/content-generation.ts` und Test nutzen noch `ANTHROPIC_*`
+- [x] Rate-Limits und Tageskontingent pro Nutzer für KI-Routen
+  - _Geprüft:_ Admin-Generierung/Blueprint hatten Limits; neu: Kursgenerierung (5 Aufträge/h je Admin) und Remediation (20 Generierungen/Tag je Nutzer, Unit-Tests grün). Die Remediation ist die einzige Lernenden-Route mit KI-Aufruf (per Code-Suche geprüft)
+- [x] Remediation-Neugenerierung nur per `POST` mit Abklingzeit (10 min je Nutzer und Ziel); `GET` ignoriert `?regenerate=true`
+  - _Geprüft:_ Unit-Tests für Abklingzeit, `tsc` und Lint sauber; Route nicht live aufgerufen
+- [x] KI-Budget auf Gemini-Variablen umgestellt (`GEMINI_*_PRICE_*`, `GEMINI_BUDGET_USD`; `ANTHROPIC_*`-Fallback entfernt, Compose reicht die Variablen durch)
+  - _Geprüft:_ Tests laufen auf `GEMINI_*`, ein Test belegt, dass `ANTHROPIC_*` ignoriert wird. Konkrete Preiswerte trägst du selbst in `.env` ein
 - [x] Security-Header: HSTS, `frame-ancestors 'none'` (CSP + X-Frame-Options), `object-src`/`base-uri`/`form-action`, nosniff, Referrer-Policy, Permissions-Policy
   - _Geprüft:_ Produktions-Build gestartet, `curl -I` auf `/login` und `/api/health` zeigt alle Header
 - [ ] Strikte CSP mit `script-src` (Nonce über `proxy.ts`)
