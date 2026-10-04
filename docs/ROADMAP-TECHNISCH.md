@@ -26,17 +26,17 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 **Ziel:** Der laufende Server ist sicher, Änderungen sind getestet, Daten sind gesichert.
 
 ### Infrastruktur
-- [ ] Postgres-Port in `docker-compose.yml` nicht mehr veröffentlichen
-  - _Ist-Stand:_ `ports: "${DB_PORT:-5432}:5432"` noch gesetzt
-- [ ] Keine Default-Passwörter: Pflichtvariablen mit `${VAR:?}` (`DB_PASSWORD`, `AUTH_SECRET`)
-  - _Ist-Stand:_ `DB_PASSWORD` fällt auf `postgres` zurück, `AUTH_SECRET` ohne `:?`
-- [ ] App-Port nur an `127.0.0.1` binden bzw. nur über Tunnel/Proxy erreichbar
-  - _Ist-Stand:_ `"${APP_PORT:-3000}:3000"` bindet an alle Interfaces
+- [x] Postgres-Port in `docker-compose.yml` nicht mehr veröffentlicht
+  - _Geprüft:_ `docker compose config` zeigt keinen `ports`-Eintrag für `postgres`; lokale Entwicklung siehe `.env.example`
+- [x] Keine Default-Passwörter: Pflichtvariablen mit `${VAR:?}` (`DB_PASSWORD`, `AUTH_SECRET`)
+  - _Geprüft:_ `docker compose config` bricht ohne `DB_PASSWORD` mit Fehlermeldung ab
+- [x] App-Port nur an `127.0.0.1` gebunden (Caddy-Upstream und Cloudflare Tunnel bleiben erreichbar)
+  - _Geprüft:_ `docker compose config` zeigt `host_ip: 127.0.0.1`
 - [ ] Firewall des Servers prüfen (nicht aus dem Repo prüfbar)
 - [ ] Dockerfile nutzt `output: "standalone"` (kleineres Image, keine Dev-Tools)
   - _Ist-Stand:_ Option steht in `next.config.ts`, Dockerfile kopiert noch `.next` + volles `node_modules`
 - [ ] Datenbank-Migrationen beim Deploy automatisch ausführen
-  - _Ist-Stand:_ `db:migrate` nur manuell per `docker compose exec`
+  - _Stand:_ `command: npm run db:migrate && npm start` in `docker-compose.yml` gesetzt, Compose-Syntax geprüft; **Lauf gegen eine echte DB steht aus** (erst dann abhaken)
 
 ### Sicherheit
 - [ ] Rate-Limits für Login und Registrierung
