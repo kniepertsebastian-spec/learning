@@ -58,8 +58,8 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Stand:_ `lib/server/email.ts` (`normalizeEmail`, Unit-Test grün) in Registrierung und Login eingebaut; Migration `drizzle/0024_normalize_user_emails.sql` geschrieben. **Migration noch nicht gegen eine DB gelaufen** (erst dann abhaken; Schreibweisen-Duplikate würden sie abbrechen lassen)
 
 ### Qualität und Betrieb
-- [ ] GitHub Actions: Lint, Typecheck, Tests, Build bei jedem Push
-  - _Stand:_ `.github/workflows/ci.yml` (Lint, Test, Build, Typecheck) geschrieben; lint, test, build und `tsc` liefen lokal grün. **Erster Lauf auf GitHub steht aus** (erst abhaken, wenn der Check am PR grün ist)
+- [x] GitHub Actions: Lint, Tests, Build, Typecheck bei Push auf `main` und bei Pull Requests
+  - _Geprüft:_ Check `check` an PR #69 grün (Lauf 37218663107); erster Lauf war rot wegen fehlendem `poppler-utils`, behoben
 - [ ] Branch Protection auf `main`
 - [ ] Nächtliches, verschlüsseltes Offsite-Backup (Postgres und Quell-PDFs)
   - _Ist-Stand:_ Verfahren in `docs/BACKUP.md` beschrieben, keine Automatisierung
