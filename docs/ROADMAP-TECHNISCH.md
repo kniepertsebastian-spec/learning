@@ -51,9 +51,12 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft:_ Produktions-Build gestartet, `curl -I` auf `/login` und `/api/health` zeigt alle Header
 - [ ] Strikte CSP mit `script-src` (Nonce über `proxy.ts`)
   - _Offen:_ erzwingt dynamisches Rendering aller Seiten und muss im Browser gegen die PWA (Service Worker, Theme-Skript) geprüft werden
-- [ ] Service Worker: angemeldete Seiten nicht cachen, `ui-cache` beim Logout leeren
-  - _Ist-Stand:_ API ist `NetworkOnly`; Seiten in `ui-cache` (Stale-While-Revalidate), kein Leeren beim Logout
+- [x] Service Worker: `ui-cache` beim Logout leeren
+  - _Geprüft:_ `SignOutButton` ruft `caches.delete("ui-cache")` (best-effort); `tsc`/Lint sauber, **im Browser nicht ausprobiert**
+- [ ] Service Worker: angemeldete Seiten gar nicht erst cachen
+  - _Offen:_ Navigationen laufen über Stale-While-Revalidate. Eine Änderung (z. B. NetworkFirst) berührt den Offline-Modus (IndexedDB-Paket, R4) und muss im Browser mit Offline-Test geprüft werden
 - [ ] API-Fehler nach außen generisch, Details nur ins Log
+  - _Stand:_ Lernenden-Routen geprüft: `exams/[certId]` leakte `error.message`, jetzt generisch (bekannter Fall „keine Fragen“ als 409). Übrige 500er waren bereits generisch. **Offen:** Admin-Routen `sources/[id]/blueprint` und `sources/[id]/parse` geben bei 502 noch die Roh-Meldung zurück (bewusst für Admins, aber nicht klassifiziert)
 - [ ] E-Mail-Adressen normalisieren (Kleinschreibung) plus Migration bestehender Konten
   - _Stand:_ `lib/server/email.ts` (`normalizeEmail`, Unit-Test grün) in Registrierung und Login eingebaut; Migration `drizzle/0024_normalize_user_emails.sql` geschrieben. **Migration noch nicht gegen eine DB gelaufen** (erst dann abhaken; Schreibweisen-Duplikate würden sie abbrechen lassen)
 
