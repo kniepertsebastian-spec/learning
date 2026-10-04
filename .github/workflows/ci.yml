@@ -17,6 +17,8 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      # pdftotext für die PDF-Extraktions-Tests (Dockerfile installiert dasselbe Paket).
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: npm ci
       - run: npm run lint
       - run: npm test
