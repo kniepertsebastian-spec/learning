@@ -59,7 +59,7 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 ### Qualität und Betrieb
 - [ ] GitHub Actions: Lint, Typecheck, Tests, Build bei jedem Push
-  - _Ist-Stand:_ kein `.github/workflows`
+  - _Stand:_ `.github/workflows/ci.yml` (Lint, Test, Build, Typecheck) geschrieben; lint, test, build und `tsc` liefen lokal grün. **Erster Lauf auf GitHub steht aus** (erst abhaken, wenn der Check am PR grün ist)
 - [ ] Branch Protection auf `main`
 - [ ] Nächtliches, verschlüsseltes Offsite-Backup (Postgres und Quell-PDFs)
   - _Ist-Stand:_ Verfahren in `docs/BACKUP.md` beschrieben, keine Automatisierung

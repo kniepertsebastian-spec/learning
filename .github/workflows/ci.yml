@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          AUTH_SECRET: ci-only-secret
+      # Nach dem Build: Next generiert dort die globalen Typen (z. B. LayoutProps).
+      - run: npx tsc --noEmit
