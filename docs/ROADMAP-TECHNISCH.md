@@ -53,7 +53,7 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Ist-Stand:_ API ist `NetworkOnly`; Seiten in `ui-cache` (Stale-While-Revalidate), kein Leeren beim Logout
 - [ ] API-Fehler nach außen generisch, Details nur ins Log
 - [ ] E-Mail-Adressen normalisieren (Kleinschreibung) plus Migration bestehender Konten
-  - _Ist-Stand:_ nur die Allowlist nutzt `toLowerCase`; Registrierung und Login vergleichen unverändert
+  - _Stand:_ `lib/server/email.ts` (`normalizeEmail`, Unit-Test grün) in Registrierung und Login eingebaut; Migration `drizzle/0024_normalize_user_emails.sql` geschrieben. **Migration noch nicht gegen eine DB gelaufen** (erst dann abhaken; Schreibweisen-Duplikate würden sie abbrechen lassen)
 
 ### Qualität und Betrieb
 - [ ] GitHub Actions: Lint, Typecheck, Tests, Build bei jedem Push

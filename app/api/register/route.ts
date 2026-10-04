@@ -4,9 +4,10 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/lib/server/db/client";
 import { users } from "@/lib/server/db/schema";
+import { normalizeEmail } from "@/lib/server/email";
 
 const registerRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().transform(normalizeEmail),
   password: z.string().min(8),
   name: z.string().min(1).optional(),
 });
@@ -25,7 +26,7 @@ function isEmailAllowed(email: string): boolean {
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-  return allowlist.includes(email.toLowerCase());
+  return allowlist.includes(normalizeEmail(email));
 }
 
 export async function POST(request: Request) {

@@ -4,6 +4,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { getDb } from "./db/client";
 import { users } from "./db/schema";
+import { normalizeEmail } from "./email";
 
 /**
  * Credentials-Provider mit JWT-Sessions - kein Auth.js-Adapter/DB-Sessiontabellen
@@ -25,7 +26,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials) => {
-        const email = typeof credentials?.email === "string" ? credentials.email : undefined;
+        const email =
+          typeof credentials?.email === "string" ? normalizeEmail(credentials.email) : undefined;
         const password =
           typeof credentials?.password === "string" ? credentials.password : undefined;
         if (!email || !password) return null;
