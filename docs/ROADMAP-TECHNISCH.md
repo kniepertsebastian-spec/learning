@@ -57,8 +57,10 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft:_ `SignOutButton` ruft `caches.delete("ui-cache")` (best-effort); `tsc`/Lint sauber, **im Browser nicht ausprobiert**
 - [ ] Service Worker: angemeldete Seiten gar nicht erst cachen
   - _Offen:_ Navigationen laufen über Stale-While-Revalidate. Eine Änderung (z. B. NetworkFirst) berührt den Offline-Modus (IndexedDB-Paket, R4) und muss im Browser mit Offline-Test geprüft werden
-- [ ] API-Fehler nach außen generisch, Details nur ins Log
-  - _Stand:_ Lernenden-Routen geprüft: `exams/[certId]` leakte `error.message`, jetzt generisch (bekannter Fall „keine Fragen“ als 409). Übrige 500er waren bereits generisch. **Offen:** Admin-Routen `sources/[id]/blueprint` und `sources/[id]/parse` geben bei 502 noch die Roh-Meldung zurück (bewusst für Admins, aber nicht klassifiziert)
+- [x] API-Fehler für Lernende nach außen generisch, Details nur ins Log
+  - _Geprüft im Code:_ alle Nicht-Admin-Routen mit 500er-Pfad durchgesehen; `exams/[certId]` leakte `error.message` und ist behoben, `remediation` generisch (bekannte Fälle als 404/409/429 mit fester Meldung)
+- [ ] API-Fehler der Admin-Routen `sources/[id]/blueprint` und `sources/[id]/parse` (502) generisch machen
+  - _Offen, Entscheidung nötig:_ beide geben die Roh-Meldung an Admins zurück (Quell-Extraktion speichert sie zusätzlich als `parseError`). Generisch machen kostet Admins die Fehlerdiagnose in der Oberfläche, wenn Details nur im Log stehen
 - [x] E-Mail-Adressen normalisieren (Kleinschreibung) plus Migration bestehender Konten
   - _Geprüft live:_ Registrierung `Tester@Example.com` wird als `tester@example.com` gespeichert, Dublette in anderer Schreibweise → 409, Login mit `R1@Example.com` klappt. Migration `0024` gegen echte DB: `Max.Muster@Example.COM` und `  Anna@x.de ` werden normalisiert. **Achtung beim Deploy:** zwei Konten, die sich nur in der Schreibweise unterscheiden, lassen die Migration (und damit den App-Start) abbrechen. Vorher prüfen: `select lower(btrim(email)), count(*) from users group by 1 having count(*) > 1;`
 
