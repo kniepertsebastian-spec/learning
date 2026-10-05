@@ -1,0 +1,70 @@
+# Zabbix für die Lernplattform (Server, Weboberfläche, Datenbank, Agent). Anleitung: docs/MONITORING.md
+#
+# Start (im Ordner deploy/zabbix):  docker compose --env-file .env up -d
+# Pflicht in deploy/zabbix/.env: ZABBIX_DB_PASSWORD
+# Nichts davon ist von außen erreichbar: die Weboberfläche nur über 127.0.0.1:8081 (SSH-Tunnel oder
+# Cloudflare Access davorsetzen), der Server selbst veröffentlicht keinen Port.
+name: learning-zabbix
+
+services:
+  zabbix-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD:?ZABBIX_DB_PASSWORD fehlt in deploy/zabbix/.env}
+      POSTGRES_DB: zabbix
+    volumes:
+      - zabbix_db_data:/var/lib/postgresql/data
+    networks: [internal]
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:alpine-7.0-latest
+    restart: unless-stopped
+    depends_on: [zabbix-db]
+    environment:
+      DB_SERVER_HOST: zabbix-db
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD:?ZABBIX_DB_PASSWORD fehlt in deploy/zabbix/.env}
+      POSTGRES_DB: zabbix
+    # internal: Datenbank und Agent; learning: damit der Server die App unter http://app:3000 erreicht
+    networks: [internal, learning]
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:alpine-7.0-latest
+    restart: unless-stopped
+    depends_on: [zabbix-db, zabbix-server]
+    environment:
+      ZBX_SERVER_HOST: zabbix-server
+      DB_SERVER_HOST: zabbix-db
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD:?ZABBIX_DB_PASSWORD fehlt in deploy/zabbix/.env}
+      POSTGRES_DB: zabbix
+      PHP_TZ: Europe/Berlin
+    ports:
+      - "127.0.0.1:${ZABBIX_WEB_PORT:-8081}:8080"
+    # learning: damit das Einrichtungsskript im App-Container die API unter http://zabbix-web:8080 erreicht
+    networks: [internal, learning]
+
+  # Aktiver Agent: liest nur die Marker-Datei des letzten Backups (schreibgeschützt eingehängt).
+  zabbix-agent:
+    image: zabbix/zabbix-agent2:alpine-7.0-latest
+    restart: unless-stopped
+    depends_on: [zabbix-server]
+    environment:
+      ZBX_HOSTNAME: learning-app
+      ZBX_SERVER_HOST: zabbix-server
+      ZBX_ACTIVESERVERS: zabbix-server
+    volumes:
+      - ${LEARNING_BACKUP_DIR:-../../backups}:/backups:ro
+    networks: [internal]
+
+volumes:
+  zabbix_db_data:
+
+networks:
+  internal:
+  # Das Netz der Lernplattform (Compose-Projekt "learning"); bei anderem Ordnernamen anpassen.
+  learning:
+    external: true
+    name: ${LEARNING_NETWORK:-learning_default}

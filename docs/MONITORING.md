@@ -1,59 +1,62 @@
 # Monitoring mit Zabbix
 
-Die App liefert zwei Prüfpunkte, der Rest kommt aus den Standard-Vorlagen von Zabbix. In der App
-selbst ist dafür nichts weiter nötig.
+Zabbix läuft als eigener Docker-Compose-Stack neben der App (`deploy/zabbix/docker-compose.yml`).
+Er prüft, ob die App antwortet, ob die Datenbank erreichbar ist und ob das letzte Backup rechtzeitig
+gelaufen ist. Ein Skript legt Host, Prüfpunkte und Alarme an, ihr klickt sie nicht von Hand zusammen.
 
-| Prüfpunkt | Quelle | Bedeutung |
+| Prüfpunkt | Wie | Alarm |
 |---|---|---|
-| `/api/health` | App | Prozess läuft (200) |
-| `/api/ready` | App | zusätzlich Datenbank erreichbar (200, sonst 503) |
-| Backup-Alter | `scripts/monitor-backup.sh` | Sekunden seit dem neuesten Datenbank-Backup, -1 = keines oder leer |
-| CPU, RAM, Platte, Dienste | Zabbix-Vorlage „Linux by Zabbix agent“ | Zustand des Servers |
+| `learning.app.health` | Zabbix ruft `http://app:3000/api/health` ab, Wert = HTTP-Status | 3 Minuten nicht 200 oder keine Daten |
+| `learning.app.ready` | dasselbe für `/api/ready` (prüft die Datenbank, sonst 503) | 3 Minuten nicht 200 oder keine Daten |
+| Backup | `scripts/backup.sh` fasst nach jedem erfolgreichen Lauf `backups/.last-success` an, der Agent liest den Zeitpunkt | älter als 26 h oder nie gelaufen |
 
-## Aufbau
-
-- **Zabbix-Agent auf dem Server** der Lernplattform, **aktiver** Modus: der Agent baut die Verbindung
-  zum Zabbix-Server nach außen auf. Dadurch muss auf dem App-Server kein Port (10050) geöffnet werden.
-- **Zabbix-Server und Frontend nicht auf demselben Server** betreiben, sonst fällt das Monitoring mit
-  der App aus. Das Zabbix-Frontend nicht ungeschützt ins Internet stellen (VPN, Cloudflare Access oder
-  IP-Beschränkung).
-- Die App-Prüfpunkte laufen über `127.0.0.1:3000`, der App-Port bleibt also gesperrt.
+Die App-Prüfungen laufen im Docker-Netz der Lernplattform, der App-Port bleibt also gesperrt.
 
 ## Einrichtung
 
-1. Agent installieren (Zabbix 7 LTS: `zabbix-agent2`) und in `zabbix_agent2.conf` setzen:
-   `Server=<zabbix-ip>`, `ServerActive=<zabbix-ip>`, `Hostname=<name wie im Frontend>`. Falls TLS
-   gewünscht: PSK eintragen (`TLSConnect=psk` usw.).
-2. `deploy/zabbix/learning.conf` nach `/etc/zabbix/zabbix_agent2.d/` kopieren, Pfad `/opt/learning`
-   an den Projektordner anpassen. Agent neu starten.
-3. Prüfen: `zabbix_agent2 -t learning.app.ready` liefert `200`, `-t learning.backup.age` eine Zahl.
-4. Im Frontend den Host anlegen, Vorlage „Linux by Zabbix agent“ verknüpfen und diese Items
-   (Typ „Zabbix agent (active)“, Intervall 1m, bzw. 15m beim Backup-Alter) anlegen:
-   `learning.app.health`, `learning.app.ready`, `learning.backup.age`.
+1. **Zugangsdaten:** in `deploy/zabbix/` eine Datei `.env` anlegen (nicht einchecken):
+   ```bash
+   cd deploy/zabbix
+   echo "ZABBIX_DB_PASSWORD=$(openssl rand -hex 24)" > .env && chmod 600 .env
+   ```
+2. **Starten** (die Lernplattform muss laufen, ihr Netz heißt standardmäßig `learning_default`;
+   anderer Ordnername → `LEARNING_NETWORK` in der `.env`):
+   ```bash
+   docker compose up -d
+   ```
+3. **Anmelden:** Die Weboberfläche ist nur lokal erreichbar: `ssh -L 8081:127.0.0.1:8081 <server>`, dann
+   `http://localhost:8081`. Erstanmeldung `Admin` / `zabbix`. **Sofort das Passwort ändern**
+   (Benutzer → Admin → Passwort).
+4. **Einrichten lassen** (im Projektordner, mit dem neuen Passwort). Das Skript läuft wie die anderen
+   Admin-Skripte im App-Container und erreicht Zabbix über das gemeinsame Docker-Netz:
+   ```bash
+   docker compose exec -e ZABBIX_URL=http://zabbix-web:8080/api_jsonrpc.php \
+     -e ZABBIX_PASSWORD='<neues Passwort>' app npm run monitoring:provision
+   ```
+   Es legt Gruppe, Host `learning-app`, drei Items und drei Trigger an und ändert bei einem zweiten Lauf
+   nichts. (Mit installiertem Node auf dem Host geht auch `ZABBIX_PASSWORD=… npm run monitoring:provision`
+   gegen `http://127.0.0.1:8081`.) Voraussetzung: Die App läuft mit dem Stand, der das Skript enthält.
+5. **Benachrichtigung einrichten** (das macht das Skript bewusst nicht): Verwaltung → Mediatypen → E-Mail
+   (SMTP-Zugang wie in [EMAIL.md](EMAIL.md)), beim Benutzer unter „Medien“ die Adresse eintragen,
+   Alarme → Aktionen → Trigger-Aktionen → neue Aktion „Alle Alarme senden“ mit Operation „Nachricht
+   senden“.
+6. **Probe:** `docker stop learning-app`, nach etwa 4 Minuten muss der Alarm „Lernplattform antwortet
+   nicht“ erscheinen, danach `docker start learning-app`.
 
-## Trigger (Vorschlag)
+## Backup-Marker
 
-| Name | Ausdruck (Zabbix 7) | Schwere |
-|---|---|---|
-| App antwortet nicht | `count(/<host>/learning.app.health,3m,"ne","200")>=3` (3 Messungen in Folge) | Hoch |
-| Datenbank nicht erreichbar | `count(/<host>/learning.app.ready,3m,"ne","200")>=3` | Hoch |
-| Backup zu alt | `last(/<host>/learning.backup.age)>93600 or last(/<host>/learning.backup.age)<0` (über 26 h oder keines) | Hoch |
-| Platte fast voll | aus der Linux-Vorlage | Warnung |
-
-Das Backup läuft laut `deploy/learning-backup.timer` täglich, 26 Stunden lassen eine Stunde Luft. Hast
-du einen anderen Rhythmus, den Wert anpassen. Das Backup-Alter prüft nur, dass **eine** Datei
-rechtzeitig entsteht. Dass sie sich einspielen lässt, zeigt `scripts/restore-test.sh`
-(siehe [BACKUP.md](BACKUP.md)), bitte regelmäßig ausführen.
-
-## Benachrichtigung
-
-Unter „Verwaltung → Mediatypen“ E-Mail (SMTP) oder Telegram einrichten und einer Aktion zuordnen.
-Wichtig: Der Alarm muss über einen Weg laufen, der unabhängig vom überwachten Server funktioniert.
+Der Alarm für das Backup setzt voraus, dass `scripts/backup.sh` mindestens einmal mit dem neuen Stand
+gelaufen ist (`ls -la backups/.last-success`). Vorher meldet Zabbix nach einigen Stunden „nie gelaufen“.
+Dass sich ein Backup einspielen lässt, zeigt nur `scripts/restore-test.sh` (siehe [BACKUP.md](BACKUP.md)).
 
 ## Grenzen
 
-- Nicht Teil dieser Einrichtung: Fehler-Tracking im Code (Stacktraces). Die App schreibt Fehler ins
-  Docker-Log (`docker compose logs app`). Ein Log-Item in Zabbix oder ein Dienst wie Sentry wäre die
-  nächste Stufe.
-- Der Zabbix-Agent braucht keinen Zugriff auf Docker. Bitte den Benutzer `zabbix` **nicht** in die
-  Gruppe `docker` aufnehmen, das wäre ein Root-Zugang.
+- **Ein Server:** Läuft Zabbix auf demselben Server wie die App, fällt das Monitoring mit ihm aus und
+  meldet nichts. Für „der ganze Server ist weg“ braucht es zusätzlich eine Prüfung von außen, etwa einen
+  kostenlosen Uptime-Dienst auf die öffentliche Adresse. Später lässt sich der Stack auf einen zweiten
+  Host verschieben (der Agent und die HTTP-Prüfung brauchen dann eine erreichbare Adresse der App).
+- **Serverwerte** (CPU, RAM, Plattenplatz) sind noch nicht eingerichtet. Dafür kommt ein Agent direkt
+  auf dem Host mit der Vorlage „Linux by Zabbix agent“ als nächster Schritt.
+- **Fehler-Tracking** (Stacktraces) gibt es nicht. Fehler stehen im Docker-Log
+  (`docker compose logs app`).
+- Nicht gegen eine laufende Zabbix-Instanz getestet, siehe Roadmap.
