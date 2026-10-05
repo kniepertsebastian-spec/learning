@@ -67,8 +67,9 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft:_ Check `check` an PR #69 grün (Lauf 37218663107); erster Lauf war rot wegen fehlendem `poppler-utils`, behoben
 - [ ] Branch Protection auf `main`
 - [ ] Nächtliches, verschlüsseltes Offsite-Backup (Postgres und Quell-PDFs)
-  - _Ist-Stand:_ Verfahren in `docs/BACKUP.md` beschrieben, keine Automatisierung
+  - _Stand:_ `scripts/backup.sh` (age-Verschlüsselung, nur öffentlicher Schlüssel auf dem Server, Aufbewahrung, atomares Schreiben) und systemd-Vorlagen in `deploy/`. **Geprüft** (Modus `direct`, echte PostgreSQL-16-DB): Dump und PDF-Archiv werden verschlüsselt geschrieben, Rechte 600. **Nicht geprüft:** Compose-Modus (kein Docker hier), Offsite-Kopie per `rclone` (nicht installiert, Ziel offen), systemd-Timer auf dem Server
 - [ ] **Restore einmal vollständig getestet**
+  - _Stand:_ `scripts/restore-test.sh` spielt ein Backup in eine Wegwerf-DB ein und prüft sie. **Geprüft:** Backup→Restore einer Testdatenbank (25 Migrationen, 10 Nutzer wie in der Quelle), falscher Schlüssel und abgeschnittenes Backup schlagen fehl, Wegwerf-DB wird immer gelöscht. **Offen:** ein Restore eines echten Produktions-Backups auf dem Server
 - [ ] Error-Tracking und Uptime-Monitoring
   - _Ist-Stand:_ `/api/health` und `/api/ready` vorhanden, kein externes Monitoring
 - [x] Repo aufräumen: Patch-Datei und `QUICK_COMMANDS.sh` entfernt, README ausgebaut (Entwicklung, Prüfen, Betrieb), `DOCKER_DEPLOYMENT.md` von Anthropic auf Gemini umgestellt
