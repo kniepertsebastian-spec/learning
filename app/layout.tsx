@@ -5,6 +5,11 @@ import { Header } from "@/components/Header";
 import { LocaleProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
 import { getCurrentUser } from "@/lib/server/auth-guards";
+import {
+  getCompanyMembership,
+  isRoleAllowed,
+  STATUS_VIEW_ROLES,
+} from "@/lib/server/company/access";
 import "./globals.css";
 
 const THEME_BOOTSTRAP_SCRIPT = `
@@ -54,6 +59,9 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await getCurrentUser();
+  const hasCompanyAccess = user
+    ? isRoleAllowed(await getCompanyMembership(user.id), STATUS_VIEW_ROLES)
+    : false;
   // Nonce aus proxy.ts (CSP ohne 'unsafe-inline' für Skripte).
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
@@ -68,7 +76,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <LocaleProvider>
           <ThemeProvider>
-            <Header isAdmin={user?.role === "admin"} userId={user?.id ?? null} />
+            <Header
+              isAdmin={user?.role === "admin"}
+              hasCompanyAccess={hasCompanyAccess}
+              userId={user?.id ?? null}
+            />
             <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6">
               {children}
             </main>

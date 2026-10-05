@@ -86,28 +86,37 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 **Ziel:** Strikte Datentrennung als technische Basis für alle Firmenfunktionen, plus ein dünnes, sichtbares Firmengerüst, an dem sich die Rechte von Anfang an in der Oberfläche prüfen lassen.
 
-**Offene Entscheidung:** Gehört ein Nutzer zu genau einer oder zu mehreren Organisationen? Empfehlung: genau eine (einfacher und sicherer für den Pilot mit Systemhäusern). Das legt das Datenmodell fest und muss vor Beginn entschieden sein.
+**Entscheidung (Annahme, Rückfrage beim Betreiber offen):** Ein Nutzer gehört zu **genau einer** Organisation (Unique-Index auf `organization_memberships.user_id`). Mehrere Organisationen ließen sich später durch Entfernen dieses einen Index zulassen.
 
 ### Datenmodell und Rechte
-- [ ] Organisation (Mandant) mit strikter Datentrennung zwischen Firmen
-- [ ] Rollen: Firmen-Admin, Mentor, Lernender (getrennt von der Plattform-Admin-Rolle `users.role`)
-- [ ] Zentraler Guard für Firmenzugriffe: Organisation und Rolle werden an einer Stelle geprüft, nicht verstreut in einzelnen Routen
-- [ ] Trennung privat / betrieblich im Datenmodell (Lerndetails nie im Firmenbereich abfragbar)
-- [ ] Separate Firmen-API, die nur Status, Datum und Frist liefert (technisch erzwungen, nicht nur in der Oberfläche)
+- [x] Organisation (Mandant) mit strikter Datentrennung zwischen Firmen
+  - _Geprüft gegen echte PostgreSQL-Instanz:_ Tabellen `organizations`, `organization_memberships`, `company_assignments` (Migration `0025`). Zusammengesetzter Fremdschlüssel: eine Zuweisung kann nicht an ein Mitglied einer anderen Firma gehen (Test belegt den Fehler). Ein Nutzer kann nur einer Organisation angehören (Test)
+- [x] Rollen: Firmen-Admin, Mentor, Lernender (getrennt von der Plattform-Admin-Rolle `users.role`)
+  - _Geprüft:_ ein Plattform-Admin ohne Organisation und einer, der in Firma A nur Lernender ist, bekommen 403 (Test und Browser)
+- [x] Zentraler Guard für Firmenzugriffe (`lib/server/company/guard.ts`): Organisation und Rolle werden an einer Stelle geprüft, die Organisation stammt nur aus der Mitgliedschaft, nie aus Request-Parametern; Mitgliedschaft wird bei jeder Anfrage frisch geladen
+  - _Geprüft:_ Anfrage mit fremder `organizationId` wird ignoriert; ein entzogenes Mitglied verliert den Zugriff sofort. Mutationstest: ohne Mandantenfilter fallen 4, ohne Rollenprüfung 2 Tests durch
+- [x] Trennung privat / betrieblich im Datenmodell (Lerndetails nie im Firmenbereich abfragbar)
+  - _Geprüft:_ `company_assignments` enthält nur Status, Zuweisungs-, Fälligkeits- und Abschlussdatum. Ein Architektur-Test erlaubt dem Firmenbereich nur eine feste Liste von Tabellen und keine Lern-Module. **Grenze:** das ist eine Code-Regel mit Test, kein Datenbank-Rechtekonzept (kein separater DB-Benutzer)
+- [x] Separate Firmen-API (`GET /api/company/status`), die nur Status, Datum und Frist liefert
+  - _Geprüft:_ jeder Eintrag hat genau die freigegebenen Felder (Test und Browser); die Feldliste ist im Test festgehalten, neue Felder sind eine bewusste Entscheidung
+- [x] Betreiber-Skript für Organisationen (`company:create`, `company:set-member`, `company:remove-member`) mit Audit-Ereignissen, bis es in Phase 2 Einladungen gibt
+  - _Geprüft:_ Anlegen, Rolle ändern, Fehlerfälle (anderer Organisation zugehörig, unbekannte E-Mail, ungültige Rolle)
 
 ### Firmengerüst (dünn, ohne Funktionen)
-- [ ] Eigener Bereich `/company` mit Navigation und Rollenprüfung über den zentralen Guard
-- [ ] Leere Statusseite für die Firma (Platzhalter, bindet später die Statusansicht aus Phase 3 ein)
-- [ ] Nutzer ohne Organisation oder mit falscher Rolle sehen den Bereich nicht und bekommen keine Daten (403 bzw. Weiterleitung)
+- [x] Eigener Bereich `/company` mit Navigation (Header-Link nur für Firmen-Admin und Mentor) und Rollenprüfung über den zentralen Guard
+- [x] Leere Statusseite für die Firma (Platzhalter, bindet später die Statusansicht aus Phase 3 ein)
+- [x] Nutzer ohne Organisation oder mit falscher Rolle sehen den Bereich nicht und bekommen keine Daten (403 bzw. Weiterleitung auf Login)
+  - _Geprüft im Browser_ (Chromium, Produktions-Build, echte DB, 40 Prüfungen): nicht angemeldet → Login-Weiterleitung und API 401; Firmen-Admin A, Mentor A, Firmen-Admin B → 200, nur eigene Firma; Lernender, Nutzer ohne Organisation, Plattform-Admin → 403 und kein Header-Link; keine CSP-Verletzungen. **Der Browser-Lauf ist ein manuelles Skript, nicht Teil der CI**
 - [ ] Die echten Funktionen (Zuweisen, Dokument-Upload, Praxisaufgaben, Statusansicht) bleiben in Phase 3
 
 ### Tests
-- [ ] Automatisierte Zugriffstests gegen echte Datenbank: Firma A sieht nie Daten von Firma B, Arbeitgeber sieht nie Lerndetails
-- [ ] Zugriffstests für das Firmengerüst: jede Rolle und „ohne Organisation“ gegen `/company` und die Firmen-API
+- [x] Automatisierte Zugriffstests gegen echte Datenbank: Firma A sieht nie Daten von Firma B, Arbeitgeber sieht nie Lerndetails
+  - _Geprüft:_ `lib/server/company/company-access.test.ts` (13 Tests) und `company-architecture.test.ts` (4 Tests), lokal gegen PostgreSQL 16 grün; ohne `TEST_DATABASE_URL` werden die DB-Tests übersprungen
+- [x] Zugriffstests für das Firmengerüst: jede Rolle und „ohne Organisation“ gegen `/company` und die Firmen-API (Seiten-Guard im Test, Seite und API im Browser-Lauf)
 
 ### Gate 1
-- [ ] Rechte-Tests grün und in der CI
-- [ ] Firmengerüst per Browser-Test mit allen drei Rollen geprüft
+- [ ] Rechte-Tests grün und in der CI (CI-Workflow mit Postgres-Dienst und Migrationslauf angepasst; erst nach grünem Lauf am PR abhaken)
+- [x] Firmengerüst per Browser-Test mit allen drei Rollen geprüft (manuell, siehe oben)
 
 ---
 
