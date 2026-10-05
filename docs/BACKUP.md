@@ -24,9 +24,9 @@ einem rohen Volume-Kopie des Datenverzeichnisses.
 
 ```bash
 docker compose exec -T postgres pg_dump \
-  -U "${DB_USER:-postgres}" -d "${DB_NAME:-certstudy}" \
+  -U "${DB_USER:-postgres}" -d "${DB_NAME:-learning_pwa}" \
   --format=custom --file=/tmp/backup.dump
-docker compose cp postgres:/tmp/backup.dump "./backups/certstudy-$(date +%Y%m%d-%H%M%S).dump"
+docker compose cp postgres:/tmp/backup.dump "./backups/learning_pwa-$(date +%Y%m%d-%H%M%S).dump"
 docker compose exec -T postgres rm /tmp/backup.dump
 ```
 
@@ -62,8 +62,8 @@ trägt je nach Compose-Projektnamen ein Präfix.)
 ```bash
 # Zielinstanz muss existieren und leer sein (oder --clean anhängen)
 docker compose exec -T postgres pg_restore \
-  -U "${DB_USER:-postgres}" -d "${DB_NAME:-certstudy}" \
-  --clean --if-exists < "./backups/certstudy-20260101-020000.dump"
+  -U "${DB_USER:-postgres}" -d "${DB_NAME:-learning_pwa}" \
+  --clean --if-exists < "./backups/learning_pwa-20260101-020000.dump"
 ```
 
 Anschließend `npm run db:migrate` ausführen, falls das Backup älter als der
@@ -88,12 +88,35 @@ docker run --rm \
 - Rollen (`npm run user:set-role -- <email> admin`) und Zugriffe funktionieren
   wie erwartet.
 
-## Nicht abgedeckt
+## Automatisiertes, verschlüsseltes Backup
 
-Dieses Dokument deckt kein automatisiertes, unbeaufsichtigtes
-Backup-Scheduling (z. B. Cron/systemd-Timer auf dem Zielserver) ab - das
-Skript oben ist der manuelle, getestete Grundbaustein dafür. Automatisierung
-folgt, sobald ein konkretes Ziel-Hosting dafür feststeht (siehe R16
-„Enterprise Governance" in roadmap.md für den größeren Rahmen: dokumentierte
-Aufbewahrungsfristen, Backup-/Restore-Tests als wiederkehrende Sicherheits-
-prüfung).
+`scripts/backup.sh` sichert Postgres (`pg_dump`, Custom-Format) und die Quell-PDFs, verschlüsselt
+beides mit [age](https://github.com/FiloSottile/age) und räumt lokale Backups nach
+`BACKUP_RETENTION_DAYS` (Default 14) auf. Auf dem Server liegt nur der **öffentliche** Schlüssel.
+Der private Schlüssel gehört an einen anderen Ort (Passwortmanager, Rechner des Betreibers),
+sonst nützt die Verschlüsselung nichts.
+
+```bash
+age-keygen -o learning-backup.key        # einmalig, NICHT auf dem Server aufbewahren
+# Die Ausgabe nennt "Public key: age1..." - diesen Wert als BACKUP_AGE_RECIPIENT verwenden.
+
+BACKUP_AGE_RECIPIENT=age1... BACKUP_REMOTE=box:learning scripts/backup.sh
+```
+
+`BACKUP_REMOTE` ist ein [rclone](https://rclone.org/)-Ziel (S3, SFTP, Storage Box u. a.) für die
+Offsite-Kopie. Ohne es bleibt das Backup lokal, und das Skript warnt.
+
+Zeitplan: `deploy/learning-backup.service` und `deploy/learning-backup.timer` sind systemd-Vorlagen
+(nächtlich um 02:30). Sie lesen `BACKUP_AGE_RECIPIENT` und `BACKUP_REMOTE` aus `/etc/learning-backup.env`.
+
+### Restore-Test
+
+`scripts/restore-test.sh` spielt ein Datenbank-Backup in eine **Wegwerf-Datenbank** ein, prüft
+Migrationsstand und Kerntabellen und löscht sie wieder. Die Produktionsdatenbank bleibt unberührt.
+
+```bash
+AGE_IDENTITY=learning-backup.key scripts/restore-test.sh backups/db-20261005-023000.dump.age
+```
+
+Ein Backup gilt erst als brauchbar, wenn dieser Test einmal erfolgreich gelaufen ist. Danach
+regelmäßig wiederholen (z. B. monatlich), denn ein ungetestetes Backup ist keine Garantie.
