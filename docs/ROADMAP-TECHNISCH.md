@@ -37,7 +37,7 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Ist-Stand:_ Option steht in `next.config.ts`, Dockerfile kopiert noch `.next` + volles `node_modules`
   - _Offen, nicht verifizierbar ohne Docker-Daemon:_ Das Image muss weiter `drizzle-kit`/`tsx` für Migration beim Start und die Admin-Skripte (`user:*`, `cert:*`, `content:*`) enthalten. Eine schlanke Variante bräuchte ein eigenes Migrationsskript auf Basis von `drizzle-orm` und einen Image-Build-Test
 - [ ] Datenbank-Migrationen beim Deploy automatisch ausführen
-  - _Stand:_ `command: npm run db:migrate && npm start` in `docker-compose.yml`. **Geprüft** gegen eine echte PostgreSQL-16-Instanz: komplette Kette (25 Migrationen) auf leerer DB, zweiter Lauf ändert nichts. **Offen:** der Container-Start selbst (hier gibt es keinen Docker-Daemon). Bei einer Umstellung auf `standalone` muss `drizzle-kit` im Image bleiben
+  - _Stand:_ `command: npm run db:migrate && npm start` in `docker-compose.yml`. **Geprüft** gegen eine echte PostgreSQL-16-Instanz: komplette Kette (25 Migrationen) auf leerer DB, zweiter Lauf ändert nichts. Die Kette läuft zusätzlich in der CI auf leerer PostgreSQL-17-Datenbank durch. **Offen:** der Container-Start selbst (hier gibt es keinen Docker-Daemon). Bei einer Umstellung auf `standalone` muss `drizzle-kit` im Image bleiben
 
 ### Sicherheit
 - [x] Rate-Limits für Login (10/15 min je Konto, 30/15 min je IP) und Registrierung (5/h je IP)
@@ -115,7 +115,8 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [x] Zugriffstests für das Firmengerüst: jede Rolle und „ohne Organisation“ gegen `/company` und die Firmen-API (Seiten-Guard im Test, Seite und API im Browser-Lauf)
 
 ### Gate 1
-- [ ] Rechte-Tests grün und in der CI (CI-Workflow mit Postgres-Dienst und Migrationslauf angepasst; erst nach grünem Lauf am PR abhaken)
+- [x] Rechte-Tests grün und in der CI
+  - _Geprüft:_ Check an PR #70 grün (Lauf 37332868853): Postgres-17-Dienst, Migrationen auf leerer DB, 208 Tests inkl. der 13 DB-Rechte-Tests (im Log als ausgeführt, nicht übersprungen)
 - [x] Firmengerüst per Browser-Test mit allen drei Rollen geprüft (manuell, siehe oben)
 
 ---
