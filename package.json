@@ -15,7 +15,6 @@
     "company:create": "tsx scripts/manage-company.ts create",
     "company:set-member": "tsx scripts/manage-company.ts set-member",
     "company:remove-member": "tsx scripts/manage-company.ts remove-member",
-    "monitoring:provision": "tsx scripts/zabbix-provision.ts",
     "user:reset-password": "tsx scripts/reset-user-password.ts",
     "cert:add": "tsx scripts/add-certification.ts",
     "content:draft-curriculum": "tsx scripts/generate-curriculum-draft.ts",

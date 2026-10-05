@@ -68,7 +68,7 @@ else
   echo "WARNUNG: kein BACKUP_REMOTE gesetzt - Backup liegt nur lokal, nicht offsite" >&2
 fi
 
-# Marker für das Monitoring (docs/MONITORING.md): Zabbix liest nur den Änderungszeitpunkt dieser Datei.
+# Marker für das Monitoring (docs/MONITORING.md): scripts/monitor.sh liest nur den Änderungszeitpunkt dieser Datei.
 touch "$BACKUP_DIR/.last-success" && chmod 644 "$BACKUP_DIR/.last-success"
 
 # Lokale Aufbewahrung. Offsite-Aufbewahrung regelt das Ziel (z. B. Lifecycle-Regel).

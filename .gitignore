@@ -51,3 +51,4 @@ next-env.d.ts
 # unset, i.e. outside Docker) - uploaded certification source PDFs
 /data/sources
 docker-compose.override.yml
+.monitor-state/

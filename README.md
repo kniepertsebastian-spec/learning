@@ -8,7 +8,7 @@ Auth.js, Inhaltsgenerierung mit Google Gemini.
 - Roadmap (rein technisch, mit Prüfnachweisen je Punkt): [docs/ROADMAP-TECHNISCH.md](docs/ROADMAP-TECHNISCH.md)
 - Deployment mit Docker Compose: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
 - Backup und Wiederanlauf: [docs/BACKUP.md](docs/BACKUP.md)
-- Monitoring mit Zabbix: [docs/MONITORING.md](docs/MONITORING.md)
+- Überwachung per E-Mail: [docs/MONITORING.md](docs/MONITORING.md)
 - Server von alter Compose-Datei absichern und aktualisieren: [docs/DEPLOY-UPDATE.md](docs/DEPLOY-UPDATE.md)
   (Prüfskript: `scripts/check-server.sh`)
 - Historische Design-Referenz: `roadmap.md` und `roadmap2.md` (bleiben liegen, weil viele
