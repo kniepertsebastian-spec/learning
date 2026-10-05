@@ -82,7 +82,10 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [ ] **Restore einmal vollständig getestet**
   - _Stand:_ `scripts/restore-test.sh` spielt ein Backup in eine Wegwerf-DB ein und prüft sie. **Geprüft:** Backup→Restore einer Testdatenbank (25 Migrationen, 10 Nutzer wie in der Quelle), falscher Schlüssel und abgeschnittenes Backup schlagen fehl, Wegwerf-DB wird immer gelöscht. **Offen:** ein Restore eines echten Produktions-Backups auf dem Server
 - [ ] Error-Tracking und Uptime-Monitoring
-  - _Ist-Stand:_ `/api/health` und `/api/ready` vorhanden, kein externes Monitoring
+  - _Entscheidung des Betreibers:_ internes Monitoring mit Zabbix statt externem Dienst
+  - _Vorbereitet im Repo:_ `docs/MONITORING.md` (aktiver Agent, kein offener Port, Items, Trigger-Vorschläge), `deploy/zabbix/learning.conf` (UserParameter für `/api/health`, `/api/ready`, Backup-Alter), `scripts/monitor-backup.sh` (getestet: 2 h altes Backup → 7200, kein Backup → -1, leere Datei → -1). `/api/health` und `/api/ready` gab es schon
+  - _Nicht geprüft:_ Zabbix selbst (kein Agent und kein Server in der Entwicklungsumgebung), die Agent-Konfiguration und die Trigger-Ausdrücke sind nicht gegen eine laufende Instanz getestet. Erledigt, wenn der Betreiber Agent und Host eingerichtet hat und ein absichtlich gestoppter Container einen Alarm auslöst
+  - _Offen:_ Error-Tracking (Stacktraces) – bisher nur Docker-Log
 - [x] Repo aufräumen: Patch-Datei und `QUICK_COMMANDS.sh` entfernt, README ausgebaut (Entwicklung, Prüfen, Betrieb), `DOCKER_DEPLOYMENT.md` von Anthropic auf Gemini umgestellt
   - _Geprüft:_ Patch war bereits angewendet (Poppler-Extraktion im Code), keine Verweise auf die Skripte im Repo. `roadmap.md`/`roadmap2.md` bleiben bewusst liegen (~160 Code-Kommentare verweisen darauf), „archivieren“ entfällt
 
