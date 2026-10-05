@@ -3,6 +3,7 @@ import {
   type AnyPgColumn,
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -28,6 +29,15 @@ export type GenerationErrorClass =
   | "quota"
   | "provider_outage"
   | "internal";
+
+/** Phase 1 (docs/ROADMAP-TECHNISCH.md): Rolle eines Nutzers INNERHALB einer
+ * Organisation. Bewusst getrennt von UserRole (Plattform-Admin): ein
+ * Plattform-Admin hat dadurch keinen Zugriff auf Firmendaten. */
+export type CompanyRole = "company_admin" | "mentor" | "learner";
+
+/** Status einer Zuweisung - das Einzige, was der Arbeitgeber über den
+ * Lernfortschritt sieht (zusammen mit Datum und Frist). */
+export type AssignmentStatus = "assigned" | "in_progress" | "completed";
 
 export type CertificationSourceType = "pdf" | "url";
 
@@ -1130,5 +1140,96 @@ export const courseGenerationObjectives = pgTable(
       "course_generation_objectives_status_check",
       sql`${table.status} in ('pending', 'generating', 'validating', 'repairing', 'valid', 'failed')`,
     ),
+  ],
+);
+
+/**
+ * Phase 1: Organisation (Mandant). Alle Firmendaten hängen über
+ * organization_id an genau einer Organisation; Abfragen im Firmenbereich
+ * übernehmen die Organisation immer aus der Mitgliedschaft des angemeldeten
+ * Nutzers (lib/server/company/guard.ts), nie aus Request-Parametern.
+ */
+export const organizations = pgTable("organizations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Mitgliedschaft eines Nutzers in einer Organisation. Ein Nutzer gehört zu
+ * GENAU EINER Organisation (Unique-Index auf user_id) - Entscheidung für den
+ * Pilot; mehrere Organisationen pro Nutzer ließen sich später durch Entfernen
+ * dieses Index zulassen, der zusammengesetzte Unique-Index
+ * (user_id, organization_id) bleibt als Ziel des Fremdschlüssels in
+ * company_assignments bestehen.
+ */
+export const organizationMemberships = pgTable(
+  "organization_memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").$type<CompanyRole>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "organization_memberships_role_check",
+      sql`${table.role} in ('company_admin', 'mentor', 'learner')`,
+    ),
+    uniqueIndex("organization_memberships_user_unique").on(table.userId),
+    unique("organization_memberships_user_org_unique").on(table.userId, table.organizationId),
+    index("organization_memberships_org_idx").on(table.organizationId),
+  ],
+);
+
+/**
+ * Zuweisung eines Lernpfads (derzeit eine Zertifizierung) an ein Mitglied.
+ * NUR Status, Zuweisungs-, Fälligkeits- und Abschlussdatum - bewusst keine
+ * Lerndetails (Quiz-Antworten, Mastery, Remediation usw.); die liegen in den
+ * privaten Tabellen und dürfen vom Firmenbereich nie gelesen werden (siehe
+ * lib/server/company/*, abgesichert durch einen Architektur-Test).
+ * Der zusammengesetzte Fremdschlüssel stellt auf Datenbankebene sicher, dass
+ * userId wirklich Mitglied von organizationId ist.
+ */
+export const companyAssignments = pgTable(
+  "company_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull(),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    status: text("status").$type<AssignmentStatus>().notNull().default("assigned"),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    assignedByUserId: uuid("assigned_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => [
+    check(
+      "company_assignments_status_check",
+      sql`${table.status} in ('assigned', 'in_progress', 'completed')`,
+    ),
+    foreignKey({
+      columns: [table.userId, table.organizationId],
+      foreignColumns: [organizationMemberships.userId, organizationMemberships.organizationId],
+      name: "company_assignments_member_fk",
+    }).onDelete("cascade"),
+    unique("company_assignments_member_path_unique").on(
+      table.organizationId,
+      table.userId,
+      table.certificationId,
+    ),
+    index("company_assignments_org_idx").on(table.organizationId),
   ],
 );

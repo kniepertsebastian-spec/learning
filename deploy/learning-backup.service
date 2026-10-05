@@ -1,0 +1,17 @@
+# Vorlage: nächtliches, verschlüsseltes Backup (siehe docs/BACKUP.md).
+# Installation: nach /etc/systemd/system/ kopieren, Pfade anpassen, dann
+#   systemctl daemon-reload && systemctl enable --now learning-backup.timer
+# /etc/learning-backup.env (chmod 600) enthält:
+#   BACKUP_AGE_RECIPIENT=age1...
+#   BACKUP_REMOTE=box:learning
+#   BACKUP_DIR=/var/backups/learning
+[Unit]
+Description=Learning-Plattform Backup (Postgres und Quell-PDFs, age-verschlüsselt)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/learning
+EnvironmentFile=/etc/learning-backup.env
+ExecStart=/opt/learning/scripts/backup.sh

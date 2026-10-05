@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { GraduationCap, Languages, Moon, Settings, Sun } from "lucide-react";
+import { Building2, GraduationCap, Languages, Moon, Settings, Sun } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 
-export function Header({ isAdmin, userId }: { isAdmin: boolean; userId: string | null }) {
+export function Header({
+  isAdmin,
+  hasCompanyAccess,
+  userId,
+}: {
+  isAdmin: boolean;
+  hasCompanyAccess: boolean;
+  userId: string | null;
+}) {
   const { locale, setLocale, t } = useLocale();
   const { theme, toggleTheme } = useTheme();
 
@@ -23,6 +31,16 @@ export function Header({ isAdmin, userId }: { isAdmin: boolean; userId: string |
 
         <div className="flex items-center gap-2">
           {userId && <SyncStatusBadge userId={userId} locale={locale} />}
+
+          {hasCompanyAccess && (
+            <Link
+              href="/company"
+              className="rounded-md border border-border p-2 hover:bg-background"
+              aria-label={locale === "de" ? "Firmenbereich öffnen" : "Open company area"}
+            >
+              <Building2 className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          )}
 
           {isAdmin && (
             <Link

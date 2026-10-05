@@ -1,8 +1,61 @@
 # learning
-für zertifikate und co
 
-Aktuelle Roadmap (rein technisch, Checkliste mit Phasen, Gates und Prüfnachweisen): [docs/ROADMAP-TECHNISCH.md](docs/ROADMAP-TECHNISCH.md).
-`roadmap.md` und `roadmap2.md` bleiben als historische Design-Referenz erhalten, weil viele
-Code-Kommentare auf sie verweisen.
+Adaptive Lernplattform für Zertifikate und Weiterbildung (PWA). Next.js, Postgres (Drizzle ORM),
+Auth.js, Inhaltsgenerierung mit Google Gemini.
 
-Backup- und Wiederanlaufverfahren: [docs/BACKUP.md](docs/BACKUP.md).
+## Dokumentation
+
+- Roadmap (rein technisch, mit Prüfnachweisen je Punkt): [docs/ROADMAP-TECHNISCH.md](docs/ROADMAP-TECHNISCH.md)
+- Deployment mit Docker Compose: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
+- Backup und Wiederanlauf: [docs/BACKUP.md](docs/BACKUP.md)
+- Historische Design-Referenz: `roadmap.md` und `roadmap2.md` (bleiben liegen, weil viele
+  Code-Kommentare auf sie verweisen)
+
+## Lokal entwickeln
+
+Voraussetzungen: Node.js 20, eine PostgreSQL-Instanz, `poppler-utils` (liefert `pdftotext` für die
+PDF-Extraktion).
+
+```bash
+npm ci
+cp .env.example .env.local      # DATABASE_URL, AUTH_SECRET, GEMINI_API_KEY eintragen
+npm run db:migrate              # Schema anlegen
+npm run db:seed                 # Grunddaten (Zertifizierung und Domänen)
+npm run dev
+```
+
+`docker-compose.yml` veröffentlicht den Postgres-Port bewusst nicht. Wer lokal gegen den
+Compose-Container entwickeln will, legt eine `docker-compose.override.yml` (nicht einchecken) mit
+`postgres: ports: ["127.0.0.1:5432:5432"]` an.
+
+## Prüfen
+
+```bash
+npm run lint
+npm test                        # Vitest; Rechte-Tests des Firmenbereichs brauchen eine Datenbank:
+                                # TEST_DATABASE_URL=postgres://... npm test (migrierte Test-DB), sonst übersprungen
+npm run build
+npx tsc --noEmit                # nach dem Build, der die globalen Next-Typen erzeugt
+```
+
+Dieselben Schritte führt die CI (`.github/workflows/ci.yml`) bei jedem Push und Pull Request aus.
+
+## Betrieb
+
+Die App läuft per `docker compose up -d` (Next.js, Postgres, Cloudflare Tunnel). `DB_PASSWORD` und
+`AUTH_SECRET` sind Pflicht, sonst startet Compose nicht. Migrationen laufen bei jedem Start der App
+automatisch. Admin-Skripte (Nutzerrollen, Organisationen, Zertifizierungen, Inhaltsentwürfe) stehen in
+`package.json` unter `user:*`, `company:*`, `cert:*` und `content:*` und laufen im Container mit
+`docker compose exec app npm run …`.
+
+### Organisationen (Firmenbereich)
+
+Solange es keine Oberfläche dafür gibt, legt der Betreiber Organisationen per Skript an. Ein Nutzer
+gehört zu genau einer Organisation. Der Firmenbereich (`/company`, `/api/company/status`) steht
+Firmen-Admin und Mentor offen und zeigt nur Status, Datum und Frist.
+
+```bash
+docker compose exec app npm run company:create -- "Beispiel GmbH"
+docker compose exec app npm run company:set-member -- <organization-id> max@example.com company_admin
+docker compose exec app npm run company:remove-member -- max@example.com
+```

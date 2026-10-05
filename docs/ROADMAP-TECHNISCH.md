@@ -35,12 +35,13 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [ ] Firewall des Servers prüfen (nicht aus dem Repo prüfbar)
 - [ ] Dockerfile nutzt `output: "standalone"` (kleineres Image, keine Dev-Tools)
   - _Ist-Stand:_ Option steht in `next.config.ts`, Dockerfile kopiert noch `.next` + volles `node_modules`
+  - _Offen, nicht verifizierbar ohne Docker-Daemon:_ Das Image muss weiter `drizzle-kit`/`tsx` für Migration beim Start und die Admin-Skripte (`user:*`, `cert:*`, `content:*`) enthalten. Eine schlanke Variante bräuchte ein eigenes Migrationsskript auf Basis von `drizzle-orm` und einen Image-Build-Test
 - [ ] Datenbank-Migrationen beim Deploy automatisch ausführen
-  - _Stand:_ `command: npm run db:migrate && npm start` in `docker-compose.yml` gesetzt, Compose-Syntax geprüft; **Lauf gegen eine echte DB steht aus** (erst dann abhaken)
+  - _Stand:_ `command: npm run db:migrate && npm start` in `docker-compose.yml`. **Geprüft** gegen eine echte PostgreSQL-16-Instanz: komplette Kette (25 Migrationen) auf leerer DB, zweiter Lauf ändert nichts. Die Kette läuft zusätzlich in der CI auf leerer PostgreSQL-17-Datenbank durch. **Offen:** der Container-Start selbst (hier gibt es keinen Docker-Daemon). Bei einer Umstellung auf `standalone` muss `drizzle-kit` im Image bleiben
 
 ### Sicherheit
-- [ ] Rate-Limits für Login und Registrierung
-  - _Stand:_ `lib/server/auth-rate-limit.ts` (Login 10/15 min je Konto und 30/15 min je IP, Registrierung 5/h je IP, In-Process wie das Admin-Limit), in `auth.ts` und `/api/register` eingebunden; Limiter per Unit-Test geprüft, `tsc` sauber. **Ende-zu-Ende-Test gegen die laufende App steht aus** (Login-Sperre über Auth.js nicht live geprüft)
+- [x] Rate-Limits für Login (10/15 min je Konto, 30/15 min je IP) und Registrierung (5/h je IP)
+  - _Geprüft live_ (Produktions-Build gegen echte DB, Auth.js-Login per HTTP): frisches Konto loggt mit richtigem Passwort ein; nach 10 Fehlversuchen scheitert auch das richtige Passwort; ein anderes Konto bleibt frei; 6. Registrierung derselben IP → 429 mit `Retry-After`, andere IP → 201
 - [x] Rate-Limits und Tageskontingent pro Nutzer für KI-Routen
   - _Geprüft:_ Admin-Generierung/Blueprint hatten Limits; neu: Kursgenerierung (5 Aufträge/h je Admin) und Remediation (20 Generierungen/Tag je Nutzer, Unit-Tests grün). Die Remediation ist die einzige Lernenden-Route mit KI-Aufruf (per Code-Suche geprüft)
 - [x] Remediation-Neugenerierung nur per `POST` mit Abklingzeit (10 min je Nutzer und Ziel); `GET` ignoriert `?regenerate=true`
@@ -49,29 +50,31 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft:_ Tests laufen auf `GEMINI_*`, ein Test belegt, dass `ANTHROPIC_*` ignoriert wird. Konkrete Preiswerte trägst du selbst in `.env` ein
 - [x] Security-Header: CSP (`default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'` u. a.), HSTS (1 Jahr, ohne `includeSubDomains`), nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
   - _Geprüft:_ Produktions-Build gestartet, `curl -I` auf `/login` zeigt alle Header; CSP ohne Verletzungen auf Login und Dashboard (Playwright-Lauf aus PR #68)
-- [ ] CSP ohne `'unsafe-inline'` für Skripte (Nonce über `proxy.ts`)
-  - _Offen:_ `script-src` erlaubt aktuell `'unsafe-inline'` (Next.js-Inline-Skripte, Theme-Skript); Nonces erzwingen dynamisches Rendering aller Seiten und muss im Browser gegen die PWA (Service Worker, Theme-Skript) geprüft werden
-- [x] Prüfungs-API liefert vor der Abgabe keine Lösungen mehr (`GET /api/exams/[certId]/[examId]` ohne `isCorrect` und Erklärungen)
-  - _Stand:_ aus PR #68 übernommen; im Code gelesen, nicht live aufgerufen
+- [x] CSP ohne `'unsafe-inline'` für Skripte (Nonce pro Anfrage über `proxy.ts`, `lib/server/csp.ts`; `strict-dynamic`)
+  - _Geprüft im Browser_ (Chromium/Playwright gegen Produktions-Build und echte DB): alle 10 Skripte auf `/login` tragen die Nonce, 0 CSP-Verletzungen und 0 JS-Fehler über Login, Dashboard, Registrierung; Theme-Skript läuft; ein ins HTML eingeschleustes Inline-Skript ohne Nonce wird blockiert (Gegenprobe); Offline-Reload aus dem Service-Worker-Cache funktioniert ohne Verletzung. Styles behalten bewusst `'unsafe-inline'` (style-Attribute von React/Tailwind)
 - [x] Service Worker: `ui-cache` beim Logout leeren
-  - _Geprüft:_ `SignOutButton` ruft `caches.delete("ui-cache")` (best-effort); `tsc`/Lint sauber, **im Browser nicht ausprobiert**
+  - _Geprüft im Browser:_ nach Login und Reload enthält `ui-cache` einen Eintrag, nach „Sign out“ existiert er nicht mehr (Service Worker aktiv)
 - [ ] Service Worker: angemeldete Seiten gar nicht erst cachen
   - _Offen:_ Navigationen laufen über Stale-While-Revalidate. Eine Änderung (z. B. NetworkFirst) berührt den Offline-Modus (IndexedDB-Paket, R4) und muss im Browser mit Offline-Test geprüft werden
-- [ ] API-Fehler nach außen generisch, Details nur ins Log
-  - _Stand:_ Lernenden-Routen geprüft: `exams/[certId]` leakte `error.message`, jetzt generisch (bekannter Fall „keine Fragen“ als 409). Übrige 500er waren bereits generisch. **Offen:** Admin-Routen `sources/[id]/blueprint` und `sources/[id]/parse` geben bei 502 noch die Roh-Meldung zurück (bewusst für Admins, aber nicht klassifiziert)
-- [ ] E-Mail-Adressen normalisieren (Kleinschreibung) plus Migration bestehender Konten
-  - _Stand:_ `lib/server/email.ts` (`normalizeEmail`, Unit-Test grün) in Registrierung und Login eingebaut; Migration `drizzle/0024_normalize_user_emails.sql` geschrieben. **Migration noch nicht gegen eine DB gelaufen** (erst dann abhaken; Schreibweisen-Duplikate würden sie abbrechen lassen)
+- [x] API-Fehler für Lernende nach außen generisch, Details nur ins Log
+  - _Geprüft im Code:_ alle Nicht-Admin-Routen mit 500er-Pfad durchgesehen; `exams/[certId]` leakte `error.message` und ist behoben, `remediation` generisch (bekannte Fälle als 404/409/429 mit fester Meldung)
+- [ ] API-Fehler der Admin-Routen `sources/[id]/blueprint` und `sources/[id]/parse` (502) generisch machen
+  - _Offen, Entscheidung nötig:_ beide geben die Roh-Meldung an Admins zurück (Quell-Extraktion speichert sie zusätzlich als `parseError`). Generisch machen kostet Admins die Fehlerdiagnose in der Oberfläche, wenn Details nur im Log stehen
+- [x] E-Mail-Adressen normalisieren (Kleinschreibung) plus Migration bestehender Konten
+  - _Geprüft live:_ Registrierung `Tester@Example.com` wird als `tester@example.com` gespeichert, Dublette in anderer Schreibweise → 409, Login mit `R1@Example.com` klappt. Migration `0024` gegen echte DB: `Max.Muster@Example.COM` und `  Anna@x.de ` werden normalisiert. **Achtung beim Deploy:** zwei Konten, die sich nur in der Schreibweise unterscheiden, lassen die Migration (und damit den App-Start) abbrechen. Vorher prüfen: `select lower(btrim(email)), count(*) from users group by 1 having count(*) > 1;`
 
 ### Qualität und Betrieb
 - [x] GitHub Actions: Lint, Tests, Build, Typecheck bei Push auf `main` und bei Pull Requests
   - _Geprüft:_ Check `check` an PR #69 grün (Lauf 37218663107); erster Lauf war rot wegen fehlendem `poppler-utils`, behoben
 - [ ] Branch Protection auf `main`
 - [ ] Nächtliches, verschlüsseltes Offsite-Backup (Postgres und Quell-PDFs)
-  - _Ist-Stand:_ Verfahren in `docs/BACKUP.md` beschrieben, keine Automatisierung
+  - _Stand:_ `scripts/backup.sh` (age-Verschlüsselung, nur öffentlicher Schlüssel auf dem Server, Aufbewahrung, atomares Schreiben) und systemd-Vorlagen in `deploy/`. **Geprüft** (Modus `direct`, echte PostgreSQL-16-DB): Dump und PDF-Archiv werden verschlüsselt geschrieben, Rechte 600. **Nicht geprüft:** Compose-Modus (kein Docker hier), Offsite-Kopie per `rclone` (nicht installiert, Ziel offen), systemd-Timer auf dem Server
 - [ ] **Restore einmal vollständig getestet**
+  - _Stand:_ `scripts/restore-test.sh` spielt ein Backup in eine Wegwerf-DB ein und prüft sie. **Geprüft:** Backup→Restore einer Testdatenbank (25 Migrationen, 10 Nutzer wie in der Quelle), falscher Schlüssel und abgeschnittenes Backup schlagen fehl, Wegwerf-DB wird immer gelöscht. **Offen:** ein Restore eines echten Produktions-Backups auf dem Server
 - [ ] Error-Tracking und Uptime-Monitoring
   - _Ist-Stand:_ `/api/health` und `/api/ready` vorhanden, kein externes Monitoring
-- [ ] Repo aufräumen: Patch-Datei und `QUICK_COMMANDS.sh` entfernen, README ausbauen, alte Roadmaps archivieren
+- [x] Repo aufräumen: Patch-Datei und `QUICK_COMMANDS.sh` entfernt, README ausgebaut (Entwicklung, Prüfen, Betrieb), `DOCKER_DEPLOYMENT.md` von Anthropic auf Gemini umgestellt
+  - _Geprüft:_ Patch war bereits angewendet (Poppler-Extraktion im Code), keine Verweise auf die Skripte im Repo. `roadmap.md`/`roadmap2.md` bleiben bewusst liegen (~160 Code-Kommentare verweisen darauf), „archivieren“ entfällt
 
 ### Gate 0
 - [ ] Keine offenen kritischen Punkte aus dem Sicherheits-Review
@@ -81,16 +84,40 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 ## Phase 1 – Mandanten, Rollen, Rechte
 
-**Ziel:** Strikte Datentrennung als technische Basis für alle Firmenfunktionen.
+**Ziel:** Strikte Datentrennung als technische Basis für alle Firmenfunktionen, plus ein dünnes, sichtbares Firmengerüst, an dem sich die Rechte von Anfang an in der Oberfläche prüfen lassen.
 
-- [ ] Organisation (Mandant) mit strikter Datentrennung zwischen Firmen
-- [ ] Rollen: Firmen-Admin, Mentor, Lernender
-- [ ] Trennung privat / betrieblich im Datenmodell (Lerndetails nie im Firmenbereich abfragbar)
-- [ ] Separate Firmen-API, die nur Status, Datum und Frist liefert
-- [ ] Automatisierte Zugriffstests: Firma A sieht nie Daten von Firma B, Arbeitgeber sieht nie Lerndetails
+**Entscheidung (Annahme, Rückfrage beim Betreiber offen):** Ein Nutzer gehört zu **genau einer** Organisation (Unique-Index auf `organization_memberships.user_id`). Mehrere Organisationen ließen sich später durch Entfernen dieses einen Index zulassen.
+
+### Datenmodell und Rechte
+- [x] Organisation (Mandant) mit strikter Datentrennung zwischen Firmen
+  - _Geprüft gegen echte PostgreSQL-Instanz:_ Tabellen `organizations`, `organization_memberships`, `company_assignments` (Migration `0025`). Zusammengesetzter Fremdschlüssel: eine Zuweisung kann nicht an ein Mitglied einer anderen Firma gehen (Test belegt den Fehler). Ein Nutzer kann nur einer Organisation angehören (Test)
+- [x] Rollen: Firmen-Admin, Mentor, Lernender (getrennt von der Plattform-Admin-Rolle `users.role`)
+  - _Geprüft:_ ein Plattform-Admin ohne Organisation und einer, der in Firma A nur Lernender ist, bekommen 403 (Test und Browser)
+- [x] Zentraler Guard für Firmenzugriffe (`lib/server/company/guard.ts`): Organisation und Rolle werden an einer Stelle geprüft, die Organisation stammt nur aus der Mitgliedschaft, nie aus Request-Parametern; Mitgliedschaft wird bei jeder Anfrage frisch geladen
+  - _Geprüft:_ Anfrage mit fremder `organizationId` wird ignoriert; ein entzogenes Mitglied verliert den Zugriff sofort. Mutationstest: ohne Mandantenfilter fallen 4, ohne Rollenprüfung 2 Tests durch
+- [x] Trennung privat / betrieblich im Datenmodell (Lerndetails nie im Firmenbereich abfragbar)
+  - _Geprüft:_ `company_assignments` enthält nur Status, Zuweisungs-, Fälligkeits- und Abschlussdatum. Ein Architektur-Test erlaubt dem Firmenbereich nur eine feste Liste von Tabellen und keine Lern-Module. **Grenze:** das ist eine Code-Regel mit Test, kein Datenbank-Rechtekonzept (kein separater DB-Benutzer)
+- [x] Separate Firmen-API (`GET /api/company/status`), die nur Status, Datum und Frist liefert
+  - _Geprüft:_ jeder Eintrag hat genau die freigegebenen Felder (Test und Browser); die Feldliste ist im Test festgehalten, neue Felder sind eine bewusste Entscheidung
+- [x] Betreiber-Skript für Organisationen (`company:create`, `company:set-member`, `company:remove-member`) mit Audit-Ereignissen, bis es in Phase 2 Einladungen gibt
+  - _Geprüft:_ Anlegen, Rolle ändern, Fehlerfälle (anderer Organisation zugehörig, unbekannte E-Mail, ungültige Rolle)
+
+### Firmengerüst (dünn, ohne Funktionen)
+- [x] Eigener Bereich `/company` mit Navigation (Header-Link nur für Firmen-Admin und Mentor) und Rollenprüfung über den zentralen Guard
+- [x] Leere Statusseite für die Firma (Platzhalter, bindet später die Statusansicht aus Phase 3 ein)
+- [x] Nutzer ohne Organisation oder mit falscher Rolle sehen den Bereich nicht und bekommen keine Daten (403 bzw. Weiterleitung auf Login)
+  - _Geprüft im Browser_ (Chromium, Produktions-Build, echte DB, 40 Prüfungen): nicht angemeldet → Login-Weiterleitung und API 401; Firmen-Admin A, Mentor A, Firmen-Admin B → 200, nur eigene Firma; Lernender, Nutzer ohne Organisation, Plattform-Admin → 403 und kein Header-Link; keine CSP-Verletzungen. **Der Browser-Lauf ist ein manuelles Skript, nicht Teil der CI**
+- [ ] Die echten Funktionen (Zuweisen, Dokument-Upload, Praxisaufgaben, Statusansicht) bleiben in Phase 3
+
+### Tests
+- [x] Automatisierte Zugriffstests gegen echte Datenbank: Firma A sieht nie Daten von Firma B, Arbeitgeber sieht nie Lerndetails
+  - _Geprüft:_ `lib/server/company/company-access.test.ts` (13 Tests) und `company-architecture.test.ts` (4 Tests), lokal gegen PostgreSQL 16 grün; ohne `TEST_DATABASE_URL` werden die DB-Tests übersprungen
+- [x] Zugriffstests für das Firmengerüst: jede Rolle und „ohne Organisation“ gegen `/company` und die Firmen-API (Seiten-Guard im Test, Seite und API im Browser-Lauf)
 
 ### Gate 1
-- [ ] Rechte-Tests grün und in der CI
+- [x] Rechte-Tests grün und in der CI
+  - _Geprüft:_ Check an PR #70 grün (Lauf 37332868853): Postgres-17-Dienst, Migrationen auf leerer DB, 208 Tests inkl. der 13 DB-Rechte-Tests (im Log als ausgeführt, nicht übersprungen)
+- [x] Firmengerüst per Browser-Test mit allen drei Rollen geprüft (manuell, siehe oben)
 
 ---
 
