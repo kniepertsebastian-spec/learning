@@ -16,7 +16,13 @@ export default function LoginPage() {
 
 function LoginForm() {
   const [error, formAction, isPending] = useActionState(loginAction, null);
-  const from = safeRedirectPath(useSearchParams().get("from"));
+  const params = useSearchParams();
+  const from = safeRedirectPath(params.get("from"));
+  const notice = params.get("passwordChanged")
+    ? "Password changed. Please sign in again."
+    : params.get("accountDeleted")
+      ? "Your account has been deleted."
+      : null;
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center">
@@ -24,6 +30,11 @@ function LoginForm() {
         <h1 className="mb-6 text-xl font-semibold">Sign in</h1>
         <form action={formAction} className="flex flex-col gap-4">
           <input type="hidden" name="from" value={from} />
+          {notice && (
+            <p role="status" className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600" data-testid="login-notice">
+              {notice}
+            </p>
+          )}
           {error && (
             <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
               Invalid email or password.

@@ -69,6 +69,9 @@ export const users = pgTable(
     passwordHash: text("password_hash").notNull(),
     name: text("name"),
     role: text("role").$type<UserRole>().notNull().default("learner"),
+    /** Wird bei Passwortwechsel erhöht. Das JWT trägt die Version; weicht sie ab (oder
+     * existiert der Nutzer nicht mehr), ist die Sitzung ungültig (lib/server/session-validity.ts). */
+    sessionVersion: integer("session_version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [check("users_role_check", sql`${table.role} in ('learner', 'admin')`)],

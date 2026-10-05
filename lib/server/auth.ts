@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import { getDb } from "./db/client";
 import { users } from "./db/schema";
 import { checkLoginRateLimit, clientIp } from "./auth-rate-limit";
+import { isSessionTokenValid } from "./session-validity";
 import { normalizeEmail } from "./email";
 
 /**
@@ -46,14 +47,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
 
-        return { id: user.id, email: user.email, name: user.name };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          sessionVersion: user.sessionVersion,
+        };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) token.id = user.id;
-      return token;
+      if (user) {
+        token.id = user.id;
+        // sessionVersion setzt authorize() (Typ-Erweiterung von User greift in Auth.js nicht).
+        const version = (user as { sessionVersion?: unknown }).sessionVersion;
+        token.sv = typeof version === "number" ? version : 0;
+        return token;
+      }
+      // Bei jedem späteren Lesen: Nutzer gelöscht oder Passwort geändert -> Sitzung beenden
+      // (null löscht das Cookie, auth() liefert dann keine Sitzung).
+      if (typeof token.id !== "string") return null;
+      const tokenVersion = typeof token.sv === "number" ? token.sv : undefined;
+      return (await isSessionTokenValid(token.id, tokenVersion)) ? token : null;
     },
     async session({ session, token }) {
       if (session.user && typeof token.id === "string") {

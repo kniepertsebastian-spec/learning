@@ -7,10 +7,11 @@ import { users } from "@/lib/server/db/schema";
 import { checkRegistrationRateLimit, clientIp } from "@/lib/server/auth-rate-limit";
 import { hasPendingInvitationForEmail } from "@/lib/server/company/invitations";
 import { normalizeEmail } from "@/lib/server/email";
+import { newPasswordSchema } from "@/lib/server/password-policy";
 
 const registerRequestSchema = z.object({
   email: z.string().email().transform(normalizeEmail),
-  password: z.string().min(8),
+  password: newPasswordSchema,
   name: z.string().min(1).optional(),
 });
 

@@ -63,3 +63,11 @@ docker compose exec app npm run company:remove-member -- max@example.com
 Mitarbeiter lädt der Firmen-Admin unter `/company` per Link ein (es wird keine E-Mail verschickt, er gibt
 den Link selbst weiter). Der Link gilt 7 Tage, einmal und nur für die eingetragene E-Mail-Adresse; wer
 eine offene Einladung hat, darf sich auch außerhalb von `REGISTRATION_ALLOWED_EMAILS` registrieren.
+
+### Konto (Self-Service)
+
+Unter `/account` ändern Nutzer ihr Passwort (danach sind alle Sitzungen beendet), laden ihre Daten als
+JSON herunter und löschen ihr Konto samt persönlicher Daten. Plattform-Admins und der letzte
+Firmen-Admin einer Organisation können sich nicht selbst löschen, die Rolle muss vorher übertragen
+werden. Neue Tabellen mit Verweis auf `users` müssen in `lib/server/account/export.ts` als exportiert
+oder begründet ausgenommen eingetragen werden, sonst schlägt ein Test an.

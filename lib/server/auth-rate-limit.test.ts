@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkAccountActionRateLimit,
+  checkAccountExportRateLimit,
   checkInvitationAcceptRateLimit,
   checkInvitationCreateRateLimit,
   checkLoginRateLimit,
@@ -55,5 +57,23 @@ describe("invitation rate limits", () => {
     }
     expect(checkInvitationAcceptRateLimit("user-x").allowed).toBe(false);
     expect(checkInvitationAcceptRateLimit("user-y").allowed).toBe(true);
+  });
+});
+
+describe("account rate limits", () => {
+  it("begrenzt Passwortwechsel und Löschen auf 10 Versuche je 15 Minuten und Nutzer", () => {
+    for (let i = 0; i < 10; i++) {
+      expect(checkAccountActionRateLimit("acct-x").allowed).toBe(true);
+    }
+    expect(checkAccountActionRateLimit("acct-x").allowed).toBe(false);
+    expect(checkAccountActionRateLimit("acct-y").allowed).toBe(true);
+  });
+
+  it("begrenzt den Datenexport auf 5 pro Stunde und Nutzer", () => {
+    for (let i = 0; i < 5; i++) {
+      expect(checkAccountExportRateLimit("exp-x").allowed).toBe(true);
+    }
+    expect(checkAccountExportRateLimit("exp-x").allowed).toBe(false);
+    expect(checkAccountExportRateLimit("exp-y").allowed).toBe(true);
   });
 });

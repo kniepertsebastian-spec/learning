@@ -67,3 +67,28 @@ export function checkInvitationAcceptRateLimit(userId: string): RateLimitResult 
     INVITATION_ACCEPT_MAX_PER_WINDOW,
   );
 }
+
+const ACCOUNT_ACTION_WINDOW_MS = 15 * 60 * 1000;
+const ACCOUNT_ACTION_MAX_PER_WINDOW = 10;
+const ACCOUNT_EXPORT_WINDOW_MS = 60 * 60 * 1000;
+const ACCOUNT_EXPORT_MAX_PER_WINDOW = 5;
+
+/** Passwort ändern und Konto löschen (beides verlangt das aktuelle Passwort): je Nutzer, zählt auch Fehlversuche. */
+export function checkAccountActionRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit(
+    "account-action",
+    userId,
+    ACCOUNT_ACTION_WINDOW_MS,
+    ACCOUNT_ACTION_MAX_PER_WINDOW,
+  );
+}
+
+/** Datenexport: je Nutzer (die Abfrage ist teuer und liefert alle persönlichen Daten). */
+export function checkAccountExportRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit(
+    "account-export",
+    userId,
+    ACCOUNT_EXPORT_WINDOW_MS,
+    ACCOUNT_EXPORT_MAX_PER_WINDOW,
+  );
+}

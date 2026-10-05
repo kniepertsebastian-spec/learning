@@ -127,7 +127,13 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 - [ ] E-Mail-Versand (EU-Anbieter)
 - [ ] E-Mail-Verifizierung und Passwort-Reset
-- [ ] Passwort ändern, Konto löschen, Datenexport (Self-Service)
+- [x] Passwort ändern (Self-Service, Seite `/account`)
+  - _Geprüft gegen echte DB (Tests) und im Browser (Chromium, Produktions-Build, 23 Prüfungen):_ aktuelles Passwort wird verlangt, neues mindestens 8 Zeichen und höchstens 72 Byte (bcrypt schneidet sonst still ab; gilt jetzt auch bei der Registrierung), muss sich vom alten unterscheiden. Danach sind **alle Sitzungen beendet** (`users.session_version`, Migration `0027`, Prüfung im `jwt`-Callback): ein zweites Gerät ist nach dem Wechsel abgemeldet, API-Aufrufe mit der alten Sitzung geben 401. Rate-Limit 10 Versuche/15 min (zählt Fehlversuche). Audit-Ereignis ohne Passwort
+- [x] Datenexport (Self-Service): `GET /api/account/export` als JSON-Download
+  - _Geprüft:_ enthält Konto, Mitgliedschaft, Zuweisungen, Lern-, Prüfungs- und Sitzungsdaten samt Antworten, Aktivitäten (nie Passwort-Hash, nie Daten anderer Nutzer; Test mit zwei Nutzern). **Vollständigkeits-Test ohne Datenbank:** jede Spalte mit Fremdschlüssel auf `users` muss exportiert oder begründet ausgenommen sein, sonst schlägt der Test an (zwingt bei neuen Tabellen zur Entscheidung). Limit 5/Stunde
+- [x] Konto löschen (Self-Service)
+  - _Geprüft gegen echte DB mit Daten in allen 12 nutzergebundenen Tabellen und im Browser:_ verlangt das Passwort, löscht Konto und alle persönlichen Daten (Fremdschlüssel `CASCADE`; ein Test hält fest, dass alle 21 Fremdschlüssel auf `users` `CASCADE` oder `SET NULL` sind), entfernt zusätzlich Einladungen an die eigene Adresse und die E-Mail aus Audit-Metadaten; Betriebsdaten (Audit, Meldungen, Jobs) bleiben anonymisiert. Fremde Daten und Inhalte bleiben unberührt. Sitzungen anderer Geräte werden ungültig, lokale Offline-Daten und Seiten-Cache werden geleert, die Adresse lässt sich neu registrieren. Verweigert wird bei Plattform-Admins und beim letzten Firmen-Admin einer Organisation (sonst bliebe sie ohne Verwaltung)
+  - _Grenzen:_ Meldungen (`content_reports`) behalten den Freitext ohne Bezug zum Konto; Backups enthalten das Konto bis zu ihrer Aufbewahrungsgrenze (siehe `docs/BACKUP.md`, lokal 14 Tage), eine Löschung dort ist nicht automatisiert
 - [ ] Auth-Bibliothek auf stabile Version bringen oder Alternative prüfen
   - _Ist-Stand:_ `next-auth` `5.0.0-beta.32`
 - [x] Mitarbeiter per Einladungslink einladen und einer Organisation zuordnen (ohne E-Mail-Versand)
