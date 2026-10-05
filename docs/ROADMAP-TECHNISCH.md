@@ -4,7 +4,7 @@
 >
 > **Regel:** Ein Punkt wird erst abgehakt, wenn er gebaut *und* geprüft ist (Test, Lauf oder Review). Eine Phase gilt erst als abgeschlossen, wenn ihr **Gate** erfüllt ist.
 >
-> **Hauptdatei:** [ROADMAP.md](ROADMAP.md) (vollständige Roadmap). Diese Datei ist die technische Detailsicht daraus mit Prüfnachweisen. Ist-Stand-Vermerke beziehen sich auf den Repo-Abgleich vom 04.10.2026 und sind Lesebefunde, keine Testergebnisse.
+> **Einzige gepflegte Roadmap.** Die frühere vollständige Fassung (mit Vertrieb, Recht, Finanzierung) wird nicht weitergeführt. Ist-Stand-Vermerke beziehen sich auf den Repo-Abgleich vom 04.10.2026 und sind Lesebefunde, keine Testergebnisse.
 
 ---
 
