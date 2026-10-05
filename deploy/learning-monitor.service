@@ -1,0 +1,19 @@
+# Vorlage: Überwachung mit Mail-Alarm (siehe docs/MONITORING.md).
+# Installation: nach /etc/systemd/system/ kopieren, Pfad anpassen, dann
+#   systemctl daemon-reload && systemctl enable --now learning-monitor.timer
+# /etc/learning-monitor.env (chmod 600) enthält z. B.:
+#   MONITOR_MAIL_TO=admin@example.com
+#   MAIL_SMTP_HOST=smtp.gmail.com
+#   MAIL_SMTP_USER=...
+#   MAIL_SMTP_PASSWORD=...
+#   MAIL_FROM="Learning <...>"
+#   BACKUP_DIR=/var/backups/learning
+[Unit]
+Description=Learning-Plattform Überwachung (Mail bei Problemen)
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/learning
+EnvironmentFile=/etc/learning-monitor.env
+ExecStart=/opt/learning/scripts/monitor.sh
