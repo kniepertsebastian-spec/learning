@@ -171,11 +171,19 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 ## Phase 3 – Firmenfunktionen
 
-- [ ] Lernpfade zuweisen (Basiskurs plus Firmenmodule)
+- [x] Lernpfade (Zertifizierungen) an Mitglieder der eigenen Firma zuweisen, mit optionaler Frist
+  - _Geprüft gegen echte DB (15 Tests) und im Browser (Chromium, Produktions-Build, 19 Prüfungen):_ Firmen-Admin **und Mentor** weisen zu (`POST /api/company/assignments`), Lernende und Nutzer ohne Organisation bekommen 403. Mandantengetrennt: Personen anderer Firmen und unbekannte IDs werden gleich abgelehnt (alles oder nichts, auch die gültige Person in derselben Anfrage wird nicht zugewiesen), eine mitgeschickte `organizationId` wird ignoriert, fremde Zuweisungen sind weder änderbar noch entfernbar (404). Doppelte Zuweisung ändert nichts (Frist bleibt) und wird gemeldet. Frist nur als Datum, nicht in der Vergangenheit. Frist ändern und Entfernen nur bei offenen Zuweisungen. Rate-Limit 60/h je Nutzer, Audit-Ereignisse `assignment.created|due_changed|removed`
+  - _Mutationstests:_ ohne Mandantenfilter beim Entfernen fallen 2, ohne Mitgliedsprüfung 1, mit Lernenden als Zuweisenden 4, ohne Nachführen im Lernweg 2, „abgeschlossen schon bei geübt statt beherrscht“ 1 und „abgeschlossen wird wieder geöffnet“ 1 Test durch
+  - _Entscheidungen (bitte prüfen):_ Mentor darf zuweisen wie der Firmen-Admin; zugewiesen werden kann jedes Mitglied, auch Admin und Mentor
+- [ ] Firmenmodule an einen Lernpfad hängen (Basiskurs plus Firmenmodule) – kommt mit dem Dokument-Upload
 - [ ] Firmendokument hochladen → KI-Entwurf → Mentor prüft und gibt frei
 - [ ] Passwort- und Schlüssel-Scanner beim Upload
 - [ ] Praxisaufgaben mit Bestätigung durch den Mentor
-- [ ] Statusansicht für die Firma (nur Status, Datum, Frist)
+- [x] Statusansicht für die Firma (nur Status, Datum, Frist)
+  - _Geprüft:_ `/company` zeigt je Zuweisung Person, Lernpfad, Status (zugewiesen / in Arbeit / abgeschlossen), Zuweisungs-, Frist- und Abschlussdatum und „überfällig“; keine Lerndetails (Browser-Prüfung auf der Tabelle, Feldliste der API ist im Test festgehalten, der Architektur-Test hält den Firmenbereich weiter von Lern-Modulen fern). Jede Firma sieht nur ihre Zuweisungen
+  - _Status wird automatisch nachgezogen_ (`lib/server/assignments/sync.ts`, aufgerufen beim Schreiben des Lernfortschritts): **in Arbeit**, sobald es für den Lernpfad Fortschritt gibt; **abgeschlossen**, wenn jedes Lernziel beherrscht ist (`STRONG`: mindestens 3 Antworten, gewichtete Quote ab 80 %, „bestanden heißt beherrscht“). Nur vorwärts: abgeschlossen bleibt abgeschlossen, auch wenn die Quote später sinkt. Geprüft über den echten Lernweg (Quiz-Antworten → Fortschritt → Zuweisung), auch „alle Ziele geübt, aber nicht alle beherrscht → weiter in Arbeit“ und „Üben ohne Zuweisung ändert nichts“
+  - _Lernende sehen ihre Zuweisungen_ auf der Startseite („Von deiner Firma zugewiesen“, mit dem Hinweis, was die Firma sieht)
+  - _Grenzen:_ Der Status wird nur bei Lernereignissen nachgezogen, nicht beim Zuweisen: wer schon alles beherrscht, gilt erst beim nächsten Üben als abgeschlossen (schützt Vorwissen). Die Definition von „abgeschlossen“ ist eine Annahme (nur Lernziele, keine Abschlussprüfung) und braucht die Entscheidung des Betreibers. Die Browser-Läufe sind manuelle Skripte, nicht Teil der CI
 - [ ] Firmenmodule mit Verantwortlichem und „gültig bis“
 - [ ] Option: Firmendokumente von KI-Verarbeitung ausschließen
 - [ ] KI-Zugang so konfiguriert, dass keine Kundendaten zum Training verwendet werden, möglichst EU-Verarbeitung

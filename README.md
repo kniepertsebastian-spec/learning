@@ -67,6 +67,11 @@ Mitarbeiter lädt der Firmen-Admin unter `/company` per Link ein. Ist E-Mail-Ver
 Link zusätzlich per Mail an die eingeladene Adresse, sonst gibt der Admin ihn selbst weiter. Der Link gilt 7 Tage, einmal und nur für die eingetragene E-Mail-Adresse; wer
 eine offene Einladung hat, darf sich auch außerhalb von `REGISTRATION_ALLOWED_EMAILS` registrieren.
 
+Lernpfade (Zertifizierungen) weisen Firmen-Admin und Mentor unter `/company` zu, optional mit Frist. Dort steht
+auch der Status je Person: zugewiesen, in Arbeit (sobald geübt wird) oder abgeschlossen (jedes Lernziel
+beherrscht). Die Firma sieht nur Status, Zuweisungs-, Frist- und Abschlussdatum, nie Ergebnisse. Die
+Lernenden sehen ihre Zuweisungen auf der Startseite.
+
 ### Konto (Self-Service)
 
 Unter `/account` ändern Nutzer ihr Passwort (danach sind alle Sitzungen beendet), laden ihre Daten als

@@ -47,6 +47,8 @@ const INVITATION_CREATE_WINDOW_MS = 60 * 60 * 1000;
 const INVITATION_CREATE_MAX_PER_WINDOW = 20;
 const INVITATION_ACCEPT_WINDOW_MS = 15 * 60 * 1000;
 const INVITATION_ACCEPT_MAX_PER_WINDOW = 10;
+const ASSIGNMENT_WINDOW_MS = 60 * 60 * 1000;
+const ASSIGNMENT_MAX_PER_WINDOW = 60;
 
 /** Einladungen anlegen: je Firmen-Admin (verhindert Massenerzeugung von Links). */
 export function checkInvitationCreateRateLimit(userId: string): RateLimitResult {
@@ -56,6 +58,11 @@ export function checkInvitationCreateRateLimit(userId: string): RateLimitResult 
     INVITATION_CREATE_WINDOW_MS,
     INVITATION_CREATE_MAX_PER_WINDOW,
   );
+}
+
+/** Lernpfade zuweisen: je Nutzer (Firmen-Admin oder Mentor). */
+export function checkAssignmentRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("assignment-create", userId, ASSIGNMENT_WINDOW_MS, ASSIGNMENT_MAX_PER_WINDOW);
 }
 
 /** Einladungen annehmen: je Nutzer (bremst Token-Raten; Tokens haben 256 Bit, das ist nur ein zweiter Riegel). */

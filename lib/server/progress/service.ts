@@ -1,4 +1,5 @@
 import { eq, and, desc } from "drizzle-orm";
+import { syncAssignmentsForObjective } from "@/lib/server/assignments/sync";
 import { getDb } from "@/lib/server/db/client";
 import {
   objectiveProgress,
@@ -158,6 +159,11 @@ export class ObjectiveProgressService {
         lastAttemptAt: mastery.lastAttemptAt,
       });
     }
+
+    // Firmenzuweisungen nachziehen (in_progress/completed). Ein Fehler hier darf das Lernen nicht stören.
+    await syncAssignmentsForObjective(userId, objectiveId).catch((err) =>
+      console.error("Zuweisungsstatus konnte nicht aktualisiert werden:", err),
+    );
   }
 
   static async updateProgressForQuizAttempt(
