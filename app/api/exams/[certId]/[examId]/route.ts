@@ -17,13 +17,21 @@ export async function GET(
   try {
     const examData = await getExamWithQuestions(examId);
 
+    // Wie in app/cert/[id]/final-exam/[examId]/page.tsx: isCorrect und
+    // Erklärungen nie vor der Abgabe ausliefern - sonst stünden die Lösungen
+    // für jeden angemeldeten Nutzer im Netzwerk-Tab. Die Korrektheit prüft
+    // der attempt-Endpunkt ohnehin serverseitig.
     return NextResponse.json({
       exam: examData.exam,
-      questions: examData.questions,
+      questions: examData.questions.map((q) => ({
+        questionId: q.questionId,
+        orderNum: q.orderNum,
+        question: q.question,
+        options: q.options.map((o) => ({ id: o.id, text: o.text, orderNum: o.orderNum })),
+      })),
     });
   } catch (error) {
     console.error("Error fetching exam:", error);
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: error instanceof Error ? 404 : 500 });
+    return NextResponse.json({ error: "Exam not found" }, { status: 404 });
   }
 }

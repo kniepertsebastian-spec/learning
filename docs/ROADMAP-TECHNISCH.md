@@ -4,7 +4,7 @@
 >
 > **Regel:** Ein Punkt wird erst abgehakt, wenn er gebaut *und* geprüft ist (Test, Lauf oder Review). Eine Phase gilt erst als abgeschlossen, wenn ihr **Gate** erfüllt ist.
 >
-> **Quelle:** abgeleitet aus `docs/ROADMAP-LERNPLATTFORM.md` (nur technische Punkte). Ist-Stand-Vermerke beziehen sich auf den Repo-Abgleich vom 04.10.2026 und sind Lesebefunde, keine Testergebnisse.
+> **Einzige gepflegte Roadmap.** Die frühere vollständige Fassung (mit Vertrieb, Recht, Finanzierung) wird nicht weitergeführt. Ist-Stand-Vermerke beziehen sich auf den Repo-Abgleich vom 04.10.2026 und sind Lesebefunde, keine Testergebnisse.
 
 ---
 
@@ -40,17 +40,19 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 ### Sicherheit
 - [ ] Rate-Limits für Login und Registrierung
-  - _Stand:_ `lib/server/auth-rate-limit.ts` (Login 10/15 min je IP+E-Mail, Registrierung 5/h je IP, In-Process wie das Admin-Limit), in `auth.ts` und `/api/register` eingebunden; Limiter per Unit-Test geprüft, `tsc` sauber. **Ende-zu-Ende-Test gegen die laufende App steht aus** (Login-Sperre über Auth.js nicht live geprüft)
+  - _Stand:_ `lib/server/auth-rate-limit.ts` (Login 10/15 min je Konto und 30/15 min je IP, Registrierung 5/h je IP, In-Process wie das Admin-Limit), in `auth.ts` und `/api/register` eingebunden; Limiter per Unit-Test geprüft, `tsc` sauber. **Ende-zu-Ende-Test gegen die laufende App steht aus** (Login-Sperre über Auth.js nicht live geprüft)
 - [x] Rate-Limits und Tageskontingent pro Nutzer für KI-Routen
   - _Geprüft:_ Admin-Generierung/Blueprint hatten Limits; neu: Kursgenerierung (5 Aufträge/h je Admin) und Remediation (20 Generierungen/Tag je Nutzer, Unit-Tests grün). Die Remediation ist die einzige Lernenden-Route mit KI-Aufruf (per Code-Suche geprüft)
 - [x] Remediation-Neugenerierung nur per `POST` mit Abklingzeit (10 min je Nutzer und Ziel); `GET` ignoriert `?regenerate=true`
   - _Geprüft:_ Unit-Tests für Abklingzeit, `tsc` und Lint sauber; Route nicht live aufgerufen
 - [x] KI-Budget auf Gemini-Variablen umgestellt (`GEMINI_*_PRICE_*`, `GEMINI_BUDGET_USD`; `ANTHROPIC_*`-Fallback entfernt, Compose reicht die Variablen durch)
   - _Geprüft:_ Tests laufen auf `GEMINI_*`, ein Test belegt, dass `ANTHROPIC_*` ignoriert wird. Konkrete Preiswerte trägst du selbst in `.env` ein
-- [x] Security-Header: HSTS, `frame-ancestors 'none'` (CSP + X-Frame-Options), `object-src`/`base-uri`/`form-action`, nosniff, Referrer-Policy, Permissions-Policy
-  - _Geprüft:_ Produktions-Build gestartet, `curl -I` auf `/login` und `/api/health` zeigt alle Header
-- [ ] Strikte CSP mit `script-src` (Nonce über `proxy.ts`)
-  - _Offen:_ erzwingt dynamisches Rendering aller Seiten und muss im Browser gegen die PWA (Service Worker, Theme-Skript) geprüft werden
+- [x] Security-Header: CSP (`default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'` u. a.), HSTS (1 Jahr, ohne `includeSubDomains`), nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
+  - _Geprüft:_ Produktions-Build gestartet, `curl -I` auf `/login` zeigt alle Header; CSP ohne Verletzungen auf Login und Dashboard (Playwright-Lauf aus PR #68)
+- [ ] CSP ohne `'unsafe-inline'` für Skripte (Nonce über `proxy.ts`)
+  - _Offen:_ `script-src` erlaubt aktuell `'unsafe-inline'` (Next.js-Inline-Skripte, Theme-Skript); Nonces erzwingen dynamisches Rendering aller Seiten und muss im Browser gegen die PWA (Service Worker, Theme-Skript) geprüft werden
+- [x] Prüfungs-API liefert vor der Abgabe keine Lösungen mehr (`GET /api/exams/[certId]/[examId]` ohne `isCorrect` und Erklärungen)
+  - _Stand:_ aus PR #68 übernommen; im Code gelesen, nicht live aufgerufen
 - [x] Service Worker: `ui-cache` beim Logout leeren
   - _Geprüft:_ `SignOutButton` ruft `caches.delete("ui-cache")` (best-effort); `tsc`/Lint sauber, **im Browser nicht ausprobiert**
 - [ ] Service Worker: angemeldete Seiten gar nicht erst cachen
