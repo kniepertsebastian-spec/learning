@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - Docker & Docker Compose installed
-- Anthropic API key (https://console.anthropic.com/settings/keys)
+- Google Gemini API key (https://aistudio.google.com/apikey)
 - Cloudflare Tunnel token (for the `cloudflared` service in docker-compose.yml)
 
 ## Quick Start (5 minutes)
@@ -22,9 +22,10 @@ cp .env.example .env
 # Edit with your values
 nano .env
 # Set:
-# - DB_USER & DB_PASSWORD (used by both PostgreSQL and app)
-# - AUTH_SECRET (generate: openssl rand -base64 32)
-# - ANTHROPIC_API_KEY (from https://console.anthropic.com/settings/keys)
+# - DB_USER & DB_PASSWORD (used by both PostgreSQL and app; DB_PASSWORD is required,
+#   docker compose refuses to start without it)
+# - AUTH_SECRET (required; generate: openssl rand -base64 32)
+# - GEMINI_API_KEY (from https://aistudio.google.com/apikey)
 # - TUNNEL_TOKEN (for the cloudflared service)
 
 # Important: DB_USER and DB_PASSWORD are shared between PostgreSQL and the app's
@@ -47,8 +48,11 @@ docker-compose ps
 
 ### 3. Initialize Database
 ```bash
-# Run database migrations
-docker-compose exec app npm run db:migrate
+# Migrations run automatically on every app start (see `command` in docker-compose.yml).
+# Before the first deploy of the e-mail normalization migration (0024), check for accounts
+# that differ only in letter case - they would make the migration fail:
+#   docker-compose exec postgres psql -U postgres -d learning_pwa -c \
+#     "select lower(btrim(email)), count(*) from users group by 1 having count(*) > 1;"
 
 # Seed initial data (Security+ certification + domain skeleton)
 docker-compose exec app npm run db:seed
@@ -218,7 +222,8 @@ server {
 | `DATABASE_URL` | Full connection string | Yes | App only | Auto-generated from DB_* vars |
 | `AUTH_SECRET` | Session encryption key (Auth.js) | Yes | App | Generate: `openssl rand -base64 32` |
 | `TUNNEL_TOKEN` | Cloudflare Tunnel token | Yes | cloudflared | From Zero Trust dashboard |
-| `ANTHROPIC_API_KEY` | Anthropic Claude API key | No | App | From https://console.anthropic.com/settings/keys |
+| `GEMINI_API_KEY` | Google Gemini API key | For AI generation | App | From https://aistudio.google.com/apikey |
+| `GEMINI_BUDGET_USD` | Global AI budget in USD | No | App | Empty = no limit; needs the `GEMINI_*_PRICE_*` variables, see `.env.example` |
 | `NODE_ENV` | Environment mode | Yes | App | Set to `production` |
 
 **Important:** `DB_USER` and `DB_PASSWORD` are shared between PostgreSQL container (POSTGRES_USER, POSTGRES_PASSWORD) and the app's DATABASE_URL. They must match.

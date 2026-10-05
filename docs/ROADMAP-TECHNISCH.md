@@ -71,7 +71,8 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [ ] **Restore einmal vollständig getestet**
 - [ ] Error-Tracking und Uptime-Monitoring
   - _Ist-Stand:_ `/api/health` und `/api/ready` vorhanden, kein externes Monitoring
-- [ ] Repo aufräumen: Patch-Datei und `QUICK_COMMANDS.sh` entfernen, README ausbauen, alte Roadmaps archivieren
+- [x] Repo aufräumen: Patch-Datei und `QUICK_COMMANDS.sh` entfernt, README ausgebaut (Entwicklung, Prüfen, Betrieb), `DOCKER_DEPLOYMENT.md` von Anthropic auf Gemini umgestellt
+  - _Geprüft:_ Patch war bereits angewendet (Poppler-Extraktion im Code), keine Verweise auf die Skripte im Repo. `roadmap.md`/`roadmap2.md` bleiben bewusst liegen (~160 Code-Kommentare verweisen darauf), „archivieren“ entfällt
 
 ### Gate 0
 - [ ] Keine offenen kritischen Punkte aus dem Sicherheits-Review
