@@ -8,6 +8,8 @@ Auth.js, Inhaltsgenerierung mit Google Gemini.
 - Roadmap (rein technisch, mit Prüfnachweisen je Punkt): [docs/ROADMAP-TECHNISCH.md](docs/ROADMAP-TECHNISCH.md)
 - Deployment mit Docker Compose: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
 - Backup und Wiederanlauf: [docs/BACKUP.md](docs/BACKUP.md)
+- Server von alter Compose-Datei absichern und aktualisieren: [docs/DEPLOY-UPDATE.md](docs/DEPLOY-UPDATE.md)
+  (Prüfskript: `scripts/check-server.sh`)
 - Historische Design-Referenz: `roadmap.md` und `roadmap2.md` (bleiben liegen, weil viele
   Code-Kommentare auf sie verweisen)
 
@@ -60,8 +62,8 @@ docker compose exec app npm run company:set-member -- <organization-id> max@exam
 docker compose exec app npm run company:remove-member -- max@example.com
 ```
 
-Mitarbeiter lädt der Firmen-Admin unter `/company` per Link ein (es wird keine E-Mail verschickt, er gibt
-den Link selbst weiter). Der Link gilt 7 Tage, einmal und nur für die eingetragene E-Mail-Adresse; wer
+Mitarbeiter lädt der Firmen-Admin unter `/company` per Link ein. Ist E-Mail-Versand eingerichtet, geht der
+Link zusätzlich per Mail an die eingeladene Adresse, sonst gibt der Admin ihn selbst weiter. Der Link gilt 7 Tage, einmal und nur für die eingetragene E-Mail-Adresse; wer
 eine offene Einladung hat, darf sich auch außerhalb von `REGISTRATION_ALLOWED_EMAILS` registrieren.
 
 ### Konto (Self-Service)
