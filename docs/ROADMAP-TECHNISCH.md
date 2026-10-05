@@ -34,9 +34,10 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft:_ `docker compose config` zeigt `host_ip: 127.0.0.1`
 - [ ] Firewall des Servers prüfen (nicht aus dem Repo prüfbar)
   - _Befund vom Betreiber (`docker ps`):_ auf dem Server laufen noch Container der **alten** Compose-Datei, `learning-postgres` auf `0.0.0.0:5432` und `learning-app` auf `0.0.0.0:3000`, also von außen erreichbar. Die Korrektur steht im Repo, ist aber **nicht ausgerollt**
-- [ ] Härtung auf dem Server ausgerollt und von außen geprüft
+- [x] Härtung auf dem Server ausgerollt und geprüft
   - _Vorbereitet:_ Anleitung `docs/DEPLOY-UPDATE.md` (Hoster-Firewall, Backup, Passwort in laufender DB ändern, `.env`, Update, Rückweg, Vorgehen bei Kompromittierung) und lesendes Prüfskript `scripts/check-server.sh` (Ports, Standardpasswort über das Docker-Netz, `.env`, Dubletten für Migration 0024; getestet mit simuliertem Docker in drei Szenarien)
-  - _Offen:_ Ausführung auf dem Server durch den Betreiber; erledigt, wenn `scripts/check-server.sh` dort ohne `FEHLER` endet und `nc -vz <ip> 5432|3000` von außen scheitert
+  - _Geprüft (Betreiber, auf dem Server):_ Vor dem Update meldete `scripts/check-server.sh` 5432 und 3000 auf allen Interfaces, aber: Standardpasswort wird abgelehnt, `DB_PASSWORD` (48 Zeichen) und `AUTH_SECRET` (44 Zeichen) gesetzt, keine E-Mail-Dubletten. Nach `git pull` und `docker compose up -d --build` endet das Skript ohne Fehler, Migrationen und App-Log unauffällig. Im Datenbank-Log keine fehlgeschlagenen Anmeldungen, kein Hinweis auf Zugriffe von außen
+  - _Grenze:_ Das Log belegt nur die Zeit seit dem letzten Neustart des Containers. Die Sperre von 5432/3000 in der Hoster-Firewall und der Test von einem fremden Rechner (`nc -vz <ip> 5432`) sind nicht bestätigt, siehe offenen Punkt „Firewall des Servers prüfen"
 - [x] Sicherheitsupdates der Abhängigkeiten (`npm audit`)
   - _Geprüft:_ `next` 16.3.8 (u. a. kritische Lücke in `next/og`, von der App nicht genutzt), `nodemailer` 10.0.15, übrige Funde per `npm audit fix`; `npm audit --omit=dev` meldet 0 Funde. Tests (274 mit Datenbank), `tsc`, Lint, Produktions-Build grün; im Browser erneut geprüft: komplette Mail-Strecke über TLS (24 Prüfungen, nodemailer 10) und Offline-Betrieb mit Service Worker
   - _Offen (nur Entwicklungswerkzeuge, kein Laufzeitcode):_ Funde bei `vitest`/`@vitest/mocker`, `esbuild` (über `drizzle-kit`) und `braces`/`micromatch`/`fast-glob` (über `eslint-config-next`) brauchen größere Versionssprünge; bei Gelegenheit nachziehen
