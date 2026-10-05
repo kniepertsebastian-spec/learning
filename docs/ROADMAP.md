@@ -6,6 +6,8 @@
 >
 > **Regel:** Eine Phase gilt erst als abgeschlossen, wenn ihr **Gate** erfüllt ist. Häkchen nur für Dinge, die gebaut *und* geprüft sind.
 
+Technische Detailsicht mit Ist-Stand und Prüfnachweisen je Punkt: [ROADMAP-TECHNISCH.md](ROADMAP-TECHNISCH.md). Bei Abweichungen gilt der Prüfnachweis dort.
+
 Konzept und Begründungen: Konzeptdokument „Learning-Plattform – Konzept & Vision“.
 Gesprächsführung: „Gesprächsleitfaden Problem-Interviews“.
 
@@ -31,26 +33,26 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 **Zeitrahmen:** ca. 2 Wochen
 
 ### Infrastruktur
-- [x] Postgres-Port in `docker-compose.yml` nur noch an `127.0.0.1` gebunden
+- [x] Postgres-Port in `docker-compose.yml` nicht mehr veröffentlicht
 - [x] Keine Default-Passwörter: Pflichtvariablen mit `${VAR:?}` (`DB_PASSWORD`, `AUTH_SECRET`)
 - [x] App-Port nur an `127.0.0.1` gebunden, öffentlich nur über Tunnel/Proxy erreichbar
 - [ ] Firewall des Servers prüfen
 - [ ] Dockerfile auf `output: "standalone"` umstellen (kleineres Image, keine Dev-Tools)
-- [ ] Datenbank-Migrationen beim Deploy automatisch ausführen
+- [ ] Datenbank-Migrationen beim Deploy automatisch ausführen (in `docker-compose.yml` eingetragen, Lauf gegen echte DB steht aus)
 
 ### Sicherheit
-- [x] Rate-Limits für Login (pro Konto und pro IP) und Registrierung (pro IP)
-- [ ] Tageskontingent pro Nutzer für alle KI-auslösenden Wege (auch erstmalige Remediation pro Lernziel)
-- [x] Remediation-Neugenerierung (`?regenerate=true`) auf 5 pro Stunde und Nutzer begrenzt
+- [ ] Rate-Limits für Login (pro Konto und pro IP) und Registrierung (pro IP) (gebaut, Unit-Tests grün; Live-Test nach dem Zusammenführen steht aus)
+- [x] Rate-Limits und Tageskontingent für KI-Wege: Remediation 20 Generierungen/Tag je Nutzer, Kursgenerierung 5 Aufträge/h je Admin
+- [x] Remediation-Neugenerierung nur per `POST` mit Abklingzeit (10 min je Nutzer und Ziel)
 - [x] KI-Budget- und Preisvariablen (`GEMINI_*`) in `docker-compose.yml` durchgereicht und in `.env.example` dokumentiert
 - [ ] `GEMINI_BUDGET_USD` und aktuelle Preise in der Server-`.env` setzen
 - [x] Security-Header in `next.config.ts` (CSP, HSTS, `frame-ancestors 'none'`, Referrer-Policy, Permissions-Policy)
 - [ ] CSP ohne `'unsafe-inline'` für Skripte (Nonces)
 - [x] Service Worker: `ui-cache` wird beim Logout geleert
 - [ ] Service Worker: angemeldete Seiten gar nicht erst cachen, ohne den Offline-Modus zu brechen
-- [x] API-Fehler bei 500ern nach außen generisch, Details nur ins Log (Remediation, Prüfung)
+- [ ] API-Fehler nach außen generisch, Details nur ins Log (Lernenden-Routen erledigt; Admin-Routen `blueprint` und `parse` geben bei 502 noch die Roh-Meldung zurück)
 - [x] Prüfungs-API liefert keine Lösungen (`isCorrect`, Erklärungen) mehr vor der Abgabe
-- [x] E-Mail-Adressen normalisiert: Registrierung speichert kleingeschrieben, Login vergleicht ohne Groß-/Kleinschreibung (Bestandskonten funktionieren ohne Migration)
+- [ ] E-Mail-Adressen normalisieren: Registrierung und Login nutzen `normalizeEmail`, Migration `0024` für Bestandskonten geschrieben, Lauf gegen echte DB steht aus
 
 ### Qualität und Betrieb
 - [x] GitHub Actions: Lint, Typecheck, Tests, Build bei jedem Push

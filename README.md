@@ -1,7 +1,8 @@
 # learning
 für zertifikate und co
 
-Aktuelle Roadmap (Checkliste mit Phasen und Gates): [docs/ROADMAP.md](docs/ROADMAP.md).
+Aktuelle Roadmap (Checkliste mit Phasen und Gates): [docs/ROADMAP.md](docs/ROADMAP.md),
+technische Detailsicht mit Prüfnachweisen: [docs/ROADMAP-TECHNISCH.md](docs/ROADMAP-TECHNISCH.md).
 `roadmap.md` und `roadmap2.md` bleiben als historische Design-Referenz erhalten, weil viele
 Code-Kommentare auf sie verweisen.
 
