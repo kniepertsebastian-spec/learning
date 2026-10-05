@@ -4,6 +4,8 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { getDb } from "./db/client";
 import { users } from "./db/schema";
+import { checkLoginRateLimit, clientIp } from "./auth-rate-limit";
+import { normalizeEmail } from "./email";
 
 /**
  * Credentials-Provider mit JWT-Sessions - kein Auth.js-Adapter/DB-Sessiontabellen
@@ -24,11 +26,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (credentials) => {
-        const email = typeof credentials?.email === "string" ? credentials.email : undefined;
+      authorize: async (credentials, request) => {
+        const email =
+          typeof credentials?.email === "string" ? normalizeEmail(credentials.email) : undefined;
         const password =
           typeof credentials?.password === "string" ? credentials.password : undefined;
         if (!email || !password) return null;
+
+        // Gesperrte Versuche liefern dieselbe Antwort wie falsche Zugangsdaten.
+        if (!checkLoginRateLimit(clientIp(request.headers), email).allowed) return null;
 
         const [user] = await getDb()
           .select()

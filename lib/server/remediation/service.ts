@@ -10,6 +10,18 @@ import {
 } from "@/lib/server/db/schema";
 import { ObjectiveProgressService } from "@/lib/server/progress/service";
 import { generateRemediationForObjective } from "@/lib/server/ai/service";
+import {
+  checkRemediationGenerationRateLimit,
+  checkRemediationRegenerateCooldown,
+} from "@/lib/server/admin/rate-limit";
+
+/** Kontingent bzw. Abklingzeit für KI-Generierung überschritten. */
+export class RemediationRateLimitError extends Error {
+  constructor(readonly retryAfterSeconds: number) {
+    super("Remediation rate limit exceeded");
+    this.name = "RemediationRateLimitError";
+  }
+}
 
 interface ObjectiveForRemediation {
   objectiveId: string;
@@ -92,6 +104,16 @@ export class RemediationService {
         const content = existing[0].content as { lesson: unknown; questions: unknown };
         return { sessionId: existing[0].id, lesson: content.lesson, questions: content.questions };
       }
+    }
+
+    // Ab hier folgt ein kostenpflichtiger KI-Aufruf: Abklingzeit (nur bei
+    // ausdrücklicher Neugenerierung) und Tageskontingent prüfen.
+    const limits = [
+      options.forceRegenerate ? checkRemediationRegenerateCooldown(userId, objectiveId) : null,
+      checkRemediationGenerationRateLimit(userId),
+    ];
+    for (const limit of limits) {
+      if (limit && !limit.allowed) throw new RemediationRateLimitError(limit.retryAfterSeconds);
     }
 
     // Fetch objective details

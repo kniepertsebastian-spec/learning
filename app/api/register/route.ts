@@ -4,9 +4,11 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getDb } from "@/lib/server/db/client";
 import { users } from "@/lib/server/db/schema";
+import { checkRegistrationRateLimit, clientIp } from "@/lib/server/auth-rate-limit";
+import { normalizeEmail } from "@/lib/server/email";
 
 const registerRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().transform(normalizeEmail),
   password: z.string().min(8),
   name: z.string().min(1).optional(),
 });
@@ -25,10 +27,18 @@ function isEmailAllowed(email: string): boolean {
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-  return allowlist.includes(email.toLowerCase());
+  return allowlist.includes(normalizeEmail(email));
 }
 
 export async function POST(request: Request) {
+  const limit = checkRegistrationRateLimit(clientIp(request.headers));
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Zu viele Versuche. Bitte später erneut versuchen." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
+
   try {
     const body = registerRequestSchema.parse(await request.json());
 
