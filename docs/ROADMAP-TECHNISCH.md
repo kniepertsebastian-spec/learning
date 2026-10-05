@@ -84,16 +84,30 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 ## Phase 1 – Mandanten, Rollen, Rechte
 
-**Ziel:** Strikte Datentrennung als technische Basis für alle Firmenfunktionen.
+**Ziel:** Strikte Datentrennung als technische Basis für alle Firmenfunktionen, plus ein dünnes, sichtbares Firmengerüst, an dem sich die Rechte von Anfang an in der Oberfläche prüfen lassen.
 
+**Offene Entscheidung:** Gehört ein Nutzer zu genau einer oder zu mehreren Organisationen? Empfehlung: genau eine (einfacher und sicherer für den Pilot mit Systemhäusern). Das legt das Datenmodell fest und muss vor Beginn entschieden sein.
+
+### Datenmodell und Rechte
 - [ ] Organisation (Mandant) mit strikter Datentrennung zwischen Firmen
-- [ ] Rollen: Firmen-Admin, Mentor, Lernender
+- [ ] Rollen: Firmen-Admin, Mentor, Lernender (getrennt von der Plattform-Admin-Rolle `users.role`)
+- [ ] Zentraler Guard für Firmenzugriffe: Organisation und Rolle werden an einer Stelle geprüft, nicht verstreut in einzelnen Routen
 - [ ] Trennung privat / betrieblich im Datenmodell (Lerndetails nie im Firmenbereich abfragbar)
-- [ ] Separate Firmen-API, die nur Status, Datum und Frist liefert
-- [ ] Automatisierte Zugriffstests: Firma A sieht nie Daten von Firma B, Arbeitgeber sieht nie Lerndetails
+- [ ] Separate Firmen-API, die nur Status, Datum und Frist liefert (technisch erzwungen, nicht nur in der Oberfläche)
+
+### Firmengerüst (dünn, ohne Funktionen)
+- [ ] Eigener Bereich `/company` mit Navigation und Rollenprüfung über den zentralen Guard
+- [ ] Leere Statusseite für die Firma (Platzhalter, bindet später die Statusansicht aus Phase 3 ein)
+- [ ] Nutzer ohne Organisation oder mit falscher Rolle sehen den Bereich nicht und bekommen keine Daten (403 bzw. Weiterleitung)
+- [ ] Die echten Funktionen (Zuweisen, Dokument-Upload, Praxisaufgaben, Statusansicht) bleiben in Phase 3
+
+### Tests
+- [ ] Automatisierte Zugriffstests gegen echte Datenbank: Firma A sieht nie Daten von Firma B, Arbeitgeber sieht nie Lerndetails
+- [ ] Zugriffstests für das Firmengerüst: jede Rolle und „ohne Organisation“ gegen `/company` und die Firmen-API
 
 ### Gate 1
 - [ ] Rechte-Tests grün und in der CI
+- [ ] Firmengerüst per Browser-Test mit allen drei Rollen geprüft
 
 ---
 
