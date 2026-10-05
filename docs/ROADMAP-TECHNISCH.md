@@ -36,11 +36,11 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [ ] Dockerfile nutzt `output: "standalone"` (kleineres Image, keine Dev-Tools)
   - _Ist-Stand:_ Option steht in `next.config.ts`, Dockerfile kopiert noch `.next` + volles `node_modules`
 - [ ] Datenbank-Migrationen beim Deploy automatisch ausführen
-  - _Stand:_ `command: npm run db:migrate && npm start` in `docker-compose.yml` gesetzt, Compose-Syntax geprüft; **Lauf gegen eine echte DB steht aus** (erst dann abhaken)
+  - _Stand:_ `command: npm run db:migrate && npm start` in `docker-compose.yml`. **Geprüft** gegen eine echte PostgreSQL-16-Instanz: komplette Kette (25 Migrationen) auf leerer DB, zweiter Lauf ändert nichts. **Offen:** der Container-Start selbst (hier gibt es keinen Docker-Daemon). Bei einer Umstellung auf `standalone` muss `drizzle-kit` im Image bleiben
 
 ### Sicherheit
-- [ ] Rate-Limits für Login und Registrierung
-  - _Stand:_ `lib/server/auth-rate-limit.ts` (Login 10/15 min je Konto und 30/15 min je IP, Registrierung 5/h je IP, In-Process wie das Admin-Limit), in `auth.ts` und `/api/register` eingebunden; Limiter per Unit-Test geprüft, `tsc` sauber. **Ende-zu-Ende-Test gegen die laufende App steht aus** (Login-Sperre über Auth.js nicht live geprüft)
+- [x] Rate-Limits für Login (10/15 min je Konto, 30/15 min je IP) und Registrierung (5/h je IP)
+  - _Geprüft live_ (Produktions-Build gegen echte DB, Auth.js-Login per HTTP): frisches Konto loggt mit richtigem Passwort ein; nach 10 Fehlversuchen scheitert auch das richtige Passwort; ein anderes Konto bleibt frei; 6. Registrierung derselben IP → 429 mit `Retry-After`, andere IP → 201
 - [x] Rate-Limits und Tageskontingent pro Nutzer für KI-Routen
   - _Geprüft:_ Admin-Generierung/Blueprint hatten Limits; neu: Kursgenerierung (5 Aufträge/h je Admin) und Remediation (20 Generierungen/Tag je Nutzer, Unit-Tests grün). Die Remediation ist die einzige Lernenden-Route mit KI-Aufruf (per Code-Suche geprüft)
 - [x] Remediation-Neugenerierung nur per `POST` mit Abklingzeit (10 min je Nutzer und Ziel); `GET` ignoriert `?regenerate=true`
@@ -59,8 +59,8 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Offen:_ Navigationen laufen über Stale-While-Revalidate. Eine Änderung (z. B. NetworkFirst) berührt den Offline-Modus (IndexedDB-Paket, R4) und muss im Browser mit Offline-Test geprüft werden
 - [ ] API-Fehler nach außen generisch, Details nur ins Log
   - _Stand:_ Lernenden-Routen geprüft: `exams/[certId]` leakte `error.message`, jetzt generisch (bekannter Fall „keine Fragen“ als 409). Übrige 500er waren bereits generisch. **Offen:** Admin-Routen `sources/[id]/blueprint` und `sources/[id]/parse` geben bei 502 noch die Roh-Meldung zurück (bewusst für Admins, aber nicht klassifiziert)
-- [ ] E-Mail-Adressen normalisieren (Kleinschreibung) plus Migration bestehender Konten
-  - _Stand:_ `lib/server/email.ts` (`normalizeEmail`, Unit-Test grün) in Registrierung und Login eingebaut; Migration `drizzle/0024_normalize_user_emails.sql` geschrieben. **Migration noch nicht gegen eine DB gelaufen** (erst dann abhaken; Schreibweisen-Duplikate würden sie abbrechen lassen)
+- [x] E-Mail-Adressen normalisieren (Kleinschreibung) plus Migration bestehender Konten
+  - _Geprüft live:_ Registrierung `Tester@Example.com` wird als `tester@example.com` gespeichert, Dublette in anderer Schreibweise → 409, Login mit `R1@Example.com` klappt. Migration `0024` gegen echte DB: `Max.Muster@Example.COM` und `  Anna@x.de ` werden normalisiert. **Achtung beim Deploy:** zwei Konten, die sich nur in der Schreibweise unterscheiden, lassen die Migration (und damit den App-Start) abbrechen. Vorher prüfen: `select lower(btrim(email)), count(*) from users group by 1 having count(*) > 1;`
 
 ### Qualität und Betrieb
 - [x] GitHub Actions: Lint, Tests, Build, Typecheck bei Push auf `main` und bei Pull Requests
