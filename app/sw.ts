@@ -1,4 +1,10 @@
-import { CacheableResponsePlugin, NetworkOnly, Serwist, StaleWhileRevalidate } from "serwist";
+import {
+  CacheableResponsePlugin,
+  NetworkFirst,
+  NetworkOnly,
+  Serwist,
+  StaleWhileRevalidate,
+} from "serwist";
 import type { PrecacheEntry, RuntimeCaching, SerwistGlobalConfig } from "serwist";
 
 declare global {
@@ -20,14 +26,25 @@ const runtimeCaching: RuntimeCaching[] = [
     handler: new NetworkOnly(),
   },
   {
-    // UI-Assets & Seiten: Stale-While-Revalidate. Nur 200er landen im Cache -
-    // sonst würde z. B. ein 502 während eines Deploy-Fensters im ui-cache
-    // hängen bleiben und Nutzern bei jeder Navigation erneut ausgeliefert,
-    // bis der Cache manuell geleert wird.
+    // Seitenaufrufe: erst Netzwerk, der Cache nur als Rückfall (Offline-Modus, sehr
+    // langsames Netz nach 3 s). Früher Stale-While-Revalidate: nach einer Änderung
+    // (z. B. neue Einladung im Firmenbereich) zeigte ein Neuladen die VERALTETE Seite.
+    // Die zuletzt geladenen Seiten bleiben für den Offline-Modus im ui-cache und
+    // werden beim Logout gelöscht (components/SignOutButton.tsx).
+    matcher: ({ request, sameOrigin }) => sameOrigin && request.mode === "navigate",
+    handler: new NetworkFirst({
+      cacheName: "ui-cache",
+      networkTimeoutSeconds: 3,
+      // Nur 200er landen im Cache - sonst würde z. B. ein 502 während eines
+      // Deploy-Fensters im ui-cache hängen bleiben und bei Ausfall ausgeliefert.
+      plugins: [new CacheableResponsePlugin({ statuses: [200] })],
+    }),
+  },
+  {
+    // Statische Dateien (Stil, Skript, Bild, Schrift): Stale-While-Revalidate, die
+    // Dateinamen enthalten einen Hash, veraltete Treffer sind unkritisch.
     matcher: ({ request, sameOrigin }) =>
-      sameOrigin &&
-      (request.mode === "navigate" ||
-        ["style", "script", "image", "font"].includes(request.destination)),
+      sameOrigin && ["style", "script", "image", "font"].includes(request.destination),
     handler: new StaleWhileRevalidate({
       cacheName: "ui-cache",
       plugins: [new CacheableResponsePlugin({ statuses: [200] })],

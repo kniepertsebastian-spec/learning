@@ -5,6 +5,7 @@ import { z, ZodError } from "zod";
 import { getDb } from "@/lib/server/db/client";
 import { users } from "@/lib/server/db/schema";
 import { checkRegistrationRateLimit, clientIp } from "@/lib/server/auth-rate-limit";
+import { hasPendingInvitationForEmail } from "@/lib/server/company/invitations";
 import { normalizeEmail } from "@/lib/server/email";
 
 const registerRequestSchema = z.object({
@@ -20,7 +21,9 @@ const registerRequestSchema = z.object({
  * via the remediation endpoint) against the deployer's own key - there is no
  * per-user billing or invite system, so open registration means open access
  * to a paid API key. If the env var is unset, registration is closed
- * entirely rather than silently left open.
+ * entirely rather than silently left open. Ausnahme: Wer eine offene,
+ * gültige Einladung einer Organisation hat (lib/server/company/invitations.ts),
+ * darf sich mit genau dieser E-Mail registrieren.
  */
 function isEmailAllowed(email: string): boolean {
   const allowlist = (process.env.REGISTRATION_ALLOWED_EMAILS || "")
@@ -42,7 +45,8 @@ export async function POST(request: Request) {
   try {
     const body = registerRequestSchema.parse(await request.json());
 
-    if (!isEmailAllowed(body.email)) {
+    // Zugelassen: E-Mail auf der Allowlist ODER mit offener, gültiger Einladung einer Organisation.
+    if (!isEmailAllowed(body.email) && !(await hasPendingInvitationForEmail(body.email))) {
       return NextResponse.json(
         { error: "Registrierung ist derzeit nur auf Einladung möglich." },
         { status: 403 },

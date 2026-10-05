@@ -59,3 +59,7 @@ docker compose exec app npm run company:create -- "Beispiel GmbH"
 docker compose exec app npm run company:set-member -- <organization-id> max@example.com company_admin
 docker compose exec app npm run company:remove-member -- max@example.com
 ```
+
+Mitarbeiter lädt der Firmen-Admin unter `/company` per Link ein (es wird keine E-Mail verschickt, er gibt
+den Link selbst weiter). Der Link gilt 7 Tage, einmal und nur für die eingetragene E-Mail-Adresse; wer
+eine offene Einladung hat, darf sich auch außerhalb von `REGISTRATION_ALLOWED_EMAILS` registrieren.

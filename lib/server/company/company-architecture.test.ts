@@ -17,9 +17,21 @@ const ALLOWED_TABLES = new Set([
   "organizations",
   "organizationMemberships",
   "companyAssignments",
+  "companyInvitations",
 ]);
 // Erlaubte Imports aus lib/server/* (alles andere, z. B. progress, quiz, remediation, exam, study, sync, analytics, review, sections, offline, ai, admin, wäre ein Zugriff auf Lerndetails).
-const ALLOWED_SERVER_MODULES = new Set(["auth", "db/client", "db/schema", "company", "locale"]);
+// "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen und "auth-rate-limit"
+// zählt Anfragen - keiner davon liest Lerndaten.
+const ALLOWED_SERVER_MODULES = new Set([
+  "auth",
+  "auth-rate-limit",
+  "audit/service",
+  "db/client",
+  "db/schema",
+  "email",
+  "company",
+  "locale",
+]);
 
 function sourceFiles(dir: string): string[] {
   const abs = path.join(ROOT, dir);

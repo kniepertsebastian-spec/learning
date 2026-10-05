@@ -1,11 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  // Von der Einladungsseite: Rückkehr nach dem Login und vorausgefüllte E-Mail.
+  const from = safeRedirectPath(params.get("from"));
+  const invitedEmail = params.get("email") ?? "";
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
@@ -25,7 +38,7 @@ export default function RegisterPage() {
     });
     setIsPending(false);
     if (res.ok) {
-      router.push("/login");
+      router.push(from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`);
     } else {
       const body = await res.json().catch(() => null);
       setError(body?.error ?? "Registration failed.");
@@ -62,6 +75,7 @@ export default function RegisterPage() {
               name="email"
               type="email"
               required
+              defaultValue={invitedEmail}
               autoComplete="email"
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
             />
@@ -89,7 +103,10 @@ export default function RegisterPage() {
         </form>
         <p className="mt-4 text-center text-sm text-foreground/60">
           Already have an account?{" "}
-          <Link href="/login" className="text-accent hover:underline">
+          <Link
+            href={from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`}
+            className="text-accent hover:underline"
+          >
             Sign in
           </Link>
         </p>

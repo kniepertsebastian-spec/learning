@@ -183,6 +183,13 @@
       "when": 1791213586119,
       "tag": "0025_company_organizations",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791222141242,
+      "tag": "0026_company_invitations",
+      "breakpoints": true
     }
   ]
 }

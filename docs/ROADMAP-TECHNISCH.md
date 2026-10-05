@@ -54,8 +54,10 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft im Browser_ (Chromium/Playwright gegen Produktions-Build und echte DB): alle 10 Skripte auf `/login` tragen die Nonce, 0 CSP-Verletzungen und 0 JS-Fehler über Login, Dashboard, Registrierung; Theme-Skript läuft; ein ins HTML eingeschleustes Inline-Skript ohne Nonce wird blockiert (Gegenprobe); Offline-Reload aus dem Service-Worker-Cache funktioniert ohne Verletzung. Styles behalten bewusst `'unsafe-inline'` (style-Attribute von React/Tailwind)
 - [x] Service Worker: `ui-cache` beim Logout leeren
   - _Geprüft im Browser:_ nach Login und Reload enthält `ui-cache` einen Eintrag, nach „Sign out“ existiert er nicht mehr (Service Worker aktiv)
+- [x] Service Worker: Seitenaufrufe erst Netzwerk, Cache nur als Rückfall (NetworkFirst, 3 s Timeout)
+  - _Anlass und Prüfung im Browser:_ Beim Test der Einladungen fiel auf, dass Stale-While-Revalidate nach einer Änderung beim Neuladen die VERALTETE Seite zeigte (neue Einladung fehlte in der Liste; ohne Service Worker war sie da). Nach der Umstellung erscheint sie mit und ohne Service Worker. Offline-Reload liefert `/company` weiter aus dem Cache, 0 CSP-Verletzungen
 - [ ] Service Worker: angemeldete Seiten gar nicht erst cachen
-  - _Offen:_ Navigationen laufen über Stale-While-Revalidate. Eine Änderung (z. B. NetworkFirst) berührt den Offline-Modus (IndexedDB-Paket, R4) und muss im Browser mit Offline-Test geprüft werden
+  - _Bewusst offen:_ Die zuletzt geladenen Seiten bleiben im `ui-cache` (Offline-Modus) und werden erst beim Logout gelöscht. Wer ein Gerät angemeldet liegen lässt, lässt sie dort. „Gar nicht cachen“ bräuchte eine andere Offline-Lösung (nur die Lerninhalte aus IndexedDB, keine Firmenseiten)
 - [x] API-Fehler für Lernende nach außen generisch, Details nur ins Log
   - _Geprüft im Code:_ alle Nicht-Admin-Routen mit 500er-Pfad durchgesehen; `exams/[certId]` leakte `error.message` und ist behoben, `remediation` generisch (bekannte Fälle als 404/409/429 mit fester Meldung)
 - [ ] API-Fehler der Admin-Routen `sources/[id]/blueprint` und `sources/[id]/parse` (502) generisch machen
@@ -128,7 +130,11 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [ ] Passwort ändern, Konto löschen, Datenexport (Self-Service)
 - [ ] Auth-Bibliothek auf stabile Version bringen oder Alternative prüfen
   - _Ist-Stand:_ `next-auth` `5.0.0-beta.32`
-- [ ] Mitarbeiter per E-Mail einladen und einer Organisation zuordnen
+- [x] Mitarbeiter per Einladungslink einladen und einer Organisation zuordnen (ohne E-Mail-Versand)
+  - _Geprüft gegen echte DB (16 Tests) und im Browser (23 Prüfungen, Chromium, Produktions-Build):_ Firmen-Admin erzeugt einen Link (Token 256 Bit, in der Datenbank nur als SHA-256-Hash, Anzeige einmalig, 7 Tage gültig). Annahme nur mit genau der eingeladenen E-Mail, einmalig (auch bei 6 parallelen Versuchen entsteht genau eine Mitgliedschaft), widerrufbar; neue Einladung für dieselbe Adresse macht den alten Link ungültig. Mandantengetrennt (Admin B sieht und widerruft Einladungen von A nicht), Liste ohne Token. Wer eine offene Einladung hat, darf sich auch außerhalb der Allowlist registrieren, nur mit dieser Adresse. Nach Login/Registrierung geht es zurück zur Einladung (Weiterleitung nur auf eigene Pfade). Rate-Limits: 20 Einladungen/h je Admin, 10 Annahmen/15 min je Nutzer
+  - _Mutationstest:_ ohne E-Mail-Bindung fallen 2, ohne Einmalverwendung 1, ohne Mandantenfilter beim Widerrufen 1 Test durch
+  - _Der Link wird vom Firmen-Admin selbst weitergegeben._ Gemeinsam mit dem E-Mail-Versand (nächster Punkt) wird daraus die Einladung per E-Mail
+- [ ] Einladung per E-Mail verschicken (hängt am E-Mail-Versand)
 
 ### Gate 2
 - [ ] Neues Konto kann sich registrieren, verifizieren, Passwort zurücksetzen und löschen
