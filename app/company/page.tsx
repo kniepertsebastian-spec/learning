@@ -4,6 +4,7 @@ import { InvitationsPanel } from "@/components/InvitationsPanel";
 import { STATUS_VIEW_ROLES } from "@/lib/server/company/access";
 import { requireCompanyPage } from "@/lib/server/company/guard";
 import { listPendingInvitations } from "@/lib/server/company/invitations";
+import { isMailConfigured } from "@/lib/server/mail/config";
 import { getServerLocale } from "@/lib/server/locale";
 import type { CompanyRole } from "@/lib/server/db/schema";
 
@@ -54,7 +55,7 @@ export default async function CompanyPage() {
         </p>
       </section>
 
-      {invitations && <InvitationsPanel invitations={invitations} locale={locale} />}
+      {invitations && <InvitationsPanel invitations={invitations} locale={locale} mailEnabled={isMailConfigured()} />}
     </div>
   );
 }

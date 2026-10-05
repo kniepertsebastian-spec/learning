@@ -72,6 +72,9 @@ export const users = pgTable(
     /** Wird bei Passwortwechsel erhöht. Das JWT trägt die Version; weicht sie ab (oder
      * existiert der Nutzer nicht mehr), ist die Sitzung ungültig (lib/server/session-validity.ts). */
     sessionVersion: integer("session_version").notNull().default(0),
+    /** Zeitpunkt der E-Mail-Bestätigung (lib/server/account/tokens.ts). Null = noch nicht bestätigt.
+     * Bestandskonten wurden bei der Einführung als bestätigt markiert. */
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [check("users_role_check", sql`${table.role} in ('learner', 'admin')`)],
@@ -1278,5 +1281,31 @@ export const companyInvitations = pgTable(
       .where(sql`${table.acceptedAt} is null and ${table.revokedAt} is null`),
     index("company_invitations_org_idx").on(table.organizationId),
     index("company_invitations_email_idx").on(table.email),
+  ],
+);
+
+export type AccountTokenPurpose = "verify_email" | "reset_password";
+
+/**
+ * Einmal-Tokens für E-Mail-Bestätigung und Passwort-Reset. Gespeichert wird NUR der SHA-256-Hash
+ * (wie bei Einladungen): ein Datenbank-Leak liefert keine nutzbaren Links. Befristet, einmalig
+ * verwendbar, werden mit dem Konto gelöscht.
+ */
+export const accountTokens = pgTable(
+  "account_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    purpose: text("purpose").$type<AccountTokenPurpose>().notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("account_tokens_purpose_check", sql`${table.purpose} in ('verify_email', 'reset_password')`),
+    index("account_tokens_user_purpose_idx").on(table.userId, table.purpose),
   ],
 );

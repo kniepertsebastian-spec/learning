@@ -48,6 +48,8 @@ const OPERATIONAL_REASON =
   "Betriebsdaten der Plattform (Verwaltungsvorgang), kein persönliches Lernprofil; bei Kontolöschung anonymisiert (SET NULL)";
 
 export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
+  "account_tokens.user_id":
+    "Sicherheits-Token (nur Hash, kein Inhalt) für Bestätigung und Reset; wird mit dem Konto gelöscht (CASCADE)",
   "blueprint_drafts.generated_by_user_id": OPERATIONAL_REASON,
   "blueprint_drafts.edited_by_user_id": OPERATIONAL_REASON,
   "certification_sources.approved_by": OPERATIONAL_REASON,
@@ -70,6 +72,7 @@ export async function exportAccountData(userId: string) {
       email: users.email,
       name: users.name,
       role: users.role,
+      emailVerifiedAt: users.emailVerifiedAt,
       createdAt: users.createdAt,
     })
     .from(users)

@@ -20,8 +20,9 @@ const ALLOWED_TABLES = new Set([
   "companyInvitations",
 ]);
 // Erlaubte Imports aus lib/server/* (alles andere, z. B. progress, quiz, remediation, exam, study, sync, analytics, review, sections, offline, ai, admin, wäre ein Zugriff auf Lerndetails).
-// "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen und "auth-rate-limit"
-// zählt Anfragen - keiner davon liest Lerndaten.
+// "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen, "auth-rate-limit"
+// zählt Anfragen und die "mail/*"-Module verschicken Nachrichten (Konfiguration, SMTP, Texte) -
+// keines davon liest Lerndaten.
 const ALLOWED_SERVER_MODULES = new Set([
   "auth",
   "auth-rate-limit",
@@ -29,6 +30,9 @@ const ALLOWED_SERVER_MODULES = new Set([
   "db/client",
   "db/schema",
   "email",
+  "mail/config",
+  "mail/mailer",
+  "mail/templates",
   "company",
   "locale",
 ]);

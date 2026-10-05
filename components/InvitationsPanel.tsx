@@ -16,16 +16,19 @@ const ROLE_LABELS: Record<Role, { de: string; en: string }> = {
 export function InvitationsPanel({
   invitations,
   locale,
+  mailEnabled,
 }: {
   invitations: PendingInvitationView[];
   locale: "de" | "en";
+  /** E-Mail-Versand eingerichtet: die Einladung geht zusätzlich per E-Mail raus. */
+  mailEnabled: boolean;
 }) {
   const router = useRouter();
   const de = locale === "de";
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("learner");
   const [error, setError] = useState<string | null>(null);
-  const [link, setLink] = useState<{ email: string; url: string } | null>(null);
+  const [link, setLink] = useState<{ email: string; url: string; emailSent: boolean } | null>(null);
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -46,7 +49,11 @@ export function InvitationsPanel({
       setError(body?.error ?? (de ? "Einladung fehlgeschlagen." : "Could not create invitation."));
       return;
     }
-    setLink({ email: body.invitation.email, url: window.location.origin + body.invitePath });
+    setLink({
+      email: body.invitation.email,
+      url: window.location.origin + body.invitePath,
+      emailSent: Boolean(body.emailSent),
+    });
     setEmail("");
     router.refresh();
   }
@@ -73,9 +80,13 @@ export function InvitationsPanel({
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="invitations-panel">
       <h2 className="text-lg font-medium">{de ? "Mitarbeiter einladen" : "Invite people"}</h2>
       <p className="mt-1 text-sm text-foreground/70">
-        {de
-          ? "Es wird keine E-Mail verschickt. Du bekommst einen Link, den du selbst weitergibst. Er gilt 7 Tage, einmal und nur für die eingegebene E-Mail-Adresse."
-          : "No email is sent. You get a link to pass on yourself. It is valid for 7 days, once, and only for the entered email address."}
+        {mailEnabled
+          ? de
+            ? "Die eingeladene Person bekommt eine E-Mail mit dem Link. Du siehst ihn zusätzlich hier und kannst ihn selbst weitergeben. Er gilt 7 Tage, einmal und nur für die eingegebene E-Mail-Adresse."
+            : "The invited person receives an email with the link. You also see it here and can pass it on yourself. It is valid for 7 days, once, and only for the entered email address."
+          : de
+            ? "Es wird keine E-Mail verschickt. Du bekommst einen Link, den du selbst weitergibst. Er gilt 7 Tage, einmal und nur für die eingegebene E-Mail-Adresse."
+            : "No email is sent. You get a link to pass on yourself. It is valid for 7 days, once, and only for the entered email address."}
       </p>
 
       <form onSubmit={create} className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -120,6 +131,17 @@ export function InvitationsPanel({
           <p className="text-sm font-medium">
             {de ? `Link für ${link.email}` : `Link for ${link.email}`}
           </p>
+          {mailEnabled && (
+            <p className="mt-1 text-xs" data-testid="invite-mail-status">
+              {link.emailSent
+                ? de
+                  ? `E-Mail an ${link.email} wurde verschickt.`
+                  : `Email sent to ${link.email}.`
+                : de
+                  ? "Die E-Mail konnte nicht verschickt werden. Gib den Link selbst weiter."
+                  : "The email could not be sent. Pass the link on yourself."}
+            </p>
+          )}
           <p className="mt-1 text-xs text-foreground/70">
             {de
               ? "Dieser Link wird nur jetzt angezeigt. Danach ist er nicht mehr abrufbar."

@@ -7,6 +7,8 @@ import { users } from "@/lib/server/db/schema";
 import { checkRegistrationRateLimit, clientIp } from "@/lib/server/auth-rate-limit";
 import { hasPendingInvitationForEmail } from "@/lib/server/company/invitations";
 import { normalizeEmail } from "@/lib/server/email";
+import { sendVerificationEmail } from "@/lib/server/account/recovery";
+import { isMailConfigured } from "@/lib/server/mail/config";
 import { newPasswordSchema } from "@/lib/server/password-policy";
 
 const registerRequestSchema = z.object({
@@ -66,12 +68,28 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await bcrypt.hash(body.password, 12);
+    // Ist der E-Mail-Versand eingerichtet, muss die Adresse per Link bestätigt werden, bevor die
+    // Anmeldung klappt. Ohne Versand gäbe es keinen Weg zur Bestätigung: dann gilt sie als bestätigt.
+    const verificationRequired = isMailConfigured();
     const [user] = await db
       .insert(users)
-      .values({ email: body.email, passwordHash, name: body.name })
+      .values({
+        email: body.email,
+        passwordHash,
+        name: body.name,
+        emailVerifiedAt: verificationRequired ? null : new Date(),
+      })
       .returning({ id: users.id, email: users.email, name: users.name });
 
-    return NextResponse.json({ user }, { status: 201 });
+    if (verificationRequired) {
+      // Nach der Antwort: ein Fehler beim Versand verhindert die Registrierung nicht
+      // („Bestätigung erneut senden“ bleibt möglich).
+      void sendVerificationEmail(user.id, user.email).catch((err) =>
+        console.error("Bestätigungs-E-Mail fehlgeschlagen:", err),
+      );
+    }
+
+    return NextResponse.json({ user, verificationRequired }, { status: 201 });
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(

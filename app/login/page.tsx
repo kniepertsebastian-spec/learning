@@ -22,7 +22,11 @@ function LoginForm() {
     ? "Password changed. Please sign in again."
     : params.get("accountDeleted")
       ? "Your account has been deleted."
-      : null;
+      : params.get("passwordReset")
+        ? "Password reset. Please sign in with your new password."
+        : params.get("verified")
+          ? "Email confirmed. You can sign in now."
+          : null;
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center">
@@ -75,6 +79,15 @@ function LoginForm() {
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-foreground/60">
+          <Link href="/forgot-password" className="text-accent hover:underline">
+            Forgot password?
+          </Link>
+          {" · "}
+          <Link href="/resend-verification" className="text-accent hover:underline">
+            Resend confirmation email
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-sm text-foreground/60">
           No account?{" "}
           <Link
             href={from === "/" ? "/register" : `/register?from=${encodeURIComponent(from)}`}

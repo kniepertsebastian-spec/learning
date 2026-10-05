@@ -92,3 +92,25 @@ export function checkAccountExportRateLimit(userId: string): RateLimitResult {
     ACCOUNT_EXPORT_MAX_PER_WINDOW,
   );
 }
+
+const RECOVERY_WINDOW_MS = 60 * 60 * 1000;
+const RECOVERY_MAX_PER_IP = 10;
+const RECOVERY_MAX_PER_EMAIL = 3;
+const RECOVERY_TOKEN_WINDOW_MS = 15 * 60 * 1000;
+const RECOVERY_TOKEN_MAX_PER_IP = 20;
+
+/**
+ * „Passwort vergessen“ und „Bestätigung erneut senden“: je IP 10/h und je Adresse 3/h. Die
+ * Adress-Grenze schützt ein Postfach vor Mail-Flut, die IP-Grenze den Versand (Gmail hat Tageslimits).
+ */
+export function checkRecoveryRequestRateLimit(ip: string, email: string): RateLimitResult {
+  const byEmail = checkRateLimit("recovery-email", email, RECOVERY_WINDOW_MS, RECOVERY_MAX_PER_EMAIL);
+  const byIp = checkRateLimit("recovery-ip", ip, RECOVERY_WINDOW_MS, RECOVERY_MAX_PER_IP);
+  if (!byEmail.allowed) return byEmail;
+  return byIp;
+}
+
+/** Einlösen von Reset- und Bestätigungslinks: je IP 20 pro 15 Minuten. */
+export function checkRecoveryTokenRateLimit(ip: string): RateLimitResult {
+  return checkRateLimit("recovery-token", ip, RECOVERY_TOKEN_WINDOW_MS, RECOVERY_TOKEN_MAX_PER_IP);
+}

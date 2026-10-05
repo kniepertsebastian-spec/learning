@@ -21,6 +21,7 @@ function RegisterForm() {
   const invitedEmail = params.get("email") ?? "";
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,11 +39,37 @@ function RegisterForm() {
     });
     setIsPending(false);
     if (res.ok) {
+      const created = await res.json().catch(() => null);
+      if (created?.verificationRequired) {
+        setSentTo(String(fd.get("email")));
+        return;
+      }
       router.push(from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`);
     } else {
       const body = await res.json().catch(() => null);
       setError(body?.error ?? "Registration failed.");
     }
+  }
+
+  if (sentTo) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-8" data-testid="check-inbox">
+          <h1 className="mb-4 text-xl font-semibold">Check your inbox</h1>
+          <p className="text-sm text-foreground/70">
+            We sent a confirmation link to <strong>{sentTo}</strong>. Confirm your email address, then sign in.
+          </p>
+          <p className="mt-4 text-center text-sm text-foreground/60">
+            <Link
+              href={from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`}
+              className="text-accent hover:underline"
+            >
+              Go to sign in
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { checkInvitationCreateRateLimit } from "@/lib/server/auth-rate-limit";
 import { requireCompanyApi } from "@/lib/server/company/guard";
+import { appUrl, getMailConfig } from "@/lib/server/mail/config";
+import { sendMail } from "@/lib/server/mail/mailer";
+import { invitationMessage } from "@/lib/server/mail/templates";
 import {
   AlreadyInOrganizationError,
   createInvitation,
@@ -58,8 +61,21 @@ export async function POST(request: Request) {
       email: body.email,
       role: body.role as (typeof INVITABLE_ROLES)[number],
     });
+    // Ist der E-Mail-Versand eingerichtet, geht der Link zusätzlich per E-Mail an die eingeladene
+    // Person. Der Link wird dem Admin trotzdem angezeigt (Fallback, falls der Versand scheitert).
+    const config = getMailConfig();
+    const emailSent = config
+      ? await sendMail(
+          invitationMessage(
+            invitation.email,
+            appUrl(`/invite/${token}`, config),
+            guard.membership.organizationName,
+            invitation.role,
+          ),
+        )
+      : false;
     return NextResponse.json(
-      { invitation, invitePath: `/invite/${token}` },
+      { invitation, invitePath: `/invite/${token}`, emailSent },
       { status: 201, headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

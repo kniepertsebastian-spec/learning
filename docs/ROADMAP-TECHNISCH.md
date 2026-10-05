@@ -125,8 +125,14 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 ## Phase 2 – Accounts
 
-- [ ] E-Mail-Versand (EU-Anbieter)
-- [ ] E-Mail-Verifizierung und Passwort-Reset
+- [x] E-Mail-Versand per SMTP, anbieterneutral (zunächst Gmail; Anleitung `docs/EMAIL.md`)
+  - _Geprüft:_ Konfiguration (Port 465 implizites TLS, 587 STARTTLS erzwungen, in Produktion nur https-Links und nie unverschlüsselt; 8 Tests), Versand gegen einen lokalen SMTP-Server mit Anmeldung (4 Tests: Inhalt, falsche Zugangsdaten, nicht erreichbar, ohne Konfiguration; Fehler werden ohne Passwort protokolliert) und im Browser-Lauf über **echtes TLS** mit Anmeldung (9 Mails, 0 fehlgeschlagene SMTP-Anmeldungen, keine Zugangsdaten oder Tokens im App-Log). **Nicht gegen Gmail selbst geprüft** (ausgehendes SMTP ist hier gesperrt, echte Zugangsdaten fehlen)
+  - Ohne Konfiguration bleibt der Versand aus: Registrierungen gelten sofort als bestätigt, „Passwort vergessen“ antwortet 503, Einladungen bleiben ein Link
+- [ ] Für den Kundenbetrieb: EU-Anbieter oder Google Workspace mit Auftragsverarbeitungsvertrag
+  - _Offen:_ Ein privates Gmail-Konto reicht für Entwicklung und Pilot-Test, bietet aber keinen AV-Vertrag, hat ein Tageslimit und setzt die Gmail-Adresse als Absender (Details in `docs/EMAIL.md`). Der Wechsel braucht nur andere Umgebungsvariablen
+- [x] E-Mail-Verifizierung und Passwort-Reset
+  - _Geprüft gegen echte DB (16 Tests) und im Browser (24 Prüfungen, Produktions-Build, TLS-SMTP):_ Einmal-Tokens (256 Bit, nur Hash gespeichert, Bestätigung 24 h, Reset 1 h, einmalig, zweckgebunden, ein neuer Link ersetzt den alten, parallele Einlösung: genau einer gewinnt). Bestätigung per Klick auf die Seite (POST), damit Link-Scanner im Postfach das Token nicht verbrauchen (im Browser mit GET-Aufrufen geprüft). Neue Konten können sich erst nach Bestätigung anmelden, sobald der Versand eingerichtet ist; Bestandskonten gelten als bestätigt (Migration `0028`, mit Altbestand getestet). „Passwort vergessen“ antwortet für bekannte und unbekannte Adressen gleich und versendet erst nach der Antwort; Limits 3/h je Adresse und 10/h je IP. Ein Reset beendet alle Sitzungen (zweites Gerät im Browser abgemeldet), bestätigt die Adresse und lässt alte Links verfallen. „Bestätigung erneut senden“ macht den alten Link ungültig
+  - _Mutationstest:_ 7 bewusst eingebaute Fehler (unbestätigte Anmeldung, Mehrfachverwendung, falscher Zweck, kein Ablauf, Reset ohne Sitzungsende, ohne Normalisierung, Registrierung sofort bestätigt) werden alle erkannt
 - [x] Passwort ändern (Self-Service, Seite `/account`)
   - _Geprüft gegen echte DB (Tests) und im Browser (Chromium, Produktions-Build, 23 Prüfungen):_ aktuelles Passwort wird verlangt, neues mindestens 8 Zeichen und höchstens 72 Byte (bcrypt schneidet sonst still ab; gilt jetzt auch bei der Registrierung), muss sich vom alten unterscheiden. Danach sind **alle Sitzungen beendet** (`users.session_version`, Migration `0027`, Prüfung im `jwt`-Callback): ein zweites Gerät ist nach dem Wechsel abgemeldet, API-Aufrufe mit der alten Sitzung geben 401. Rate-Limit 10 Versuche/15 min (zählt Fehlversuche). Audit-Ereignis ohne Passwort
 - [x] Datenexport (Self-Service): `GET /api/account/export` als JSON-Download
@@ -140,10 +146,12 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft gegen echte DB (16 Tests) und im Browser (23 Prüfungen, Chromium, Produktions-Build):_ Firmen-Admin erzeugt einen Link (Token 256 Bit, in der Datenbank nur als SHA-256-Hash, Anzeige einmalig, 7 Tage gültig). Annahme nur mit genau der eingeladenen E-Mail, einmalig (auch bei 6 parallelen Versuchen entsteht genau eine Mitgliedschaft), widerrufbar; neue Einladung für dieselbe Adresse macht den alten Link ungültig. Mandantengetrennt (Admin B sieht und widerruft Einladungen von A nicht), Liste ohne Token. Wer eine offene Einladung hat, darf sich auch außerhalb der Allowlist registrieren, nur mit dieser Adresse. Nach Login/Registrierung geht es zurück zur Einladung (Weiterleitung nur auf eigene Pfade). Rate-Limits: 20 Einladungen/h je Admin, 10 Annahmen/15 min je Nutzer
   - _Mutationstest:_ ohne E-Mail-Bindung fallen 2, ohne Einmalverwendung 1, ohne Mandantenfilter beim Widerrufen 1 Test durch
   - _Der Link wird vom Firmen-Admin selbst weitergegeben._ Gemeinsam mit dem E-Mail-Versand (nächster Punkt) wird daraus die Einladung per E-Mail
-- [ ] Einladung per E-Mail verschicken (hängt am E-Mail-Versand)
+- [x] Einladung zusätzlich per E-Mail verschicken
+  - _Geprüft gegen echte DB und im Browser:_ Die Mail nennt Firma und Rolle, der Link entspricht dem im Panel angezeigten; scheitert der Versand, bleibt die Einladung bestehen (`emailSent=false`, Link wird angezeigt). Kompletter Weg im Browser: Einladung → Mail → Registrieren → Bestätigungsmail → Anmelden → Annehmen → Firmenbereich als Mentor
 
 ### Gate 2
-- [ ] Neues Konto kann sich registrieren, verifizieren, Passwort zurücksetzen und löschen
+- [x] Neues Konto kann sich registrieren, verifizieren, Passwort zurücksetzen und löschen
+  - _Geprüft im Browser, die Schritte mit verschiedenen Testkonten (nicht als ein durchgehender Lauf):_ Registrieren und Bestätigen, Passwort vergessen und Zurücksetzen (Mail-Lauf), Passwort ändern und Konto löschen (Self-Service-Lauf)
 
 ---
 

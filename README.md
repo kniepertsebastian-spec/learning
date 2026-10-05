@@ -71,3 +71,10 @@ JSON herunter und löschen ihr Konto samt persönlicher Daten. Plattform-Admins 
 Firmen-Admin einer Organisation können sich nicht selbst löschen, die Rolle muss vorher übertragen
 werden. Neue Tabellen mit Verweis auf `users` müssen in `lib/server/account/export.ts` als exportiert
 oder begründet ausgenommen eingetragen werden, sonst schlägt ein Test an.
+
+### E-Mail-Versand
+
+Bestätigung der E-Mail-Adresse, „Passwort vergessen“ und Einladungen laufen über SMTP (zunächst Gmail).
+Ohne `MAIL_*` und `APP_BASE_URL` in der `.env` bleibt der Versand aus und die App funktioniert wie
+bisher (Registrierungen gelten sofort als bestätigt). Einrichtung, Gmail-App-Passwort und Grenzen:
+[docs/EMAIL.md](docs/EMAIL.md).

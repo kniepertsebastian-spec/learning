@@ -1,10 +1,7 @@
-import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { getDb } from "./db/client";
-import { users } from "./db/schema";
 import { checkLoginRateLimit, clientIp } from "./auth-rate-limit";
+import { authenticateUser } from "./credentials";
 import { isSessionTokenValid } from "./session-validity";
 import { normalizeEmail } from "./email";
 
@@ -37,22 +34,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Gesperrte Versuche liefern dieselbe Antwort wie falsche Zugangsdaten.
         if (!checkLoginRateLimit(clientIp(request.headers), email).allowed) return null;
 
-        const [user] = await getDb()
-          .select()
-          .from(users)
-          .where(eq(users.email, email))
-          .limit(1);
-        if (!user) return null;
-
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          sessionVersion: user.sessionVersion,
-        };
+        // Passwortprüfung inkl. E-Mail-Bestätigung: lib/server/credentials.ts
+        return authenticateUser(email, password);
       },
     }),
   ],
