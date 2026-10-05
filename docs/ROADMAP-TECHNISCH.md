@@ -35,6 +35,7 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [ ] Firewall des Servers prüfen (nicht aus dem Repo prüfbar)
 - [ ] Dockerfile nutzt `output: "standalone"` (kleineres Image, keine Dev-Tools)
   - _Ist-Stand:_ Option steht in `next.config.ts`, Dockerfile kopiert noch `.next` + volles `node_modules`
+  - _Offen, nicht verifizierbar ohne Docker-Daemon:_ Das Image muss weiter `drizzle-kit`/`tsx` für Migration beim Start und die Admin-Skripte (`user:*`, `cert:*`, `content:*`) enthalten. Eine schlanke Variante bräuchte ein eigenes Migrationsskript auf Basis von `drizzle-orm` und einen Image-Build-Test
 - [ ] Datenbank-Migrationen beim Deploy automatisch ausführen
   - _Stand:_ `command: npm run db:migrate && npm start` in `docker-compose.yml`. **Geprüft** gegen eine echte PostgreSQL-16-Instanz: komplette Kette (25 Migrationen) auf leerer DB, zweiter Lauf ändert nichts. **Offen:** der Container-Start selbst (hier gibt es keinen Docker-Daemon). Bei einer Umstellung auf `standalone` muss `drizzle-kit` im Image bleiben
 
@@ -49,12 +50,10 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft:_ Tests laufen auf `GEMINI_*`, ein Test belegt, dass `ANTHROPIC_*` ignoriert wird. Konkrete Preiswerte trägst du selbst in `.env` ein
 - [x] Security-Header: CSP (`default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'` u. a.), HSTS (1 Jahr, ohne `includeSubDomains`), nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy
   - _Geprüft:_ Produktions-Build gestartet, `curl -I` auf `/login` zeigt alle Header; CSP ohne Verletzungen auf Login und Dashboard (Playwright-Lauf aus PR #68)
-- [ ] CSP ohne `'unsafe-inline'` für Skripte (Nonce über `proxy.ts`)
-  - _Offen:_ `script-src` erlaubt aktuell `'unsafe-inline'` (Next.js-Inline-Skripte, Theme-Skript); Nonces erzwingen dynamisches Rendering aller Seiten und muss im Browser gegen die PWA (Service Worker, Theme-Skript) geprüft werden
-- [x] Prüfungs-API liefert vor der Abgabe keine Lösungen mehr (`GET /api/exams/[certId]/[examId]` ohne `isCorrect` und Erklärungen)
-  - _Stand:_ aus PR #68 übernommen; im Code gelesen, nicht live aufgerufen
+- [x] CSP ohne `'unsafe-inline'` für Skripte (Nonce pro Anfrage über `proxy.ts`, `lib/server/csp.ts`; `strict-dynamic`)
+  - _Geprüft im Browser_ (Chromium/Playwright gegen Produktions-Build und echte DB): alle 10 Skripte auf `/login` tragen die Nonce, 0 CSP-Verletzungen und 0 JS-Fehler über Login, Dashboard, Registrierung; Theme-Skript läuft; ein ins HTML eingeschleustes Inline-Skript ohne Nonce wird blockiert (Gegenprobe); Offline-Reload aus dem Service-Worker-Cache funktioniert ohne Verletzung. Styles behalten bewusst `'unsafe-inline'` (style-Attribute von React/Tailwind)
 - [x] Service Worker: `ui-cache` beim Logout leeren
-  - _Geprüft:_ `SignOutButton` ruft `caches.delete("ui-cache")` (best-effort); `tsc`/Lint sauber, **im Browser nicht ausprobiert**
+  - _Geprüft im Browser:_ nach Login und Reload enthält `ui-cache` einen Eintrag, nach „Sign out“ existiert er nicht mehr (Service Worker aktiv)
 - [ ] Service Worker: angemeldete Seiten gar nicht erst cachen
   - _Offen:_ Navigationen laufen über Stale-While-Revalidate. Eine Änderung (z. B. NetworkFirst) berührt den Offline-Modus (IndexedDB-Paket, R4) und muss im Browser mit Offline-Test geprüft werden
 - [x] API-Fehler für Lernende nach außen generisch, Details nur ins Log

@@ -1,29 +1,14 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 
-const isDev = process.env.NODE_ENV === "development";
-
-// 'unsafe-inline' für Skripte ist nötig wegen Next.js' eigener Inline-Skripte
-// und THEME_BOOTSTRAP_SCRIPT in app/layout.tsx; die Policy blockt trotzdem
-// fremde Skript-Quellen, Einbettung in fremde Seiten und Plugins.
-// 'unsafe-eval' nur im Dev-Server (React Refresh).
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self'",
-  "worker-src 'self' blob:",
-  "manifest-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join("; ");
+// Die vollständige, nonce-basierte CSP für Seiten setzt proxy.ts (lib/server/csp.ts).
+// Diese Basis-Policy gilt zusätzlich für alle Routen, auch die vom Proxy
+// ausgenommenen (API, statische Dateien); beide Policies werden gemeinsam erzwungen.
+const baseContentSecurityPolicy =
+  "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'";
 
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: contentSecurityPolicy },
+  { key: "Content-Security-Policy", value: baseContentSecurityPolicy },
   { key: "Strict-Transport-Security", value: "max-age=31536000" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
