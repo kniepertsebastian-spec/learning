@@ -55,6 +55,15 @@ services:
       GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD: ${GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD:-}
       GEMINI_BUDGET_USD: ${GEMINI_BUDGET_USD:-}
 
+      # E-Mail-Versand per SMTP (docs/EMAIL.md); leer = Versand aus
+      MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-}
+      MAIL_SMTP_PORT: ${MAIL_SMTP_PORT:-}
+      MAIL_SMTP_SECURE: ${MAIL_SMTP_SECURE:-}
+      MAIL_SMTP_USER: ${MAIL_SMTP_USER:-}
+      MAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      APP_BASE_URL: ${APP_BASE_URL:-}
+
       # Uploaded certification source PDFs (R1.1, lib/server/storage/local-disk.ts)
       SOURCES_STORAGE_DIR: /app/data/sources
 

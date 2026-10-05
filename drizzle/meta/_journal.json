@@ -183,6 +183,27 @@
       "when": 1791213586119,
       "tag": "0025_company_organizations",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791222141242,
+      "tag": "0026_company_invitations",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791225872136,
+      "tag": "0027_users_session_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791226630268,
+      "tag": "0028_email_verification_tokens",
+      "breakpoints": true
     }
   ]
 }

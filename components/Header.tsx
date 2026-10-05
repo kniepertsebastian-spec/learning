@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, GraduationCap, Languages, Moon, Settings, Sun } from "lucide-react";
+import { Building2, GraduationCap, Languages, Moon, Settings, Sun, UserRound } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
@@ -31,6 +31,16 @@ export function Header({
 
         <div className="flex items-center gap-2">
           {userId && <SyncStatusBadge userId={userId} locale={locale} />}
+
+          {userId && (
+            <Link
+              href="/account"
+              className="rounded-md border border-border p-2 hover:bg-background"
+              aria-label={locale === "de" ? "Mein Konto" : "My account"}
+            >
+              <UserRound className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          )}
 
           {hasCompanyAccess && (
             <Link

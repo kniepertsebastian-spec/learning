@@ -69,6 +69,12 @@ export const users = pgTable(
     passwordHash: text("password_hash").notNull(),
     name: text("name"),
     role: text("role").$type<UserRole>().notNull().default("learner"),
+    /** Wird bei Passwortwechsel erhöht. Das JWT trägt die Version; weicht sie ab (oder
+     * existiert der Nutzer nicht mehr), ist die Sitzung ungültig (lib/server/session-validity.ts). */
+    sessionVersion: integer("session_version").notNull().default(0),
+    /** Zeitpunkt der E-Mail-Bestätigung (lib/server/account/tokens.ts). Null = noch nicht bestätigt.
+     * Bestandskonten wurden bei der Einführung als bestätigt markiert. */
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [check("users_role_check", sql`${table.role} in ('learner', 'admin')`)],
@@ -1231,5 +1237,75 @@ export const companyAssignments = pgTable(
       table.certificationId,
     ),
     index("company_assignments_org_idx").on(table.organizationId),
+  ],
+);
+
+/**
+ * Phase 2: Einladung in eine Organisation per Link mit Token. Gespeichert wird
+ * NUR der SHA-256-Hash des Tokens: ein Datenbank-Leak liefert keine nutzbaren
+ * Einladungslinks. Einmalig verwendbar (accepted_at), widerrufbar (revoked_at)
+ * und befristet (expires_at). Die Einladung ist an eine E-Mail-Adresse
+ * gebunden; angenommen werden kann sie nur von einem Konto mit genau dieser
+ * Adresse. Pro Organisation und E-Mail gibt es höchstens eine offene
+ * Einladung (Partial-Unique-Index).
+ */
+export const companyInvitations = pgTable(
+  "company_invitations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Normalisiert (lib/server/email.ts). */
+    email: text("email").notNull(),
+    role: text("role").$type<CompanyRole>().notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    acceptedByUserId: uuid("accepted_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "company_invitations_role_check",
+      sql`${table.role} in ('company_admin', 'mentor', 'learner')`,
+    ),
+    uniqueIndex("company_invitations_pending_unique")
+      .on(table.organizationId, table.email)
+      .where(sql`${table.acceptedAt} is null and ${table.revokedAt} is null`),
+    index("company_invitations_org_idx").on(table.organizationId),
+    index("company_invitations_email_idx").on(table.email),
+  ],
+);
+
+export type AccountTokenPurpose = "verify_email" | "reset_password";
+
+/**
+ * Einmal-Tokens für E-Mail-Bestätigung und Passwort-Reset. Gespeichert wird NUR der SHA-256-Hash
+ * (wie bei Einladungen): ein Datenbank-Leak liefert keine nutzbaren Links. Befristet, einmalig
+ * verwendbar, werden mit dem Konto gelöscht.
+ */
+export const accountTokens = pgTable(
+  "account_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    purpose: text("purpose").$type<AccountTokenPurpose>().notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("account_tokens_purpose_check", sql`${table.purpose} in ('verify_email', 'reset_password')`),
+    index("account_tokens_user_purpose_idx").on(table.userId, table.purpose),
   ],
 );

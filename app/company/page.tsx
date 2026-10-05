@@ -1,7 +1,10 @@
 export const dynamic = "force-dynamic";
 
+import { InvitationsPanel } from "@/components/InvitationsPanel";
 import { STATUS_VIEW_ROLES } from "@/lib/server/company/access";
 import { requireCompanyPage } from "@/lib/server/company/guard";
+import { listPendingInvitations } from "@/lib/server/company/invitations";
+import { isMailConfigured } from "@/lib/server/mail/config";
 import { getServerLocale } from "@/lib/server/locale";
 import type { CompanyRole } from "@/lib/server/db/schema";
 
@@ -22,6 +25,16 @@ export default async function CompanyPage() {
     getServerLocale(),
   ]);
   const de = locale === "de";
+  // Einladungen verwaltet nur der Firmen-Admin (der Mentor sieht sie nicht).
+  const invitations =
+    membership.role === "company_admin"
+      ? (await listPendingInvitations(membership.organizationId)).map((i) => ({
+          id: i.id,
+          email: i.email,
+          role: i.role,
+          expiresAt: i.expiresAt.toISOString(),
+        }))
+      : null;
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -41,6 +54,8 @@ export default async function CompanyPage() {
             : "No learning paths assigned yet. The status view follows in a later phase."}
         </p>
       </section>
+
+      {invitations && <InvitationsPanel invitations={invitations} locale={locale} mailEnabled={isMailConfigured()} />}
     </div>
   );
 }

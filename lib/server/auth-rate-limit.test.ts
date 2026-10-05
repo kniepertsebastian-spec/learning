@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { checkLoginRateLimit, checkRegistrationRateLimit, clientIp } from "./auth-rate-limit";
+import {
+  checkAccountActionRateLimit,
+  checkAccountExportRateLimit,
+  checkInvitationAcceptRateLimit,
+  checkInvitationCreateRateLimit,
+  checkLoginRateLimit,
+  checkRegistrationRateLimit,
+  clientIp,
+} from "./auth-rate-limit";
 
 describe("auth rate limits", () => {
   it("sperrt Login nach 10 Versuchen je E-Mail, auch bei wechselnder IP", () => {
@@ -31,5 +39,41 @@ describe("auth rate limits", () => {
       clientIp(new Headers({ "cf-connecting-ip": "5.5.5.5", "x-forwarded-for": "3.3.3.3" })),
     ).toBe("5.5.5.5");
     expect(clientIp(new Headers())).toBe("unknown");
+  });
+});
+
+describe("invitation rate limits", () => {
+  it("begrenzt das Anlegen auf 20 pro Stunde und Admin", () => {
+    for (let i = 0; i < 20; i++) {
+      expect(checkInvitationCreateRateLimit("admin-x").allowed).toBe(true);
+    }
+    expect(checkInvitationCreateRateLimit("admin-x").allowed).toBe(false);
+    expect(checkInvitationCreateRateLimit("admin-y").allowed).toBe(true);
+  });
+
+  it("begrenzt das Annehmen auf 10 pro 15 Minuten und Nutzer", () => {
+    for (let i = 0; i < 10; i++) {
+      expect(checkInvitationAcceptRateLimit("user-x").allowed).toBe(true);
+    }
+    expect(checkInvitationAcceptRateLimit("user-x").allowed).toBe(false);
+    expect(checkInvitationAcceptRateLimit("user-y").allowed).toBe(true);
+  });
+});
+
+describe("account rate limits", () => {
+  it("begrenzt Passwortwechsel und Löschen auf 10 Versuche je 15 Minuten und Nutzer", () => {
+    for (let i = 0; i < 10; i++) {
+      expect(checkAccountActionRateLimit("acct-x").allowed).toBe(true);
+    }
+    expect(checkAccountActionRateLimit("acct-x").allowed).toBe(false);
+    expect(checkAccountActionRateLimit("acct-y").allowed).toBe(true);
+  });
+
+  it("begrenzt den Datenexport auf 5 pro Stunde und Nutzer", () => {
+    for (let i = 0; i < 5; i++) {
+      expect(checkAccountExportRateLimit("exp-x").allowed).toBe(true);
+    }
+    expect(checkAccountExportRateLimit("exp-x").allowed).toBe(false);
+    expect(checkAccountExportRateLimit("exp-y").allowed).toBe(true);
   });
 });

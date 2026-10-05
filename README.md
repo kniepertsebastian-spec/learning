@@ -59,3 +59,22 @@ docker compose exec app npm run company:create -- "Beispiel GmbH"
 docker compose exec app npm run company:set-member -- <organization-id> max@example.com company_admin
 docker compose exec app npm run company:remove-member -- max@example.com
 ```
+
+Mitarbeiter lädt der Firmen-Admin unter `/company` per Link ein (es wird keine E-Mail verschickt, er gibt
+den Link selbst weiter). Der Link gilt 7 Tage, einmal und nur für die eingetragene E-Mail-Adresse; wer
+eine offene Einladung hat, darf sich auch außerhalb von `REGISTRATION_ALLOWED_EMAILS` registrieren.
+
+### Konto (Self-Service)
+
+Unter `/account` ändern Nutzer ihr Passwort (danach sind alle Sitzungen beendet), laden ihre Daten als
+JSON herunter und löschen ihr Konto samt persönlicher Daten. Plattform-Admins und der letzte
+Firmen-Admin einer Organisation können sich nicht selbst löschen, die Rolle muss vorher übertragen
+werden. Neue Tabellen mit Verweis auf `users` müssen in `lib/server/account/export.ts` als exportiert
+oder begründet ausgenommen eingetragen werden, sonst schlägt ein Test an.
+
+### E-Mail-Versand
+
+Bestätigung der E-Mail-Adresse, „Passwort vergessen“ und Einladungen laufen über SMTP (zunächst Gmail).
+Ohne `MAIL_*` und `APP_BASE_URL` in der `.env` bleibt der Versand aus und die App funktioniert wie
+bisher (Registrierungen gelten sofort als bestätigt). Einrichtung, Gmail-App-Passwort und Grenzen:
+[docs/EMAIL.md](docs/EMAIL.md).

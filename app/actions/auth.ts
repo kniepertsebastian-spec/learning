@@ -2,6 +2,7 @@
 
 import { signIn, signOut } from "@/lib/server/auth";
 import { AuthError } from "next-auth";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export async function loginAction(
   _prev: string | null,
@@ -11,7 +12,8 @@ export async function loginAction(
     await signIn("credentials", {
       email: formData.get("email"),
       password: formData.get("password"),
-      redirectTo: "/",
+      // Rückkehr z. B. zur Einladungsseite; nur Pfade der eigenen Seite (lib/safe-redirect.ts).
+      redirectTo: safeRedirectPath(formData.get("from")),
     });
     return null;
   } catch (error) {
