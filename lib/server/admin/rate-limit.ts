@@ -17,7 +17,7 @@ export type RateLimitResult =
  * eines geteilten globalen Limits), damit z. B. viele Content-Generierungen
  * nicht die Blueprint-Extraktion blockieren und umgekehrt.
  */
-function checkRateLimit(
+export function checkRateLimit(
   bucket: string,
   userId: string,
   windowMs: number,
@@ -64,5 +64,46 @@ export function checkBlueprintExtractionRateLimit(userId: string): RateLimitResu
     userId,
     BLUEPRINT_EXTRACTION_WINDOW_MS,
     BLUEPRINT_EXTRACTION_MAX_PER_WINDOW,
+  );
+}
+
+const REMEDIATION_GENERATION_WINDOW_MS = 24 * 60 * 60 * 1000;
+const REMEDIATION_GENERATION_MAX_PER_WINDOW = 20;
+
+/** Tageskontingent je Lernendem für neu erzeugte Remediation-Inhalte (KI-Aufrufe). */
+export function checkRemediationGenerationRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit(
+    "remediation-generation",
+    userId,
+    REMEDIATION_GENERATION_WINDOW_MS,
+    REMEDIATION_GENERATION_MAX_PER_WINDOW,
+  );
+}
+
+const REMEDIATION_REGENERATE_COOLDOWN_MS = 10 * 60 * 1000;
+
+/** Abklingzeit: dieselbe Remediation je Lernendem höchstens alle 10 Minuten neu erzeugen. */
+export function checkRemediationRegenerateCooldown(
+  userId: string,
+  objectiveId: string,
+): RateLimitResult {
+  return checkRateLimit(
+    "remediation-regenerate",
+    `${userId}:${objectiveId}`,
+    REMEDIATION_REGENERATE_COOLDOWN_MS,
+    1,
+  );
+}
+
+const COURSE_GENERATION_WINDOW_MS = 60 * 60 * 1000;
+const COURSE_GENERATION_MAX_PER_WINDOW = 5;
+
+/** Rate Limit für das Anlegen von Kursgenerierungs-Aufträgen (mehrstufig, teuer). */
+export function checkCourseGenerationRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit(
+    "course-generation",
+    userId,
+    COURSE_GENERATION_WINDOW_MS,
+    COURSE_GENERATION_MAX_PER_WINDOW,
   );
 }

@@ -1,39 +1,19 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
-import { checkRateLimit } from "@/lib/server/rate-limit";
-import { RemediationService } from "@/lib/server/remediation/service";
+import {
+  RemediationRateLimitError,
+  RemediationService,
+} from "@/lib/server/remediation/service";
 
-// Jede Neugenerierung ist ein abgerechneter KI-Aufruf - ohne Grenze könnte ein
-// einzelnes Konto die KI-Kosten beliebig hochtreiben.
-const REGENERATE_WINDOW_MS = 60 * 60 * 1000;
-const REGENERATE_LIMIT_PER_USER = 5;
+type RouteContext = { params: Promise<{ objectiveId: string }> };
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ objectiveId: string }> },
-) {
+async function respond(forceRegenerate: boolean, { params }: RouteContext) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { objectiveId } = await params;
-  const forceRegenerate = request.nextUrl.searchParams.get("regenerate") === "true";
-
-  if (forceRegenerate) {
-    const limit = checkRateLimit(
-      `remediation-regenerate:${session.user.id}`,
-      REGENERATE_LIMIT_PER_USER,
-      REGENERATE_WINDOW_MS,
-    );
-    if (!limit.ok) {
-      return NextResponse.json(
-        { error: "Too many regenerations. Please try again later." },
-        { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
-      );
-    }
-  }
 
   try {
     const result = await RemediationService.getOrCreateRemediationSession(
@@ -49,9 +29,27 @@ export async function GET(
       questions: result.questions,
     });
   } catch (error) {
-    // Details nur ins Server-Log - KI-Fehlertexte können Anbieter- oder
-    // Kontingentdetails enthalten.
+    if (error instanceof RemediationRateLimitError) {
+      return NextResponse.json(
+        { error: "Zu viele Anfragen. Bitte später erneut versuchen." },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
+      );
+    }
+    if (error instanceof Error && error.message === "Objective not found") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    // Details nur ins Log, nicht an den Client.
     console.error("Error generating remediation:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
+}
+
+/** Liest die vorhandene Remediation oder erzeugt sie einmalig (kein Neu-Erzeugen per Query-Parameter). */
+export async function GET(_request: Request, context: RouteContext) {
+  return respond(false, context);
+}
+
+/** Erzeugt ausdrücklich eine neue Remediation (Abklingzeit und Tageskontingent greifen). */
+export async function POST(_request: Request, context: RouteContext) {
+  return respond(true, context);
 }

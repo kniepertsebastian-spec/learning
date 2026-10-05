@@ -7,16 +7,11 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-learning_pwa}
       POSTGRES_USER: ${DB_USER:-postgres}
-      # Kein Default-Passwort: fehlt DB_PASSWORD, bricht docker compose mit
-      # einer Fehlermeldung ab, statt mit "postgres" zu starten.
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss in .env gesetzt sein}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      # Nur auf localhost des Hosts (für db:migrate/psql vom Host aus) - die
-      # App erreicht Postgres über das interne Netzwerk, aus dem Internet ist
-      # der Port so nicht erreichbar.
-      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    # Kein veröffentlichter Port: Postgres ist nur im learning_network
+    # erreichbar. Für Admin-Zugriff: `docker compose exec postgres psql ...`.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
@@ -35,7 +30,7 @@ services:
     environment:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?DB_PASSWORD muss in .env gesetzt sein}@postgres:5432/${DB_NAME:-learning_pwa}
-
+      
       # Auth (Auth.js v5 reads AUTH_SECRET, see lib/server/auth.ts)
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET muss in .env gesetzt sein}
 
@@ -52,25 +47,26 @@ services:
       GEMINI_CURRICULUM_MODEL: ${GEMINI_CURRICULUM_MODEL:-}
       GEMINI_LESSONS_MODEL: ${GEMINI_LESSONS_MODEL:-}
 
-      # KI-Budget und Preise (lib/server/admin/content-generation.ts). Ohne
-      # Weiterleitung hier kommen sie im Container nie an - das Budget wäre
-      # dann trotz Eintrag in .env stillschweigend deaktiviert.
-      GEMINI_BUDGET_USD: ${GEMINI_BUDGET_USD:-}
+      # KI-Kosten: Preise pro 1 Mio. Token in USD und globales Budget
+      # (lib/server/admin/content-generation.ts). Leer = keine Schätzung/kein Limit.
       GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD: ${GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD:-}
       GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD: ${GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD:-}
       GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD: ${GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD:-}
       GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD: ${GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD:-}
+      GEMINI_BUDGET_USD: ${GEMINI_BUDGET_USD:-}
 
       # Uploaded certification source PDFs (R1.1, lib/server/storage/local-disk.ts)
       SOURCES_STORAGE_DIR: /app/data/sources
 
       # Node env
       NODE_ENV: production
+    # Nur lokal gebunden: erreichbar über Caddy/Nginx auf dem Host
+    # (deploy/Caddyfile -> 127.0.0.1:3000) oder über den Cloudflare Tunnel.
     ports:
-      # Nur localhost: öffentlich erreichbar ist die App ausschließlich über
-      # den cloudflared-Tunnel (bzw. einen Reverse-Proxy auf dem Host, siehe
-      # deploy/Caddyfile). Ein offener Port würde Tunnel und Proxy umgehen.
       - "127.0.0.1:${APP_PORT:-3000}:3000"
+    # Migrationen vor jedem Start anwenden (idempotent); schlägt sie fehl,
+    # startet die App nicht und der Healthcheck/Deploy meldet es.
+    command: ["sh", "-c", "npm run db:migrate && exec npm start"]
     depends_on:
       postgres:
         condition: service_healthy

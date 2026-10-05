@@ -100,10 +100,10 @@ describe("classifyGenerationError", () => {
 
 describe("estimateCostUsd", () => {
   const ENV_KEYS = [
-    "ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD",
-    "ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD",
-    "ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD",
-    "ANTHROPIC_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD",
+    "GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD",
+    "GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD",
+    "GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD",
+    "GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD",
   ] as const;
   const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 
@@ -119,23 +119,33 @@ describe("estimateCostUsd", () => {
     expect(estimateCostUsd(1_000_000, 1_000_000, CURRICULUM_MODEL)).toBeNull();
   });
 
-  it("returns null for a model it has no price slot for, rather than guessing", () => {
+  it("ignores the retired ANTHROPIC_* price variables", () => {
+    for (const key of ENV_KEYS) delete process.env[key];
     process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
-    process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
+    try {
+      expect(estimateCostUsd(1_000_000, 1_000_000, CURRICULUM_MODEL)).toBeNull();
+    } finally {
+      delete process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD;
+    }
+  });
+
+  it("returns null for a model it has no price slot for, rather than guessing", () => {
+    process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
+    process.env.GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
     expect(estimateCostUsd(1_000_000, 1_000_000, "claude-opus-5")).toBeNull();
   });
 
   it("computes cost linearly from the curriculum model's configured per-million prices", () => {
-    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
-    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "2";
+    process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
+    process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "2";
     expect(estimateCostUsd(500_000, 250_000, CURRICULUM_MODEL)).toBeCloseTo(0.5 * 1 + 0.25 * 2, 6);
   });
 
   it("prices the lessons model independently from the curriculum model", async () => {
-    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
-    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "15";
-    process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
-    process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "5";
+    process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
+    process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "15";
+    process.env.GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";
+    process.env.GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "5";
     await withDistinctLessonsModel(({ curriculumModel, lessonsModel, estimateCostUsd: estimate }) => {
       expect(estimate(1_000_000, 1_000_000, lessonsModel)).toBeCloseTo(1 + 5, 6);
       expect(estimate(1_000_000, 1_000_000, curriculumModel)).toBeCloseTo(3 + 15, 6);
@@ -143,13 +153,13 @@ describe("estimateCostUsd", () => {
   });
 
   it("uses only the configured side when the other price is unset", () => {
-    process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
-    delete process.env.ANTHROPIC_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD;
+    process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
+    delete process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD;
     expect(estimateCostUsd(1_000_000, 999_999_999, CURRICULUM_MODEL)).toBeCloseTo(3, 6);
   });
 
   it("returns 0 for zero tokens when pricing is configured", async () => {
-    process.env.ANTHROPIC_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "5";
+    process.env.GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "5";
     await withDistinctLessonsModel(({ lessonsModel, estimateCostUsd: estimate }) => {
       expect(estimate(0, 0, lessonsModel)).toBe(0);
     });

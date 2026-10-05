@@ -2,44 +2,29 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: read
 
 jobs:
-  checks:
-    name: Lint, Typecheck, Tests, Build
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # Gleiche Major-Version wie im Dockerfile (node:20-alpine).
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
-      # pdftotext (Poppler) für die PDF-Extraktion und ihre Tests
-      # (lib/server/admin/source-extraction.ts) - wie im Dockerfile.
-      - name: Install Poppler
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
-
+      # pdftotext für die PDF-Extraktions-Tests (Dockerfile installiert dasselbe Paket).
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      # `next typegen` erzeugt die globalen Routen-Typen (z. B. LayoutProps in
-      # app/layout.tsx), die tsc sonst nicht findet.
-      - name: Typecheck
-        run: |
-          npx next typegen
-          npx tsc --noEmit
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Build
-        run: npm run build
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          AUTH_SECRET: ci-only-secret
+      # Nach dem Build: Next generiert dort die globalen Typen (z. B. LayoutProps).
+      - run: npx tsc --noEmit

@@ -41,8 +41,11 @@ export async function POST(
       blueprint: examData.blueprint,
     });
   } catch (error) {
-    // Details nur ins Server-Log, nicht an den Client (interne Fehlertexte
-    // können Tabellen-, Pfad- oder Anbieterdetails enthalten).
+    // Erwarteter, nutzerrelevanter Fall: noch keine freigegebenen Fragen.
+    if (error instanceof Error && error.message === "No questions available for exam") {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    // Alles andere: Details nur ins Log, nicht an den Client.
     console.error("Error generating exam:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

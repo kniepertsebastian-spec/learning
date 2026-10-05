@@ -169,6 +169,13 @@
       "when": 1790274435899,
       "tag": "0023_huge_tattoo",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791132200609,
+      "tag": "0024_normalize_user_emails",
+      "breakpoints": true
     }
   ]
 }
