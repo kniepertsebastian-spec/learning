@@ -11,18 +11,28 @@ export type DocumentRowView = {
   sizeBytes: number;
   pageCount: number;
   excludeFromAi: boolean;
+  suppressedFindings: number;
   createdAt: string;
   uploadedByName: string | null;
 };
 
-type Finding = { kind: SecretKind; pageNumber: number; line: number };
+type Finding = { kind: SecretKind; pageNumber: number; line: number; suppressible: boolean };
 
 function formatSize(bytes: number) {
   return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 /** Firmendokumente: hochladen (mit Prüfung auf Zugangsdaten), herunterladen, löschen. */
-export function DocumentsPanel({ documents, locale }: { documents: DocumentRowView[]; locale: "de" | "en" }) {
+export function DocumentsPanel({
+  documents,
+  locale,
+  canSuppress,
+}: {
+  documents: DocumentRowView[];
+  locale: "de" | "en";
+  /** Firmen-Admins dürfen Fehlalarme des Scanners bestätigen. */
+  canSuppress: boolean;
+}) {
   const router = useRouter();
   const de = locale === "de";
   const fileRef = useRef<HTMLInputElement>(null);
@@ -33,7 +43,7 @@ export function DocumentsPanel({ documents, locale }: { documents: DocumentRowVi
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function upload(e: React.FormEvent) {
+  async function upload(e: React.FormEvent, suppressKinds: SecretKind[] = []) {
     e.preventDefault();
     const file = fileRef.current?.files?.[0];
     if (!file) return;
@@ -45,6 +55,7 @@ export function DocumentsPanel({ documents, locale }: { documents: DocumentRowVi
     form.set("file", file);
     if (title.trim()) form.set("title", title.trim());
     form.set("excludeFromAi", String(excludeFromAi));
+    for (const kind of suppressKinds) form.append("suppressKinds", kind);
     const res = await fetch("/api/company/documents", { method: "POST", body: form });
     const body = await res.json().catch(() => null);
     setPending(false);
@@ -83,7 +94,7 @@ export function DocumentsPanel({ documents, locale }: { documents: DocumentRowVi
           : "PDF or text file (.txt, .md), up to 10 MB. Every document is checked for passwords, keys and tokens before it is stored. If something is found, the document is not stored."}
       </p>
 
-      <form onSubmit={upload} className="mt-4 flex flex-col gap-3">
+      <form onSubmit={(e) => void upload(e)} className="mt-4 flex flex-col gap-3">
         <input
           ref={fileRef}
           type="file"
@@ -128,6 +139,34 @@ export function DocumentsPanel({ documents, locale }: { documents: DocumentRowVi
               ))}
             </ul>
           )}
+          {findings.length > 0 && findings.every((f) => f.suppressible) && (
+            <div className="mt-3" data-testid="suppress-box">
+              {canSuppress ? (
+                <>
+                  <p className="text-foreground">
+                    {de
+                      ? "Sind das Beispielwerte und keine echten Zugangsdaten? Dann kannst du diese Funde als unkritisch bestätigen. Das wird protokolliert, die Stellen werden gespeichert und bei einer KI-Verarbeitung geschwärzt."
+                      : "Are these example values rather than real credentials? Then you can confirm these findings as harmless. This is logged, the locations are stored and will be redacted from any AI processing."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={(e) => void upload(e, [...new Set(findings.map((f) => f.kind))])}
+                    disabled={pending}
+                    className="mt-2 rounded-md border border-red-500 px-3 py-1.5 text-sm font-medium text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                  >
+                    {de ? "Als unkritisch bestätigen und hochladen" : "Confirm as harmless and upload"}
+                  </button>
+                </>
+              ) : (
+                <p className="text-foreground">{de ? "Ein Firmen-Admin kann diese Funde als unkritisch bestätigen." : "A company admin can confirm these findings as harmless."}</p>
+              )}
+            </div>
+          )}
+          {findings.some((f) => !f.suppressible) && (
+            <p className="mt-2 text-foreground" data-testid="not-suppressible">
+              {de ? "Mindestens ein Fund lässt sich nicht bestätigen (z. B. privater Schlüssel oder Token). Bitte die Stelle entfernen." : "At least one finding cannot be confirmed (e.g. private key or token). Please remove that part."}
+            </p>
+          )}
         </div>
       )}
       {notice && (
@@ -150,6 +189,7 @@ export function DocumentsPanel({ documents, locale }: { documents: DocumentRowVi
                 <span className="ml-2 text-xs text-foreground/70">
                   {d.originalFilename} · {formatSize(d.sizeBytes)} · {d.pageCount} {de ? (d.pageCount === 1 ? "Seite" : "Seiten") : d.pageCount === 1 ? "page" : "pages"}
                   {d.excludeFromAi ? (de ? " · ohne KI" : " · no AI") : ""}
+                  {d.suppressedFindings > 0 ? (de ? ` · ${d.suppressedFindings} Scanner-Funde bestätigt` : ` · ${d.suppressedFindings} scanner findings confirmed`) : ""}
                 </span>
               </span>
               <span className="flex gap-3">

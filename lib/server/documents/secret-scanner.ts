@@ -26,6 +26,25 @@ export type SecretKind =
 
 export type SecretFinding = { kind: SecretKind; pageNumber: number; line: number };
 
+/**
+ * Welche Funde ein Firmen-Admin als Fehlalarm bestätigen darf („unterdrücken“). Erlaubt sind Arten, die in
+ * Anleitungen und Beispielen häufig mit Beispielwerten vorkommen (Passwort-Zeilen, Adressen mit Zugangsdaten,
+ * Header, JWT, AWS-Beispielschlüssel). Nicht erlaubt sind Arten, die praktisch nur als echte Betriebsgeheimnisse
+ * auftauchen (private Schlüssel, GitHub-, Slack-, Stripe-, Google-Schlüssel): dort muss die Stelle raus.
+ */
+export const SUPPRESSIBLE_KINDS: readonly SecretKind[] = [
+  "password_assignment",
+  "url_credentials",
+  "auth_header",
+  "jwt",
+  "aws_access_key",
+  "aws_secret_key",
+];
+
+export function isSuppressible(kind: SecretKind): boolean {
+  return SUPPRESSIBLE_KINDS.includes(kind);
+}
+
 export const SECRET_KIND_LABELS: Record<SecretKind, { de: string; en: string }> = {
   private_key: { de: "privater Schlüssel", en: "private key" },
   aws_access_key: { de: "AWS-Zugangsschlüssel", en: "AWS access key" },

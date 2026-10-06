@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { checkDocumentUploadRateLimit } from "@/lib/server/auth-rate-limit";
 import { DOCUMENT_ROLES } from "@/lib/server/company/access";
-import { listCompanyDocuments, uploadCompanyDocument } from "@/lib/server/company/documents";
+import { listCompanyDocuments, SuppressNotAllowedError, uploadCompanyDocument } from "@/lib/server/company/documents";
 import { requireCompanyApi } from "@/lib/server/company/guard";
-import { SECRET_KIND_LABELS } from "@/lib/server/documents/secret-scanner";
+import { isSuppressible, SECRET_KIND_LABELS, SUPPRESSIBLE_KINDS, type SecretKind } from "@/lib/server/documents/secret-scanner";
 import { MAX_DOCUMENT_BYTES } from "@/lib/server/documents/upload";
 
 export const dynamic = "force-dynamic";
@@ -52,14 +52,29 @@ export async function POST(request: Request) {
   const titleRaw = form.get("title");
   const title = typeof titleRaw === "string" ? titleRaw : null;
   const excludeFromAi = form.get("excludeFromAi") === "true" || form.get("excludeFromAi") === "on";
+  // Fehlalarme des Scanners bestätigen: Feld "suppressKinds" (mehrfach), nur Arten aus SUPPRESSIBLE_KINDS.
+  const suppressKinds = form.getAll("suppressKinds").filter((v): v is string => typeof v === "string");
+  if (suppressKinds.some((k) => !SUPPRESSIBLE_KINDS.includes(k as SecretKind))) {
+    return NextResponse.json({ error: "Diese Fund-Art lässt sich nicht als Fehlalarm bestätigen.", code: "not_suppressible" }, { status: 400 });
+  }
 
-  const result = await uploadCompanyDocument({
-    organizationId: guard.membership.organizationId,
-    uploadedByUserId: guard.membership.userId,
-    title,
-    file: { filename: file.name, mimeType: file.type, data: Buffer.from(await file.arrayBuffer()) },
-    excludeFromAi,
-  });
+  let result;
+  try {
+    result = await uploadCompanyDocument({
+      organizationId: guard.membership.organizationId,
+      uploadedByUserId: guard.membership.userId,
+      title,
+      file: { filename: file.name, mimeType: file.type, data: Buffer.from(await file.arrayBuffer()) },
+      excludeFromAi,
+      suppressKinds: suppressKinds as SecretKind[],
+      canSuppress: guard.membership.role === "company_admin",
+    });
+  } catch (error) {
+    if (error instanceof SuppressNotAllowedError) {
+      return NextResponse.json({ error: "Funde als Fehlalarm bestätigen darf nur ein Firmen-Admin.", code: "suppress_forbidden" }, { status: 403 });
+    }
+    throw error;
+  }
 
   if (!result.ok) {
     if (result.code === "secrets_found") {
@@ -67,7 +82,7 @@ export async function POST(request: Request) {
         {
           error: result.message,
           code: result.code,
-          findings: result.findings.map((f) => ({ ...f, label: SECRET_KIND_LABELS[f.kind].de })),
+          findings: result.findings.map((f) => ({ ...f, label: SECRET_KIND_LABELS[f.kind].de, suppressible: isSuppressible(f.kind) })),
         },
         { status: 422 },
       );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scanForSecrets, type SecretKind } from "./secret-scanner";
+import { isSuppressible, scanForSecrets, SUPPRESSIBLE_KINDS, SECRET_KIND_LABELS, type SecretKind } from "./secret-scanner";
 
 // Testwerte werden zusammengesetzt, damit weder dieses Repo noch dessen Verlauf echte Token-Formate enthält
 // (sonst schlagen Secret-Scanner von Git-Hostern an). Es sind keine echten Zugangsdaten.
@@ -97,5 +97,19 @@ describe("Secret-Scanner: lässt normale Dokumente durch", () => {
   it("leerer Text und leere Seiten", () => {
     expect(scanForSecrets([])).toEqual([]);
     expect(scanForSecrets([{ pageNumber: 1, text: "" }])).toEqual([]);
+  });
+});
+
+describe("Secret-Scanner: welche Funde sich als Fehlalarm bestätigen lassen", () => {
+  it("nur typische Beispiel-Arten, nie echte Betriebsgeheimnisse", () => {
+    expect([...SUPPRESSIBLE_KINDS].sort()).toEqual(["auth_header", "aws_access_key", "aws_secret_key", "jwt", "password_assignment", "url_credentials"]);
+    for (const kind of ["private_key", "github_token", "google_api_key", "slack_token", "stripe_key"] as SecretKind[]) {
+      expect(isSuppressible(kind), kind).toBe(false);
+    }
+  });
+  it("jede Fund-Art ist entweder bestätigbar oder bewusst nicht (keine vergessene Art)", () => {
+    const all = Object.keys(SECRET_KIND_LABELS) as SecretKind[];
+    const notSuppressible = all.filter((k) => !isSuppressible(k)).sort();
+    expect(notSuppressible).toEqual(["github_token", "google_api_key", "private_key", "slack_token", "stripe_key"]);
   });
 });

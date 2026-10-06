@@ -3,6 +3,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
 import { companyDocumentFiles, companyDocuments, users } from "@/lib/server/db/schema";
+import { SUPPRESSIBLE_KINDS, type SecretKind } from "@/lib/server/documents/secret-scanner";
 import { cleanFilename, inspectUpload, type UploadRejection } from "@/lib/server/documents/upload";
 
 /**
@@ -21,6 +22,9 @@ function isUniqueViolation(error: unknown): boolean {
   return code(error) === "23505" || code(cause) === "23505";
 }
 
+/** Nur Firmen-Admins dürfen Funde des Secret-Scanners als Fehlalarm bestätigen. */
+export class SuppressNotAllowedError extends Error {}
+
 export type CompanyDocumentSummary = {
   id: string;
   title: string;
@@ -29,13 +33,15 @@ export type CompanyDocumentSummary = {
   sizeBytes: number;
   pageCount: number;
   excludeFromAi: boolean;
+  /** Anzahl der vom Firmen-Admin bestätigten Scanner-Funde (0 = keine). */
+  suppressedFindings: number;
   createdAt: Date;
   uploadedByName: string | null;
 };
 
 /** Das ist alles, was die Liste über ein Dokument verrät: nie der Inhalt. */
 export const DOCUMENT_LIST_FIELDS = [
-  "id", "title", "originalFilename", "mimeType", "sizeBytes", "pageCount", "excludeFromAi", "createdAt", "uploadedByName",
+  "id", "title", "originalFilename", "mimeType", "sizeBytes", "pageCount", "excludeFromAi", "suppressedFindings", "createdAt", "uploadedByName",
 ] as const;
 
 export async function listCompanyDocuments(organizationId: string): Promise<CompanyDocumentSummary[]> {
@@ -48,13 +54,15 @@ export async function listCompanyDocuments(organizationId: string): Promise<Comp
       sizeBytes: companyDocuments.sizeBytes,
       pageCount: companyDocuments.pageCount,
       excludeFromAi: companyDocuments.excludeFromAi,
+      suppressed: companyDocuments.scannerSuppressed,
       createdAt: companyDocuments.createdAt,
       uploadedByName: users.name,
     })
     .from(companyDocuments)
     .leftJoin(users, eq(users.id, companyDocuments.uploadedByUserId))
     .where(eq(companyDocuments.organizationId, organizationId))
-    .orderBy(desc(companyDocuments.createdAt), asc(companyDocuments.title));
+    .orderBy(desc(companyDocuments.createdAt), asc(companyDocuments.title))
+    .then((rows) => rows.map(({ suppressed, ...rest }) => ({ ...rest, suppressedFindings: suppressed?.length ?? 0 })));
 }
 
 export type UploadResult =
@@ -67,9 +75,14 @@ export async function uploadCompanyDocument(input: {
   title: string | null;
   file: { filename: string; mimeType: string; data: Buffer };
   excludeFromAi: boolean;
+  /** Fund-Arten, die als Fehlalarm bestätigt werden (nur durch Firmen-Admins, nur Arten aus SUPPRESSIBLE_KINDS). */
+  suppressKinds?: SecretKind[];
+  canSuppress?: boolean;
 }): Promise<UploadResult> {
+  const suppressKinds = [...new Set((input.suppressKinds ?? []).filter((k) => SUPPRESSIBLE_KINDS.includes(k)))];
+  if (suppressKinds.length > 0 && !input.canSuppress) throw new SuppressNotAllowedError();
   const filename = cleanFilename(input.file.filename);
-  const inspection = await inspectUpload({ filename, mimeType: input.file.mimeType, data: input.file.data });
+  const inspection = await inspectUpload({ filename, mimeType: input.file.mimeType, data: input.file.data }, { suppressKinds });
 
   if (!inspection.ok) {
     if (inspection.code === "secrets_found") {
@@ -107,6 +120,9 @@ export async function uploadCompanyDocument(input: {
           checksum,
           pageCount: inspection.pageCount,
           excludeFromAi: input.excludeFromAi,
+          ...(inspection.suppressed.length > 0
+            ? { scannerSuppressed: inspection.suppressed, scannerSuppressedByUserId: input.uploadedByUserId, scannerSuppressedAt: new Date() }
+            : {}),
         })
         .returning({ id: companyDocuments.id, title: companyDocuments.title });
       await tx.insert(companyDocumentFiles).values({ documentId: row.id, data: input.file.data });
@@ -117,8 +133,22 @@ export async function uploadCompanyDocument(input: {
       action: "document.uploaded",
       targetType: "company_document",
       targetId: document.id,
-      metadata: { organizationId: input.organizationId, sizeBytes: input.file.data.byteLength, excludeFromAi: input.excludeFromAi },
+      metadata: { organizationId: input.organizationId, sizeBytes: input.file.data.byteLength, excludeFromAi: input.excludeFromAi, suppressedFindings: inspection.suppressed.length },
     }).catch(logAuditFailure);
+    if (inspection.suppressed.length > 0) {
+      // Nur Arten und Anzahl, nie der Wert.
+      await recordAuditEvent({
+        actorUserId: input.uploadedByUserId,
+        action: "document.scanner_suppressed",
+        targetType: "company_document",
+        targetId: document.id,
+        metadata: {
+          organizationId: input.organizationId,
+          kinds: [...new Set(inspection.suppressed.map((f) => f.kind))],
+          findings: inspection.suppressed.length,
+        },
+      }).catch(logAuditFailure);
+    }
     return { ok: true, document, alreadyExisted: false };
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;

@@ -218,6 +218,20 @@
       "when": 1791313735970,
       "tag": "0030_course_catalog_and_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791316057857,
+      "tag": "0031_document_scanner_suppressed",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791316252401,
+      "tag": "0032_organization_ai_settings",
+      "breakpoints": true
     }
   ]
 }

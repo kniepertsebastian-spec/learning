@@ -1,10 +1,12 @@
 export const dynamic = "force-dynamic";
 
+import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
 import { ASSIGN_ROLES, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
+import { getAiSettings } from "@/lib/server/company/ai-settings";
 import { isOverdue, listAssignableLearningPaths, listAssignableMembers } from "@/lib/server/company/assignments";
 import { listCourseRequests, listRequestableCourses } from "@/lib/server/company/course-requests";
 import { listCompanyDocuments } from "@/lib/server/company/documents";
@@ -47,6 +49,7 @@ export default async function CompanyPage() {
     sizeBytes: d.sizeBytes,
     pageCount: d.pageCount,
     excludeFromAi: d.excludeFromAi,
+    suppressedFindings: d.suppressedFindings,
     createdAt: d.createdAt.toISOString(),
     uploadedByName: d.uploadedByName,
   }));
@@ -72,6 +75,7 @@ export default async function CompanyPage() {
     completedAt: e.completedAt?.toISOString() ?? null,
     overdue: isOverdue(e),
   }));
+  const aiSettings = membership.role === "company_admin" ? await getAiSettings(membership.organizationId) : null;
   // Einladungen verwaltet nur der Firmen-Admin (der Mentor sieht sie nicht).
   const invitations =
     membership.role === "company_admin"
@@ -97,7 +101,9 @@ export default async function CompanyPage() {
 
       <CourseRequestsPanel requests={requestRows} catalog={catalog} locale={locale} />
 
-      <DocumentsPanel documents={documentRows} locale={locale} />
+      <DocumentsPanel documents={documentRows} locale={locale} canSuppress={membership.role === "company_admin"} />
+
+      {aiSettings && <AiSettingsPanel settings={aiSettings} locale={locale} />}
 
       {invitations && <InvitationsPanel invitations={invitations} locale={locale} mailEnabled={isMailConfigured()} />}
     </div>

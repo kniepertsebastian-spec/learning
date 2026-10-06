@@ -81,7 +81,13 @@ die Firma selbst an und prüft sie selbst; Betreiber und externer Prüfer sehen 
 
 Firmendokumente (PDF, .txt, .md, bis 10 MB) laden Firmen-Admin und Mentor unter `/company` hoch. Jedes
 Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft; bei einem Fund wird nichts
-gespeichert. Die Dateien liegen in der Datenbank und sind damit im `pg_dump`-Backup enthalten.
+gespeichert; ein Firmen-Admin kann Fehlalarme bestimmter Arten (z. B. Beispiel-Passwörter in Anleitungen) als unkritisch
+bestätigen, private Schlüssel und Token nie. Die Dateien liegen in der Datenbank und sind damit im `pg_dump`-Backup
+enthalten.
+
+Für interne Lernpfade wählt der Firmen-Admin den KI-Zugang: über unseren Zugang oder mit dem eigenen Gemini-Schlüssel
+(BYOK). Eigene Schlüssel werden verschlüsselt gespeichert; dafür braucht der Server `APP_ENCRYPTION_KEY`
+(`openssl rand -base64 32`, in der `.env`, nicht ins Datenbank-Backup).
 
 ### Konto (Self-Service)
 

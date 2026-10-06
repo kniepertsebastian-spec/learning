@@ -33,10 +33,10 @@ const j = (...p: string[]) => p.join("");
 const signInAs = (userId: string | null) => authMock.mockResolvedValue(userId ? { user: { id: userId } } : null);
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 
-function uploadReq(file: { name: string; type: string; data: Buffer }, extra: Record<string, string> = {}) {
+function uploadReq(file: { name: string; type: string; data: Buffer }, extra: Record<string, string | string[]> = {}) {
   const form = new FormData();
   form.set("file", new File([new Uint8Array(file.data)], file.name, { type: file.type }));
-  for (const [k, v] of Object.entries(extra)) form.set(k, v);
+  for (const [k, v] of Object.entries(extra)) for (const one of Array.isArray(v) ? v : [v]) form.append(k, one);
   return new Request("http://localhost/api/company/documents", { method: "POST", body: form });
 }
 const txt = (name: string, body: string) => ({ name, type: "text/plain", data: Buffer.from(body, "utf8") });
@@ -53,7 +53,7 @@ run("Firmendokumente (echte DB)", () => {
   }
   const addMember = (orgId: string, key: string, role: CompanyRole) =>
     getDb().insert(organizationMemberships).values({ organizationId: orgId, userId: ids[key], role });
-  async function upload(asKey: string, file: { name: string; type: string; data: Buffer }, extra: Record<string, string> = {}) {
+  async function upload(asKey: string, file: { name: string; type: string; data: Buffer }, extra: Record<string, string | string[]> = {}) {
     signInAs(ids[asKey]);
     return uploadRoute(uploadReq(file, extra));
   }
@@ -140,6 +140,46 @@ run("Firmendokumente (echte DB)", () => {
     expect(rejected.length).toBeGreaterThanOrEqual(3);
     expect(JSON.stringify(rejected.map((e) => e.metadata))).not.toContain(secret);
     expect(rejected[0].metadata).toMatchObject({ reason: "secrets_found" });
+  });
+
+  it("Fehlalarme bestätigen: nur Firmen-Admins, nur bestätigbare Arten; vermerkt mit Fundstelle, ohne Wert, mit Audit", async () => {
+    const secret = "Kv7#mQ2xLp9";
+    const doc = txt("anleitung.txt", `Datenbank einrichten\nBeispiel: Passwort: ${secret}\nDanach neu starten.`);
+    const first = await upload("adminA", doc);
+    expect(first.status).toBe(422);
+    expect((await first.json()).findings).toEqual([expect.objectContaining({ kind: "password_assignment", suppressible: true, pageNumber: 1, line: 2 })]);
+
+    // Mentoren dürfen nicht bestätigen (403), Nicht-bestätigbares wird abgelehnt (400)
+    expect((await upload("mentorA", doc, { suppressKinds: ["password_assignment"] })).status).toBe(403);
+    expect((await upload("adminA", doc, { suppressKinds: ["private_key"] })).status).toBe(400);
+    expect((await upload("adminA", doc, { suppressKinds: ["unbekannt"] })).status).toBe(400);
+    expect((await docsOf(orgA)).find((d) => d.originalFilename === "anleitung.txt")).toBeUndefined();
+
+    // ein privater Schlüssel im selben Dokument bleibt blockiert, auch wenn Passwörter bestätigt sind
+    const withKey = txt("mit-schluessel.txt", `Passwort: ${secret}\n${j("-----BEGIN ", "PRIVATE KEY-----")}`);
+    const blocked = await upload("adminA", withKey, { suppressKinds: ["password_assignment"] });
+    expect(blocked.status).toBe(422);
+    expect((await blocked.json()).findings).toEqual([expect.objectContaining({ kind: "private_key", suppressible: false })]);
+
+    const ok = await upload("adminA", doc, { suppressKinds: ["password_assignment"] });
+    expect(ok.status).toBe(201);
+    const [row] = (await docsOf(orgA)).filter((d) => d.originalFilename === "anleitung.txt");
+    expect(row.scannerSuppressed).toEqual([{ kind: "password_assignment", pageNumber: 1, line: 2 }]);
+    expect(row.scannerSuppressedByUserId).toBe(ids.adminA);
+    expect(row.scannerSuppressedAt).not.toBeNull();
+    expect(JSON.stringify(row.scannerSuppressed)).not.toContain(secret);
+
+    signInAs(ids.adminA);
+    const list = await (await listRoute()).json();
+    expect(list.documents.find((d: { id: string }) => d.id === row.id).suppressedFindings).toBe(1);
+    expect(list.documents.find((d: { id: string }) => d.id === docA).suppressedFindings).toBe(0);
+
+    const events = await getDb().select().from(auditEvents).where(eq(auditEvents.targetId, row.id));
+    const supp = events.find((e) => e.action === "document.scanner_suppressed");
+    expect(supp?.metadata).toEqual({ organizationId: orgA, kinds: ["password_assignment"], findings: 1 });
+    expect(JSON.stringify(events)).not.toContain(secret);
+    // aufräumen: das Dokument stört die Zählungen der folgenden Tests nicht
+    await getDb().delete(companyDocuments).where(eq(companyDocuments.id, row.id));
   });
 
   it("andere Ablehnungen: falscher Typ, kein Text, ohne Datei, zu großer Upload", async () => {

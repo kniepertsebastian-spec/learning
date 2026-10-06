@@ -55,6 +55,25 @@ describe("Upload-Prüfung (ohne Datenbank)", () => {
     expect(JSON.stringify(txt)).not.toContain("Sommer2024");
   });
 
+  it("bestätigte Fehlalarme: bestätigbare Arten gehen durch und werden vermerkt, nicht bestätigbare nie", async () => {
+    const file = (body: string) => ({ filename: "x.txt", mimeType: "text/plain", data: text(body) });
+    const pass = "Anleitung\nPasswort: Sommer2024!\nEnde";
+    // ohne Bestätigung abgelehnt, mit Bestätigung angenommen
+    expect(await inspectUpload(file(pass))).toMatchObject({ ok: false, code: "secrets_found" });
+    const ok = await inspectUpload(file(pass), { suppressKinds: ["password_assignment"] });
+    expect(ok).toMatchObject({ ok: true, suppressed: [{ kind: "password_assignment", pageNumber: 1, line: 2 }] });
+    expect(JSON.stringify((ok as { suppressed: unknown }).suppressed)).not.toContain("Sommer2024");
+    // eine andere Art bestätigen hilft nicht
+    expect(await inspectUpload(file(pass), { suppressKinds: ["url_credentials"] })).toMatchObject({ ok: false });
+    // private Schlüssel lassen sich nie bestätigen, auch nicht auf Wunsch
+    const key = `Schlüssel\n${SECRET_LINE}`;
+    expect(await inspectUpload(file(key), { suppressKinds: ["private_key" as never] })).toMatchObject({ ok: false, code: "secrets_found", findings: [{ kind: "private_key" }] });
+    // gemischt: nur der bestätigte Teil verschwindet, der Rest blockiert weiter
+    const mixed = await inspectUpload(file(`${pass}\n${SECRET_LINE}`), { suppressKinds: ["password_assignment"] });
+    expect(mixed).toMatchObject({ ok: false, findings: [{ kind: "private_key", line: 4 }] });
+    expect((mixed as { findings: unknown[] }).findings).toHaveLength(1);
+  });
+
   it("Dateinamen: nur der Name ohne Pfad und Steuerzeichen", () => {
     expect(cleanFilename("..\\..\\etc\\passwd")).toBe("passwd");
     expect(cleanFilename("/tmp/x/Bericht.pdf")).toBe("Bericht.pdf");

@@ -1345,6 +1345,13 @@ export const companyDocuments = pgTable(
     pageCount: integer("page_count").notNull(),
     /** Option „von KI-Verarbeitung ausschließen“: wird gespeichert, wirkt mit dem KI-Schritt. */
     excludeFromAi: boolean("exclude_from_ai").notNull().default(false),
+    /**
+     * Fehlalarme des Secret-Scanners, die ein Firmen-Admin bestätigt hat: [{ kind, pageNumber, line }], nie der
+     * Wert. Der KI-Schritt muss genau diese Zeilen vor der Verarbeitung schwärzen. null = nichts unterdrückt.
+     */
+    scannerSuppressed: jsonb("scanner_suppressed").$type<{ kind: string; pageNumber: number; line: number }[]>(),
+    scannerSuppressedByUserId: uuid("scanner_suppressed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    scannerSuppressedAt: timestamp("scanner_suppressed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -1434,6 +1441,30 @@ export const companyCourseEntitlements = pgTable(
     index("company_course_entitlements_org_idx").on(table.organizationId),
   ],
 );
+
+export type AiAccessMode = "platform" | "byok";
+
+/**
+ * KI-Zugang einer Firma für ihre internen Lernpfade: "platform" = über unseren Zugang, "byok" = mit dem
+ * eigenen Schlüssel der Firma („bring your own key“). Der Schlüssel liegt nur verschlüsselt hier
+ * (lib/server/crypto/secret-box.ts) und wird nie an den Browser zurückgegeben, nur die letzten 4 Zeichen.
+ * Ohne Eintrag (mode null) ist kein KI-Zugang eingerichtet.
+ */
+export const organizationAiSettings = pgTable("organization_ai_settings", {
+  organizationId: uuid("organization_id")
+    .primaryKey()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  mode: text("mode").$type<AiAccessMode>(),
+  provider: text("provider").notNull().default("gemini"),
+  keyEncrypted: text("key_encrypted"),
+  keyLast4: text("key_last4"),
+  keyUpdatedAt: timestamp("key_updated_at", { withTimezone: true }),
+  updatedByUserId: uuid("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("organization_ai_settings_mode_check", sql`${table.mode} is null or ${table.mode} in ('platform', 'byok')`),
+  check("organization_ai_settings_key_check", sql`(${table.keyEncrypted} is null) = (${table.keyLast4} is null)`),
+]);
 
 export type AccountTokenPurpose = "verify_email" | "reset_password";
 

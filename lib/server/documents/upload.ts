@@ -1,5 +1,5 @@
 import { extractPdfPages, type ExtractedPage } from "./pdf-text";
-import { scanForSecrets, type SecretFinding } from "./secret-scanner";
+import { isSuppressible, scanForSecrets, type SecretFinding, type SecretKind } from "./secret-scanner";
 
 /** Höchstgröße eines Firmendokuments. Die Datei liegt in der Datenbank, deshalb bewusst kleiner als bei Lernquellen. */
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
@@ -13,7 +13,7 @@ export type UploadRejection =
   | { ok: false; code: "secrets_found"; message: string; findings: SecretFinding[] };
 
 export type UploadInspection =
-  | { ok: true; kind: DocumentKind; mimeType: string; pages: ExtractedPage[]; pageCount: number }
+  | { ok: true; kind: DocumentKind; mimeType: string; pages: ExtractedPage[]; pageCount: number; suppressed: SecretFinding[] }
   | UploadRejection;
 
 const PDF_MAGIC = Buffer.from("%PDF-", "ascii");
@@ -34,7 +34,11 @@ export function cleanFilename(filename: string): string {
  * Prüft ein hochgeladenes Dokument, ohne es zu speichern: Größe, Typ (Endung, MIME-Typ UND Inhalt),
  * lesbarer Text und der Secret-Scanner. Nur wenn alles besteht, darf es abgelegt werden.
  */
-export async function inspectUpload(input: { filename: string; mimeType: string; data: Buffer }): Promise<UploadInspection> {
+export async function inspectUpload(
+  input: { filename: string; mimeType: string; data: Buffer },
+  /** Fund-Arten, die der Aufrufer als Fehlalarm bestätigt hat (nur Arten aus SUPPRESSIBLE_KINDS wirken). */
+  options: { suppressKinds?: readonly SecretKind[] } = {},
+): Promise<UploadInspection> {
   const { data } = input;
   if (data.byteLength === 0) return { ok: false, code: "empty", message: "Die Datei ist leer." };
   if (data.byteLength > MAX_DOCUMENT_BYTES) {
@@ -89,7 +93,10 @@ export async function inspectUpload(input: { filename: string; mimeType: string;
     pages = [{ pageNumber: 1, text }];
   }
 
-  const findings = scanForSecrets(pages);
+  const all = scanForSecrets(pages);
+  const confirmed = new Set(options.suppressKinds ?? []);
+  const suppressed = all.filter((f) => isSuppressible(f.kind) && confirmed.has(f.kind));
+  const findings = all.filter((f) => !suppressed.includes(f));
   if (findings.length > 0) {
     return {
       ok: false,
@@ -98,7 +105,7 @@ export async function inspectUpload(input: { filename: string; mimeType: string;
       findings,
     };
   }
-  return { ok: true, kind, mimeType, pages, pageCount: pages.length };
+  return { ok: true, kind, mimeType, pages, pageCount: pages.length, suppressed };
 
   function unsupported(): UploadRejection {
     return { ok: false, code: "unsupported_type", message: "Erlaubt sind PDF (.pdf) und Textdateien (.txt, .md), Typ und Endung müssen zusammenpassen." };
