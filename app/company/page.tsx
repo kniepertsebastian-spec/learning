@@ -1,10 +1,12 @@
 export const dynamic = "force-dynamic";
 
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
+import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
 import { ASSIGN_ROLES, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
 import { isOverdue, listAssignableLearningPaths, listAssignableMembers } from "@/lib/server/company/assignments";
+import { listCourseRequests, listRequestableCourses } from "@/lib/server/company/course-requests";
 import { listCompanyDocuments } from "@/lib/server/company/documents";
 import { requireCompanyPage } from "@/lib/server/company/guard";
 import { listCompanyStatus } from "@/lib/server/company/status";
@@ -30,11 +32,13 @@ export default async function CompanyPage() {
   ]);
   const de = locale === "de";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths, documents] = await Promise.all([
+  const [entries, members, paths, documents, courseRequests, catalog] = await Promise.all([
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
-    canAssign ? listAssignableLearningPaths() : [],
+    canAssign ? listAssignableLearningPaths(membership.organizationId) : [],
     listCompanyDocuments(membership.organizationId),
+    listCourseRequests(membership.organizationId),
+    listRequestableCourses(membership.organizationId),
   ]);
   const documentRows = documents.map((d) => ({
     id: d.id,
@@ -46,11 +50,22 @@ export default async function CompanyPage() {
     createdAt: d.createdAt.toISOString(),
     uploadedByName: d.uploadedByName,
   }));
+  const requestRows = courseRequests.map((r) => ({
+    id: r.id,
+    status: r.status,
+    statusNote: r.statusNote,
+    wishTitle: r.wishTitle,
+    wishDescription: r.wishDescription,
+    courseName: r.courseName,
+    createdAt: r.createdAt.toISOString(),
+    events: r.events.map((e) => ({ status: e.status, note: e.note, createdAt: e.createdAt.toISOString() })),
+  }));
   const rows = entries.map((e) => ({
     id: e.assignmentId,
     memberName: e.memberName,
     memberEmail: e.memberEmail,
     learningPath: e.learningPath,
+    learningPathKind: e.learningPathKind,
     status: e.status,
     assignedAt: e.assignedAt.toISOString(),
     dueAt: e.dueAt?.toISOString() ?? null,
@@ -79,6 +94,8 @@ export default async function CompanyPage() {
       </div>
 
       <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
+
+      <CourseRequestsPanel requests={requestRows} catalog={catalog} locale={locale} />
 
       <DocumentsPanel documents={documentRows} locale={locale} />
 

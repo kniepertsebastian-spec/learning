@@ -72,6 +72,12 @@ auch der Status je Person: zugewiesen, in Arbeit (sobald geübt wird) oder abges
 beherrscht). Die Firma sieht nur Status, Zuweisungs-, Frist- und Abschlussdatum, nie Ergebnisse. Die
 Lernenden sehen ihre Zuweisungen auf der Startseite.
 
+Allgemeine Lernpfade (Security, Zertifikate) erstellen wir selbst; die Firma **fragt sie unter `/company` an**
+(aus dem Katalog oder als freien Wunsch) und sieht den Stand. Als Betreiber bearbeitest du die Anfragen unter
+`/admin/requests`: Stand und Hinweis setzen, den Lernpfad fachlich freigeben (Name der prüfenden Person und Datum
+werden gespeichert) und für die Firma freigeben. Zuweisen kann die Firma nur freigegebene allgemeine Lernpfade
+und ihre eigenen internen. Neue Lernpfade starten als Entwurf und sind für Lernende erst nach der Prüfung sichtbar.
+
 Firmendokumente (PDF, .txt, .md, bis 10 MB) laden Firmen-Admin und Mentor unter `/company` hoch. Jedes
 Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft; bei einem Fund wird nichts
 gespeichert. Die Dateien liegen in der Datenbank und sind damit im `pg_dump`-Backup enthalten.

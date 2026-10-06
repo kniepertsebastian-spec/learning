@@ -49,6 +49,8 @@ const INVITATION_ACCEPT_WINDOW_MS = 15 * 60 * 1000;
 const INVITATION_ACCEPT_MAX_PER_WINDOW = 10;
 const DOCUMENT_UPLOAD_WINDOW_MS = 60 * 60 * 1000;
 const DOCUMENT_UPLOAD_MAX_PER_WINDOW = 30;
+const COURSE_REQUEST_WINDOW_MS = 60 * 60 * 1000;
+const COURSE_REQUEST_MAX_PER_WINDOW = 10;
 const ASSIGNMENT_WINDOW_MS = 60 * 60 * 1000;
 const ASSIGNMENT_MAX_PER_WINDOW = 60;
 
@@ -65,6 +67,11 @@ export function checkInvitationCreateRateLimit(userId: string): RateLimitResult 
 /** Firmendokumente hochladen: je Nutzer (jeder Upload wird gelesen und gescannt). */
 export function checkDocumentUploadRateLimit(userId: string): RateLimitResult {
   return checkRateLimit("document-upload", userId, DOCUMENT_UPLOAD_WINDOW_MS, DOCUMENT_UPLOAD_MAX_PER_WINDOW);
+}
+
+/** Lernpfade anfragen: je Nutzer. */
+export function checkCourseRequestRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("course-request", userId, COURSE_REQUEST_WINDOW_MS, COURSE_REQUEST_MAX_PER_WINDOW);
 }
 
 /** Lernpfade zuweisen: je Nutzer (Firmen-Admin oder Mentor). */

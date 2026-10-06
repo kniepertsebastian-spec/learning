@@ -1,12 +1,14 @@
-import { and, asc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, or, type SQL } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
 import {
   certifications,
   companyAssignments,
+  companyCourseEntitlements,
   organizationMemberships,
   users,
   type CompanyRole,
+  type CourseKind,
 } from "@/lib/server/db/schema";
 
 /**
@@ -40,15 +42,39 @@ export function parseDueDate(value: string | null | undefined, now: Date = new D
   return due;
 }
 
-export type AssignableLearningPath = { id: string; name: string };
-export type AssignableMember = { userId: string; name: string | null; email: string; role: CompanyRole };
+export type AssignableLearningPath = { id: string; name: string; kind: CourseKind };
 
-export async function listAssignableLearningPaths(): Promise<AssignableLearningPath[]> {
+/**
+ * Zuweisbar sind nur freigegebene (geprüfte) Lernpfade, die diese Firma nutzen darf: allgemeine mit Freigabe
+ * für die Firma (company_course_entitlements) und die eigenen internen. Alles andere ist für die Firma nicht
+ * auffindbar, auch nicht per ID.
+ */
+function assignableCondition(organizationId: string): SQL {
+  return and(
+    eq(certifications.catalogStatus, "approved"),
+    or(
+      and(eq(certifications.kind, "general"), eq(companyCourseEntitlements.organizationId, organizationId)),
+      and(eq(certifications.kind, "internal"), eq(certifications.ownerOrganizationId, organizationId)),
+    ),
+  ) as SQL;
+}
+
+export async function listAssignableLearningPaths(organizationId: string): Promise<AssignableLearningPath[]> {
   return getDb()
-    .select({ id: certifications.id, name: certifications.name })
+    .select({ id: certifications.id, name: certifications.name, kind: certifications.kind })
     .from(certifications)
+    .leftJoin(
+      companyCourseEntitlements,
+      and(
+        eq(companyCourseEntitlements.certificationId, certifications.id),
+        eq(companyCourseEntitlements.organizationId, organizationId),
+      ),
+    )
+    .where(assignableCondition(organizationId))
     .orderBy(asc(certifications.name));
 }
+
+export type AssignableMember = { userId: string; name: string | null; email: string; role: CompanyRole };
 
 export async function listAssignableMembers(organizationId: string): Promise<AssignableMember[]> {
   return getDb()
@@ -85,7 +111,14 @@ export async function assignLearningPath(input: {
     const [path] = await tx
       .select({ id: certifications.id })
       .from(certifications)
-      .where(eq(certifications.id, input.certificationId))
+      .leftJoin(
+        companyCourseEntitlements,
+        and(
+          eq(companyCourseEntitlements.certificationId, certifications.id),
+          eq(companyCourseEntitlements.organizationId, input.organizationId),
+        ),
+      )
+      .where(and(eq(certifications.id, input.certificationId), assignableCondition(input.organizationId)))
       .limit(1);
     if (!path) throw new UnknownLearningPathError();
 

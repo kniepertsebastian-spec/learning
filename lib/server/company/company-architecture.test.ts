@@ -20,6 +20,9 @@ const ALLOWED_TABLES = new Set([
   "companyInvitations",
   "companyDocuments",
   "companyDocumentFiles",
+  "companyCourseEntitlements",
+  "courseRequests",
+  "courseRequestEvents",
 ]);
 // Erlaubte Imports aus lib/server/* (alles andere, z. B. progress, quiz, remediation, exam, study, sync, analytics, review, sections, offline, ai, admin, wäre ein Zugriff auf Lerndetails).
 // "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen, "auth-rate-limit"
@@ -97,6 +100,7 @@ describe("Firmenbereich liest keine Lerndetails", () => {
       "memberName",
       "memberEmail",
       "learningPath",
+      "learningPathKind",
       "status",
       "assignedAt",
       "dueAt",

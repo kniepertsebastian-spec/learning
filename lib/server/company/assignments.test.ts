@@ -17,6 +17,7 @@ import {
   auditEvents,
   certifications,
   companyAssignments,
+  companyCourseEntitlements,
   domains,
   objectiveProgress,
   objectives,
@@ -125,6 +126,12 @@ run("Lernpfade zuweisen und Status nachführen (echte DB)", () => {
 
     orgA = (await db.insert(organizations).values({ name: `A ${tag}` }).returning())[0].id;
     orgB = (await db.insert(organizations).values({ name: `B ${tag}` }).returning())[0].id;
+    // Zuweisbar ist nur, was für die Firma freigegeben ist: A darf beide Lernpfade, B nur den ersten.
+    await db.insert(companyCourseEntitlements).values([
+      { organizationId: orgA, certificationId: certId },
+      { organizationId: orgA, certificationId: otherCertId },
+      { organizationId: orgB, certificationId: certId },
+    ]);
     for (const k of ["adminA", "mentorA", "learnerA", "learnerA2", "adminB", "learnerB", "loner"]) await makeUser(k);
     await addMember(orgA, "adminA", "company_admin");
     await addMember(orgA, "mentorA", "mentor");
@@ -187,6 +194,15 @@ run("Lernpfade zuweisen und Status nachführen (echte DB)", () => {
     expect(res.status).toBe(201);
     const [row] = await rowsOf("learnerB");
     expect(row.organizationId).toBe(orgB);
+  });
+
+  it("ohne Freigabe nicht zuweisbar: Firma B darf den zweiten Lernpfad nicht, und auch nicht erfahren, dass es ihn gibt", async () => {
+    const res = await assign("adminB", { userIds: [ids.learnerB], certificationId: otherCertId });
+    expect(res.status).toBe(404);
+    expect((await rowsOf("learnerB")).filter((r) => r.certificationId === otherCertId)).toHaveLength(0);
+    const unknown = await assign("adminB", { userIds: [ids.learnerB], certificationId: randomUUID() });
+    expect(unknown.status).toBe(404); // gleiche Antwort wie bei unbekanntem Lernpfad
+    expect(await res.json()).toEqual(await unknown.json());
   });
 
   it("ungültige Anfragen: unbekannter Lernpfad 404, kaputter Body, Vergangenheit, leere Liste 400", async () => {

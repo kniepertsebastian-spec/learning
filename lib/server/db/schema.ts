@@ -40,6 +40,16 @@ export type CompanyRole = "company_admin" | "mentor" | "learner";
  * Lernfortschritt sieht (zusammen mit Datum und Frist). */
 export type AssignmentStatus = "assigned" | "in_progress" | "completed";
 
+/** Phase 3: allgemeiner (von uns erstellter) oder interner (firmeneigener) Lernpfad. */
+export type CourseKind = "general" | "internal";
+/** Menschliche Freigabe eines Lernpfads, bevor er an Kunden gehen darf. */
+export type CatalogStatus = "draft" | "in_review" | "approved";
+/**
+ * Lebenslauf einer Kundenanfrage nach einem allgemeinen Lernpfad: eingegangen -> (wartet | in Erstellung |
+ * in externer Prüfung) -> freigegeben oder abgelehnt.
+ */
+export type CourseRequestStatus = "submitted" | "on_hold" | "in_creation" | "in_review" | "released" | "rejected";
+
 export type CertificationSourceType = "pdf" | "url";
 
 /** R1.1 (roadmap.md): Lebenszyklus einer certification_sources-Zeile. `parsed`
@@ -105,9 +115,26 @@ export const certifications = pgTable("certifications", {
   passingScore: numeric("passing_score", { precision: 6, scale: 2 }),
   /** Menschenlesbare Skalenbeschreibung, z. B. "100-900" oder "0-100%". */
   scoreScale: text("score_scale"),
+  /** Phase 3: "general" = allgemeiner Lernpfad (Security, Zertifikate), von uns erstellt und einer Firma erst
+   * nach Freigabe zuweisbar; "internal" = firmeneigener Lernpfad, gehört genau einer Organisation. */
+  kind: text("kind").$type<CourseKind>().notNull().default("general"),
+  /** Nur bei kind = "internal": die Organisation, der der Lernpfad gehört. */
+  ownerOrganizationId: uuid("owner_organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  /** Menschliche Freigabe vor jeder Weitergabe an Kunden: draft -> in_review -> approved. Bestehende Lernpfade gelten als freigegeben. */
+  catalogStatus: text("catalog_status").$type<CatalogStatus>().notNull().default("approved"),
+  /** Wer den Lernpfad fachlich geprüft hat (Name des externen Prüfers, auch ohne Konto) und wann. */
+  approvedByName: text("approved_by_name"),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  check("certifications_kind_check", sql`${table.kind} in ('general', 'internal')`),
+  check("certifications_catalog_status_check", sql`${table.catalogStatus} in ('draft', 'in_review', 'approved')`),
+  check(
+    "certifications_owner_check",
+    sql`(${table.kind} = 'internal' and ${table.ownerOrganizationId} is not null) or (${table.kind} = 'general' and ${table.ownerOrganizationId} is null)`,
+  ),
+]);
 
 export const domains = pgTable("domains", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1333,6 +1360,80 @@ export const companyDocumentFiles = pgTable("company_document_files", {
     .references(() => companyDocuments.id, { onDelete: "cascade" }),
   data: bytea("data").notNull(),
 });
+
+/**
+ * Anfrage einer Firma nach einem allgemeinen Lernpfad. Entweder wird ein vorhandener Lernpfad gewählt
+ * (certification_id) oder frei beschrieben (wish_title/-description). Wir (Betreiber) geben frei oder erstellen
+ * den Lernpfad, lassen ihn extern prüfen und geben dann frei; bis dahin steht die Anfrage mit aktuellem Status
+ * und Hinweis (status_note) da. Jede Statusänderung steht zusätzlich in course_request_events.
+ */
+export const courseRequests = pgTable(
+  "course_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    requestedByUserId: uuid("requested_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    wishTitle: text("wish_title"),
+    wishDescription: text("wish_description"),
+    status: text("status").$type<CourseRequestStatus>().notNull().default("submitted"),
+    /** Aktueller Hinweis an die Firma (z. B. „wird erstellt, voraussichtlich KW 44“). */
+    statusNote: text("status_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "course_requests_status_check",
+      sql`${table.status} in ('submitted', 'on_hold', 'in_creation', 'in_review', 'released', 'rejected')`,
+    ),
+    check("course_requests_target_check", sql`${table.certificationId} is not null or ${table.wishTitle} is not null`),
+    index("course_requests_org_idx").on(table.organizationId),
+    index("course_requests_status_idx").on(table.status),
+  ],
+);
+
+/** Verlauf einer Anfrage: jede Statusänderung mit Hinweis, Zeitpunkt und Bearbeiter (der Firma sichtbar). */
+export const courseRequestEvents = pgTable(
+  "course_request_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => courseRequests.id, { onDelete: "cascade" }),
+    status: text("status").$type<CourseRequestStatus>().notNull(),
+    note: text("note"),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("course_request_events_request_idx").on(table.requestId)],
+);
+
+/**
+ * Freigabe eines allgemeinen Lernpfads für eine Firma. Erst mit diesem Eintrag darf die Firma den Lernpfad
+ * zuweisen. Eigene (interne) Lernpfade einer Firma brauchen keine Freigabe.
+ */
+export const companyCourseEntitlements = pgTable(
+  "company_course_entitlements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    releasedAt: timestamp("released_at", { withTimezone: true }).notNull().defaultNow(),
+    releasedByUserId: uuid("released_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    requestId: uuid("request_id").references(() => courseRequests.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    unique("company_course_entitlements_org_cert_unique").on(table.organizationId, table.certificationId),
+    index("company_course_entitlements_org_idx").on(table.organizationId),
+  ],
+);
 
 export type AccountTokenPurpose = "verify_email" | "reset_password";
 

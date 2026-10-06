@@ -84,6 +84,8 @@ export async function importCoursePackage(
         examDurationMinutes: pkg.examDurationMinutes,
         passingScore: pkg.passingScore === null ? null : pkg.passingScore.toString(),
         scoreScale: pkg.scoreScale,
+        // KI-generierte Lernpfade brauchen die fachliche Freigabe (Name und Datum), bevor sie an Kunden gehen dürfen.
+        catalogStatus: "draft",
       })
       .returning();
 

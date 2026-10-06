@@ -7,6 +7,8 @@ import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { SignOutButton } from "@/components/SignOutButton";
 import { listMyAssignments } from "@/lib/server/assignments/sync";
+import { getCurrentUser } from "@/lib/server/auth-guards";
+import { visibleCertificationsCondition } from "@/lib/server/catalog/visibility";
 import { getCompanyMembership, isRoleAllowed, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
 import { getServerLocale } from "@/lib/server/locale";
 
@@ -18,11 +20,13 @@ const ASSIGNMENT_STATUS = {
 
 export default async function DashboardPage() {
   const db = getDb();
-  const [session, certs, locale] = await Promise.all([
-    auth(),
-    db.select().from(certifications).orderBy(certifications.name),
-    getServerLocale(),
-  ]);
+  const [session, user, locale] = await Promise.all([auth(), getCurrentUser(), getServerLocale()]);
+  // Nur fachlich freigegebene Lernpfade (Plattform-Admins sehen alle); interne nur für die eigene Firma.
+  const certs = await db
+    .select()
+    .from(certifications)
+    .where(await visibleCertificationsCondition(user ? { id: user.id, role: user.role } : null))
+    .orderBy(certifications.name);
   const de = locale === "de";
   const [assignments, membership] = session?.user?.id
     ? await Promise.all([listMyAssignments(session.user.id), getCompanyMembership(session.user.id)])

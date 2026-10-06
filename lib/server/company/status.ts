@@ -5,6 +5,7 @@ import {
   companyAssignments,
   users,
   type AssignmentStatus,
+  type CourseKind,
 } from "@/lib/server/db/schema";
 
 /**
@@ -20,6 +21,7 @@ export const COMPANY_STATUS_FIELDS = [
   "memberName",
   "memberEmail",
   "learningPath",
+  "learningPathKind",
   "status",
   "assignedAt",
   "dueAt",
@@ -32,6 +34,7 @@ export type CompanyStatusEntry = {
   memberName: string | null;
   memberEmail: string;
   learningPath: string;
+  learningPathKind: CourseKind;
   status: AssignmentStatus;
   assignedAt: Date;
   dueAt: Date | null;
@@ -47,6 +50,7 @@ export async function listCompanyStatus(organizationId: string): Promise<Company
       memberName: users.name,
       memberEmail: users.email,
       learningPath: certifications.name,
+      learningPathKind: certifications.kind,
       status: companyAssignments.status,
       assignedAt: companyAssignments.assignedAt,
       dueAt: companyAssignments.dueAt,
