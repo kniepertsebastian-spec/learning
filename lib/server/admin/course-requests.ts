@@ -9,7 +9,6 @@ import {
   organizations,
   users,
   type CatalogStatus,
-  type CourseKind,
   type CourseRequestStatus,
 } from "@/lib/server/db/schema";
 import { SETTABLE_REQUEST_STATUSES } from "@/lib/course-requests";
@@ -27,6 +26,8 @@ export class InvalidStatusChangeError extends Error {}
 export class NoCourseError extends Error {}
 export class CourseNotReleasableError extends Error {}
 export class InvalidApprovalError extends Error {}
+/** Interne Lernpfade prüft die Firma selbst, nicht der Betreiber. */
+export class InternalCourseError extends Error {}
 
 function logAuditFailure(err: unknown) {
   console.error("Audit-Log fehlgeschlagen:", err);
@@ -86,27 +87,24 @@ export type CatalogRow = {
   id: string;
   name: string;
   slug: string;
-  kind: CourseKind;
-  ownerOrganizationName: string | null;
   catalogStatus: CatalogStatus;
   approvedByName: string | null;
   approvedAt: Date | null;
 };
 
+/** Der Katalog des Betreibers: nur allgemeine Lernpfade. */
 export async function listCatalog(): Promise<CatalogRow[]> {
   return getDb()
     .select({
       id: certifications.id,
       name: certifications.name,
       slug: certifications.slug,
-      kind: certifications.kind,
-      ownerOrganizationName: organizations.name,
       catalogStatus: certifications.catalogStatus,
       approvedByName: certifications.approvedByName,
       approvedAt: certifications.approvedAt,
     })
     .from(certifications)
-    .leftJoin(organizations, eq(organizations.id, certifications.ownerOrganizationId))
+    .where(eq(certifications.kind, "general")) // interne Lernpfade der Firmen sieht der Betreiber nicht
     .orderBy(asc(certifications.name));
 }
 
@@ -216,6 +214,10 @@ export async function setCatalogStatus(input: {
 }): Promise<void> {
   const name = input.approvedByName?.trim() ?? "";
   if (input.status === "approved" && (name.length < 2 || name.length > 120)) throw new InvalidApprovalError();
+
+  const [existing] = await getDb().select({ kind: certifications.kind }).from(certifications).where(eq(certifications.id, input.certificationId)).limit(1);
+  if (!existing) throw new CourseNotFoundError();
+  if (existing.kind !== "general") throw new InternalCourseError();
 
   const [row] = await getDb()
     .update(certifications)

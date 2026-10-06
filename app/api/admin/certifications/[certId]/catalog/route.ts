@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
-import { CourseNotFoundError, InvalidApprovalError, setCatalogStatus } from "@/lib/server/admin/course-requests";
+import { CourseNotFoundError, InternalCourseError, InvalidApprovalError, setCatalogStatus } from "@/lib/server/admin/course-requests";
 import { requireAdminApi } from "@/lib/server/auth-guards";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ce
     await setCatalogStatus({ certificationId: certId, status: body.status, approvedByName: body.approvedByName, actorUserId: guard.user.id });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    if (error instanceof CourseNotFoundError) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    // Interne Lernpfade einer Firma sind für den Betreiber nicht auffindbar.
+    if (error instanceof CourseNotFoundError || error instanceof InternalCourseError) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (error instanceof InvalidApprovalError) return NextResponse.json({ error: "Für die Freigabe wird der Name der prüfenden Person gebraucht." }, { status: 400 });
     throw error;
   }

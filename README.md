@@ -76,7 +76,8 @@ Allgemeine Lernpfade (Security, Zertifikate) erstellen wir selbst; die Firma **f
 (aus dem Katalog oder als freien Wunsch) und sieht den Stand. Als Betreiber bearbeitest du die Anfragen unter
 `/admin/requests`: Stand und Hinweis setzen, den Lernpfad fachlich freigeben (Name der prüfenden Person und Datum
 werden gespeichert) und für die Firma freigeben. Zuweisen kann die Firma nur freigegebene allgemeine Lernpfade
-und ihre eigenen internen. Neue Lernpfade starten als Entwurf und sind für Lernende erst nach der Prüfung sichtbar.
+und ihre eigenen internen. Neue Lernpfade starten als Entwurf und sind für Lernende erst nach der Prüfung sichtbar. Interne Lernpfade legt
+die Firma selbst an und prüft sie selbst; Betreiber und externer Prüfer sehen sie nicht.
 
 Firmendokumente (PDF, .txt, .md, bis 10 MB) laden Firmen-Admin und Mentor unter `/company` hoch. Jedes
 Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft; bei einem Fund wird nichts

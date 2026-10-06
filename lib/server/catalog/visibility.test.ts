@@ -65,8 +65,14 @@ run("Sichtbarkeit von Lernpfaden (echte DB)", () => {
   it("Liste: Mitglieder sehen zusätzlich die freigegebenen internen Lernpfade der eigenen Firma", async () => {
     expect(await visibleKeys(viewers.memberA)).toEqual(["allgemein", "internA"]);
   });
-  it("Liste: Plattform-Admins sehen alles, auch Entwürfe", async () => {
-    expect(await visibleKeys(viewers.operator)).toEqual(Object.keys(certIds).sort());
+  it("Liste: Plattform-Admins sehen alle allgemeinen Lernpfade, auch Entwürfe, aber nie interne Lernpfade einer Firma", async () => {
+    expect(await visibleKeys(viewers.operator)).toEqual(["allgemein", "entwurf", "pruefung"]);
+  });
+  it("ein Plattform-Admin, der Mitglied der Firma ist, sieht deren internen Lernpfad wie jedes Mitglied", async () => {
+    const [u] = await getDb().insert(users).values({ email: `opmember-${tag}@test.example`, passwordHash: "x", role: "admin" }).returning({ id: users.id });
+    userIds.push(u.id);
+    await getDb().insert(organizationMemberships).values({ organizationId: orgA, userId: u.id, role: "learner" });
+    expect(await visibleKeys({ id: u.id, role: "admin" })).toEqual(["allgemein", "entwurf", "internA", "pruefung"]);
   });
 
   it("Einzelprüfung stimmt mit der Liste überein", async () => {

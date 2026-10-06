@@ -193,7 +193,9 @@ run("Kundenanfragen, Freigaben, Prüfstatus (echte DB)", () => {
     const mine = body.requests.filter((r: { organizationId: string }) => [orgA, orgB].includes(r.organizationId));
     expect(mine.length).toBe(4);
     expect(mine.find((r: { id: string }) => r.id === reqWish)).toMatchObject({ organizationName: `ReqA ${tag}`, requesterEmail: `mentorA-${tag}@test.example`, status: "submitted" });
-    expect(body.catalog.length).toBeGreaterThanOrEqual(5);
+    expect(body.catalog.length).toBeGreaterThanOrEqual(4);
+    // interne Lernpfade der Firmen sieht der Betreiber nicht
+    expect(body.catalog.map((c: { id: string }) => c.id)).not.toContain(certIds.intern);
 
     const { requests } = await myRequests("adminA");
     for (const r of requests) expect(Object.keys(r).sort()).toEqual([...COURSE_REQUEST_VIEW_FIELDS].sort());
@@ -308,8 +310,12 @@ run("Kundenanfragen, Freigaben, Prüfstatus (echte DB)", () => {
     // allgemeine Anfragen kennen interne Lernpfade nicht
     expect((await request("adminA", { certificationId: certIds.intern })).status).toBe(404);
 
-    await admin(adminCatalog, req("PATCH", { status: "draft" }), certCtx(certIds.intern));
-    expect(await internal(orgA)).toBeUndefined(); // ungeprüft: auch der Eigentümer kann nichts Neues zuweisen
+    // Der Betreiber prüft interne Lernpfade nicht: für ihn gibt es sie nicht (404), der Status bleibt
+    expect((await admin(adminCatalog, req("PATCH", { status: "draft" }), certCtx(certIds.intern))).status).toBe(404);
+    expect((await getDb().select().from(certifications).where(eq(certifications.id, certIds.intern)))[0].catalogStatus).toBe("approved");
+    // Die Firma prüft selbst: solange ihr Lernpfad nicht freigegeben ist, kann sie ihn nicht zuweisen
+    await getDb().update(certifications).set({ catalogStatus: "draft" }).where(eq(certifications.id, certIds.intern));
+    expect(await internal(orgA)).toBeUndefined();
     expect((await assign("adminA", "mentorA")).status).toBe(404);
   });
 

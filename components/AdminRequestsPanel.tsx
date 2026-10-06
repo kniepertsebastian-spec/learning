@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CATALOG_STATUS_LABELS, COURSE_KIND_LABELS, REQUEST_STATUS_LABELS, SETTABLE_REQUEST_STATUSES } from "@/lib/course-requests";
-import type { CatalogStatus, CourseKind, CourseRequestStatus } from "@/lib/server/db/schema";
+import { CATALOG_STATUS_LABELS, REQUEST_STATUS_LABELS, SETTABLE_REQUEST_STATUSES } from "@/lib/course-requests";
+import type { CatalogStatus, CourseRequestStatus } from "@/lib/server/db/schema";
 
 type AdminRequest = {
   id: string;
@@ -22,8 +22,6 @@ type AdminRequest = {
 type CatalogRow = {
   id: string;
   name: string;
-  kind: CourseKind;
-  ownerOrganizationName: string | null;
   catalogStatus: CatalogStatus;
   approvedByName: string | null;
   approvedAt: string | null;
@@ -141,10 +139,6 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
     <li className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm sm:flex-row sm:items-center" data-testid="catalog-row">
       <span className="flex-1">
         <span className="font-medium">{c.name}</span>
-        <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 text-xs">
-          {COURSE_KIND_LABELS[c.kind][locale]}
-          {c.ownerOrganizationName ? `: ${c.ownerOrganizationName}` : ""}
-        </span>
         {c.approvedAt && (
           <span className="ml-2 text-xs text-foreground/70">
             {de ? "geprüft von" : "reviewed by"} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}
@@ -184,7 +178,7 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
 /** Betreiber: Anfragen aller Firmen bearbeiten und den fachlichen Prüfstatus der Lernpfade pflegen. */
 export function AdminRequestsPanel({ requests, catalog, locale }: { requests: AdminRequest[]; catalog: CatalogRow[]; locale: "de" | "en" }) {
   const de = locale === "de";
-  const releasable = catalog.filter((c) => c.kind === "general" && c.catalogStatus === "approved");
+  const releasable = catalog.filter((c) => c.catalogStatus === "approved");
   return (
     <>
       <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-requests">
@@ -200,7 +194,7 @@ export function AdminRequestsPanel({ requests, catalog, locale }: { requests: Ad
         )}
       </section>
       <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-catalog">
-        <h2 className="text-lg font-medium">{de ? "Lernpfade: fachliche Prüfung" : "Courses: expert review"}</h2>
+        <h2 className="text-lg font-medium">{de ? "Allgemeine Lernpfade: fachliche Prüfung" : "General courses: expert review"}</h2>
         <p className="mt-1 text-sm text-foreground/70">
           {de
             ? "Nur freigegebene Lernpfade lassen sich für Firmen freigeben und zuweisen. Die Freigabe nennt die prüfende Person (auch extern) und das Datum."
