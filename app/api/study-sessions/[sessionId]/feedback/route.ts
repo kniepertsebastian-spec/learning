@@ -1,3 +1,4 @@
+import { isStudySessionHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -30,6 +31,9 @@ export async function POST(
   }
 
   const { sessionId } = await params;
+  if (await isStudySessionHidden(session.user.id, sessionId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   try {
     await setSessionRecommendationFeedback(sessionId, session.user.id, parsed.data.helpful);
     return NextResponse.json({ status: "ok" });

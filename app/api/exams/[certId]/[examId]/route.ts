@@ -1,3 +1,4 @@
+import { isCertificationHidden, isExamHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
@@ -12,7 +13,10 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { examId } = await params;
+  const { certId, examId } = await params;
+  if ((await isCertificationHidden(session.user.id, certId)) || (await isExamHidden(session.user.id, examId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   try {
     const examData = await getExamWithQuestions(examId);

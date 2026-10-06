@@ -1,3 +1,4 @@
+import { isCertificationHidden, isExamAttemptHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
@@ -16,7 +17,10 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { attemptId } = await params;
+  const { certId, attemptId } = await params;
+  if ((await isCertificationHidden(session.user.id, certId)) || (await isExamAttemptHidden(session.user.id, attemptId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const db = getDb();
   const locale = await getServerLocale();
 

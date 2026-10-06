@@ -1,3 +1,4 @@
+import { isCertificationHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
@@ -26,6 +27,9 @@ export async function GET(
   }
 
   const { certId } = await params;
+  if (await isCertificationHidden(session.user.id, certId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const profile = await getStudyProfile(session.user.id, certId);
   return NextResponse.json({ profile }, { headers: { "Cache-Control": "no-store" } });
 }
@@ -45,6 +49,9 @@ export async function PUT(
   }
 
   const { certId } = await params;
+  if (await isCertificationHidden(session.user.id, certId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const db = getDb();
   const cert = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.id, certId)).limit(1);
   if (!cert.length) {

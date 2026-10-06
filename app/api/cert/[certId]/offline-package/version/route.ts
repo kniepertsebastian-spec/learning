@@ -1,3 +1,4 @@
+import { isCertificationHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
@@ -19,6 +20,10 @@ export async function GET(
   }
 
   const { certId } = await params;
+  if (await isCertificationHidden(session.user.id, certId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const version = await getOfflinePackageVersion(certId);
   if (version === null) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

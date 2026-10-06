@@ -1,3 +1,4 @@
+import { isSectionHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
@@ -17,6 +18,9 @@ export async function POST(
   }
 
   const { id: sectionId } = await params;
+  if (await isSectionHidden(session.user.id, sectionId)) {
+    return NextResponse.json({ error: "Section not found" }, { status: 404 });
+  }
   const body = (await request.json()) as { answers: SectionQuizAnswerInput[] };
 
   try {

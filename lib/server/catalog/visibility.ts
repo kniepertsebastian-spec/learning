@@ -9,8 +9,7 @@ import { getCompanyMembership } from "@/lib/server/company/access";
  *  - Interne Lernpfade (von der Firma selbst angelegt und geprüft) nur Mitglieder der Organisation, der sie
  *    gehören, und erst, wenn die Firma sie freigegeben hat. Plattform-Admins haben darauf KEINEN Zugriff:
  *    Firmendaten gehören der Firma.
- * Hinweis: Die Lern-APIs unter /api/(progress|exams|study-profile|cert)/[certId] prüfen das noch nicht;
- * das ist vor dem ersten internen Lernpfad nachzuziehen (siehe Roadmap).
+ * Die Lern-APIs prüfen dieselbe Regel über lib/server/catalog/access.ts.
  */
 export type Viewer = { id: string; role: "learner" | "admin" } | null;
 

@@ -1,3 +1,4 @@
+import { isCertificationHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { eq, and } from "drizzle-orm";
@@ -19,6 +20,10 @@ export async function GET(
   }
 
   const { certId } = await params;
+  if (await isCertificationHidden(session.user.id, certId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const db = getDb();
 
   // Get all objectives for this certification

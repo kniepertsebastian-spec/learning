@@ -10,14 +10,14 @@
 
 ## Stand (06.10.2026)
 
-**Gemergt auf `main`:** Phase 0 bis auf die unten genannten Punkte, Phase 1, Phase 2 (Gate 2 erfüllt), Zuweisen und Statusansicht, Einstieg in den Firmenbereich, Sicherheitsupdates, Server-Absicherung, Monitoring per Mail (Skript und Anleitung). **Offen als PR #77** (Migrationen `0029` bis `0032`): Firmendokumente mit Secret-Scanner und bestätigbaren Fehlalarmen, allgemeine/interne Lernpfade mit Kundenanfragen, Freigaben und fachlicher Prüfung, KI-Zugang je Firma (BYOK oder unser Zugang).
+**Gemergt auf `main`:** Phase 0 bis auf die unten genannten Punkte, Phase 1, Phase 2 (Gate 2 erfüllt), Zuweisen und Statusansicht, Einstieg in den Firmenbereich, Sicherheitsupdates, Server-Absicherung, Monitoring per Mail (Skript und Anleitung). **Auch gemergt (PR #77, #78):** Migrationen `0029` bis `0033`: Firmendokumente mit Secret-Scanner und bestätigbaren Fehlalarmen, allgemeine/interne Lernpfade mit Kundenanfragen, Freigaben und fachlicher Prüfung, KI-Zugang je Firma (BYOK oder unser Zugang).
 
 | Phase | Stand |
 |---|---|
 | 0 Fundament und Sicherheit | Gate 0 **offen**. Erledigt: CSP mit Nonce, Rate-Limits, Backup- und Restore-Skripte (im Direkt-Modus geprüft), CI, Repo aufgeräumt, Sicherheitsupdates, Server-Härtung ausgerollt und mit `scripts/check-server.sh` geprüft. Offen: Offsite-Backup und Restore auf dem echten Server, Branch Protection auf `main`, Hoster-Firewall und Test von außen (`nc -vz <ip> 5432`), Monitoring auf dem Server einrichten (Timer, Testmail, Alarmprobe), Dockerfile mit `standalone` (braucht einen Docker-Lauf), Service Worker, 502-Fehlertexte der Admin-Routen, Error-Tracking |
 | 1 Mandanten, Rollen, Rechte | **erledigt** (Gate 1) |
 | 2 Accounts | **erledigt** (Gate 2). Offen: Entscheidung zur Auth-Bibliothek (Empfehlung: bei `next-auth` 5.0.0-beta.32 bleiben), Mailanbieter für den Kundenbetrieb (Google Workspace mit AV-Vertrag oder EU-Anbieter) |
-| 3 Firmenfunktionen | **in Arbeit**. Gebaut: Zuweisen mit Frist, Statusansicht mit automatischer Nachführung, Firmendokumente mit Scanner, Kundenanfragen und Freigaben, fachliche Prüfung, KI-Zugang je Firma (Verschlüsselung, Schlüsselprüfung). Offen: KI-Schritt „Dokument → interner Lernpfad“ mit Prüfung durch den Mentor der Firma (braucht KI-Client je Schlüssel und das Schwärzen bestätigter Scanner-Funde), Sichtbarkeitsprüfung in den Lern-APIs, E-Mail-Benachrichtigung bei Anfragen, Praxisaufgaben, Firmenmodule, Abrechnung/Limits bei „unser Zugang“, Gate 3 |
+| 3 Firmenfunktionen | **in Arbeit**. Gebaut: Zuweisen mit Frist, Statusansicht mit automatischer Nachführung, Firmendokumente mit Scanner, Kundenanfragen und Freigaben, fachliche Prüfung, KI-Zugang je Firma (Verschlüsselung, Schlüsselprüfung). Offen: KI-Schritt „Dokument → interner Lernpfad“ mit Prüfung durch den Mentor der Firma (braucht KI-Client je Schlüssel und das Schwärzen bestätigter Scanner-Funde), E-Mail-Benachrichtigung bei Anfragen, Praxisaufgaben, Firmenmodule, Abrechnung/Limits bei „unser Zugang“, Gate 3 |
 | 4 bis 7 | nicht begonnen |
 
 **Festgelegte Entscheidungen des Betreibers (Phase 3):**
@@ -32,7 +32,7 @@
 **Nächste Schritte (Reihenfolge):**
 1. PR #77 mergen und ausrollen (neue Variable `APP_ENCRYPTION_KEY` in der `.env`, `openssl rand -base64 32`, nicht ins Datenbank-Backup; Firmen ohne bisherige Zuweisung brauchen zuerst eine Freigabe über `/admin/requests`).
 2. Phase 0 abschließen (Betreiber auf dem Server): Offsite-Backup mit echtem Restore, Branch Protection, Test von außen, Monitoring-Timer.
-3. Lern-APIs auf Sichtbarkeit prüfen und den KI-Schritt für interne Lernpfade bauen (KI-Client je Schlüssel, Schwärzen bestätigter Scanner-Funde, Prüfung durch den Mentor, Freigabe).
+3. Den KI-Schritt für interne Lernpfade bauen (KI-Client je Schlüssel, Schwärzen bestätigter Scanner-Funde, Prüfung durch den Mentor, Freigabe).
 4. E-Mail-Benachrichtigungen bei Anfragen, danach Praxisaufgaben und Firmenmodule, dann Gate 3.
 
 ---
@@ -216,7 +216,11 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Betrieb:_ `APP_ENCRYPTION_KEY` (`openssl rand -base64 32`) in die `.env` auf dem Server, **nicht ins Datenbank-Backup legen**. Geht er verloren, müssen die Firmen ihre Schlüssel neu eingeben
   - _Noch offen:_ Abrechnung und Limits bei „unser Zugang“ (Kosten tragen wir, Budget je Firma fehlt); ob „unser Zugang“ ein Vertragsmerkmal sein soll (Freischaltung durch den Betreiber)
 - [ ] Benachrichtigung per E-Mail: Betreiber bei neuer Anfrage, Firma bei Statusänderung und Freigabe (bisher nur die Ansichten)
-- [ ] Lern-APIs (`/api/progress|exams|study-profile|cert/[certId]`) prüfen die Sichtbarkeit noch nicht (Seiten und Startseite schon): **vor dem ersten internen Lernpfad nachziehen**, die UUIDs sind nicht geheim
+- [x] Lern-APIs prüfen die Sichtbarkeit (Entwürfe und interne Lernpfade anderer Firmen sind „nicht vorhanden“)
+  - _Gebaut (`lib/server/catalog/access.ts`, dieselbe Regel wie die Seiten):_ Guards an `/api/progress`, `exams` (auch die Prüfung selbst, nicht nur die `certId` im Pfad), `study-profile`, `cert/.../offline-package`, `sections/[id]/attempt`, `remediation/[objectiveId]` (GET und Versuch), `study-sessions` (start, Versuch, skip, feedback) und beim Sync offline aufgezeichneter Ereignisse (wer den Lernpfad nicht mehr sehen darf, bekommt nichts mehr verbucht). Gesperrte Ziele antworten wie nicht vorhanden (404), fehlende Ziele und ungültige IDs behalten die bisherige Fehlerbehandlung
+  - _Inhaltsmeldungen:_ Meldungen zu Fragen oder Lektionen **interner** Lernpfade werden abgelehnt (422): sie landen sonst in der Prüfliste des Betreibers und widersprächen der Festlegung, dass der Betreiber interne Inhalte nicht sieht
+  - _Geprüft gegen echte DB (6 Tests, alle 405 Tests grün) und per Mutationstest (Guard in `progress` entfernt, Sperre bei Inhaltsmeldungen entfernt: je Test fällt durch):_ Betreiber sieht Entwürfe, aber nie interne Lernpfade; Mitglied einer anderen Firma und Nutzer ohne Firma bekommen 404; eigene Firma und allgemeine Lernpfade gehen weiter. Nicht im Browser geprüft
+  - _Noch offen (bewusst nicht angefasst):_ `GET /api/remediation/needed` und die Seiten „Meine Prüfungen“ listen eigene Altdaten; die Zuordnung der Lernzeit-Auswertung zu gesperrten Lernpfaden ist nicht gefiltert
 - [x] Lernpfade (Zertifizierungen) an Mitglieder der eigenen Firma zuweisen, mit optionaler Frist
   - _Geprüft gegen echte DB (15 Tests) und im Browser (Chromium, Produktions-Build, 19 Prüfungen):_ Firmen-Admin **und Mentor** weisen zu (`POST /api/company/assignments`), Lernende und Nutzer ohne Organisation bekommen 403. Mandantengetrennt: Personen anderer Firmen und unbekannte IDs werden gleich abgelehnt (alles oder nichts, auch die gültige Person in derselben Anfrage wird nicht zugewiesen), eine mitgeschickte `organizationId` wird ignoriert, fremde Zuweisungen sind weder änderbar noch entfernbar (404). Doppelte Zuweisung ändert nichts (Frist bleibt) und wird gemeldet. Frist nur als Datum, nicht in der Vergangenheit. Frist ändern und Entfernen nur bei offenen Zuweisungen. Rate-Limit 60/h je Nutzer, Audit-Ereignisse `assignment.created|due_changed|removed`
   - _Mutationstests:_ ohne Mandantenfilter beim Entfernen fallen 2, ohne Mitgliedsprüfung 1, mit Lernenden als Zuweisenden 4, ohne Nachführen im Lernweg 2, „abgeschlossen schon bei geübt statt beherrscht“ 1 und „abgeschlossen wird wieder geöffnet“ 1 Test durch
