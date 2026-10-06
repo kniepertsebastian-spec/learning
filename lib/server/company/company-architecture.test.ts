@@ -18,6 +18,7 @@ const ALLOWED_TABLES = new Set([
   "organizationMemberships",
   "companyAssignments",
   "companyInvitations",
+  "companyClaims",
   "companyDocuments",
   "companyDocumentFiles",
   "companyCourseEntitlements",

@@ -142,3 +142,11 @@ export function checkRecoveryRequestRateLimit(ip: string, email: string): RateLi
 export function checkRecoveryTokenRateLimit(ip: string): RateLimitResult {
   return checkRateLimit("recovery-token", ip, RECOVERY_TOKEN_WINDOW_MS, RECOVERY_TOKEN_MAX_PER_IP);
 }
+
+const COMPANY_CLAIM_WINDOW_MS = 60 * 60 * 1000;
+const COMPANY_CLAIM_MAX_PER_WINDOW = 5;
+
+/** Firmen-Bestätigungsmail anfordern: je Nutzer (jede Anfrage verschickt eine E-Mail an eine fremde Adresse). */
+export function checkCompanyClaimRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("company-claim", userId, COMPANY_CLAIM_WINDOW_MS, COMPANY_CLAIM_MAX_PER_WINDOW);
+}

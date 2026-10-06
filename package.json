@@ -13,6 +13,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "user:set-role": "tsx scripts/set-user-role.ts",
     "company:create": "tsx scripts/manage-company.ts create",
+    "company:ensure": "tsx scripts/manage-company.ts ensure",
     "company:set-member": "tsx scripts/manage-company.ts set-member",
     "company:remove-member": "tsx scripts/manage-company.ts remove-member",
     "user:reset-password": "tsx scripts/reset-user-password.ts",

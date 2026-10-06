@@ -44,3 +44,14 @@ export function invitationMessage(
       `Der Link ist 7 Tage gültig und nur einmal verwendbar.${FOOTER}`,
   };
 }
+
+export function companyConfirmMessage(to: string, link: string, companyName: string): MailMessage {
+  return {
+    to,
+    subject: `Firma „${companyName}“ bestätigen`,
+    text:
+      `Hallo,\n\ndu möchtest dein Konto dem Unternehmen „${companyName}“ zuordnen und dort als Firmen-Admin starten. ` +
+      `Mit diesem Link bestätigst du, dass diese Firmen-E-Mail-Adresse dir gehört:\n\n${link}\n\n` +
+      `Der Link ist 24 Stunden gültig und nur einmal verwendbar.${FOOTER}`,
+  };
+}

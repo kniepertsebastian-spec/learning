@@ -150,3 +150,65 @@ export function DeleteAccountForm({ userId, locale }: { userId: string; locale: 
     </form>
   );
 }
+
+/** Privatperson legt ein Unternehmen fest; die Firma entsteht erst nach Bestätigung per Mail. */
+export function CompanyForm({ locale }: { locale: Locale }) {
+  const de = locale === "de";
+  const [error, setError] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPending(true);
+    setError(null);
+    const fd = new FormData(e.currentTarget);
+    const res = await fetch("/api/account/company", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyName: fd.get("companyName"), companyEmail: fd.get("companyEmail") }),
+    });
+    setPending(false);
+    if (res.ok) {
+      setSentTo(String(fd.get("companyEmail")));
+      return;
+    }
+    const body = await res.json().catch(() => null);
+    setError(body?.error ?? (de ? "Anfrage fehlgeschlagen." : "Request failed."));
+  }
+
+  if (sentTo) {
+    return (
+      <Message kind="ok">
+        {de
+          ? `Wir haben einen Bestätigungslink an ${sentTo} geschickt. Mit dem Klick wird das Unternehmen angelegt.`
+          : `We sent a confirmation link to ${sentTo}. Clicking it creates the company.`}
+      </Message>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="flex max-w-sm flex-col gap-3">
+      {error && <Message kind="error">{error}</Message>}
+      <div>
+        <label htmlFor="companyName" className="mb-1 block text-sm font-medium">
+          {de ? "Firmenname" : "Company name"}
+        </label>
+        <input id="companyName" name="companyName" required maxLength={120} className={inputClass} />
+      </div>
+      <div>
+        <label htmlFor="companyEmail" className="mb-1 block text-sm font-medium">
+          {de ? "Firmen-E-Mail" : "Company email"}
+        </label>
+        <input id="companyEmail" name="companyEmail" type="email" required className={inputClass} />
+      </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+      >
+        {de ? "Bestätigungslink senden" : "Send confirmation link"}
+      </button>
+    </form>
+  );
+}
