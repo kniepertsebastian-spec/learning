@@ -194,3 +194,58 @@ export function VerifyEmailButton({ token }: { token: string }) {
     </Card>
   );
 }
+
+/** Firmen-E-Mail bestätigen (Link aus der Bestätigungsmail an die Firmenadresse). */
+export function ConfirmCompanyButton({ token }: { token: string }) {
+  const { locale } = useLocale();
+  const de = locale === "de";
+  const [state, setState] = useState<"idle" | "pending" | "done">("idle");
+  const [company, setCompany] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function confirm() {
+    setState("pending");
+    setError(null);
+    const res = await fetch("/api/company/claim/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (res.ok) {
+      const body = await res.json().catch(() => null);
+      setCompany(body?.organizationName ?? "");
+      setState("done");
+      return;
+    }
+    const body = await res.json().catch(() => null);
+    setError(body?.error ?? (de ? "Bestätigen fehlgeschlagen." : "Confirmation failed."));
+    setState("idle");
+  }
+
+  return (
+    <Card title={de ? "Unternehmen bestätigen" : "Confirm your company"}>
+      {state === "done" ? (
+        <div className="flex flex-col gap-4">
+          <p role="status" className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600" data-testid="company-confirmed">
+            {de ? `„${company}“ ist angelegt, du bist Firmen-Admin.` : `"${company}" was created, you are its company admin.`}
+          </p>
+          <Link href="/login?from=%2Fcompany" className={`${buttonClass} text-center`}>
+            {de ? "Zum Firmenbereich" : "Go to company area"}
+          </Link>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {error && <ErrorBox>{error}</ErrorBox>}
+          <p className="text-sm text-foreground/70">
+            {de
+              ? "Klicke, um zu bestätigen, dass diese Firmen-E-Mail-Adresse dir gehört. Danach wird das Unternehmen angelegt."
+              : "Click to confirm that this company email address is yours. The company is created afterwards."}
+          </p>
+          <button type="button" onClick={confirm} disabled={state === "pending"} className={buttonClass}>
+            {de ? "Unternehmen bestätigen" : "Confirm company"}
+          </button>
+        </div>
+      )}
+    </Card>
+  );
+}

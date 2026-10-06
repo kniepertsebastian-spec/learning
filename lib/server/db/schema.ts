@@ -1491,3 +1491,26 @@ export const accountTokens = pgTable(
     index("account_tokens_user_purpose_idx").on(table.userId, table.purpose),
   ],
 );
+
+/**
+ * Offene Anfrage „Ich gehöre zu diesem Unternehmen“: ein Konto nennt Firmenname und Firmen-E-Mail,
+ * an die Adresse geht ein Bestätigungslink. Erst beim Einlösen entsteht die Organisation (mit dem
+ * Konto als Firmen-Admin). Wie bei account_tokens wird nur der SHA-256-Hash des Tokens gespeichert;
+ * Anfragen sind befristet, einmalig und verschwinden mit dem Konto.
+ */
+export const companyClaims = pgTable(
+  "company_claims",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    companyName: text("company_name").notNull(),
+    companyEmail: text("company_email").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("company_claims_user_idx").on(table.userId)],
+);

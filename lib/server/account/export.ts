@@ -50,6 +50,8 @@ const OPERATIONAL_REASON =
 export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "account_tokens.user_id":
     "Sicherheits-Token (nur Hash, kein Inhalt) für Bestätigung und Reset; wird mit dem Konto gelöscht (CASCADE)",
+  "company_claims.user_id":
+    "Offene Firmen-Anfrage (Name, Firmen-E-Mail, nur Token-Hash); befristet, wird mit dem Konto gelöscht (CASCADE)",
   "blueprint_drafts.generated_by_user_id": OPERATIONAL_REASON,
   "blueprint_drafts.edited_by_user_id": OPERATIONAL_REASON,
   "certification_sources.approved_by": OPERATIONAL_REASON,

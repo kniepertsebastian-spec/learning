@@ -9,12 +9,17 @@ import { hasPendingInvitationForEmail } from "@/lib/server/company/invitations";
 import { normalizeEmail } from "@/lib/server/email";
 import { sendVerificationEmail } from "@/lib/server/account/recovery";
 import { isMailConfigured } from "@/lib/server/mail/config";
+import { cleanCompanyName, createOrganizationForUser, isCompanyEmail, requestCompanyClaim } from "@/lib/server/company/claims";
 import { newPasswordSchema } from "@/lib/server/password-policy";
 
 const registerRequestSchema = z.object({
   email: z.string().email().transform(normalizeEmail),
   password: newPasswordSchema,
   name: z.string().min(1).optional(),
+  // Privatperson (Standard) oder Unternehmen: dann ist die E-Mail die Firmen-Adresse, und der
+  // Firmenname ist Pflicht. Die Firma entsteht erst nach Bestätigung per Link (company/claims.ts).
+  accountType: z.enum(["private", "company"]).default("private"),
+  companyName: z.string().max(200).optional(),
 });
 
 /**
@@ -56,6 +61,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const companyName = body.accountType === "company" ? cleanCompanyName(body.companyName ?? "") : "";
+    if (body.accountType === "company") {
+      if (!companyName) {
+        return NextResponse.json({ error: "Bitte den Firmennamen angeben." }, { status: 400 });
+      }
+      if (!isCompanyEmail(body.email)) {
+        return NextResponse.json(
+          { error: "Für ein Unternehmen bitte die Firmen-E-Mail-Adresse verwenden (keine privaten Anbieter wie gmail.com)." },
+          { status: 400 },
+        );
+      }
+    }
+
     const db = getDb();
 
     const [existing] = await db
@@ -81,7 +99,18 @@ export async function POST(request: Request) {
       })
       .returning({ id: users.id, email: users.email, name: users.name });
 
-    if (verificationRequired) {
+    if (body.accountType === "company") {
+      if (verificationRequired) {
+        // Die Bestätigung der Firmen-Adresse bestätigt zugleich das Konto und legt die Firma an.
+        // Scheitert der Versand, geht stattdessen die normale Bestätigung raus; die Firma lässt
+        // sich dann in den Kontoeinstellungen festlegen.
+        void requestCompanyClaim({ userId: user.id, companyName, companyEmail: user.email })
+          .then((r) => (r.ok ? true : sendVerificationEmail(user.id, user.email)))
+          .catch((err) => console.error("Firmen-Bestätigung fehlgeschlagen:", err));
+      } else {
+        await createOrganizationForUser(user.id, companyName);
+      }
+    } else if (verificationRequired) {
       // Nach der Antwort: ein Fehler beim Versand verhindert die Registrierung nicht
       // („Bestätigung erneut senden“ bleibt möglich).
       void sendVerificationEmail(user.id, user.email).catch((err) =>

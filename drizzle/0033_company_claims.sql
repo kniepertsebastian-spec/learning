@@ -1,0 +1,14 @@
+CREATE TABLE "company_claims" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"company_name" text NOT NULL,
+	"company_email" text NOT NULL,
+	"token_hash" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"used_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "company_claims_token_hash_unique" UNIQUE("token_hash")
+);
+--> statement-breakpoint
+ALTER TABLE "company_claims" ADD CONSTRAINT "company_claims_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "company_claims_user_idx" ON "company_claims" USING btree ("user_id");

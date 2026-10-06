@@ -232,6 +232,13 @@
       "when": 1791316252401,
       "tag": "0032_organization_ai_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791323954225,
+      "tag": "0033_company_claims",
+      "breakpoints": true
     }
   ]
 }

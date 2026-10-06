@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Building2, GraduationCap, Languages, Moon, Settings, Sun, UserRound } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
+import { SignOutButton } from "@/components/SignOutButton";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 
 export function Header({
@@ -86,6 +87,8 @@ export function Header({
               <Moon className="h-4 w-4" aria-hidden="true" />
             )}
           </button>
+
+          {userId && <SignOutButton userId={userId} compact />}
         </div>
       </div>
     </header>
