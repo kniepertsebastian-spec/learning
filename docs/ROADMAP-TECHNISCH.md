@@ -8,6 +8,35 @@
 
 ---
 
+## Stand (06.10.2026)
+
+**Gemergt auf `main`:** Phase 0 bis auf die unten genannten Punkte, Phase 1, Phase 2 (Gate 2 erfüllt), Zuweisen und Statusansicht, Einstieg in den Firmenbereich, Sicherheitsupdates, Server-Absicherung, Monitoring per Mail (Skript und Anleitung). **Offen als PR #77** (Migrationen `0029` bis `0032`): Firmendokumente mit Secret-Scanner und bestätigbaren Fehlalarmen, allgemeine/interne Lernpfade mit Kundenanfragen, Freigaben und fachlicher Prüfung, KI-Zugang je Firma (BYOK oder unser Zugang).
+
+| Phase | Stand |
+|---|---|
+| 0 Fundament und Sicherheit | Gate 0 **offen**. Erledigt: CSP mit Nonce, Rate-Limits, Backup- und Restore-Skripte (im Direkt-Modus geprüft), CI, Repo aufgeräumt, Sicherheitsupdates, Server-Härtung ausgerollt und mit `scripts/check-server.sh` geprüft. Offen: Offsite-Backup und Restore auf dem echten Server, Branch Protection auf `main`, Hoster-Firewall und Test von außen (`nc -vz <ip> 5432`), Monitoring auf dem Server einrichten (Timer, Testmail, Alarmprobe), Dockerfile mit `standalone` (braucht einen Docker-Lauf), Service Worker, 502-Fehlertexte der Admin-Routen, Error-Tracking |
+| 1 Mandanten, Rollen, Rechte | **erledigt** (Gate 1) |
+| 2 Accounts | **erledigt** (Gate 2). Offen: Entscheidung zur Auth-Bibliothek (Empfehlung: bei `next-auth` 5.0.0-beta.32 bleiben), Mailanbieter für den Kundenbetrieb (Google Workspace mit AV-Vertrag oder EU-Anbieter) |
+| 3 Firmenfunktionen | **in Arbeit**. Gebaut: Zuweisen mit Frist, Statusansicht mit automatischer Nachführung, Firmendokumente mit Scanner, Kundenanfragen und Freigaben, fachliche Prüfung, KI-Zugang je Firma (Verschlüsselung, Schlüsselprüfung). Offen: KI-Schritt „Dokument → interner Lernpfad“ mit Prüfung durch den Mentor der Firma (braucht KI-Client je Schlüssel und das Schwärzen bestätigter Scanner-Funde), Sichtbarkeitsprüfung in den Lern-APIs, E-Mail-Benachrichtigung bei Anfragen, Praxisaufgaben, Firmenmodule, Abrechnung/Limits bei „unser Zugang“, Gate 3 |
+| 4 bis 7 | nicht begonnen |
+
+**Festgelegte Entscheidungen des Betreibers (Phase 3):**
+- **Allgemeine Lernpfade** (Security, Zertifikate) erstellen nur wir, auch mit KI; eine Person prüft sie fachlich (externer Dienstleister, Name und Datum werden gespeichert). Der Kunde generiert sie nicht selbst, er fragt an (Katalog oder freier Wunsch). Gibt es den Kurs, geben wir ihn frei, sonst steht die Anfrage auf „hold“ bzw. mit aktuellem Stand und Hinweis, bis der Kurs erstellt, geprüft und freigegeben ist.
+- **Interne Lernpfade** legt die Firma selbst an (aus ihren Dokumenten) und prüft sie selbst. Betreiber und externer Prüfer sehen sie nicht.
+- **Scanner:** Fehlalarme dürfen je nach Art bestätigt werden (Firmen-Admin), private Schlüssel und Token nie.
+- **KI-Zugang bei internen Lernpfaden:** entweder BYOK (eigener Schlüssel der Firma) oder über unseren Zugang.
+- „Abgeschlossen“ heißt: jedes Lernziel beherrscht (keine Abschlussprüfung); der Mentor darf zuweisen; die Freigabe eines allgemeinen Lernpfads für eine Firma erteilt immer der Betreiber von Hand.
+
+**Noch zu entscheiden:** Soll der Betreiber eine erteilte Firmenfreigabe entziehen können, und darf die Firma eine Anfrage zurückziehen? Ist „unser Zugang“ ein Vertragsmerkmal, das der Betreiber freischaltet, und wie werden Kosten und Limits je Firma begrenzt? Welche Konditionen (EU-Verarbeitung, kein Training mit Kundendaten) gelten für unseren KI-Zugang?
+
+**Nächste Schritte (Reihenfolge):**
+1. PR #77 mergen und ausrollen (neue Variable `APP_ENCRYPTION_KEY` in der `.env`, `openssl rand -base64 32`, nicht ins Datenbank-Backup; Firmen ohne bisherige Zuweisung brauchen zuerst eine Freigabe über `/admin/requests`).
+2. Phase 0 abschließen (Betreiber auf dem Server): Offsite-Backup mit echtem Restore, Branch Protection, Test von außen, Monitoring-Timer.
+3. Lern-APIs auf Sichtbarkeit prüfen und den KI-Schritt für interne Lernpfade bauen (KI-Client je Schlüssel, Schwärzen bestätigter Scanner-Funde, Prüfung durch den Mentor, Freigabe).
+4. E-Mail-Benachrichtigungen bei Anfragen, danach Praxisaufgaben und Firmenmodule, dann Gate 3.
+
+---
+
 ## Leitplanken (technisch zu erzwingen)
 
 Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nicht gebaut.
