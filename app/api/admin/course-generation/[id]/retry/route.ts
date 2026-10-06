@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/server/auth-guards";
-import { getCourseGenerationJob, updateCourseGenerationJob } from "@/lib/server/course-generation/job-service";
+import { getCourseGenerationJob, getOperatorCourseGenerationJob, updateCourseGenerationJob } from "@/lib/server/course-generation/job-service";
 import {
   isCourseGenerationJobActive,
   startCourseGenerationJob,
@@ -34,7 +34,7 @@ export async function POST(
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const job = await getCourseGenerationJob(id);
+  const job = await getOperatorCourseGenerationJob(id);
   if (!job) {
     return NextResponse.json({ error: "Auftrag nicht gefunden." }, { status: 404 });
   }

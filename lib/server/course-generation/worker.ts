@@ -10,7 +10,12 @@ import {
   type CourseGenerationObjectiveRow,
 } from "./job-service";
 import { importCoursePackage, suggestCourseSlug } from "./importer";
+import { AiAccessUnavailableError, clientForOrganization } from "@/lib/server/internal-courses/ai-client";
+import { DocumentSourceError, loadDocumentSources } from "@/lib/server/internal-courses/document-sources";
 import {
+  createHaikuContentProvider,
+  createSonnetBlueprintProvider,
+  createSonnetRepairProvider,
   anthropicHaikuContentProvider,
   anthropicSonnetRepairProvider,
   resolveBlueprintProvider,
@@ -67,15 +72,49 @@ export interface CourseGenerationDeps {
   contentProvider: CourseContentProvider;
   repairProvider: CourseContentProvider;
   fetchSourcesFn: (urls: string[]) => Promise<FetchedSource[]>;
+  /** Interne Lernpfade: Text des Firmendokuments (geschwärzt und gescannt). */
+  loadDocumentSourcesFn: (organizationId: string, documentId: string) => Promise<FetchedSource[]>;
 }
 
-function defaultDeps(job: CourseGenerationJob): CourseGenerationDeps {
-  return {
-    blueprintProvider: resolveBlueprintProvider(job.blueprintProvider),
-    contentProvider: anthropicHaikuContentProvider,
-    repairProvider: anthropicSonnetRepairProvider,
-    fetchSourcesFn: fetchSources,
-  };
+/**
+ * Standard-Bausteine. Bei internen Lernpfaden einer Firma (organizationId) laufen alle KI-Aufrufe über den Zugang
+ * der Firma (eigener Schlüssel oder unser Zugang, siehe resolveAiAccess); ohne nutzbaren Zugang bricht der Lauf
+ * im Preflight ab, bevor etwas an die KI geht.
+ */
+async function defaultDeps(
+  job: CourseGenerationJob,
+  override?: Partial<CourseGenerationDeps>,
+): Promise<CourseGenerationDeps> {
+  const base = { fetchSourcesFn: fetchSources, loadDocumentSourcesFn: loadDocumentSources };
+  if (!job.organizationId) {
+    return {
+      blueprintProvider: resolveBlueprintProvider(job.blueprintProvider),
+      contentProvider: anthropicHaikuContentProvider,
+      repairProvider: anthropicSonnetRepairProvider,
+      ...base,
+    };
+  }
+  if (override?.blueprintProvider && override.contentProvider && override.repairProvider) {
+    return { blueprintProvider: override.blueprintProvider, contentProvider: override.contentProvider, repairProvider: override.repairProvider, ...base };
+  }
+  try {
+    const client = await clientForOrganization(job.organizationId);
+    return {
+      blueprintProvider: createSonnetBlueprintProvider(client),
+      contentProvider: createHaikuContentProvider(client),
+      repairProvider: createSonnetRepairProvider(client),
+      ...base,
+    };
+  } catch (error) {
+    if (error instanceof AiAccessUnavailableError) throw new PreflightError(error.message);
+    throw error;
+  }
+}
+
+/** Slug des Lernpfads. Interne Lernpfade tragen die Auftrags-ID, damit Titel verschiedener Firmen nie kollidieren. */
+function plannedSlugFor(job: CourseGenerationJob): string {
+  const base = suggestCourseSlug(job.courseTitle, job.certificationVersion ?? undefined);
+  return job.organizationId ? `${base.slice(0, 60)}-${job.id.slice(0, 8)}` : base;
 }
 
 interface ObjectiveEntry {
@@ -245,6 +284,10 @@ function validateAttempt(
  * Resume-Logik pro Objective) gibt es hier nichts mehr zu generieren, nur
  * noch die bewusst zurückgehaltene Freigabe.
  */
+function importOwner(job: CourseGenerationJob): { organizationId: string } | undefined {
+  return job.organizationId ? { organizationId: job.organizationId } : undefined;
+}
+
 export async function publishPreparedCourseGenerationPackage(jobId: string): Promise<void> {
   const job = await getCourseGenerationJob(jobId);
   if (!job) throw new Error(`Job ${jobId} nicht gefunden.`);
@@ -264,7 +307,7 @@ export async function publishPreparedCourseGenerationPackage(jobId: string): Pro
 
   try {
     await updateCourseGenerationJob(jobId, { status: "importing", message: "Kurs wird importiert …" });
-    const imported = await importCoursePackage(pkgValidation.data);
+    const imported = await importCoursePackage(pkgValidation.data, job.organizationId ? plannedSlugFor(job) : undefined, importOwner(job));
     await updateCourseGenerationJob(jobId, {
       status: "published",
       resultCertificationId: imported.certificationId,
@@ -282,7 +325,7 @@ export async function executeCourseGenerationJob(
 ): Promise<void> {
   const job = await getCourseGenerationJob(jobId);
   if (!job) throw new Error(`Job ${jobId} nicht gefunden.`);
-  const deps: CourseGenerationDeps = { ...defaultDeps(job), ...depsOverride };
+  let deps!: CourseGenerationDeps;
 
   /** Kooperative Abbruchprüfung: `POST .../cancel` (Phase 3) setzt den
    * DB-Status auf "cancelled" - der Worker selbst hat keinen Zugriff auf den
@@ -329,15 +372,19 @@ export async function executeCourseGenerationJob(
       phase: "preflight",
       message: "Technischer Preflight läuft …",
     });
-    if (job.sourceUrls.length === 0) {
+    deps = { ...(await defaultDeps(job, depsOverride)), ...depsOverride };
+    if (!job.organizationId && job.sourceUrls.length === 0) {
       throw new PreflightError("Mindestens eine Quelle (sourceUrls) ist erforderlich.");
+    }
+    if (job.organizationId && !job.documentId) {
+      throw new PreflightError("Für einen internen Lernpfad ist ein Quelldokument erforderlich.");
     }
     // Der Slug-Kollisionscheck in importCoursePackage() greift erst GANZ am
     // Ende (nach Blueprint + allen Objective-Aufrufen) - ohne diesen
     // Vorab-Check würde ein Titel, der auf eine bereits bestehende
     // Zertifizierung slug-t, den kompletten (teuren) Lauf verschwenden, bevor
     // der Import ihn verwirft. Prüft hier, VOR jeglichem KI-Aufruf.
-    const plannedSlug = suggestCourseSlug(job.courseTitle, job.certificationVersion ?? undefined);
+    const plannedSlug = plannedSlugFor(job);
     const existingCert = await getDb()
       .select({ id: certifications.id })
       .from(certifications)
@@ -351,8 +398,12 @@ export async function executeCourseGenerationJob(
     }
     let sources: FetchedSource[];
     try {
-      sources = await deps.fetchSourcesFn(job.sourceUrls);
+      sources =
+        job.organizationId && job.documentId
+          ? await deps.loadDocumentSourcesFn(job.organizationId, job.documentId)
+          : await deps.fetchSourcesFn(job.sourceUrls);
     } catch (error) {
+      if (error instanceof DocumentSourceError) throw new PreflightError(error.message);
       // fetchSource() wirft SourceFetchError (siehe sources.ts) - das ist
       // GENAU der in Gate A beschriebene Fehlerfall ("Erreichbarkeit ...
       // der Quellen"), muss also als PreflightError enden, nicht als
@@ -548,7 +599,7 @@ export async function executeCourseGenerationJob(
     }
 
     await updateCourseGenerationJob(jobId, { status: "importing", message: "Kurs wird importiert …" });
-    const imported = await importCoursePackage(pkgValidation.data);
+    const imported = await importCoursePackage(pkgValidation.data, job.organizationId ? plannedSlugFor(job) : undefined, importOwner(job));
     await updateCourseGenerationJob(jobId, {
       status: "published",
       resultCertificationId: imported.certificationId,

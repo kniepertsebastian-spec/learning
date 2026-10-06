@@ -7,7 +7,8 @@ import { getCompanyMembership } from "@/lib/server/company/access";
  *  - Allgemeine Lernpfade: freigegebene (catalog_status = approved) alle; Plattform-Admins auch Entwürfe und
  *    Lernpfade in Prüfung (sie erstellen und prüfen sie).
  *  - Interne Lernpfade (von der Firma selbst angelegt und geprüft) nur Mitglieder der Organisation, der sie
- *    gehören, und erst, wenn die Firma sie freigegeben hat. Plattform-Admins haben darauf KEINEN Zugriff:
+ *    gehören, und erst, wenn die Firma sie freigegeben hat; den Entwurf vorher sehen nur Mentor und Firmen-Admin
+ *    (sie prüfen ihn). Plattform-Admins haben darauf KEINEN Zugriff:
  *    Firmendaten gehören der Firma.
  * Die Lern-APIs prüfen dieselbe Regel über lib/server/catalog/access.ts.
  */
@@ -29,7 +30,10 @@ export async function canViewCertification(
   cert: { kind: "general" | "internal"; ownerOrganizationId: string | null; catalogStatus: "draft" | "in_review" | "approved" },
 ): Promise<boolean> {
   if (cert.kind === "general") return cert.catalogStatus === "approved" || viewer?.role === "admin";
-  if (!viewer || cert.catalogStatus !== "approved") return false;
+  if (!viewer) return false;
   const membership = await getCompanyMembership(viewer.id);
-  return membership !== null && membership.organizationId === cert.ownerOrganizationId;
+  if (membership === null || membership.organizationId !== cert.ownerOrganizationId) return false;
+  if (cert.catalogStatus === "approved") return true;
+  // Den KI-Entwurf prüfen Mentor und Firmen-Admin der Firma; Lernende sehen ihn erst nach der Freigabe.
+  return membership.role === "company_admin" || membership.role === "mentor";
 }

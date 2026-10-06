@@ -239,6 +239,13 @@
       "when": 1791323954225,
       "tag": "0033_company_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791328316377,
+      "tag": "0034_internal_course_jobs",
+      "breakpoints": true
     }
   ]
 }

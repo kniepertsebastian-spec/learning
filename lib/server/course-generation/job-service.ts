@@ -1,4 +1,4 @@
-import { desc, eq, notInArray } from "drizzle-orm";
+import { and, desc, eq, isNull, notInArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   courseGenerationJobs,
@@ -28,6 +28,9 @@ export interface CreateCourseGenerationJobInput {
   initialCostLimitUsd: number;
   absoluteCostLimitUsd: number;
   blueprintProvider: string;
+  /** Nur bei internen Lernpfaden einer Firma (siehe createInternalCourseJob). */
+  organizationId?: string;
+  documentId?: string;
 }
 
 /**
@@ -45,7 +48,15 @@ export async function createCourseGenerationJob(
   const activeJobs = await db
     .select({ id: courseGenerationJobs.id, courseTitle: courseGenerationJobs.courseTitle })
     .from(courseGenerationJobs)
-    .where(notInArray(courseGenerationJobs.status, TERMINAL_COURSE_GENERATION_JOB_STATUSES));
+    .where(
+      and(
+        notInArray(courseGenerationJobs.status, TERMINAL_COURSE_GENERATION_JOB_STATUSES),
+        // Dublettenprüfung nur im eigenen Bereich: der Betreiber erfährt nicht, woran eine Firma arbeitet (und umgekehrt).
+        input.organizationId
+          ? eq(courseGenerationJobs.organizationId, input.organizationId)
+          : isNull(courseGenerationJobs.organizationId),
+      ),
+    );
   const duplicate = activeJobs.find(
     (row) => row.courseTitle.trim().toLowerCase() === input.courseTitle.trim().toLowerCase(),
   );
@@ -65,6 +76,8 @@ export async function createCourseGenerationJob(
       provider: input.provider,
       certificationVersion: input.certificationVersion,
       sourceUrls: input.sourceUrls,
+      organizationId: input.organizationId,
+      documentId: input.documentId,
       autoPublish: input.autoPublish,
       initialCostLimitUsd: input.initialCostLimitUsd.toString(),
       absoluteCostLimitUsd: input.absoluteCostLimitUsd.toString(),
@@ -86,10 +99,21 @@ export async function getCourseGenerationJob(id: string): Promise<CourseGenerati
   return job ?? null;
 }
 
+/** Aufträge des Betreibers. Interne Lernpfade der Firmen (organization_id gesetzt) gehören nie dazu. */
+/**
+ * Auftrag für die Betreiberseite: interne Lernpfade einer Firma sind dort nicht vorhanden (null, wie "nicht gefunden").
+ * Der Worker und die Firmenseite lesen mit getCourseGenerationJob.
+ */
+export async function getOperatorCourseGenerationJob(id: string): Promise<CourseGenerationJob | null> {
+  const job = await getCourseGenerationJob(id);
+  return job && !job.organizationId ? job : null;
+}
+
 export async function listCourseGenerationJobs(limit = 20): Promise<CourseGenerationJob[]> {
   return getDb()
     .select()
     .from(courseGenerationJobs)
+    .where(isNull(courseGenerationJobs.organizationId))
     .orderBy(desc(courseGenerationJobs.createdAt))
     .limit(limit);
 }

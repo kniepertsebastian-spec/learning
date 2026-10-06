@@ -1094,6 +1094,13 @@ export const courseGenerationJobs = pgTable(
     requestedByUserId: uuid("requested_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    /**
+     * Gesetzt = interner Lernpfad einer Firma (Quelle ist ein Firmendokument, Ergebnis gehört der Firma). Solche
+     * Aufträge sieht der Betreiber nie: alle Admin-Abfragen filtern auf organization_id is null.
+     */
+    organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+    /** Quelle eines internen Lernpfads. SET NULL: das Dokument darf gelöscht werden, der erzeugte Lernpfad bleibt. */
+    documentId: uuid("document_id").references(() => companyDocuments.id, { onDelete: "set null" }),
     courseTitle: text("course_title").notNull(),
     courseDescription: text("course_description").notNull(),
     language: text("language").notNull(),
@@ -1127,6 +1134,7 @@ export const courseGenerationJobs = pgTable(
   },
   (table) => [
     index("course_generation_jobs_status_idx").on(table.status),
+    index("course_generation_jobs_org_idx").on(table.organizationId),
     check(
       "course_generation_jobs_status_check",
       sql`${table.status} in ('queued', 'preflight', 'preflight_failed', 'blueprint_requested', 'blueprint_generating', 'blueprint_validating', 'cost_estimating', 'blueprint_ready', 'canary_generating', 'canary_validating', 'canary_failed', 'content_generating', 'batch_generating', 'validating', 'repairing', 'circuit_breaker_open', 'package_ready', 'importing', 'published', 'waiting_for_quota', 'paused_budget', 'cost_limit_reached', 'failed', 'cancelled')`,

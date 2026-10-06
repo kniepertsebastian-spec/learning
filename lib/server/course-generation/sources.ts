@@ -43,6 +43,28 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
+/** Kappt die Ausschnitte einer Quelle bei MAX_EXCERPT_CHARS_PER_SOURCE (Kostenschutz). */
+export function capExcerpts(excerpts: SourceExcerpt[]): { excerpts: SourceExcerpt[]; truncated: boolean } {
+  let truncated = false;
+  let budget = MAX_EXCERPT_CHARS_PER_SOURCE;
+  const capped: SourceExcerpt[] = [];
+  for (const excerpt of excerpts) {
+    if (budget <= 0) {
+      truncated = true;
+      break;
+    }
+    if (excerpt.text.length > budget) {
+      capped.push({ locator: excerpt.locator, text: excerpt.text.slice(0, budget) });
+      truncated = true;
+      budget = 0;
+    } else {
+      capped.push(excerpt);
+      budget -= excerpt.text.length;
+    }
+  }
+  return { excerpts: capped, truncated };
+}
+
 /**
  * Gate A (course_generation.md Abschnitt 3.4): "Erreichbarkeit und erlaubte
  * Dateitypen der Quellen" + "erfolgreiche Text- und PDF-Extraktion" +
@@ -83,23 +105,7 @@ export async function fetchSource(id: string, url: string): Promise<FetchedSourc
     );
   }
 
-  let truncated = false;
-  let budget = MAX_EXCERPT_CHARS_PER_SOURCE;
-  const cappedExcerpts: SourceExcerpt[] = [];
-  for (const excerpt of excerpts) {
-    if (budget <= 0) {
-      truncated = true;
-      break;
-    }
-    if (excerpt.text.length > budget) {
-      cappedExcerpts.push({ locator: excerpt.locator, text: excerpt.text.slice(0, budget) });
-      truncated = true;
-      budget = 0;
-    } else {
-      cappedExcerpts.push(excerpt);
-      budget -= excerpt.text.length;
-    }
-  }
+  const { excerpts: cappedExcerpts, truncated } = capExcerpts(excerpts);
 
   return {
     id,
