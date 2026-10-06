@@ -45,10 +45,12 @@ export function Header({
           {hasCompanyAccess && (
             <Link
               href="/company"
-              className="rounded-md border border-border p-2 hover:bg-background"
+              className="flex items-center gap-1.5 rounded-md border border-border p-2 text-sm font-medium hover:bg-background sm:px-2.5 sm:py-1.5"
               aria-label={locale === "de" ? "Firmenbereich öffnen" : "Open company area"}
+              data-testid="header-company-link"
             >
               <Building2 className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">{locale === "de" ? "Firma" : "Company"}</span>
             </Link>
           )}
 

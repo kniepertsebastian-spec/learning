@@ -1,12 +1,13 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { GraduationCap } from "lucide-react";
+import { ArrowRight, GraduationCap } from "lucide-react";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { SignOutButton } from "@/components/SignOutButton";
 import { listMyAssignments } from "@/lib/server/assignments/sync";
+import { getCompanyMembership, isRoleAllowed, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
 import { getServerLocale } from "@/lib/server/locale";
 
 const ASSIGNMENT_STATUS = {
@@ -23,7 +24,11 @@ export default async function DashboardPage() {
     getServerLocale(),
   ]);
   const de = locale === "de";
-  const assignments = session?.user?.id ? await listMyAssignments(session.user.id) : [];
+  const [assignments, membership] = session?.user?.id
+    ? await Promise.all([listMyAssignments(session.user.id), getCompanyMembership(session.user.id)])
+    : [[], null];
+  // Firmen-Admin und Mentor kommen von der Startseite direkt in den Firmenbereich.
+  const companyMembership = isRoleAllowed(membership, STATUS_VIEW_ROLES) ? membership : null;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -54,6 +59,26 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {companyMembership && (
+        <Link
+          href="/company"
+          className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent/5 p-5 hover:border-accent"
+          data-testid="company-entry"
+        >
+          <span>
+            <span className="block font-semibold">
+              {de ? `Firmenbereich: ${companyMembership.organizationName}` : `Company area: ${companyMembership.organizationName}`}
+            </span>
+            <span className="mt-1 block text-sm text-foreground/70">
+              {companyMembership.role === "company_admin"
+                ? de ? "Lernpfade zuweisen, Status ansehen, Mitarbeiter einladen" : "Assign learning paths, view status, invite people"
+                : de ? "Lernpfade zuweisen und Status ansehen" : "Assign learning paths and view status"}
+            </span>
+          </span>
+          <ArrowRight className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+        </Link>
+      )}
 
       {assignments.length > 0 && (
         <section className="mb-6 rounded-xl border border-border bg-surface p-5" data-testid="my-assignments">
