@@ -18,6 +18,12 @@ const ALLOWED_TABLES = new Set([
   "organizationMemberships",
   "companyAssignments",
   "companyInvitations",
+  "companyDocuments",
+  "companyDocumentFiles",
+  "companyCourseEntitlements",
+  "courseRequests",
+  "courseRequestEvents",
+  "organizationAiSettings",
 ]);
 // Erlaubte Imports aus lib/server/* (alles andere, z. B. progress, quiz, remediation, exam, study, sync, analytics, review, sections, offline, ai, admin, wäre ein Zugriff auf Lerndetails).
 // "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen, "auth-rate-limit"
@@ -35,6 +41,11 @@ const ALLOWED_SERVER_MODULES = new Set([
   "mail/templates",
   "company",
   "locale",
+  // Firmendokumente: PDF-Text, Upload-Prüfung und Secret-Scanner (reine Funktionen, keine Lerndaten)
+  "documents",
+  // KI-Zugang der Firma: Verschlüsselung der Schlüssel und Prüfung des Schlüssels (keine Lerndaten)
+  "crypto",
+  "byok",
 ]);
 
 function sourceFiles(dir: string): string[] {
@@ -93,6 +104,7 @@ describe("Firmenbereich liest keine Lerndetails", () => {
       "memberName",
       "memberEmail",
       "learningPath",
+      "learningPathKind",
       "status",
       "assignedAt",
       "dueAt",

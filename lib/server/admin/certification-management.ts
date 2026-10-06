@@ -40,6 +40,8 @@ export class CertificationManagementService {
         provider: template.provider,
         examName: template.examName,
         examVersion: template.examVersion,
+        // Neue Lernpfade brauchen die fachliche Freigabe (Name und Datum), bevor sie an Kunden gehen dürfen.
+        catalogStatus: "draft",
       })
       .returning();
 

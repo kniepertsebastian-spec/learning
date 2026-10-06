@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { COURSE_KIND_LABELS } from "@/lib/course-requests";
 
 type Status = "assigned" | "in_progress" | "completed";
 type Role = "company_admin" | "mentor" | "learner";
@@ -11,6 +12,7 @@ export type AssignmentRowView = {
   memberName: string | null;
   memberEmail: string;
   learningPath: string;
+  learningPathKind: "general" | "internal";
   status: Status;
   assignedAt: string;
   dueAt: string | null;
@@ -18,7 +20,7 @@ export type AssignmentRowView = {
   overdue: boolean;
 };
 export type MemberOption = { userId: string; name: string | null; email: string; role: Role };
-export type PathOption = { id: string; name: string };
+export type PathOption = { id: string; name: string; kind: "general" | "internal" };
 
 const STATUS_LABELS: Record<Status, { de: string; en: string }> = {
   assigned: { de: "Zugewiesen", en: "Assigned" },
@@ -143,7 +145,7 @@ export function AssignmentsPanel({
             >
               {paths.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
+                  {p.name} ({COURSE_KIND_LABELS[p.kind][locale]})
                 </option>
               ))}
             </select>
@@ -199,7 +201,10 @@ export function AssignmentsPanel({
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-border" data-testid="status-row">
                   <td className="py-2 pr-4">{r.memberName ? `${r.memberName} (${r.memberEmail})` : r.memberEmail}</td>
-                  <td className="py-2 pr-4">{r.learningPath}</td>
+                  <td className="py-2 pr-4">
+                    {r.learningPath}
+                    <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 text-xs">{COURSE_KIND_LABELS[r.learningPathKind][locale]}</span>
+                  </td>
                   <td className="py-2 pr-4" data-testid="row-status">
                     {STATUS_LABELS[r.status][locale]}
                     {r.overdue && <span className="ml-2 rounded bg-red-500/10 px-1.5 py-0.5 text-xs text-red-500">{de ? "überfällig" : "overdue"}</span>}

@@ -56,6 +56,8 @@ services:
       GEMINI_BUDGET_USD: ${GEMINI_BUDGET_USD:-}
 
       # E-Mail-Versand per SMTP (docs/EMAIL.md); leer = Versand aus
+      # Schlüssel zum Verschlüsseln gespeicherter Firmen-Geheimnisse (eigene KI-Schlüssel, BYOK): openssl rand -base64 32
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-}
       MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-}
       MAIL_SMTP_PORT: ${MAIL_SMTP_PORT:-}
       MAIL_SMTP_SECURE: ${MAIL_SMTP_SECURE:-}

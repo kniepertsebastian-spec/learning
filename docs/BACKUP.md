@@ -90,7 +90,8 @@ docker run --rm \
 
 ## Automatisiertes, verschlüsseltes Backup
 
-`scripts/backup.sh` sichert Postgres (`pg_dump`, Custom-Format) und die Quell-PDFs, verschlüsselt
+`scripts/backup.sh` sichert Postgres (`pg_dump`, Custom-Format; darin liegen auch die hochgeladenen
+Firmendokumente) und die Quell-PDFs, verschlüsselt
 beides mit [age](https://github.com/FiloSottile/age) und räumt lokale Backups nach
 `BACKUP_RETENTION_DAYS` (Default 14) auf. Auf dem Server liegt nur der **öffentliche** Schlüssel.
 Der private Schlüssel gehört an einen anderen Ort (Passwortmanager, Rechner des Betreibers),

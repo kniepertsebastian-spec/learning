@@ -1,0 +1,211 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { CATALOG_STATUS_LABELS, REQUEST_STATUS_LABELS, SETTABLE_REQUEST_STATUSES } from "@/lib/course-requests";
+import type { CatalogStatus, CourseRequestStatus } from "@/lib/server/db/schema";
+
+type AdminRequest = {
+  id: string;
+  organizationName: string;
+  requesterName: string | null;
+  requesterEmail: string | null;
+  status: CourseRequestStatus;
+  statusNote: string | null;
+  wishTitle: string | null;
+  wishDescription: string | null;
+  certificationId: string | null;
+  courseName: string | null;
+  courseCatalogStatus: CatalogStatus | null;
+  createdAt: string;
+};
+type CatalogRow = {
+  id: string;
+  name: string;
+  catalogStatus: CatalogStatus;
+  approvedByName: string | null;
+  approvedAt: string | null;
+};
+
+async function call(url: string, method: string, body?: unknown): Promise<string | null> {
+  const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (res.ok) return null;
+  const data = await res.json().catch(() => null);
+  return data?.error ?? `Fehler ${res.status}`;
+}
+
+function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: CatalogRow[]; locale: "de" | "en" }) {
+  const router = useRouter();
+  const de = locale === "de";
+  const [status, setStatus] = useState<CourseRequestStatus>(r.status === "released" ? "submitted" : r.status);
+  const [note, setNote] = useState("");
+  const [courseId, setCourseId] = useState(r.certificationId ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const done = r.status === "released";
+
+  async function save() {
+    setError(await call(`/api/admin/course-requests/${r.id}`, "PATCH", { status, note: note || null }));
+    setNote("");
+    router.refresh();
+  }
+  async function release() {
+    const err = await call(`/api/admin/course-requests/${r.id}/release`, "POST", { certificationId: courseId || null, note: note || null });
+    setError(err);
+    if (!err) router.refresh();
+  }
+
+  return (
+    <li className="rounded-md border border-border bg-background p-3 text-sm" data-testid="admin-request-row">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>
+          <span className="font-medium">{r.courseName ?? r.wishTitle}</span>
+          <span className="ml-2 text-xs text-foreground/70">
+            {r.organizationName} · {r.requesterName ?? r.requesterEmail ?? "–"} · {new Date(r.createdAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}
+          </span>
+        </span>
+        <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent" data-testid="admin-request-status">
+          {REQUEST_STATUS_LABELS[r.status][locale]}
+        </span>
+      </div>
+      {r.wishDescription && <p className="mt-1 text-xs text-foreground/70">{r.wishDescription}</p>}
+      {r.statusNote && <p className="mt-1 text-xs">{r.statusNote}</p>}
+      {!done && (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select value={status} onChange={(e) => setStatus(e.target.value as CourseRequestStatus)} aria-label="Status" className="rounded-md border border-border bg-surface px-2 py-1 text-xs">
+              {SETTABLE_REQUEST_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {REQUEST_STATUS_LABELS[s][locale]}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={500}
+              placeholder={de ? "Hinweis an die Firma (bei Ablehnung Pflicht)" : "Note to the company (required when declining)"}
+              aria-label={de ? "Hinweis" : "Note"}
+              className="flex-1 rounded-md border border-border bg-surface px-2 py-1 text-xs"
+            />
+            <button type="button" onClick={() => void save()} className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface">
+              {de ? "Stand setzen" : "Set status"}
+            </button>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select value={courseId} onChange={(e) => setCourseId(e.target.value)} aria-label={de ? "Lernpfad für die Freigabe" : "Course to release"} className="rounded-md border border-border bg-surface px-2 py-1 text-xs">
+              <option value="">{r.certificationId ? (de ? "Angefragter Lernpfad" : "Requested course") : de ? "Lernpfad wählen …" : "Choose a course …"}</option>
+              {releasable.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => void release()}
+              disabled={!courseId && !r.certificationId}
+              className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {de ? "Für die Firma freigeben" : "Release for company"}
+            </button>
+          </div>
+          {r.certificationId && r.courseCatalogStatus !== "approved" && (
+            <p className="text-xs text-red-500">{de ? "Der angefragte Lernpfad ist noch nicht fachlich freigegeben." : "The requested course has not been approved by an expert yet."}</p>
+          )}
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-xs text-red-500">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+}
+
+function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
+  const router = useRouter();
+  const de = locale === "de";
+  const [status, setStatus] = useState<CatalogStatus>(c.catalogStatus);
+  const [name, setName] = useState(c.approvedByName ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setError(await call(`/api/admin/certifications/${c.id}/catalog`, "PATCH", { status, approvedByName: status === "approved" ? name : null }));
+    router.refresh();
+  }
+  return (
+    <li className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm sm:flex-row sm:items-center" data-testid="catalog-row">
+      <span className="flex-1">
+        <span className="font-medium">{c.name}</span>
+        {c.approvedAt && (
+          <span className="ml-2 text-xs text-foreground/70">
+            {de ? "geprüft von" : "reviewed by"} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}
+          </span>
+        )}
+      </span>
+      <select value={status} onChange={(e) => setStatus(e.target.value as CatalogStatus)} aria-label="Status" className="rounded-md border border-border bg-surface px-2 py-1 text-xs">
+        {(Object.keys(CATALOG_STATUS_LABELS) as CatalogStatus[]).map((s) => (
+          <option key={s} value={s}>
+            {CATALOG_STATUS_LABELS[s][locale]}
+          </option>
+        ))}
+      </select>
+      {status === "approved" && (
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={120}
+          placeholder={de ? "Name der prüfenden Person" : "Reviewer name"}
+          aria-label={de ? "Name der prüfenden Person" : "Reviewer name"}
+          className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
+        />
+      )}
+      <button type="button" onClick={() => void save()} className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface">
+        {de ? "Speichern" : "Save"}
+      </button>
+      {error && (
+        <span role="alert" className="text-xs text-red-500">
+          {error}
+        </span>
+      )}
+    </li>
+  );
+}
+
+/** Betreiber: Anfragen aller Firmen bearbeiten und den fachlichen Prüfstatus der Lernpfade pflegen. */
+export function AdminRequestsPanel({ requests, catalog, locale }: { requests: AdminRequest[]; catalog: CatalogRow[]; locale: "de" | "en" }) {
+  const de = locale === "de";
+  const releasable = catalog.filter((c) => c.catalogStatus === "approved");
+  return (
+    <>
+      <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-requests">
+        <h2 className="text-lg font-medium">{de ? "Anfragen" : "Requests"}</h2>
+        {requests.length === 0 ? (
+          <p className="mt-2 text-sm text-foreground/70">{de ? "Keine Anfragen." : "No requests."}</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-3">
+            {requests.map((r) => (
+              <RequestRow key={r.id} r={r} releasable={releasable} locale={locale} />
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-catalog">
+        <h2 className="text-lg font-medium">{de ? "Allgemeine Lernpfade: fachliche Prüfung" : "General courses: expert review"}</h2>
+        <p className="mt-1 text-sm text-foreground/70">
+          {de
+            ? "Nur freigegebene Lernpfade lassen sich für Firmen freigeben und zuweisen. Die Freigabe nennt die prüfende Person (auch extern) und das Datum."
+            : "Only approved courses can be released to companies and assigned. Approval records the reviewer (also external) and the date."}
+        </p>
+        <ul className="mt-3 flex flex-col gap-2">
+          {catalog.map((c) => (
+            <CatalogItem key={c.id} c={c} locale={locale} />
+          ))}
+        </ul>
+      </section>
+    </>
+  );
+}

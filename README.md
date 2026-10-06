@@ -72,6 +72,23 @@ auch der Status je Person: zugewiesen, in Arbeit (sobald geübt wird) oder abges
 beherrscht). Die Firma sieht nur Status, Zuweisungs-, Frist- und Abschlussdatum, nie Ergebnisse. Die
 Lernenden sehen ihre Zuweisungen auf der Startseite.
 
+Allgemeine Lernpfade (Security, Zertifikate) erstellen wir selbst; die Firma **fragt sie unter `/company` an**
+(aus dem Katalog oder als freien Wunsch) und sieht den Stand. Als Betreiber bearbeitest du die Anfragen unter
+`/admin/requests`: Stand und Hinweis setzen, den Lernpfad fachlich freigeben (Name der prüfenden Person und Datum
+werden gespeichert) und für die Firma freigeben. Zuweisen kann die Firma nur freigegebene allgemeine Lernpfade
+und ihre eigenen internen. Neue Lernpfade starten als Entwurf und sind für Lernende erst nach der Prüfung sichtbar. Interne Lernpfade legt
+die Firma selbst an und prüft sie selbst; Betreiber und externer Prüfer sehen sie nicht.
+
+Firmendokumente (PDF, .txt, .md, bis 10 MB) laden Firmen-Admin und Mentor unter `/company` hoch. Jedes
+Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft; bei einem Fund wird nichts
+gespeichert; ein Firmen-Admin kann Fehlalarme bestimmter Arten (z. B. Beispiel-Passwörter in Anleitungen) als unkritisch
+bestätigen, private Schlüssel und Token nie. Die Dateien liegen in der Datenbank und sind damit im `pg_dump`-Backup
+enthalten.
+
+Für interne Lernpfade wählt der Firmen-Admin den KI-Zugang: über unseren Zugang oder mit dem eigenen Gemini-Schlüssel
+(BYOK). Eigene Schlüssel werden verschlüsselt gespeichert; dafür braucht der Server `APP_ENCRYPTION_KEY`
+(`openssl rand -base64 32`, in der `.env`, nicht ins Datenbank-Backup).
+
 ### Konto (Self-Service)
 
 Unter `/account` ändern Nutzer ihr Passwort (danach sind alle Sitzungen beendet), laden ihre Daten als

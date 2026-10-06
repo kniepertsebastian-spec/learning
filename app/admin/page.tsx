@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getServerLocale } from "@/lib/server/locale";
+import { countOpenCourseRequests } from "@/lib/server/admin/course-requests";
 import { getCertificationsWithStats } from "@/lib/server/admin/stats";
 import { CourseGenerationPanel } from "@/components/CourseGenerationPanel";
 import { createCertificationAction } from "./actions";
@@ -12,6 +13,7 @@ export default async function AdminDashboard() {
   await requireAdminPage("/admin");
   const locale = await getServerLocale();
   const certifications = await getCertificationsWithStats();
+  const openRequests = await countOpenCourseRequests();
 
   return (
     <div className="flex flex-1 flex-col">
@@ -23,6 +25,20 @@ export default async function AdminDashboard() {
           ? "Zertifizierungen und Lerninhalte verwalten"
           : "Manage certifications and learning content"}
       </p>
+
+      <Link
+        href="/admin/requests"
+        className="mb-6 flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 text-sm hover:border-accent"
+        data-testid="admin-requests-link"
+      >
+        <span>
+          <span className="font-medium">{locale === "de" ? "Kundenanfragen und Freigaben" : "Customer requests and releases"}</span>
+          <span className="ml-2 text-foreground/70">
+            {locale === "de" ? `${openRequests} offen` : `${openRequests} open`}
+          </span>
+        </span>
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+      </Link>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section>
