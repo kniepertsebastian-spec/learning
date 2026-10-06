@@ -1,9 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
+import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
 import { ASSIGN_ROLES, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
 import { isOverdue, listAssignableLearningPaths, listAssignableMembers } from "@/lib/server/company/assignments";
+import { listCompanyDocuments } from "@/lib/server/company/documents";
 import { requireCompanyPage } from "@/lib/server/company/guard";
 import { listCompanyStatus } from "@/lib/server/company/status";
 import { listPendingInvitations } from "@/lib/server/company/invitations";
@@ -28,11 +30,22 @@ export default async function CompanyPage() {
   ]);
   const de = locale === "de";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths] = await Promise.all([
+  const [entries, members, paths, documents] = await Promise.all([
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
     canAssign ? listAssignableLearningPaths() : [],
+    listCompanyDocuments(membership.organizationId),
   ]);
+  const documentRows = documents.map((d) => ({
+    id: d.id,
+    title: d.title,
+    originalFilename: d.originalFilename,
+    sizeBytes: d.sizeBytes,
+    pageCount: d.pageCount,
+    excludeFromAi: d.excludeFromAi,
+    createdAt: d.createdAt.toISOString(),
+    uploadedByName: d.uploadedByName,
+  }));
   const rows = entries.map((e) => ({
     id: e.assignmentId,
     memberName: e.memberName,
@@ -66,6 +79,8 @@ export default async function CompanyPage() {
       </div>
 
       <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
+
+      <DocumentsPanel documents={documentRows} locale={locale} />
 
       {invitations && <InvitationsPanel invitations={invitations} locale={locale} mailEnabled={isMailConfigured()} />}
     </div>

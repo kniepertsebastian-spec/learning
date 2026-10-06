@@ -19,6 +19,9 @@ export const STATUS_VIEW_ROLES: readonly CompanyRole[] = ["company_admin", "ment
 /** Rollen, die Lernpfade zuweisen, Fristen ändern und Zuweisungen entfernen dürfen. */
 export const ASSIGN_ROLES: readonly CompanyRole[] = ["company_admin", "mentor"];
 
+/** Rollen, die Firmendokumente hochladen, ansehen und löschen dürfen. */
+export const DOCUMENT_ROLES: readonly CompanyRole[] = ["company_admin", "mentor"];
+
 /**
  * Lädt die Mitgliedschaft IMMER frisch aus der Datenbank (wie getCurrentUser in
  * auth-guards.ts): ein entzogenes Mitglied oder eine geänderte Rolle wirkt bei

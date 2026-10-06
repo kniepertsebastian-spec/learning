@@ -3,6 +3,7 @@ import {
   type AnyPgColumn,
   boolean,
   check,
+  customType,
   foreignKey,
   index,
   integer,
@@ -1283,6 +1284,55 @@ export const companyInvitations = pgTable(
     index("company_invitations_email_idx").on(table.email),
   ],
 );
+
+/** Binärdaten in Postgres (bytea). Der Treiber liefert und erwartet Buffer. */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
+
+/**
+ * Phase 3: Firmendokument (Metadaten). Gehört genau einer Organisation und wird nie ohne Mandantenfilter
+ * gelesen (lib/server/company/documents.ts). Hochgeladen werden nur Dateien, die den Secret-Scanner
+ * bestanden haben (lib/server/documents/secret-scanner.ts). Die Datei selbst liegt getrennt in
+ * company_document_files, damit Listen nie die Dateiinhalte laden. Dedup nur INNERHALB einer
+ * Organisation (Unique auf Prüfsumme), nie organisationsübergreifend. Der Uploader-Verweis geht beim
+ * Löschen des Kontos auf NULL, das Dokument gehört der Firma.
+ */
+export const companyDocuments = pgTable(
+  "company_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    uploadedByUserId: uuid("uploaded_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    originalFilename: text("original_filename").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    /** SHA-256 des Dateiinhalts (Hex). */
+    checksum: text("checksum").notNull(),
+    /** Seiten bei PDFs, 1 bei Textdateien. */
+    pageCount: integer("page_count").notNull(),
+    /** Option „von KI-Verarbeitung ausschließen“: wird gespeichert, wirkt mit dem KI-Schritt. */
+    excludeFromAi: boolean("exclude_from_ai").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("company_documents_org_checksum_unique").on(table.organizationId, table.checksum),
+    index("company_documents_org_idx").on(table.organizationId),
+  ],
+);
+
+/** Dateiinhalt eines Firmendokuments (wird mit dem Dokument gelöscht und über pg_dump mitgesichert). */
+export const companyDocumentFiles = pgTable("company_document_files", {
+  documentId: uuid("document_id")
+    .primaryKey()
+    .references(() => companyDocuments.id, { onDelete: "cascade" }),
+  data: bytea("data").notNull(),
+});
 
 export type AccountTokenPurpose = "verify_email" | "reset_password";
 

@@ -18,6 +18,8 @@ const ALLOWED_TABLES = new Set([
   "organizationMemberships",
   "companyAssignments",
   "companyInvitations",
+  "companyDocuments",
+  "companyDocumentFiles",
 ]);
 // Erlaubte Imports aus lib/server/* (alles andere, z. B. progress, quiz, remediation, exam, study, sync, analytics, review, sections, offline, ai, admin, wäre ein Zugriff auf Lerndetails).
 // "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen, "auth-rate-limit"
@@ -35,6 +37,8 @@ const ALLOWED_SERVER_MODULES = new Set([
   "mail/templates",
   "company",
   "locale",
+  // Firmendokumente: PDF-Text, Upload-Prüfung und Secret-Scanner (reine Funktionen, keine Lerndaten)
+  "documents",
 ]);
 
 function sourceFiles(dir: string): string[] {

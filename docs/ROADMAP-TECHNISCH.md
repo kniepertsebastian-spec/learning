@@ -178,8 +178,15 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [x] Einstieg in den Firmenbereich ohne die Adresse zu kennen
   - _Geprüft im Browser (Chromium, Produktions-Build, 14 Prüfungen):_ Firmen-Admin und Mentor sehen auf der Startseite die Karte „Firmenbereich: <Firma>“ (der Admin mit „Mitarbeiter einladen“, der Mentor ohne) und im Header den Link „Firma“ (auf dem Handy nur das Symbol, kein seitliches Scrollen); beide führen nach `/company`. Lernende und Nutzer ohne Organisation sehen weder Karte noch Link. Nach dem Annehmen einer Einladung landen Admin und Mentor direkt in `/company` (gab es schon)
 - [ ] Firmenmodule an einen Lernpfad hängen (Basiskurs plus Firmenmodule) – kommt mit dem Dokument-Upload
-- [ ] Firmendokument hochladen → KI-Entwurf → Mentor prüft und gibt frei
-- [ ] Passwort- und Schlüssel-Scanner beim Upload
+- [x] Firmendokumente hochladen, ablegen, herunterladen und löschen (Upload-Gerüst, noch ohne KI)
+  - _Geprüft gegen echte DB (9 Tests), 49 Tests ohne DB und im Browser (Chromium, Produktions-Build, 17 Prüfungen):_ Firmen-Admin und Mentor laden PDF, .txt und .md hoch (bis 10 MB; Endung, MIME-Typ und Inhalt müssen zusammenpassen: PDF-Signatur, gültiges UTF-8 ohne Binärdaten). Nur Dokumente, die den Secret-Scanner bestehen, werden gespeichert. Mandantengetrennt: Liste, Download und Löschen filtern immer nach der eigenen Organisation (fremde Dokumente: 404), Lernende und Nutzer ohne Organisation bekommen 403. Dedup nur innerhalb einer Firma (Prüfsumme), nie firmenübergreifend. Download nur als Anhang mit `nosniff` und `sandbox`-CSP. Die Liste zeigt nur Metadaten, nie Inhalt. Audit: `document.uploaded|rejected|deleted`
+  - _Ablage in der Datenbank (Tabelle `company_document_files`, Migration `0029`):_ wird mit `pg_dump` mitgesichert (kein weiteres Docker-Volume, kein Pfad aus Nutzereingaben) und mit der Organisation gelöscht; das Dokument überlebt das Löschen des Uploaders (Uploader-Verweis `SET NULL`, im Export-Test mit Begründung ausgenommen)
+  - _Mutationstests:_ ohne Scanner im Upload fallen 4, ohne Mandantenfilter bei Liste, Download oder Löschen je 1, mit Lernenden als Berechtigten 3, ohne PDF-Signaturprüfung 1, mit Annahme textloser PDFs 3, mit kaputter Schlüssel-Regel 9 Tests durch
+- [ ] Firmendokument → KI-Entwurf → Mentor prüft und gibt frei (der KI-Schritt und die Freigabe fehlen noch)
+- [x] Passwort- und Schlüssel-Scanner beim Upload
+  - _Geprüft (42 Scanner-Tests, 49 mit Upload-Prüfung, DB- und Browser-Tests, siehe oben):_ erkennt private Schlüssel (PEM), AWS-, GitHub-, Google-, Slack-, Stripe-Schlüssel, JWT, Zugangsdaten in Adressen, Authorization-Header und Passwort-Zuweisungen („Passwort: …“, `DB_PASSWORD = …`, „Das Passwort ist …“). Platzhalter (`<…>`, `${…}`, `****`, `changeme`) und Sätze wie „Passwort: mindestens zwölf Zeichen“ bleiben unbeanstandet, ebenso öffentliche Zertifikate. Ein Fund heißt: **nichts wird gespeichert**, die Antwort nennt Art, Seite und Zeile, **nie den Wert** (Test belegt es auch für das Audit-Log). Fund-Seite stimmt auch bei PDFs
+  - _Entscheidungen (bitte prüfen):_ Kein Überschreiben („trotzdem hochladen“): bei einem Fund muss die Stelle geschwärzt werden. PDFs ohne auswählbaren Text (eingescannte Seiten) werden abgelehnt, weil der Scanner sie nicht prüfen kann und die spätere KI-Verarbeitung Text braucht
+  - _Grenzen:_ Es wird nur Text geprüft. Bilder, gescannte Seiten und Passwörter in Prosa erkennt der Scanner nicht. Reine Buchstaben-Passwörter ohne Ziffer oder Sonderzeichen („Passwort: sommerhaus“) gelten als nicht eindeutig und werden nicht gemeldet. Er ist ein Sicherheitsnetz, keine Garantie
 - [ ] Praxisaufgaben mit Bestätigung durch den Mentor
 - [x] Statusansicht für die Firma (nur Status, Datum, Frist)
   - _Geprüft:_ `/company` zeigt je Zuweisung Person, Lernpfad, Status (zugewiesen / in Arbeit / abgeschlossen), Zuweisungs-, Frist- und Abschlussdatum und „überfällig“; keine Lerndetails (Browser-Prüfung auf der Tabelle, Feldliste der API ist im Test festgehalten, der Architektur-Test hält den Firmenbereich weiter von Lern-Modulen fern). Jede Firma sieht nur ihre Zuweisungen
@@ -188,6 +195,7 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Grenzen:_ Der Status wird nur bei Lernereignissen nachgezogen, nicht beim Zuweisen: wer schon alles beherrscht, gilt erst beim nächsten Üben als abgeschlossen (schützt Vorwissen). Die Definition von „abgeschlossen“ ist eine Annahme (nur Lernziele, keine Abschlussprüfung) und braucht die Entscheidung des Betreibers. Die Browser-Läufe sind manuelle Skripte, nicht Teil der CI
 - [ ] Firmenmodule mit Verantwortlichem und „gültig bis“
 - [ ] Option: Firmendokumente von KI-Verarbeitung ausschließen
+  - _Stand:_ Die Option steht beim Upload zur Wahl und ist am Dokument gespeichert (`exclude_from_ai`). Sie wirkt erst, wenn es den KI-Schritt gibt, deshalb bleibt der Punkt offen
 - [ ] KI-Zugang so konfiguriert, dass keine Kundendaten zum Training verwendet werden, möglichst EU-Verarbeitung
 
 ### Gate 3

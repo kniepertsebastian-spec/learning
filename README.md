@@ -72,6 +72,10 @@ auch der Status je Person: zugewiesen, in Arbeit (sobald geübt wird) oder abges
 beherrscht). Die Firma sieht nur Status, Zuweisungs-, Frist- und Abschlussdatum, nie Ergebnisse. Die
 Lernenden sehen ihre Zuweisungen auf der Startseite.
 
+Firmendokumente (PDF, .txt, .md, bis 10 MB) laden Firmen-Admin und Mentor unter `/company` hoch. Jedes
+Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft; bei einem Fund wird nichts
+gespeichert. Die Dateien liegen in der Datenbank und sind damit im `pg_dump`-Backup enthalten.
+
 ### Konto (Self-Service)
 
 Unter `/account` ändern Nutzer ihr Passwort (danach sind alle Sitzungen beendet), laden ihre Daten als

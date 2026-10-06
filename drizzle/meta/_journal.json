@@ -204,6 +204,13 @@
       "when": 1791226630268,
       "tag": "0028_email_verification_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791310032571,
+      "tag": "0029_company_documents",
+      "breakpoints": true
     }
   ]
 }
