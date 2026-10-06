@@ -6,13 +6,24 @@ import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { SignOutButton } from "@/components/SignOutButton";
+import { listMyAssignments } from "@/lib/server/assignments/sync";
+import { getServerLocale } from "@/lib/server/locale";
+
+const ASSIGNMENT_STATUS = {
+  assigned: { de: "Zugewiesen", en: "Assigned" },
+  in_progress: { de: "In Arbeit", en: "In progress" },
+  completed: { de: "Abgeschlossen", en: "Completed" },
+} as const;
 
 export default async function DashboardPage() {
   const db = getDb();
-  const [session, certs] = await Promise.all([
+  const [session, certs, locale] = await Promise.all([
     auth(),
     db.select().from(certifications).orderBy(certifications.name),
+    getServerLocale(),
   ]);
+  const de = locale === "de";
+  const assignments = session?.user?.id ? await listMyAssignments(session.user.id) : [];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -43,6 +54,32 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {assignments.length > 0 && (
+        <section className="mb-6 rounded-xl border border-border bg-surface p-5" data-testid="my-assignments">
+          <h2 className="font-semibold">{de ? "Von deiner Firma zugewiesen" : "Assigned by your company"}</h2>
+          <p className="mt-1 text-xs text-foreground/70">
+            {de
+              ? "Deine Firma sieht dazu nur Status, Zuweisungs-, Frist- und Abschlussdatum, keine Ergebnisse oder Antworten."
+              : "Your company only sees status, assignment, due and completion dates, never results or answers."}
+          </p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {assignments.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <Link href={`/cert/${a.slug}`} className="font-medium hover:text-accent">
+                  {a.learningPath}
+                </Link>
+                <span className="text-foreground/70">
+                  {ASSIGNMENT_STATUS[a.status][locale]}
+                  {a.dueAt && a.status !== "completed"
+                    ? ` · ${de ? "Frist" : "Due"} ${a.dueAt.toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}`
+                    : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {certs.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">

@@ -1,8 +1,11 @@
 export const dynamic = "force-dynamic";
 
+import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
-import { STATUS_VIEW_ROLES } from "@/lib/server/company/access";
+import { ASSIGN_ROLES, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
+import { isOverdue, listAssignableLearningPaths, listAssignableMembers } from "@/lib/server/company/assignments";
 import { requireCompanyPage } from "@/lib/server/company/guard";
+import { listCompanyStatus } from "@/lib/server/company/status";
 import { listPendingInvitations } from "@/lib/server/company/invitations";
 import { isMailConfigured } from "@/lib/server/mail/config";
 import { getServerLocale } from "@/lib/server/locale";
@@ -15,9 +18,8 @@ const ROLE_LABELS: Record<CompanyRole, { de: string; en: string }> = {
 };
 
 /**
- * Firmengerüst (Phase 1): Platzhalter. Die echte Statusansicht (Zuweisen,
- * Fortschritts-Status, Fristen) kommt in Phase 3 - bis dahin zeigt die Seite
- * nur, dass der Zugriff über den zentralen Guard funktioniert.
+ * Firmenbereich: Lernpfade zuweisen und Status ansehen (nur Status, Datum, Frist), Einladungen für den
+ * Firmen-Admin. Die Organisation kommt immer aus der Mitgliedschaft (guard.ts).
  */
 export default async function CompanyPage() {
   const [membership, locale] = await Promise.all([
@@ -25,6 +27,23 @@ export default async function CompanyPage() {
     getServerLocale(),
   ]);
   const de = locale === "de";
+  const canAssign = ASSIGN_ROLES.includes(membership.role);
+  const [entries, members, paths] = await Promise.all([
+    listCompanyStatus(membership.organizationId),
+    canAssign ? listAssignableMembers(membership.organizationId) : [],
+    canAssign ? listAssignableLearningPaths() : [],
+  ]);
+  const rows = entries.map((e) => ({
+    id: e.assignmentId,
+    memberName: e.memberName,
+    memberEmail: e.memberEmail,
+    learningPath: e.learningPath,
+    status: e.status,
+    assignedAt: e.assignedAt.toISOString(),
+    dueAt: e.dueAt?.toISOString() ?? null,
+    completedAt: e.completedAt?.toISOString() ?? null,
+    overdue: isOverdue(e),
+  }));
   // Einladungen verwaltet nur der Firmen-Admin (der Mentor sieht sie nicht).
   const invitations =
     membership.role === "company_admin"
@@ -46,14 +65,7 @@ export default async function CompanyPage() {
         </p>
       </div>
 
-      <section className="rounded-lg border border-border bg-surface p-6">
-        <h2 className="text-lg font-medium">{de ? "Status der Lernpfade" : "Learning path status"}</h2>
-        <p className="mt-2 text-sm text-foreground/70" data-testid="company-status-empty">
-          {de
-            ? "Noch keine Lernpfade zugewiesen. Die Statusansicht folgt in einer späteren Phase."
-            : "No learning paths assigned yet. The status view follows in a later phase."}
-        </p>
-      </section>
+      <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
 
       {invitations && <InvitationsPanel invitations={invitations} locale={locale} mailEnabled={isMailConfigured()} />}
     </div>
