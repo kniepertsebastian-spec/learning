@@ -288,6 +288,13 @@
       "when": 1791345201833,
       "tag": "0040_document_images",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791398540428,
+      "tag": "0041_mandatory_rules",
+      "breakpoints": true
     }
   ]
 }

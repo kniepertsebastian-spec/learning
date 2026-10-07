@@ -35,6 +35,9 @@ const ALLOWED_TABLES = new Set([
   "onboardingPlans",
   "onboardingPlanCourses",
   "onboardings",
+  // Pflichtschulungen: Regeln je Firma und welche Erinnerungen verschickt wurden (nur Art und Zeitpunkt)
+  "mandatoryRules",
+  "assignmentNotices",
   // Aufträge der internen Lernpfade: nur Stand und Meldung, keine Lerndaten
   "courseGenerationJobs",
 ]);

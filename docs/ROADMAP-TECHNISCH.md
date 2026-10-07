@@ -320,8 +320,13 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 ## Phase 5 – Pflichtschulungen und interne Wechsel
 
 ### Pflichtschulungen
-- [ ] Pflicht-Zuweisungen mit Frist und Wiederholung, nach Rolle oder Abteilung
-- [ ] Erinnerungen und Eskalation
+- [x] Pflicht-Zuweisungen mit Frist, nach Rolle (Wiederholung und Abteilung bewusst noch nicht)
+  - _Gebaut (Migration `0041`: `mandatory_rules`, `assignment_notices`, Spalte `company_assignments.mandatory_rule_id`; Abschnitt „Pflichtschulungen“ im Reiter „Zuweisungen“, Routen `/api/company/mandatory`, `/api/company/mandatory/[id]`):_ Der Firmen-Admin macht einen zuweisbaren Lernpfad für Rollen verpflichtend (Frist 1 bis 365 Tage ab Zuweisung). Beim Anlegen bekommen alle vorhandenen Mitglieder dieser Rollen den Lernpfad (wer ihn schon hat, bleibt unverändert), neue Mitglieder beim Annehmen einer Einladung. Höchstens eine Regel je Lernpfad; Löschen lässt die Zuweisungen bestehen. Mentoren sehen den Stand (zugewiesen, abgeschlossen, überfällig), legen aber nichts an.
+  - _Entscheidungen (bitte prüfen):_ **Wiederholung** fehlt: „abgeschlossen“ heißt „jedes Lernziel beherrscht“ und bleibt es; eine neue Runde bräuchte Nachweise je Runde (sonst sofort wieder abgeschlossen). **Abteilungen** fehlen, es gibt nur Rollen. Rollenwechsel eines bestehenden Mitglieds löst die Regeln nicht aus. Nur Firmen-Admins legen Regeln an (sie betreffen die ganze Firma).
+- [x] Erinnerungen und Eskalation
+  - _Gebaut (`npm run mandatory:run`, Anleitung `docs/PFLICHTSCHULUNGEN.md`):_ Ein täglicher Lauf (Server-Cron, die App hat keinen Zeitgeber) schickt vor der Frist eine Erinnerung (je Regel einstellbar, Standard 7 Tage), nach Ablauf „Frist abgelaufen“ an die Person und nach weiteren Tagen (Standard 3) eine Sammelmail je Firma an Mentoren und Firmen-Admins (Person, Lernpfad, Frist, nie Lerndaten). Gilt auch für manuell zugewiesene Lernpfade mit Frist. Je Zuweisung und Art höchstens eine Mail; der Eintrag wird vor dem Versand angelegt und bei Fehlschlag wieder entfernt (Wiederholung beim nächsten Lauf). Ohne Mailversand passiert nichts.
+  - _Geprüft:_ 10 DB-Tests mit SMTP-Testserver (`mandatory.test.ts`: Rechte, Mandantentrennung, Zuweisung an vorhandene und neue Mitglieder, Erinnerung, überfällig, Eskalation, keine Doppelmails, kein Versand ohne Konfiguration, fehlgeschlagener Versand, Löschen) plus Mutationsproben; ein Fehler fiel dabei auf und ist behoben (Datum in einer SQL-Zählung).
+  - _Nicht geprüft:_ der Lauf auf dem Server mit echtem Mailversand und Cron; Darstellung der Mails in echten Postfächern.
 - [ ] Teilnahmebescheinigung und Audit-Export (Kursversion, Datum)
 - [ ] Nutzer-Import per CSV
 

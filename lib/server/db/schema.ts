@@ -1282,6 +1282,8 @@ export const companyAssignments = pgTable(
     assignedByUserId: uuid("assigned_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    /** Gesetzt, wenn die Zuweisung aus einer Pflichtregel stammt (Pflichtschulung). */
+    mandatoryRuleId: uuid("mandatory_rule_id").references((): AnyPgColumn => mandatoryRules.id, { onDelete: "set null" }),
   },
   (table) => [
     check(
@@ -1750,5 +1752,60 @@ export const onboardings = pgTable(
     }).onDelete("cascade"),
     unique("onboardings_plan_user_unique").on(table.planId, table.userId),
     index("onboardings_org_idx").on(table.organizationId),
+  ],
+);
+
+/**
+ * Pflichtregel einer Firma: ein Lernpfad ist für bestimmte Rollen verpflichtend, mit Frist (Tage ab Zuweisung).
+ * Wirkt beim Anlegen auf die vorhandenen Mitglieder dieser Rollen und danach auf neue Mitglieder (Einladung
+ * angenommen). Erinnerung vor der Frist und Eskalation nach Ablauf sind je Regel einstellbar. Gehört der Firma;
+ * wird die Regel gelöscht, bleiben die Zuweisungen bestehen (mandatory_rule_id wird leer).
+ */
+export const mandatoryRules = pgTable(
+  "mandatory_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    roles: text("roles").array().$type<CompanyRole[]>().notNull(),
+    dueInDays: integer("due_in_days").notNull(),
+    /** Tage vor der Frist, an denen erinnert wird (0 = keine Erinnerung). */
+    reminderDaysBefore: integer("reminder_days_before").notNull().default(7),
+    /** Tage nach Fristablauf, ab denen Mentor und Firmen-Admin informiert werden. */
+    escalateAfterDays: integer("escalate_after_days").notNull().default(3),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("mandatory_rules_org_cert_unique").on(table.organizationId, table.certificationId),
+    check("mandatory_rules_roles_check", sql`cardinality(${table.roles}) > 0 and ${table.roles} <@ array['company_admin', 'mentor', 'learner']::text[]`),
+    check("mandatory_rules_due_check", sql`${table.dueInDays} between 1 and 365`),
+    check("mandatory_rules_reminder_check", sql`${table.reminderDaysBefore} between 0 and 60`),
+    check("mandatory_rules_escalate_check", sql`${table.escalateAfterDays} between 1 and 60`),
+  ],
+);
+
+/**
+ * Welche Erinnerung zu einer Zuweisung schon verschickt wurde (Erinnerung vor der Frist, „überfällig“ an die Person,
+ * Eskalation an Mentor und Firmen-Admin). Je Zuweisung und Art höchstens einmal; so ist der tägliche Lauf wiederholbar.
+ * Enthält nie Inhalte, nur Art und Zeitpunkt.
+ */
+export const assignmentNotices = pgTable(
+  "assignment_notices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    assignmentId: uuid("assignment_id")
+      .notNull()
+      .references(() => companyAssignments.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<"reminder" | "overdue" | "escalation">().notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("assignment_notices_assignment_kind_unique").on(table.assignmentId, table.kind),
+    check("assignment_notices_kind_check", sql`${table.kind} in ('reminder', 'overdue', 'escalation')`),
   ],
 );
