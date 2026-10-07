@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { CompanyTabs, type CompanyTab } from "@/components/CompanyTabs";
 import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
@@ -33,12 +34,14 @@ const ROLE_LABELS: Record<CompanyRole, { de: string; en: string }> = {
  * Firmenbereich: Lernpfade zuweisen und Status ansehen (nur Status, Datum, Frist), Einladungen für den
  * Firmen-Admin. Die Organisation kommt immer aus der Mitgliedschaft (guard.ts).
  */
-export default async function CompanyPage() {
-  const [membership, locale] = await Promise.all([
+export default async function CompanyPage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
+  const [{ tab: tabParam }, membership, locale] = await Promise.all([
+    searchParams,
     requireCompanyPage(STATUS_VIEW_ROLES, "/company"),
     getServerLocale(),
   ]);
   const de = locale === "de";
+  const isAdmin = membership.role === "company_admin";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
   const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates] = await Promise.all([
     listCompanyStatus(membership.organizationId),
@@ -101,6 +104,20 @@ export default async function CompanyPage() {
         }))
       : null;
 
+  // Reiter: was Aufmerksamkeit braucht, steht als Zahl am Reiter.
+  const overdue = rows.filter((r) => r.overdue).length;
+  const waitingForReview = internalCourses.filter((c) => c.catalogStatus !== "approved").length + internalJobs.filter((j) => j.active).length;
+  const needsAttention = practice.pending.length + modules.filter((m) => m.state === "expired").length;
+  const tabs: CompanyTab[] = [
+    { id: "status", label: de ? "Zuweisungen" : "Assignments", badge: overdue, badgeTitle: de ? "überfällig" : "overdue" },
+    { id: "paths", label: de ? "Lernpfade" : "Learning paths", badge: waitingForReview, badgeTitle: de ? "Entwürfe oder Aufträge in Arbeit" : "drafts or jobs in progress" },
+    { id: "work", label: de ? "Aufgaben & Module" : "Tasks & modules", badge: needsAttention, badgeTitle: de ? "wartet auf Bestätigung oder abgelaufen" : "awaiting confirmation or expired" },
+    { id: "documents", label: de ? "Dokumente" : "Documents" },
+    ...(isAdmin ? [{ id: "team", label: de ? "Team" : "Team" }] : []),
+  ];
+  const requested = Array.isArray(tabParam) ? tabParam[0] : tabParam;
+  const active = tabs.some((t) => t.id === requested) ? (requested as string) : "status";
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div>
@@ -111,38 +128,45 @@ export default async function CompanyPage() {
         </p>
       </div>
 
-      <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
+      <CompanyTabs tabs={tabs} active={active} ariaLabel={de ? "Bereiche des Firmenbereichs" : "Company area sections"} />
 
-      <CompanyModulesPanel
-        modules={modules}
-        paths={paths.map((p) => ({ id: p.id, name: p.name }))}
-        people={responsibleCandidates}
-        currentUserId={membership.userId}
-        locale={locale}
-      />
+      {active === "status" && <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />}
 
-      <PracticeTasksPanel
-        tasks={practice.tasks.map((t) => ({ id: t.id, title: t.title, description: t.description, learningPath: t.learningPath, assignees: t.assignees, submitted: t.submitted, confirmed: t.confirmed, rework: t.rework }))}
-        pending={practice.pending.map((p) => ({ ...p, submittedAt: p.submittedAt.toISOString() }))}
-        paths={paths.map((p) => ({ id: p.id, name: p.name }))}
-        locale={locale}
-      />
+      {active === "paths" && (
+        <>
+          <InternalCoursesPanel
+            documents={documents.map((d) => ({ id: d.id, title: d.title, excludeFromAi: d.excludeFromAi }))}
+            initialJobs={internalJobs.map((j) => ({ ...j, createdAt: j.createdAt.toISOString() }))}
+            initialCourses={internalCourses.map((c) => ({ ...c, approvedAt: c.approvedAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString() }))}
+            aiConfigured={aiAccess.kind !== "none"}
+            locale={locale}
+          />
+          <CourseRequestsPanel requests={requestRows} catalog={catalog} locale={locale} />
+          {aiSettings && <AiSettingsPanel settings={aiSettings} locale={locale} />}
+        </>
+      )}
 
-      <CourseRequestsPanel requests={requestRows} catalog={catalog} locale={locale} />
+      {active === "work" && (
+        <>
+          <PracticeTasksPanel
+            tasks={practice.tasks.map((t) => ({ id: t.id, title: t.title, description: t.description, learningPath: t.learningPath, assignees: t.assignees, submitted: t.submitted, confirmed: t.confirmed, rework: t.rework }))}
+            pending={practice.pending.map((p) => ({ ...p, submittedAt: p.submittedAt.toISOString() }))}
+            paths={paths.map((p) => ({ id: p.id, name: p.name }))}
+            locale={locale}
+          />
+          <CompanyModulesPanel
+            modules={modules}
+            paths={paths.map((p) => ({ id: p.id, name: p.name }))}
+            people={responsibleCandidates}
+            currentUserId={membership.userId}
+            locale={locale}
+          />
+        </>
+      )}
 
-      <InternalCoursesPanel
-        documents={documents.map((d) => ({ id: d.id, title: d.title, excludeFromAi: d.excludeFromAi }))}
-        initialJobs={internalJobs.map((j) => ({ ...j, createdAt: j.createdAt.toISOString() }))}
-        initialCourses={internalCourses.map((c) => ({ ...c, approvedAt: c.approvedAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString() }))}
-        aiConfigured={aiAccess.kind !== "none"}
-        locale={locale}
-      />
+      {active === "documents" && <DocumentsPanel documents={documentRows} locale={locale} canSuppress={isAdmin} />}
 
-      <DocumentsPanel documents={documentRows} locale={locale} canSuppress={membership.role === "company_admin"} />
-
-      {aiSettings && <AiSettingsPanel settings={aiSettings} locale={locale} />}
-
-      {invitations && <InvitationsPanel invitations={invitations} locale={locale} mailEnabled={isMailConfigured()} />}
+      {active === "team" && invitations && <InvitationsPanel invitations={invitations} locale={locale} mailEnabled={isMailConfigured()} />}
     </div>
   );
 }

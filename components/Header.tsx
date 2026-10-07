@@ -25,12 +25,12 @@ export function Header({
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <GraduationCap className="h-6 w-6 text-accent" aria-hidden="true" />
           <span>{t.appTitle}</span>
-          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+          <span className="hidden rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent sm:inline">
             {t.statusBadge}
           </span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {userId && <SyncStatusBadge userId={userId} locale={locale} />}
 
           {userId && (

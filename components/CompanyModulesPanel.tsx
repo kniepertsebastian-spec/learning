@@ -97,9 +97,9 @@ function ModuleForm({
           {de ? "Gültig bis" : "Valid until"}
           <input type="date" value={validUntil} min={plusDays(0)} onChange={(e) => setValidUntil(e.target.value)} required data-testid="module-valid-until" className={field} />
         </label>
-        <label className="flex flex-1 items-center gap-2 text-sm">
+        <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
           {de ? "Verantwortlich" : "Responsible"}
-          <select value={responsible} onChange={(e) => setResponsible(e.target.value)} data-testid="module-responsible" className={`${field} flex-1`}>
+          <select value={responsible} onChange={(e) => setResponsible(e.target.value)} data-testid="module-responsible" className={`${field} min-w-0 flex-1`}>
             <option value="">{initial ? (de ? "unverändert" : "unchanged") : de ? "ich" : "me"}</option>
             {people.map((p) => (
               <option key={p.userId} value={p.userId}>{label(p)}</option>
