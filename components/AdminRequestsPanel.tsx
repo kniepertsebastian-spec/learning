@@ -27,6 +27,62 @@ type CatalogRow = {
   approvedAt: string | null;
 };
 
+export type EntitlementView = {
+  organizationId: string;
+  organizationName: string;
+  certificationId: string;
+  courseName: string;
+  releasedAt: string;
+  openAssignments: number;
+};
+
+function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en" }) {
+  const router = useRouter();
+  const de = locale === "de";
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  async function revoke() {
+    const hint = de
+      ? `Freigabe „${e.courseName}“ für ${e.organizationName} entziehen? Bestehende Zuweisungen (${e.openAssignments} offen) bleiben bestehen, neue sind nicht mehr möglich.`
+      : `Revoke release of "${e.courseName}" for ${e.organizationName}? Existing assignments (${e.openAssignments} open) stay, new ones are no longer possible.`;
+    if (!window.confirm(hint)) return;
+    const err = await call("/api/admin/entitlements", "DELETE", { organizationId: e.organizationId, certificationId: e.certificationId, note: note || null });
+    setError(err);
+    if (!err) router.refresh();
+  }
+  return (
+    <li className="rounded-md border border-border bg-background p-3 text-sm" data-testid="admin-entitlement-row">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>
+          <span className="font-medium">{e.courseName}</span>
+          <span className="ml-2 text-xs text-foreground/70">
+            {e.organizationName} · {new Date(e.releasedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })} · {de ? "offene Zuweisungen" : "open assignments"}: {e.openAssignments}
+          </span>
+        </span>
+        <span className="flex gap-2">
+          <input
+            type="text"
+            value={note}
+            onChange={(ev) => setNote(ev.target.value)}
+            maxLength={500}
+            placeholder={de ? "Hinweis an die Firma (optional)" : "Note to the company (optional)"}
+            aria-label={de ? "Hinweis" : "Note"}
+            className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
+          />
+          <button type="button" onClick={() => void revoke()} data-testid="admin-entitlement-revoke" className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface">
+            {de ? "Freigabe entziehen" : "Revoke release"}
+          </button>
+        </span>
+      </div>
+      {error && (
+        <p role="alert" className="mt-2 text-xs text-red-500">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+}
+
 async function call(url: string, method: string, body?: unknown): Promise<string | null> {
   const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
   if (res.ok) return null;
@@ -37,11 +93,11 @@ async function call(url: string, method: string, body?: unknown): Promise<string
 function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: CatalogRow[]; locale: "de" | "en" }) {
   const router = useRouter();
   const de = locale === "de";
-  const [status, setStatus] = useState<CourseRequestStatus>(r.status === "released" ? "submitted" : r.status);
+  const [status, setStatus] = useState<CourseRequestStatus>(r.status === "released" || r.status === "withdrawn" || r.status === "revoked" ? "submitted" : r.status);
   const [note, setNote] = useState("");
   const [courseId, setCourseId] = useState(r.certificationId ?? "");
   const [error, setError] = useState<string | null>(null);
-  const done = r.status === "released";
+  const done = r.status === "released" || r.status === "withdrawn" || r.status === "revoked";
 
   async function save() {
     setError(await call(`/api/admin/course-requests/${r.id}`, "PATCH", { status, note: note || null }));
@@ -176,7 +232,7 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
 }
 
 /** Betreiber: Anfragen aller Firmen bearbeiten und den fachlichen Prüfstatus der Lernpfade pflegen. */
-export function AdminRequestsPanel({ requests, catalog, locale }: { requests: AdminRequest[]; catalog: CatalogRow[]; locale: "de" | "en" }) {
+export function AdminRequestsPanel({ requests, catalog, entitlements, locale }: { requests: AdminRequest[]; catalog: CatalogRow[]; entitlements: EntitlementView[]; locale: "de" | "en" }) {
   const de = locale === "de";
   const releasable = catalog.filter((c) => c.catalogStatus === "approved");
   return (
@@ -189,6 +245,23 @@ export function AdminRequestsPanel({ requests, catalog, locale }: { requests: Ad
           <ul className="mt-3 flex flex-col gap-3">
             {requests.map((r) => (
               <RequestRow key={r.id} r={r} releasable={releasable} locale={locale} />
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-entitlements">
+        <h2 className="text-lg font-medium">{de ? "Erteilte Firmenfreigaben" : "Releases granted to companies"}</h2>
+        <p className="mt-1 text-sm text-foreground/70">
+          {de
+            ? "Beim Entziehen kann die Firma den Lernpfad nicht mehr neu zuweisen. Bestehende Zuweisungen und Lernfortschritt bleiben."
+            : "After revoking, the company can no longer assign the course. Existing assignments and progress stay."}
+        </p>
+        {entitlements.length === 0 ? (
+          <p className="mt-2 text-sm text-foreground/70">{de ? "Keine Freigaben." : "No releases."}</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {entitlements.map((e) => (
+              <EntitlementItem key={`${e.organizationId}-${e.certificationId}`} e={e} locale={locale} />
             ))}
           </ul>
         )}

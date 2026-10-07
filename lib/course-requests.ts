@@ -8,6 +8,8 @@ export const REQUEST_STATUS_LABELS: Record<CourseRequestStatus, { de: string; en
   in_review: { de: "In fachlicher Prüfung", en: "In expert review" },
   released: { de: "Freigegeben", en: "Released" },
   rejected: { de: "Abgelehnt", en: "Declined" },
+  withdrawn: { de: "Zurückgezogen", en: "Withdrawn" },
+  revoked: { de: "Freigabe entzogen", en: "Release revoked" },
 };
 
 /** Stati, die der Betreiber von Hand setzen darf. „Freigegeben“ gibt es nur über die Freigabe selbst. */

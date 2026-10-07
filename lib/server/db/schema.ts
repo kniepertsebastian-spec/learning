@@ -48,7 +48,17 @@ export type CatalogStatus = "draft" | "in_review" | "approved";
  * Lebenslauf einer Kundenanfrage nach einem allgemeinen Lernpfad: eingegangen -> (wartet | in Erstellung |
  * in externer Prüfung) -> freigegeben oder abgelehnt.
  */
-export type CourseRequestStatus = "submitted" | "on_hold" | "in_creation" | "in_review" | "released" | "rejected";
+export type CourseRequestStatus =
+  | "submitted"
+  | "on_hold"
+  | "in_creation"
+  | "in_review"
+  | "released"
+  | "rejected"
+  /** Die Firma hat die Anfrage selbst zurückgezogen (nur solange sie offen war). */
+  | "withdrawn"
+  /** Die erteilte Freigabe wurde vom Betreiber wieder entzogen. */
+  | "revoked";
 
 export type CertificationSourceType = "pdf" | "url";
 
@@ -1402,7 +1412,7 @@ export const courseRequests = pgTable(
   (table) => [
     check(
       "course_requests_status_check",
-      sql`${table.status} in ('submitted', 'on_hold', 'in_creation', 'in_review', 'released', 'rejected')`,
+      sql`${table.status} in ('submitted', 'on_hold', 'in_creation', 'in_review', 'released', 'rejected', 'withdrawn', 'revoked')`,
     ),
     check("course_requests_target_check", sql`${table.certificationId} is not null or ${table.wishTitle} is not null`),
     index("course_requests_org_idx").on(table.organizationId),

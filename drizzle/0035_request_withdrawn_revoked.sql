@@ -1,0 +1,2 @@
+ALTER TABLE "course_requests" DROP CONSTRAINT "course_requests_status_check";--> statement-breakpoint
+ALTER TABLE "course_requests" ADD CONSTRAINT "course_requests_status_check" CHECK ("course_requests"."status" in ('submitted', 'on_hold', 'in_creation', 'in_review', 'released', 'rejected', 'withdrawn', 'revoked'));

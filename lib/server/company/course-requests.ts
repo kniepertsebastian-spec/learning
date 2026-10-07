@@ -23,6 +23,7 @@ export class UnknownCourseError extends Error {}
 export class AlreadyReleasedError extends Error {}
 export class DuplicateRequestError extends Error {}
 export class InvalidRequestError extends Error {}
+export class NotWithdrawableError extends Error {}
 
 function logAuditFailure(err: unknown) {
   console.error("Audit-Log fehlgeschlagen:", err);
@@ -172,3 +173,37 @@ export async function createCourseRequest(input: {
   return created;
 }
 
+
+/**
+ * Die Firma zieht eine eigene, noch offene Anfrage zurück. Freigegebene, abgelehnte oder schon zurückgezogene
+ * Anfragen lassen sich nicht mehr zurückziehen (NotWithdrawableError). false = nicht gefunden (auch fremde Firmen).
+ */
+export async function withdrawCourseRequest(input: { organizationId: string; requestId: string; userId: string }): Promise<boolean> {
+  const found = await getDb().transaction(async (tx) => {
+    const [current] = await tx
+      .select({ status: courseRequests.status })
+      .from(courseRequests)
+      .where(and(eq(courseRequests.id, input.requestId), eq(courseRequests.organizationId, input.organizationId)))
+      .for("update")
+      .limit(1);
+    if (!current) return false;
+    if (!OPEN_STATUSES.includes(current.status)) throw new NotWithdrawableError();
+    const note = "Von der Firma zurückgezogen";
+    await tx
+      .update(courseRequests)
+      .set({ status: "withdrawn", statusNote: note, updatedAt: new Date() })
+      .where(eq(courseRequests.id, input.requestId));
+    await tx.insert(courseRequestEvents).values({ requestId: input.requestId, status: "withdrawn", note, actorUserId: input.userId });
+    return true;
+  });
+  if (found) {
+    await recordAuditEvent({
+      actorUserId: input.userId,
+      action: "course_request.withdrawn",
+      targetType: "course_request",
+      targetId: input.requestId,
+      metadata: { organizationId: input.organizationId },
+    }).catch(logAuditFailure);
+  }
+  return found;
+}

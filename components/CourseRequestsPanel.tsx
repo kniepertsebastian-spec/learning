@@ -16,6 +16,8 @@ export type RequestView = {
   events: { status: CourseRequestStatus; note: string | null; createdAt: string }[];
 };
 
+const OPEN: CourseRequestStatus[] = ["submitted", "on_hold", "in_creation", "in_review"];
+
 const date = (iso: string, locale: "de" | "en") => new Date(iso).toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", { timeZone: "UTC" });
 
 /** Firmenbereich: allgemeine Lernpfade anfragen (aus dem Katalog oder als freier Wunsch) und den Stand verfolgen. */
@@ -54,6 +56,17 @@ export function CourseRequestsPanel({
     setNotice(de ? "Anfrage ist eingegangen. Den Stand siehst du hier." : "Request received. You can follow its status here.");
     setTitle("");
     setDescription("");
+    router.refresh();
+  }
+
+  async function withdraw(id: string) {
+    if (!window.confirm(de ? "Anfrage wirklich zurückziehen?" : "Really withdraw this request?")) return;
+    setError(null);
+    const res = await fetch(`/api/company/course-requests/${id}/withdraw`, { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setError(data?.error ?? (de ? "Zurückziehen fehlgeschlagen." : "Could not withdraw."));
+    }
     router.refresh();
   }
 
@@ -145,6 +158,11 @@ export function CourseRequestsPanel({
                   {REQUEST_STATUS_LABELS[r.status][locale]}
                 </span>
               </div>
+              {OPEN.includes(r.status) && (
+                <button type="button" onClick={() => void withdraw(r.id)} data-testid="request-withdraw" className="mt-2 rounded-md border border-border px-2 py-1 text-xs hover:bg-surface">
+                  {de ? "Anfrage zurückziehen" : "Withdraw request"}
+                </button>
+              )}
               {r.wishDescription && <p className="mt-1 text-xs text-foreground/70">{r.wishDescription}</p>}
               {r.statusNote && (
                 <p className="mt-1 text-xs" data-testid="request-note">
