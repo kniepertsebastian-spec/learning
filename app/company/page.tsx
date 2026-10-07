@@ -6,6 +6,8 @@ import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { CompanyModulesPanel } from "@/components/CompanyModulesPanel";
+import { OnboardingsPanel } from "@/components/OnboardingsPanel";
+import { listOnboardingPlans } from "@/lib/server/company/onboardings";
 import { PracticeTasksPanel } from "@/components/PracticeTasksPanel";
 import { InternalCoursesPanel } from "@/components/InternalCoursesPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
@@ -43,7 +45,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   const de = locale === "de";
   const isAdmin = membership.role === "company_admin";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates] = await Promise.all([
+  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates, onboardingPlans] = await Promise.all([
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
     canAssign ? listAssignableLearningPaths(membership.organizationId) : [],
@@ -56,6 +58,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     listPracticeTasksForOrg(membership.organizationId),
     listModulesForOrg(membership.organizationId),
     listResponsibleCandidates(membership.organizationId),
+    canAssign ? listOnboardingPlans(membership.organizationId) : [],
   ]);
   const documentRows = documents.map((d) => ({
     id: d.id,
@@ -112,6 +115,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     { id: "status", label: de ? "Zuweisungen" : "Assignments", badge: overdue, badgeTitle: de ? "überfällig" : "overdue" },
     { id: "paths", label: de ? "Lernpfade" : "Learning paths", badge: waitingForReview, badgeTitle: de ? "Entwürfe oder Aufträge in Arbeit" : "drafts or jobs in progress" },
     { id: "work", label: de ? "Aufgaben & Module" : "Tasks & modules", badge: needsAttention, badgeTitle: de ? "wartet auf Bestätigung oder abgelaufen" : "awaiting confirmation or expired" },
+    ...(canAssign ? [{ id: "onboarding", label: "Onboarding" }] : []),
     { id: "documents", label: de ? "Dokumente" : "Documents" },
     ...(isAdmin ? [{ id: "team", label: de ? "Team" : "Team" }] : []),
   ];
@@ -162,6 +166,25 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
             locale={locale}
           />
         </>
+      )}
+
+      {active === "onboarding" && canAssign && (
+        <OnboardingsPanel
+          plans={onboardingPlans.map((p) => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            mentor: p.mentor,
+            courses: p.courses,
+            people: p.people.map((x) => ({ id: x.id, userId: x.userId, name: x.name, email: x.email, status: x.status, coursesDone: x.coursesDone, coursesTotal: x.coursesTotal })),
+          }))}
+          paths={paths.map((p) => ({ id: p.id, name: p.name }))}
+          mentors={responsibleCandidates}
+          members={members.map((m) => ({ userId: m.userId, name: m.name, email: m.email }))}
+          currentUserId={membership.userId}
+          isAdmin={isAdmin}
+          locale={locale}
+        />
       )}
 
       {active === "documents" && <DocumentsPanel documents={documentRows} locale={locale} canSuppress={isAdmin} />}

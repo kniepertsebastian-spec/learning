@@ -42,6 +42,8 @@ export type CompanyRole = "company_admin" | "mentor" | "learner";
 export type AssignmentStatus = "assigned" | "in_progress" | "completed";
 
 /** Stand einer Praxisaufgabe bei einer Person: abgegeben, vom Mentor bestätigt oder zur Nacharbeit zurück. Ohne Zeile = offen. */
+export type OnboardingStatus = "open" | "discussed" | "reviewed";
+
 export type PracticeSubmissionStatus = "submitted" | "confirmed" | "rework";
 
 /** Phase 3: allgemeiner (von uns erstellter) oder interner (firmeneigener) Lernpfad. */
@@ -1653,4 +1655,73 @@ export const lessonCompletions = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique("lesson_completions_user_section_unique").on(table.userId, table.sectionId)],
+);
+
+/**
+ * Onboarding-Plan einer Firma (z. B. „Operations Infrastruktur“): welche Lernpfade absolviert werden, wer als Mentor
+ * begleitet. Gehört der Firma. Fällt der Mentor weg, bleibt der Plan ohne Mentor bestehen (SET NULL).
+ */
+export const onboardingPlans = pgTable(
+  "onboarding_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    mentorUserId: uuid("mentor_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [index("onboarding_plans_org_idx").on(table.organizationId)],
+);
+
+/** Benötigte Lernpfade eines Onboarding-Plans (in dieser Reihenfolge). */
+export const onboardingPlanCourses = pgTable(
+  "onboarding_plan_courses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => onboardingPlans.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    orderNum: integer("order_num").notNull(),
+  },
+  (table) => [unique("onboarding_plan_courses_unique").on(table.planId, table.certificationId)],
+);
+
+/**
+ * Das Onboarding einer Person nach einem Plan. Stand: offen, besprochen (Mentor hat mit der Person gesprochen) oder
+ * geprüft (Mentor hat abgenommen; erst wenn alle Lernpfade des Plans abgeschlossen sind; endgültig). Der
+ * zusammengesetzte Fremdschlüssel stellt sicher, dass die Person Mitglied der Firma ist.
+ */
+export const onboardings = pgTable(
+  "onboardings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => onboardingPlans.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    status: text("status").$type<OnboardingStatus>().notNull().default("open"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    discussedAt: timestamp("discussed_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    statusByUserId: uuid("status_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    check("onboardings_status_check", sql`${table.status} in ('open', 'discussed', 'reviewed')`),
+    foreignKey({
+      columns: [table.userId, table.organizationId],
+      foreignColumns: [organizationMemberships.userId, organizationMemberships.organizationId],
+      name: "onboardings_member_fk",
+    }).onDelete("cascade"),
+    unique("onboardings_plan_user_unique").on(table.planId, table.userId),
+    index("onboardings_org_idx").on(table.organizationId),
+  ],
 );

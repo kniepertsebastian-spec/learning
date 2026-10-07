@@ -174,3 +174,11 @@ const COMPANY_MODULE_MAX_PER_WINDOW = 60;
 export function checkCompanyModuleRateLimit(userId: string): RateLimitResult {
   return checkRateLimit("company-module", userId, COMPANY_MODULE_WINDOW_MS, COMPANY_MODULE_MAX_PER_WINDOW);
 }
+
+const ONBOARDING_WINDOW_MS = 60 * 60 * 1000;
+const ONBOARDING_MAX_PER_WINDOW = 60;
+
+/** Onboarding-Pläne anlegen, zuweisen und Stand setzen: je Nutzer. */
+export function checkOnboardingRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("onboarding", userId, ONBOARDING_WINDOW_MS, ONBOARDING_MAX_PER_WINDOW);
+}

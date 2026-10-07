@@ -30,6 +30,10 @@ const ALLOWED_TABLES = new Set([
   // Praxisaufgaben und ihre Abgaben (von der Firma verwaltet, Bestätigung durch den Mentor)
   "practiceTasks",
   "practiceTaskSubmissions",
+  // Onboarding-Pläne (benötigte Lernpfade, Mentor) und der Stand je Person
+  "onboardingPlans",
+  "onboardingPlanCourses",
+  "onboardings",
   // Aufträge der internen Lernpfade: nur Stand und Meldung, keine Lerndaten
   "courseGenerationJobs",
 ]);

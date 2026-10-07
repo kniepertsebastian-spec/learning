@@ -74,7 +74,7 @@ function cleanBody(body: string): string {
 }
 
 /** Verantwortlich sein kann, wer Mentor oder Firmen-Admin DIESER Firma ist. */
-async function assertResponsible(organizationId: string, userId: string): Promise<void> {
+export async function assertResponsible(organizationId: string, userId: string): Promise<void> {
   const [row] = await getDb()
     .select({ role: organizationMemberships.role })
     .from(organizationMemberships)
