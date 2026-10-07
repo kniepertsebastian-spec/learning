@@ -216,7 +216,7 @@ export async function requestJson(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const response = await client.models.generateContent({
-        model: model || "gemini-2.5-flash",
+        model: model || "gemini-3.8-flash",
         contents: fullPrompt,
         config: {
           temperature: 0.1,

@@ -294,6 +294,7 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 ### Gate 3
 - [ ] Testfirma durchläuft: einladen → zuweisen → Dokument zu Lernpfad → Praxisaufgabe → Status
+  - _Skript gebaut (`scripts/gate3.ts`, `npm run gate3 -- [--ai] [--doc <datei>] [--no-tests] [--keep]`):_ legt eine eigene Firma „Gate3 …“ mit Konten `*@gate3.invalid` an und prüft in 9 bis 10 Schritten einladen → Dokument hochladen (Scanner) → interner Lernpfad → Freigabe → zuweisen mit Frist → Praxisaufgabe → (ohne Tests: durcharbeiten, Abschluss) → Onboarding → Statusansicht; räumt danach auf (`--keep` lässt alles stehen), Exit-Code 1 bei jedem Fehler. Ohne `--ai` läuft die KI als Fake (kostenlos, prüft den Ablauf); mit `--ai` echte KI mit `GEMINI_API_KEY` (Limit je Auftrag 1 USD, hart 3 USD) und optional einem echten Dokument (`--doc wiki-export.json`). Gegen die Entwicklungsdatenbank mit Fake-KI mit und ohne `--no-tests` bestanden. _Noch offen:_ der Lauf mit `--ai` und einem echten Dokument auf dem Server (braucht den Schlüssel), danach Gate 3 abhaken.
 
 ---
 

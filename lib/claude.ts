@@ -1,12 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 
-export const CURRICULUM_MODEL = process.env.GEMINI_CURRICULUM_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+export const CURRICULUM_MODEL = process.env.GEMINI_CURRICULUM_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
 // "gemini-2.5-flash-lessons" war kein existierendes Modell (404 NOT_FOUND
 // von der Gemini API in Produktion bestätigt) - Default jetzt auf dasselbe
 // echte Modell wie CURRICULUM_MODEL, weiterhin per GEMINI_LESSONS_MODEL
 // überschreibbar.
 export const LESSONS_MODEL =
-  process.env.GEMINI_LESSONS_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  process.env.GEMINI_LESSONS_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 export class GeminiConfigError extends Error {}
 export const ClaudeConfigError = GeminiConfigError;
