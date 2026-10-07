@@ -39,7 +39,7 @@ services:
 
       # Google Gemini API
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       # lib/claude.ts liest diese beiden zusätzlich (CURRICULUM_MODEL und
       # LESSONS_MODEL fallen beide auf GEMINI_MODEL zurück, wenn nicht
       # gesetzt) - ohne Weiterleitung hier lässt sich das Lessons-Modell
