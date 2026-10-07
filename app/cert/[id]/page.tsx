@@ -3,10 +3,13 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, domains, objectives, sections, lessons, objectiveProgress } from "@/lib/server/db/schema";
+import { certifications, domains, objectives, sections, lessons, lessonCompletions, objectiveProgress } from "@/lib/server/db/schema";
+import { getCompanyMembership } from "@/lib/server/company/access";
+import { listModulesForPath } from "@/lib/server/company/modules";
+import { CompanyModulesSection } from "@/components/CompanyModulesSection";
 import { getServerLocale } from "@/lib/server/locale";
 import { RemediationService } from "@/lib/server/remediation/service";
 import { getStudyProfile } from "@/lib/server/study/profile";
@@ -79,6 +82,19 @@ export default async function CertDetailPage({
   const sectionsWithLessons = new Set(lessonRows.map((lesson) => lesson.sectionId));
 
   const [session, locale] = await Promise.all([auth(), getServerLocale()]);
+
+  // Interne Lernpfade können ohne Lektionstests und/oder Abschlussprüfung bestehen („reine Absolvierung“).
+  const quizzes = cert.includeSectionQuizzes;
+  const hasExam = cert.includeFinalExam;
+  // Ohne Lektionstests zählt das Durcharbeiten: welche Lektionen hat die Person schon abgeschlossen?
+  const completedSections = new Set<string>();
+  if (session?.user?.id && !quizzes && sectionIds.length > 0) {
+    const done = await db
+      .select({ sectionId: lessonCompletions.sectionId })
+      .from(lessonCompletions)
+      .where(and(eq(lessonCompletions.userId, session.user.id), inArray(lessonCompletions.sectionId, sectionIds)));
+    done.forEach((d) => completedSections.add(d.sectionId));
+  }
 
   // Fetch progress data if user is authenticated
   let progressData: ProgressData = {};
@@ -184,6 +200,17 @@ export default async function CertDetailPage({
     }
   };
 
+  // Firmenmodule: nur für Mitglieder der Firma, der sie gehören (siehe lib/server/company/modules.ts)
+  const companyMembership = session?.user?.id ? await getCompanyMembership(session.user.id) : null;
+  const companyModules = companyMembership
+    ? await listModulesForPath({
+        organizationId: companyMembership.organizationId,
+        userId: companyMembership.userId,
+        role: companyMembership.role,
+        certificationId: cert.id,
+      })
+    : [];
+
   return (
     <div className="flex flex-1 flex-col">
       <Link
@@ -203,27 +230,37 @@ export default async function CertDetailPage({
         </div>
         {session && (
           <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href={`/cert/${slug}/history`}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
-            >
-              {locale === "de" ? "Meine Prüfungen" : "My exams"}
-            </Link>
-            <Link
-              href={`/cert/${slug}/offline`}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
-            >
-              {locale === "de" ? "Offline verfügbar" : "Available offline"}
-            </Link>
-            <Link
-              href={`/cert/${slug}/final-exam`}
-              className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent/10"
-            >
-              {locale === "de" ? "Abschlussprüfung" : "Final practice exam"}
-            </Link>
+            {hasExam && (
+              <Link
+                href={`/cert/${slug}/history`}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
+              >
+                {locale === "de" ? "Meine Prüfungen" : "My exams"}
+              </Link>
+            )}
+            {quizzes && (
+              <Link
+                href={`/cert/${slug}/offline`}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
+              >
+                {locale === "de" ? "Offline verfügbar" : "Available offline"}
+              </Link>
+            )}
+            {hasExam && (
+              <Link
+                href={`/cert/${slug}/final-exam`}
+                className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent/10"
+              >
+                {locale === "de" ? "Abschlussprüfung" : "Final practice exam"}
+              </Link>
+            )}
           </div>
         )}
       </div>
+
+      {companyMembership && companyModules.length > 0 && (
+        <CompanyModulesSection modules={companyModules} companyName={companyMembership.organizationName} locale={locale} />
+      )}
 
       {!session && (
         <div className="mb-6 flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">
@@ -241,19 +278,19 @@ export default async function CertDetailPage({
         </div>
       )}
 
-      {session && todayDashboard && (
+      {session && quizzes && todayDashboard && (
         <TodayDashboard certSlug={slug} locale={locale} data={todayDashboard} />
       )}
 
-      {session && !todayDashboard && (
+      {session && quizzes && !todayDashboard && (
         <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} />
       )}
 
-      {session && readiness && <ReadinessCard locale={locale} readiness={readiness} />}
+      {session && quizzes && readiness && <ReadinessCard locale={locale} readiness={readiness} />}
 
-      {session && <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} />}
+      {session && quizzes && <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} />}
 
-      {needsRemediation.length > 0 && (
+      {quizzes && needsRemediation.length > 0 && (
         <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
           <p className="mb-2 text-sm font-medium text-yellow-800">
             {locale === "de"
@@ -292,6 +329,21 @@ export default async function CertDetailPage({
         </div>
       )}
 
+      {session && !quizzes && allSections.length > 0 && (
+        <div className="mb-6 rounded-lg border border-border bg-surface px-4 py-3 text-sm" data-testid="lesson-progress">
+          <p className="font-medium">
+            {locale === "de"
+              ? `${completedSections.size} von ${allSections.length} Lektionen durchgearbeitet`
+              : `${completedSections.size} of ${allSections.length} lessons completed`}
+          </p>
+          <p className="mt-1 text-xs text-foreground/70">
+            {locale === "de"
+              ? "Dieser Lernpfad hat keine Tests: Er gilt als abgeschlossen, sobald du alle Lektionen durchgearbeitet hast."
+              : "This learning path has no tests: it counts as completed once you have worked through all lessons."}
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-8">
         {allDomains.map((domain) => {
           const domainObjectives = allObjectives.filter((o) => o.domainId === domain.id);
@@ -309,7 +361,7 @@ export default async function CertDetailPage({
                     )}
                   </h2>
                 </div>
-                {session && (
+                {session && quizzes && (
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-24 rounded-full bg-gray-300">
                       <div
@@ -334,7 +386,7 @@ export default async function CertDetailPage({
                             {obj.title}
                           </p>
                         </div>
-                        {session && progress && (
+                        {session && quizzes && progress && (
                           <div className="ml-4 flex shrink-0 flex-col items-end gap-1">
                             <div className="flex items-center gap-1.5">
                               <div className={`h-2 w-12 rounded-full ${getStatusColor(progress.status)}`} />
@@ -351,7 +403,14 @@ export default async function CertDetailPage({
                           const isReady = sectionsWithLessons.has(section.id);
                           const content = (
                             <>
-                              <span>{section.title[locale]}</span>
+                              <span>
+                                {completedSections.has(section.id) && (
+                                  <span className="mr-2 text-emerald-500" aria-label={locale === "de" ? "durchgearbeitet" : "completed"}>
+                                    ✓
+                                  </span>
+                                )}
+                                {section.title[locale]}
+                              </span>
                               <span className="shrink-0 text-xs text-foreground/50">
                                 {isReady
                                   ? section.estimatedMinutes && `${section.estimatedMinutes} min`

@@ -5,11 +5,13 @@ import { ArrowRight, GraduationCap } from "lucide-react";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
+import { MyPracticeTasks } from "@/components/MyPracticeTasks";
 import { SignOutButton } from "@/components/SignOutButton";
 import { listMyAssignments } from "@/lib/server/assignments/sync";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { visibleCertificationsCondition } from "@/lib/server/catalog/visibility";
 import { getCompanyMembership, isRoleAllowed, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
+import { listMyPracticeTasks } from "@/lib/server/company/practice-tasks";
 import { getServerLocale } from "@/lib/server/locale";
 
 const ASSIGNMENT_STATUS = {
@@ -31,6 +33,7 @@ export default async function DashboardPage() {
   const [assignments, membership] = session?.user?.id
     ? await Promise.all([listMyAssignments(session.user.id), getCompanyMembership(session.user.id)])
     : [[], null];
+  const practiceTasks = membership ? await listMyPracticeTasks(membership.organizationId, membership.userId) : [];
   // Firmen-Admin und Mentor kommen von der Startseite direkt in den Firmenbereich.
   const companyMembership = isRoleAllowed(membership, STATUS_VIEW_ROLES) ? membership : null;
 
@@ -109,6 +112,8 @@ export default async function DashboardPage() {
           </ul>
         </section>
       )}
+
+      {practiceTasks.length > 0 && <MyPracticeTasks tasks={practiceTasks} locale={locale} />}
 
       {certs.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">

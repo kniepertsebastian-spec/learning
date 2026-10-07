@@ -21,10 +21,20 @@ const ALLOWED_TABLES = new Set([
   "companyClaims",
   "companyDocuments",
   "companyDocumentFiles",
+  "companyDocumentImages",
   "companyCourseEntitlements",
   "courseRequests",
   "courseRequestEvents",
   "organizationAiSettings",
+  // Firmenmodule (Unterlagen der Firma, Verantwortlicher, gültig bis)
+  "companyModules",
+  // Praxisaufgaben und ihre Abgaben (von der Firma verwaltet, Bestätigung durch den Mentor)
+  "practiceTasks",
+  "practiceTaskSubmissions",
+  // Onboarding-Pläne (benötigte Lernpfade, Mentor) und der Stand je Person
+  "onboardingPlans",
+  "onboardingPlanCourses",
+  "onboardings",
   // Aufträge der internen Lernpfade: nur Stand und Meldung, keine Lerndaten
   "courseGenerationJobs",
 ]);
@@ -112,6 +122,9 @@ describe("Firmenbereich liest keine Lerndetails", () => {
       "assignedAt",
       "dueAt",
       "completedAt",
+      // bewusst ergänzt (Praxisaufgaben): nur Zahlen „x von y bestätigt“, keine Inhalte der Abgaben
+      "practiceConfirmed",
+      "practiceTotal",
     ]);
   });
 });

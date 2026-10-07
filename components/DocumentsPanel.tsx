@@ -14,12 +14,106 @@ export type DocumentRowView = {
   suppressedFindings: number;
   createdAt: string;
   uploadedByName: string | null;
+  imageCount: number;
 };
 
 type Finding = { kind: SecretKind; pageNumber: number; line: number; suppressible: boolean };
 
 function formatSize(bytes: number) {
   return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+type ImageRow = { id: string; filename: string; sizeBytes: number };
+
+/** Screenshots eines Dokuments: anhängen (mit Bestätigung, dass nichts Vertrauliches zu sehen ist), ansehen, löschen. */
+function DocumentImages({ documentId, count, de }: { documentId: string; count: number; de: boolean }) {
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [images, setImages] = useState<ImageRow[]>([]);
+  const [attest, setAttest] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    const res = await fetch(`/api/company/documents/${documentId}/images`);
+    if (res.ok) setImages((await res.json()).images);
+  }
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    const files = [...(fileRef.current?.files ?? [])];
+    if (files.length === 0) return;
+    setBusy(true);
+    setError(null);
+    for (const file of files) {
+      const form = new FormData();
+      form.set("file", file);
+      form.set("attest", String(attest));
+      const res = await fetch(`/api/company/documents/${documentId}/images`, { method: "POST", body: form });
+      if (!res.ok) {
+        setError(`${file.name}: ${(await res.json().catch(() => null))?.error ?? (de ? "Upload fehlgeschlagen." : "Upload failed.")}`);
+        break;
+      }
+    }
+    setBusy(false);
+    if (fileRef.current) fileRef.current.value = "";
+    await load();
+    router.refresh();
+  }
+
+  async function remove(imageId: string) {
+    await fetch(`/api/company/documents/${documentId}/images/${imageId}`, { method: "DELETE" });
+    await load();
+    router.refresh();
+  }
+
+  return (
+    <details className="basis-full text-xs" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) void load(); }} data-testid="document-images">
+      <summary className="cursor-pointer text-accent">
+        {de ? `Screenshots (${count})` : `Screenshots (${count})`}
+      </summary>
+      <div className="mt-2 flex flex-col gap-2 rounded-md border border-border p-3">
+        <p className="text-foreground/70">
+          {de
+            ? "PNG, JPEG oder WebP, bis 4 MB, höchstens 20 je Dokument. Die KI wandelt jeden Screenshot in Text um (Befehle, Konfigurationen, Aufbau) und nutzt ihn für den Kurs. Bilder lassen sich nicht auf Zugangsdaten prüfen."
+            : "PNG, JPEG or WebP, up to 4 MB, at most 20 per document. The AI turns each screenshot into text (commands, configuration, layout) and uses it for the course. Images cannot be checked for credentials."}
+        </p>
+        {images.length > 0 && (
+          <ul className="divide-y divide-border">
+            {images.map((img) => (
+              <li key={img.id} className="flex items-center justify-between gap-2 py-1">
+                <span className="min-w-0 break-all">{img.filename} · {formatSize(img.sizeBytes)}</span>
+                <button type="button" onClick={() => void remove(img.id)} className="text-red-500 hover:underline">
+                  {de ? "Entfernen" : "Remove"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form onSubmit={(e) => void add(e)} className="flex flex-col gap-2">
+          <input ref={fileRef} type="file" multiple required accept=".png,.jpg,.jpeg,.webp" aria-label={de ? "Screenshots" : "Screenshots"} />
+          <label className="flex items-start gap-2">
+            <input type="checkbox" checked={attest} onChange={(e) => setAttest(e.target.checked)} className="mt-0.5" />
+            <span>
+              {de
+                ? "Auf den Bildern sind keine Passwörter, Schlüssel, Tokens oder vertraulichen Kundendaten zu sehen."
+                : "The images show no passwords, keys, tokens or confidential customer data."}
+            </span>
+          </label>
+          <div>
+            <button type="submit" disabled={busy || !attest} className="rounded-md border border-border px-3 py-1.5 font-medium hover:bg-background disabled:opacity-50">
+              {busy ? (de ? "Wird hochgeladen …" : "Uploading …") : de ? "Screenshots anhängen" : "Attach screenshots"}
+            </button>
+          </div>
+          {error && (
+            <p role="alert" className="text-red-500">
+              {error}
+            </p>
+          )}
+        </form>
+      </div>
+    </details>
+  );
 }
 
 /** Firmendokumente: hochladen (mit Prüfung auf Zugangsdaten), herunterladen, löschen. */
@@ -90,8 +184,8 @@ export function DocumentsPanel({
       <h2 className="text-lg font-medium">{de ? "Firmendokumente" : "Company documents"}</h2>
       <p className="mt-1 text-sm text-foreground/70">
         {de
-          ? "PDF oder Textdatei (.txt, .md), bis 10 MB. Jedes Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft. Wird etwas gefunden, wird das Dokument nicht gespeichert."
-          : "PDF or text file (.txt, .md), up to 10 MB. Every document is checked for passwords, keys and tokens before it is stored. If something is found, the document is not stored."}
+          ? "PDF, Textdatei (.txt, .md) oder Wiki-/Doku-Export (.json, .xml, .html, z. B. Wiki.js, MediaWiki), bis 10 MB. Listen, Tabellen, Befehle und Stichwörter sind in Ordnung. Jedes Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft. Wird etwas gefunden, wird das Dokument nicht gespeichert."
+          : "PDF, text file (.txt, .md) or wiki/docs export (.json, .xml, .html, e.g. Wiki.js, MediaWiki), up to 10 MB. Lists, tables, commands and keywords are fine. Every document is checked for passwords, keys and tokens before it is stored. If something is found, the document is not stored."}
       </p>
 
       <form onSubmit={(e) => void upload(e)} className="mt-4 flex flex-col gap-3">
@@ -99,7 +193,7 @@ export function DocumentsPanel({
           ref={fileRef}
           type="file"
           required
-          accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
+          accept=".pdf,.txt,.md,.json,.xml,.html,.htm"
           aria-label={de ? "Datei" : "File"}
           className="text-sm"
         />
@@ -200,6 +294,7 @@ export function DocumentsPanel({
                   {de ? "Löschen" : "Delete"}
                 </button>
               </span>
+              <DocumentImages documentId={d.id} count={d.imageCount} de={de} />
             </li>
           ))}
         </ul>

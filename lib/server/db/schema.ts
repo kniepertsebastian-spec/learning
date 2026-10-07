@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  date,
   type AnyPgColumn,
   boolean,
   check,
@@ -40,6 +41,11 @@ export type CompanyRole = "company_admin" | "mentor" | "learner";
  * Lernfortschritt sieht (zusammen mit Datum und Frist). */
 export type AssignmentStatus = "assigned" | "in_progress" | "completed";
 
+/** Stand einer Praxisaufgabe bei einer Person: abgegeben, vom Mentor bestätigt oder zur Nacharbeit zurück. Ohne Zeile = offen. */
+export type OnboardingStatus = "open" | "discussed" | "reviewed";
+
+export type PracticeSubmissionStatus = "submitted" | "confirmed" | "rework";
+
 /** Phase 3: allgemeiner (von uns erstellter) oder interner (firmeneigener) Lernpfad. */
 export type CourseKind = "general" | "internal";
 /** Menschliche Freigabe eines Lernpfads, bevor er an Kunden gehen darf. */
@@ -48,7 +54,17 @@ export type CatalogStatus = "draft" | "in_review" | "approved";
  * Lebenslauf einer Kundenanfrage nach einem allgemeinen Lernpfad: eingegangen -> (wartet | in Erstellung |
  * in externer Prüfung) -> freigegeben oder abgelehnt.
  */
-export type CourseRequestStatus = "submitted" | "on_hold" | "in_creation" | "in_review" | "released" | "rejected";
+export type CourseRequestStatus =
+  | "submitted"
+  | "on_hold"
+  | "in_creation"
+  | "in_review"
+  | "released"
+  | "rejected"
+  /** Die Firma hat die Anfrage selbst zurückgezogen (nur solange sie offen war). */
+  | "withdrawn"
+  /** Die erteilte Freigabe wurde vom Betreiber wieder entzogen. */
+  | "revoked";
 
 export type CertificationSourceType = "pdf" | "url";
 
@@ -122,6 +138,13 @@ export const certifications = pgTable("certifications", {
   ownerOrganizationId: uuid("owner_organization_id").references(() => organizations.id, { onDelete: "cascade" }),
   /** Menschliche Freigabe vor jeder Weitergabe an Kunden: draft -> in_review -> approved. Bestehende Lernpfade gelten als freigegeben. */
   catalogStatus: text("catalog_status").$type<CatalogStatus>().notNull().default("approved"),
+  /**
+   * Lernpfade, die ohne Tests auskommen („reine Absolvierung zum Verständnis“, nur interne Lernpfade): ohne
+   * Lektionstests gibt es keine Abschnittsquizze, Übungssitzungen und Wiederholungen; ohne Abschlussprüfung keine
+   * Prüfung. Bei allgemeinen Lernpfaden und allen älteren immer true.
+   */
+  includeSectionQuizzes: boolean("include_section_quizzes").notNull().default(true),
+  includeFinalExam: boolean("include_final_exam").notNull().default(true),
   /** Wer den Lernpfad fachlich geprüft hat (Name des externen Prüfers, auch ohne Konto) und wann. */
   approvedByName: text("approved_by_name"),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
@@ -1101,6 +1124,9 @@ export const courseGenerationJobs = pgTable(
     organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     /** Quelle eines internen Lernpfads. SET NULL: das Dokument darf gelöscht werden, der erzeugte Lernpfad bleibt. */
     documentId: uuid("document_id").references(() => companyDocuments.id, { onDelete: "set null" }),
+    /** Nur interne Lernpfade: mit Lektionstests und/oder Abschlussprüfung erstellen (sonst keine Fragen, günstiger). */
+    includeSectionQuizzes: boolean("include_section_quizzes").notNull().default(true),
+    includeFinalExam: boolean("include_final_exam").notNull().default(true),
     courseTitle: text("course_title").notNull(),
     courseDescription: text("course_description").notNull(),
     language: text("language").notNull(),
@@ -1377,6 +1403,33 @@ export const companyDocumentFiles = pgTable("company_document_files", {
 });
 
 /**
+ * Screenshot zu einem Firmendokument (PNG, JPEG, WebP). Bilder lassen sich nicht auf Zugangsdaten scannen; deshalb
+ * bestätigt die hochladende Person beim Upload, dass nichts Vertrauliches zu sehen ist (attested_*). Für die
+ * Kurserstellung wird das Bild von der KI in Text beschrieben, und dieser Text läuft durch den Secret-Scanner.
+ * Gehört der Firma und fällt mit dem Dokument weg.
+ */
+export const companyDocumentImages = pgTable(
+  "company_document_images",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => companyDocuments.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    filename: text("filename").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    data: bytea("data").notNull(),
+    attestedByUserId: uuid("attested_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    attestedAt: timestamp("attested_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("company_document_images_doc_idx").on(table.documentId)],
+);
+
+/**
  * Anfrage einer Firma nach einem allgemeinen Lernpfad. Entweder wird ein vorhandener Lernpfad gewählt
  * (certification_id) oder frei beschrieben (wish_title/-description). Wir (Betreiber) geben frei oder erstellen
  * den Lernpfad, lassen ihn extern prüfen und geben dann frei; bis dahin steht die Anfrage mit aktuellem Status
@@ -1402,7 +1455,7 @@ export const courseRequests = pgTable(
   (table) => [
     check(
       "course_requests_status_check",
-      sql`${table.status} in ('submitted', 'on_hold', 'in_creation', 'in_review', 'released', 'rejected')`,
+      sql`${table.status} in ('submitted', 'on_hold', 'in_creation', 'in_review', 'released', 'rejected', 'withdrawn', 'revoked')`,
     ),
     check("course_requests_target_check", sql`${table.certificationId} is not null or ${table.wishTitle} is not null`),
     index("course_requests_org_idx").on(table.organizationId),
@@ -1521,4 +1574,181 @@ export const companyClaims = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("company_claims_user_idx").on(table.userId)],
+);
+
+/**
+ * Praxisaufgabe einer Firma zu einem ihrer Lernpfade (z. B. „Setze einen Testserver auf“). Alle, denen der
+ * Lernpfad zugewiesen ist, sehen sie; Mentor oder Firmen-Admin bestätigen die Erledigung. Archivierte Aufgaben
+ * zählen nicht mehr, bleiben aber samt Abgaben erhalten (Nachweise gehören der Person).
+ */
+export const practiceTasks = pgTable(
+  "practice_tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [index("practice_tasks_org_cert_idx").on(table.organizationId, table.certificationId)],
+);
+
+/**
+ * Abgabe einer Person zu einer Praxisaufgabe: eigene Notiz (freiwillig), Bestätigung oder Nacharbeit durch eine
+ * ANDERE Person der Firma (Mentor/Firmen-Admin, nie die eigene Abgabe). Bestätigt ist endgültig. Der zusammengesetzte
+ * Fremdschlüssel stellt sicher, dass die Person Mitglied der Firma ist; sie fällt mit der Mitgliedschaft weg.
+ */
+export const practiceTaskSubmissions = pgTable(
+  "practice_task_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => practiceTasks.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    status: text("status").$type<PracticeSubmissionStatus>().notNull().default("submitted"),
+    learnerNote: text("learner_note"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewerNote: text("reviewer_note"),
+  },
+  (table) => [
+    check("practice_task_submissions_status_check", sql`${table.status} in ('submitted', 'confirmed', 'rework')`),
+    foreignKey({
+      columns: [table.userId, table.organizationId],
+      foreignColumns: [organizationMemberships.userId, organizationMemberships.organizationId],
+      name: "practice_task_submissions_member_fk",
+    }).onDelete("cascade"),
+    unique("practice_task_submissions_task_user_unique").on(table.taskId, table.userId),
+    index("practice_task_submissions_org_status_idx").on(table.organizationId, table.status),
+  ],
+);
+
+/**
+ * Firmenmodul: eine kurze Unterlage der Firma (Text, z. B. „Unser Ticket-Prozess“) zu einem ihrer Lernpfade, mit einer
+ * verantwortlichen Person (Mentor oder Firmen-Admin) und „gültig bis“. Wer den Lernpfad zugewiesen hat, sieht sie auf
+ * der Lernpfad-Seite; nach Ablauf bleibt der Inhalt für Lernende verborgen, bis die verantwortliche Person verlängert.
+ * Gehört der Firma: der Betreiber liest sie nie. Fällt die verantwortliche Person weg, bleibt das Modul ohne
+ * Verantwortlichen bestehen (SET NULL) und fällt in der Verwaltung auf.
+ */
+export const companyModules = pgTable(
+  "company_modules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    /** Markdown (ohne rohes HTML dargestellt). */
+    body: text("body").notNull(),
+    responsibleUserId: uuid("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
+    /** Letzter Tag der Gültigkeit (einschließlich), als Datum ohne Zeitzone. */
+    validUntil: date("valid_until").notNull(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [index("company_modules_org_cert_idx").on(table.organizationId, table.certificationId)],
+);
+
+/**
+ * Eine Lektion als „durchgearbeitet“ markiert. Gilt für Lernpfade ohne Lektionstests: dort ist der Abschluss die
+ * Absolvierung aller Lektionen (bei Lernpfaden mit Tests zählt weiter das Beherrschen jedes Lernziels). Gehört der
+ * Person und fällt mit dem Konto weg.
+ */
+export const lessonCompletions = pgTable(
+  "lesson_completions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => sections.id, { onDelete: "cascade" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("lesson_completions_user_section_unique").on(table.userId, table.sectionId)],
+);
+
+/**
+ * Onboarding-Plan einer Firma (z. B. „Operations Infrastruktur“): welche Lernpfade absolviert werden, wer als Mentor
+ * begleitet. Gehört der Firma. Fällt der Mentor weg, bleibt der Plan ohne Mentor bestehen (SET NULL).
+ */
+export const onboardingPlans = pgTable(
+  "onboarding_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    mentorUserId: uuid("mentor_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [index("onboarding_plans_org_idx").on(table.organizationId)],
+);
+
+/** Benötigte Lernpfade eines Onboarding-Plans (in dieser Reihenfolge). */
+export const onboardingPlanCourses = pgTable(
+  "onboarding_plan_courses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => onboardingPlans.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    orderNum: integer("order_num").notNull(),
+  },
+  (table) => [unique("onboarding_plan_courses_unique").on(table.planId, table.certificationId)],
+);
+
+/**
+ * Das Onboarding einer Person nach einem Plan. Stand: offen, besprochen (Mentor hat mit der Person gesprochen) oder
+ * geprüft (Mentor hat abgenommen; erst wenn alle Lernpfade des Plans abgeschlossen sind; endgültig). Der
+ * zusammengesetzte Fremdschlüssel stellt sicher, dass die Person Mitglied der Firma ist.
+ */
+export const onboardings = pgTable(
+  "onboardings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => onboardingPlans.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    status: text("status").$type<OnboardingStatus>().notNull().default("open"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    discussedAt: timestamp("discussed_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    statusByUserId: uuid("status_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    check("onboardings_status_check", sql`${table.status} in ('open', 'discussed', 'reviewed')`),
+    foreignKey({
+      columns: [table.userId, table.organizationId],
+      foreignColumns: [organizationMemberships.userId, organizationMemberships.organizationId],
+      name: "onboardings_member_fk",
+    }).onDelete("cascade"),
+    unique("onboardings_plan_user_unique").on(table.planId, table.userId),
+    index("onboardings_org_idx").on(table.organizationId),
+  ],
 );

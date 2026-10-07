@@ -1,4 +1,5 @@
 import { extractPdfPages, type ExtractedPage } from "./pdf-text";
+import { StructuredExportError, structuredKindOf, structuredPages, type StructuredKind } from "./structured";
 import { isSuppressible, scanForSecrets, type SecretFinding, type SecretKind } from "./secret-scanner";
 
 /** Höchstgröße eines Firmendokuments. Die Datei liegt in der Datenbank, deshalb bewusst kleiner als bei Lernquellen. */
@@ -6,7 +7,7 @@ export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 /** Weniger Text als das gilt bei PDFs als „kein durchsuchbarer Text“ (z. B. eingescannte Seiten). */
 export const MIN_PDF_TEXT_CHARS = 20;
 
-export type DocumentKind = "pdf" | "text";
+export type DocumentKind = "pdf" | "text" | "export";
 
 export type UploadRejection =
   | { ok: false; code: "empty" | "too_large" | "unsupported_type" | "invalid_content" | "unreadable" | "no_text"; message: string }
@@ -15,6 +16,12 @@ export type UploadRejection =
 export type UploadInspection =
   | { ok: true; kind: DocumentKind; mimeType: string; pages: ExtractedPage[]; pageCount: number; suppressed: SecretFinding[] }
   | UploadRejection;
+
+const STRUCTURED_MIME: Record<StructuredKind, { stored: string; accepted: string[] }> = {
+  json: { stored: "application/json", accepted: ["application/json", "text/json"] },
+  xml: { stored: "application/xml", accepted: ["application/xml", "text/xml"] },
+  html: { stored: "text/html", accepted: ["text/html"] },
+};
 
 const PDF_MAGIC = Buffer.from("%PDF-", "ascii");
 
@@ -48,6 +55,7 @@ export async function inspectUpload(
   const ext = extensionOf(input.filename);
   const mime = input.mimeType.trim().toLowerCase();
   let kind: DocumentKind;
+  let structuredKind: StructuredKind | null = null;
   let mimeType: string;
   if (ext === "pdf") {
     if (mime !== "application/pdf") return unsupported();
@@ -58,6 +66,12 @@ export async function inspectUpload(
     if (!["text/plain", "text/markdown", "text/x-markdown", "application/octet-stream", ""].includes(mime)) return unsupported();
     kind = "text";
     mimeType = ext === "md" ? "text/markdown" : "text/plain";
+  } else if (structuredKindOf(ext)) {
+    structuredKind = structuredKindOf(ext);
+    const expected = STRUCTURED_MIME[structuredKind!];
+    if (![...expected.accepted, "application/octet-stream", ""].includes(mime)) return unsupported();
+    kind = "export";
+    mimeType = expected.stored;
   } else {
     return unsupported();
   }
@@ -79,6 +93,20 @@ export async function inspectUpload(
         code: "no_text",
         message: "Das PDF enthält keinen auswählbaren Text (z. B. eingescannte Seiten). Es kann nicht auf Zugangsdaten geprüft werden und wird deshalb nicht angenommen.",
       };
+    }
+  } else if (kind === "export") {
+    if (data.includes(0)) return { ok: false, code: "invalid_content", message: "Die Datei enthält Binärdaten." };
+    let raw: string;
+    try {
+      raw = new TextDecoder("utf-8", { fatal: true }).decode(data);
+    } catch {
+      return { ok: false, code: "invalid_content", message: "Die Datei ist nicht UTF-8-kodiert." };
+    }
+    try {
+      pages = structuredPages(structuredKind!, raw).map((p) => ({ pageNumber: p.pageNumber, text: p.text }));
+    } catch (err) {
+      if (err instanceof StructuredExportError) return { ok: false, code: "unreadable", message: err.message };
+      throw err;
     }
   } else {
     if (data.includes(0)) {
@@ -108,6 +136,6 @@ export async function inspectUpload(
   return { ok: true, kind, mimeType, pages, pageCount: pages.length, suppressed };
 
   function unsupported(): UploadRejection {
-    return { ok: false, code: "unsupported_type", message: "Erlaubt sind PDF (.pdf) und Textdateien (.txt, .md), Typ und Endung müssen zusammenpassen." };
+    return { ok: false, code: "unsupported_type", message: "Erlaubt sind PDF (.pdf), Textdateien (.txt, .md) und Wiki-/Doku-Exporte (.json, .xml, .html), Typ und Endung müssen zusammenpassen." };
   }
 }

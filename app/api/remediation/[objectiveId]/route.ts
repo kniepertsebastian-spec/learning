@@ -1,4 +1,4 @@
-import { isObjectiveHidden } from "@/lib/server/catalog/access";
+import { featuresOfObjective, isObjectiveHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/server/auth";
 import {
@@ -17,6 +17,10 @@ async function respond(forceRegenerate: boolean, { params }: RouteContext) {
   const { objectiveId } = await params;
   if (await isObjectiveHidden(session.user.id, objectiveId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const features = await featuresOfObjective(objectiveId);
+  if (features && !features.includeSectionQuizzes) {
+    return NextResponse.json({ error: "Wiederholungen gibt es nur bei Lernpfaden mit Lektionstests." }, { status: 409 });
   }
 
   try {

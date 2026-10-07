@@ -37,6 +37,7 @@ export default async function OfflinePage({
     .where(eq(certifications.slug, slug))
     .limit(1);
   if (!cert) notFound();
+  if (!cert.includeSectionQuizzes) notFound(); // der Offline-Leser ist auf Lernpfade mit Lektionstests ausgelegt
 
   return (
     <div className="flex flex-1 flex-col">

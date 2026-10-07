@@ -2,11 +2,14 @@ export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
+import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import {
+  certifications,
   sections,
   objectives,
   domains,
+  lessonCompletions,
   lessons,
   questions,
   questionOptions,
@@ -49,6 +52,26 @@ export default async function SectionPage({
     .where(eq(domains.id, objective.domainId))
     .limit(1);
   const domainName = domainRows[0]?.name ?? "";
+
+  // Funktionsumfang des Lernpfads: interne Lernpfade können ohne Lektionstests bestehen („reine Absolvierung“).
+  const [certRow] = domainRows[0]
+    ? await db
+        .select({ includeSectionQuizzes: certifications.includeSectionQuizzes })
+        .from(certifications)
+        .where(eq(certifications.id, domainRows[0].certificationId))
+        .limit(1)
+    : [];
+  const quizEnabled = certRow?.includeSectionQuizzes ?? true;
+  const session = await auth();
+  let completed = false;
+  if (session?.user?.id && !quizEnabled) {
+    const [done] = await db
+      .select({ id: lessonCompletions.id })
+      .from(lessonCompletions)
+      .where(and(eq(lessonCompletions.userId, session.user.id), eq(lessonCompletions.sectionId, sectionId)))
+      .limit(1);
+    completed = Boolean(done);
+  }
 
   // Fetch questions for this objective - R1.5: veraltete (stale) Fragen
   // nicht mehr an Lernende ausliefern, sie bleiben nur für bereits
@@ -96,7 +119,10 @@ export default async function SectionPage({
         keyTakeaways: lesson.keyTakeaways ?? null,
         examFocusPoints: lesson.examFocusPoints ?? null,
       }}
-      questions={quizQuestions}
+      questions={quizEnabled ? quizQuestions : []}
+      quizEnabled={quizEnabled}
+      signedIn={Boolean(session?.user?.id)}
+      initialCompleted={completed}
     />
   );
 }

@@ -1,4 +1,4 @@
-import { isCertificationHidden } from "@/lib/server/catalog/access";
+import { featuresOfCertification, isCertificationHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -46,6 +46,10 @@ export async function POST(request: NextRequest) {
   const { certificationId, goalValue, goalType, energyLevel } = parsed.data;
   if (await isCertificationHidden(session.user.id, certificationId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const features = await featuresOfCertification(certificationId);
+  if (features && !features.includeSectionQuizzes) {
+    return NextResponse.json({ error: "Übungssitzungen gibt es nur bei Lernpfaden mit Lektionstests." }, { status: 409 });
   }
 
   const existing = await peekActiveOrTodaySession(session.user.id, certificationId);

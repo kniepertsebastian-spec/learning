@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
 import {
@@ -12,6 +12,7 @@ import {
   type CourseRequestStatus,
 } from "@/lib/server/db/schema";
 import { SETTABLE_REQUEST_STATUSES } from "@/lib/course-requests";
+import { notifyCompanyEntitlementRevoked, notifyCompanyRequestStatus } from "@/lib/server/company/request-notifications";
 
 /**
  * Betreiberseite der Kundenanfragen (nur Plattform-Admins, siehe requireAdminApi): Anfragen aller Firmen
@@ -34,6 +35,7 @@ function logAuditFailure(err: unknown) {
 }
 
 const OPEN_STATUSES: CourseRequestStatus[] = ["submitted", "on_hold", "in_creation", "in_review"];
+const CLOSED_STATUSES: CourseRequestStatus[] = ["released", "rejected", "withdrawn", "revoked"];
 const MAX_NOTE = 500;
 
 export type AdminRequestRow = {
@@ -77,7 +79,7 @@ export async function listAllCourseRequests(): Promise<AdminRequestRow[]> {
     .leftJoin(users, eq(users.id, courseRequests.requestedByUserId))
     .leftJoin(certifications, eq(certifications.id, courseRequests.certificationId))
     .orderBy(
-      sql`case when ${courseRequests.status} in ('released', 'rejected') then 1 else 0 end`,
+      sql`case when ${courseRequests.status} in ('released', 'rejected', 'withdrawn', 'revoked') then 1 else 0 end`,
       desc(courseRequests.createdAt),
       asc(organizations.name),
     );
@@ -133,7 +135,8 @@ export async function setRequestStatus(input: {
       .for("update")
       .limit(1);
     if (!current) throw new RequestNotFoundError();
-    if (current.status === "released") throw new InvalidStatusChangeError(); // freigegeben ist endgültig
+    // freigegeben, zurückgezogen und entzogen sind endgültig (eine neue Anfrage startet neu)
+    if ((CLOSED_STATUSES as string[]).includes(current.status) && current.status !== "rejected") throw new InvalidStatusChangeError();
     await tx
       .update(courseRequests)
       .set({ status: input.status, statusNote: note, updatedAt: new Date() })
@@ -147,6 +150,7 @@ export async function setRequestStatus(input: {
     targetId: input.requestId,
     metadata: { status: input.status },
   }).catch(logAuditFailure);
+  void notifyCompanyRequestStatus(input.requestId);
 }
 
 /**
@@ -168,7 +172,7 @@ export async function releaseRequest(input: {
       .for("update")
       .limit(1);
     if (!request) throw new RequestNotFoundError();
-    if (request.status === "released") throw new InvalidStatusChangeError();
+    if (request.status === "released" || request.status === "withdrawn" || request.status === "revoked") throw new InvalidStatusChangeError();
 
     const certificationId = input.certificationId ?? request.certificationId;
     if (!certificationId) throw new NoCourseError();
@@ -198,6 +202,7 @@ export async function releaseRequest(input: {
     targetId: input.requestId,
     metadata: { organizationId: result.organizationId, certificationId: result.certificationId },
   }).catch(logAuditFailure);
+  void notifyCompanyRequestStatus(input.requestId);
   return result;
 }
 
@@ -247,3 +252,72 @@ export async function countOpenCourseRequests(): Promise<number> {
   return row?.n ?? 0;
 }
 
+
+export class EntitlementNotFoundError extends Error {}
+
+export type EntitlementRow = {
+  organizationId: string;
+  organizationName: string;
+  certificationId: string;
+  courseName: string;
+  releasedAt: Date;
+  /** Offene Zuweisungen dieser Firma an diesen Lernpfad (bleiben nach dem Entziehen bestehen). */
+  openAssignments: number;
+};
+
+/** Erteilte Firmenfreigaben, neueste zuerst. */
+export async function listEntitlements(): Promise<EntitlementRow[]> {
+  return getDb()
+    .select({
+      organizationId: companyCourseEntitlements.organizationId,
+      organizationName: organizations.name,
+      certificationId: companyCourseEntitlements.certificationId,
+      courseName: certifications.name,
+      releasedAt: companyCourseEntitlements.releasedAt,
+      openAssignments: sql<number>`(select count(*)::int from company_assignments a where a.organization_id = ${companyCourseEntitlements.organizationId} and a.certification_id = ${companyCourseEntitlements.certificationId} and a.status <> 'completed')`,
+    })
+    .from(companyCourseEntitlements)
+    .innerJoin(organizations, eq(organizations.id, companyCourseEntitlements.organizationId))
+    .innerJoin(certifications, eq(certifications.id, companyCourseEntitlements.certificationId))
+    .orderBy(desc(companyCourseEntitlements.releasedAt));
+}
+
+/**
+ * Entzieht einer Firma die Freigabe eines allgemeinen Lernpfads. Danach kann die Firma ihn nicht mehr NEU zuweisen
+ * und im Katalog wieder anfragen. Bestehende Zuweisungen und Lernfortschritt bleiben unberührt (nichts geht verloren,
+ * niemand wird mitten im Lernen ausgesperrt). Die ursprüngliche Anfrage steht danach auf „Freigabe entzogen“, mit Hinweis.
+ */
+export async function revokeEntitlement(input: {
+  organizationId: string;
+  certificationId: string;
+  note?: string | null;
+  actorUserId: string;
+}): Promise<void> {
+  const note = cleanNote(input.note) ?? "Freigabe entzogen";
+  let courseName = "Lernpfad";
+  await getDb().transaction(async (tx) => {
+    const [course] = await tx.select({ name: certifications.name }).from(certifications).where(eq(certifications.id, input.certificationId)).limit(1);
+    if (course) courseName = course.name;
+    const [entitlement] = await tx
+      .delete(companyCourseEntitlements)
+      .where(and(eq(companyCourseEntitlements.organizationId, input.organizationId), eq(companyCourseEntitlements.certificationId, input.certificationId)))
+      .returning({ requestId: companyCourseEntitlements.requestId });
+    if (!entitlement) throw new EntitlementNotFoundError();
+    if (entitlement.requestId) {
+      const [updated] = await tx
+        .update(courseRequests)
+        .set({ status: "revoked", statusNote: note, updatedAt: new Date() })
+        .where(and(eq(courseRequests.id, entitlement.requestId), eq(courseRequests.status, "released")))
+        .returning({ id: courseRequests.id });
+      if (updated) await tx.insert(courseRequestEvents).values({ requestId: updated.id, status: "revoked", note, actorUserId: input.actorUserId });
+    }
+  });
+  await recordAuditEvent({
+    actorUserId: input.actorUserId,
+    action: "course_entitlement.revoked",
+    targetType: "organization",
+    targetId: input.organizationId,
+    metadata: { certificationId: input.certificationId },
+  }).catch(logAuditFailure);
+  void notifyCompanyEntitlementRevoked(input.organizationId, courseName, note);
+}

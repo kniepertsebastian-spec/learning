@@ -31,6 +31,9 @@ export interface CreateCourseGenerationJobInput {
   /** Nur bei internen Lernpfaden einer Firma (siehe createInternalCourseJob). */
   organizationId?: string;
   documentId?: string;
+  /** Nur interne Lernpfade: Lektionstests und/oder Abschlussprüfung erzeugen (Standard ja). */
+  includeSectionQuizzes?: boolean;
+  includeFinalExam?: boolean;
 }
 
 /**
@@ -78,6 +81,8 @@ export async function createCourseGenerationJob(
       sourceUrls: input.sourceUrls,
       organizationId: input.organizationId,
       documentId: input.documentId,
+      includeSectionQuizzes: input.includeSectionQuizzes ?? true,
+      includeFinalExam: input.includeFinalExam ?? true,
       autoPublish: input.autoPublish,
       initialCostLimitUsd: input.initialCostLimitUsd.toString(),
       absoluteCostLimitUsd: input.absoluteCostLimitUsd.toString(),

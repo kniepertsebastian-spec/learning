@@ -18,6 +18,8 @@ export type AssignmentRowView = {
   dueAt: string | null;
   completedAt: string | null;
   overdue: boolean;
+  practiceConfirmed: number;
+  practiceTotal: number;
 };
 export type MemberOption = { userId: string; name: string | null; email: string; role: Role };
 export type PathOption = { id: string; name: string; kind: "general" | "internal" };
@@ -194,6 +196,7 @@ export function AssignmentsPanel({
                 <th className="py-2 pr-4 font-medium">{de ? "Zugewiesen" : "Assigned"}</th>
                 <th className="py-2 pr-4 font-medium">{de ? "Frist" : "Due"}</th>
                 <th className="py-2 pr-4 font-medium">{de ? "Abgeschlossen" : "Completed"}</th>
+                <th className="py-2 pr-4 font-medium">{de ? "Praxis" : "Practice"}</th>
                 <th className="py-2 font-medium" />
               </tr>
             </thead>
@@ -226,6 +229,9 @@ export function AssignmentsPanel({
                     )}
                   </td>
                   <td className="py-2 pr-4">{formatDate(r.completedAt, locale)}</td>
+                  <td className="py-2 pr-4" data-testid="row-practice">
+                    {r.practiceTotal > 0 ? (de ? `${r.practiceConfirmed} von ${r.practiceTotal} bestätigt` : `${r.practiceConfirmed} of ${r.practiceTotal} confirmed`) : "–"}
+                  </td>
                   <td className="py-2 text-right">
                     {r.status !== "completed" && (
                       <button

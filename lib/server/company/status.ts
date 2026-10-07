@@ -1,8 +1,10 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   certifications,
   companyAssignments,
+  practiceTaskSubmissions,
+  practiceTasks,
   users,
   type AssignmentStatus,
   type CourseKind,
@@ -26,6 +28,8 @@ export const COMPANY_STATUS_FIELDS = [
   "assignedAt",
   "dueAt",
   "completedAt",
+  "practiceConfirmed",
+  "practiceTotal",
 ] as const;
 
 export type CompanyStatusEntry = {
@@ -39,6 +43,9 @@ export type CompanyStatusEntry = {
   assignedAt: Date;
   dueAt: Date | null;
   completedAt: Date | null;
+  /** Praxisaufgaben dieses Lernpfads, die der Mentor bestätigt hat, und wie viele es gibt (nur Zahlen, keine Inhalte). */
+  practiceConfirmed: number;
+  practiceTotal: number;
 };
 
 /** Statusübersicht einer Organisation. `organizationId` MUSS aus der Mitgliedschaft stammen (guard.ts). */
@@ -55,6 +62,8 @@ export async function listCompanyStatus(organizationId: string): Promise<Company
       assignedAt: companyAssignments.assignedAt,
       dueAt: companyAssignments.dueAt,
       completedAt: companyAssignments.completedAt,
+      practiceTotal: sql<number>`(select count(*)::int from ${practiceTasks} t where t.organization_id = ${companyAssignments.organizationId} and t.certification_id = ${companyAssignments.certificationId} and t.archived_at is null)`,
+      practiceConfirmed: sql<number>`(select count(*)::int from ${practiceTaskSubmissions} s join ${practiceTasks} t on t.id = s.task_id where t.organization_id = ${companyAssignments.organizationId} and t.certification_id = ${companyAssignments.certificationId} and t.archived_at is null and s.user_id = ${companyAssignments.userId} and s.status = 'confirmed')`,
     })
     .from(companyAssignments)
     .innerJoin(users, eq(users.id, companyAssignments.userId))

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Flag, X } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import type { AnswerConfidence, QuizQuestion } from "@/lib/types";
+import { RichText } from "@/components/RichText";
 
 type ReportReason = "incorrect" | "unclear" | "outdated";
 
@@ -81,7 +82,7 @@ export function QuizQuestionCard({
 
   return (
     <div className="rounded-lg border border-border bg-surface p-5">
-      <p className="mb-4 font-medium">{question.question[locale]}</p>
+      <div className="mb-4 font-medium"><RichText text={question.question[locale]} /></div>
 
       <div className="flex flex-col gap-2">
         {question.options[locale].map((option, index) => {
@@ -106,7 +107,7 @@ export function QuizQuestionCard({
               disabled={selected !== null}
               className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-default ${stateClasses}`}
             >
-              <span>{option}</span>
+              <span className="min-w-0 flex-1"><RichText text={option} inline /></span>
               {showState && isCorrectOption && (
                 <Check className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
               )}
@@ -143,7 +144,7 @@ export function QuizQuestionCard({
           <p className="mb-1 font-medium">
             {selected === question.correctIndex ? t.lesson.correct : t.lesson.incorrect}
           </p>
-          <p className="text-foreground/70">{question.explanation[locale]}</p>
+          <div className="text-foreground/70"><RichText text={question.explanation[locale]} /></div>
           {sourceReference && (
             <p className="mt-2 text-xs text-foreground/50">
               {locale === "de" ? "Quelle" : "Source"}: {sourceReference}

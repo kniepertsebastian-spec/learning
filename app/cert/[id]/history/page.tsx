@@ -57,6 +57,7 @@ export default async function ExamHistoryPage({
     .where(eq(certifications.slug, slug))
     .limit(1);
   if (!cert) notFound();
+  if (!cert.includeFinalExam) notFound(); // ohne Abschlussprüfung gibt es keine Prüfungsübersicht
 
   const [attempts, trends, calendar, streak, domainTrends] = await Promise.all([
     listExamAttempts(session.user.id, cert.id),

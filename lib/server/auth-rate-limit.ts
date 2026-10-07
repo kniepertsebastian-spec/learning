@@ -158,3 +158,35 @@ const INTERNAL_COURSE_MAX_PER_WINDOW = 5;
 export function checkInternalCourseRateLimit(organizationId: string): RateLimitResult {
   return checkRateLimit("internal-course", organizationId, INTERNAL_COURSE_WINDOW_MS, INTERNAL_COURSE_MAX_PER_WINDOW);
 }
+
+const PRACTICE_TASK_WINDOW_MS = 60 * 60 * 1000;
+const PRACTICE_TASK_MAX_PER_WINDOW = 60;
+
+/** Praxisaufgaben anlegen, abgeben und prüfen: je Nutzer. */
+export function checkPracticeTaskRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("practice-task", userId, PRACTICE_TASK_WINDOW_MS, PRACTICE_TASK_MAX_PER_WINDOW);
+}
+
+const COMPANY_MODULE_WINDOW_MS = 60 * 60 * 1000;
+const COMPANY_MODULE_MAX_PER_WINDOW = 60;
+
+/** Firmenmodule anlegen, ändern und archivieren: je Nutzer. */
+export function checkCompanyModuleRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("company-module", userId, COMPANY_MODULE_WINDOW_MS, COMPANY_MODULE_MAX_PER_WINDOW);
+}
+
+const ONBOARDING_WINDOW_MS = 60 * 60 * 1000;
+const ONBOARDING_MAX_PER_WINDOW = 60;
+
+/** Onboarding-Pläne anlegen, zuweisen und Stand setzen: je Nutzer. */
+export function checkOnboardingRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("onboarding", userId, ONBOARDING_WINDOW_MS, ONBOARDING_MAX_PER_WINDOW);
+}
+
+const DOCUMENT_IMAGE_WINDOW_MS = 60 * 60 * 1000;
+const DOCUMENT_IMAGE_MAX_PER_WINDOW = 200;
+
+/** Screenshots an Dokumente anhängen: je Nutzer, großzügiger als ganze Dokumente (bis zu 20 je Dokument). */
+export function checkDocumentImageRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("document-image", userId, DOCUMENT_IMAGE_WINDOW_MS, DOCUMENT_IMAGE_MAX_PER_WINDOW);
+}

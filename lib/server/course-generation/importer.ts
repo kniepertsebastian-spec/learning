@@ -26,7 +26,11 @@ export function suggestCourseSlug(title: string, certificationVersion?: string):
     .slice(0, 80);
 }
 
-/** Wie humanIdPrefix() in scripts/generate-lessons-and-questions.ts. */
+/**
+ * Wie humanIdPrefix() in scripts/generate-lessons-and-questions.ts. Gilt für allgemeine Lernpfade (Slugs sind dort
+ * eindeutig und sprechend). Interne Lernpfade der Firmen bekommen stattdessen ein Kürzel aus der eigenen ID, denn
+ * ihre Titel und Lernziel-Codes („1.1“) wiederholen sich zwischen Firmen und Kursen, die Frage-ID ist aber eindeutig.
+ */
 function humanIdPrefix(slug: string): string {
   return slug.split("-")[0].substring(0, 3).toUpperCase();
 }
@@ -56,7 +60,7 @@ export async function importCoursePackage(
   pkg: CoursePackageV1,
   slugOverride?: string,
   /** Interner Lernpfad einer Firma: gehört genau dieser Organisation und startet wie jeder KI-Entwurf als "draft". */
-  owner?: { organizationId: string },
+  owner?: { organizationId: string; includeSectionQuizzes?: boolean; includeFinalExam?: boolean },
 ): Promise<ImportedCourse> {
   const db = getDb();
   const slug = slugOverride ?? suggestCourseSlug(pkg.title, pkg.certificationVersion);
@@ -88,7 +92,14 @@ export async function importCoursePackage(
         scoreScale: pkg.scoreScale,
         // KI-generierte Lernpfade brauchen die fachliche Freigabe (Name und Datum), bevor sie an Kunden gehen dürfen.
         catalogStatus: "draft",
-        ...(owner ? { kind: "internal" as const, ownerOrganizationId: owner.organizationId } : {}),
+        ...(owner
+          ? {
+              kind: "internal" as const,
+              ownerOrganizationId: owner.organizationId,
+              includeSectionQuizzes: owner.includeSectionQuizzes ?? true,
+              includeFinalExam: owner.includeFinalExam ?? true,
+            }
+          : {}),
       })
       .returning();
 
@@ -145,7 +156,7 @@ export async function importCoursePackage(
         }
 
         for (const question of objective.questions) {
-          const humanId = `${prefix}-${objective.code}-Q${String(questionNumber).padStart(3, "0")}`;
+          const humanId = `${owner ? `I${cert.id.replace(/-/g, "").slice(0, 8).toUpperCase()}` : prefix}-${objective.code}-Q${String(questionNumber).padStart(3, "0")}`;
           questionNumber++;
           const [questionRow] = await tx
             .insert(questions)

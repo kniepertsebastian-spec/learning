@@ -8,8 +8,11 @@ import {
   examAnswers,
   examAttempts,
   objectiveProgress,
+  lessonCompletions,
   organizationMemberships,
   organizations,
+  practiceTaskSubmissions,
+  practiceTasks,
   quizAnswers,
   quizAttempts,
   remediationSessions,
@@ -30,6 +33,7 @@ import {
  */
 export const EXPORTED_USER_REFERENCES: readonly string[] = [
   "organization_memberships.user_id",
+  "lesson_completions.user_id",
   "quiz_attempts.user_id",
   "objective_progress.user_id",
   "remediation_sessions.user_id",
@@ -55,6 +59,13 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "blueprint_drafts.generated_by_user_id": OPERATIONAL_REASON,
   "blueprint_drafts.edited_by_user_id": OPERATIONAL_REASON,
   "certification_sources.approved_by": OPERATIONAL_REASON,
+  "company_modules.responsible_user_id": "Zuordnung der Firma (wer ein Modul betreut), nicht persönliche Lerndaten; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "company_modules.created_by_user_id": "Das Modul gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "onboarding_plans.mentor_user_id": "Zuordnung der Firma (wer einen Plan begleitet), nicht persönliche Lerndaten; bei Löschung anonymisiert (SET NULL)",
+  "onboarding_plans.created_by_user_id": "Der Plan gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "onboardings.status_by_user_id": "Betrifft die onboardete Person; der Verweis auf die setzende Person wird bei Löschung anonymisiert (SET NULL)",
+  "practice_tasks.created_by_user_id": "Die Aufgabe gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "practice_task_submissions.reviewed_by_user_id": "Bestätigung betrifft die abgebende Person (steht in deren Export); der Verweis auf die prüfende Person wird bei Löschung anonymisiert (SET NULL)",
   "company_assignments.assigned_by_user_id": "Zuweisung betrifft die zugewiesene Person, nicht die zuweisende; bei Löschung anonymisiert",
   "company_course_entitlements.released_by_user_id": OPERATIONAL_REASON,
   "course_request_events.actor_user_id": "Verlauf einer Firmenanfrage (Bearbeiter oder Anfragender); gehört der Firma, bei Löschung anonymisiert (SET NULL)",
@@ -62,6 +73,7 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "organization_ai_settings.updated_by_user_id": "Einstellung der Firma; der Verweis auf die änderende Person wird bei Löschung anonymisiert (SET NULL)",
   "company_documents.scanner_suppressed_by_user_id": "Das Dokument gehört der Firma; der Verweis auf den bestätigenden Firmen-Admin wird bei Löschung anonymisiert (SET NULL)",
   "company_documents.uploaded_by_user_id": "Das Dokument gehört der Firma, nicht der Person; der Uploader-Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "company_document_images.attested_by_user_id": "Das Bild gehört der Firma, nicht der Person; der Verweis auf die bestätigende Person wird bei Löschung anonymisiert (SET NULL)",
   "company_invitations.created_by_user_id": "Einladung betrifft die eingeladene Person; bei Löschung anonymisiert",
   "content_generation_jobs.started_by_user_id": OPERATIONAL_REASON,
   "content_reports.resolved_by_user_id": OPERATIONAL_REASON,
@@ -110,6 +122,20 @@ export async function exportAccountData(userId: string) {
     .from(companyAssignments)
     .where(eq(companyAssignments.userId, userId));
 
+  // Eigene Abgaben zu Praxisaufgaben samt Bestätigung (Nachweise gehören der Person).
+  const practiceSubmissions = await db
+    .select({
+      task: practiceTasks.title,
+      status: practiceTaskSubmissions.status,
+      note: practiceTaskSubmissions.learnerNote,
+      submittedAt: practiceTaskSubmissions.submittedAt,
+      reviewedAt: practiceTaskSubmissions.reviewedAt,
+      reviewerNote: practiceTaskSubmissions.reviewerNote,
+    })
+    .from(practiceTaskSubmissions)
+    .innerJoin(practiceTasks, eq(practiceTasks.id, practiceTaskSubmissions.taskId))
+    .where(eq(practiceTaskSubmissions.userId, userId));
+
   const acceptedInvitations = await db
     .select({
       role: companyInvitations.role,
@@ -147,7 +173,7 @@ export async function exportAccountData(userId: string) {
     format: "learning-export-v1",
     exportedAt: new Date().toISOString(),
     account,
-    company: { membership: membership ?? null, assignments, acceptedInvitations },
+    company: { membership: membership ?? null, assignments, practiceSubmissions, acceptedInvitations },
     learning: {
       quizAttempts: quizAttemptRows.map((attempt) => ({
         ...attempt,
@@ -157,6 +183,7 @@ export async function exportAccountData(userId: string) {
         ...attempt,
         answers: examAnswerRows.filter((a) => a.examAttemptId === attempt.id),
       })),
+      lessonCompletions: await db.select().from(lessonCompletions).where(eq(lessonCompletions.userId, userId)),
       objectiveProgress: await db.select().from(objectiveProgress).where(eq(objectiveProgress.userId, userId)),
       remediationSessions: await db.select().from(remediationSessions).where(eq(remediationSessions.userId, userId)),
       reviewItems: await db.select().from(reviewItems).where(eq(reviewItems.userId, userId)),

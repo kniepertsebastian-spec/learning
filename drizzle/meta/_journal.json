@@ -246,6 +246,48 @@
       "when": 1791328316377,
       "tag": "0034_internal_course_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791335937825,
+      "tag": "0035_request_withdrawn_revoked",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791341320017,
+      "tag": "0036_practice_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791342171419,
+      "tag": "0037_company_modules",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791343873738,
+      "tag": "0038_test_optional_courses",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791344962826,
+      "tag": "0039_onboardings",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791345201833,
+      "tag": "0040_document_images",
+      "breakpoints": true
     }
   ]
 }

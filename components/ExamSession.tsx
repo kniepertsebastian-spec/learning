@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { ExamTimer } from "@/components/ExamTimer";
 import { ExamNavigator } from "@/components/ExamNavigator";
 import type { Locale } from "@/lib/types";
+import { RichText } from "@/components/RichText";
 
 interface ExamQuestion {
   questionId: string;
@@ -208,7 +209,7 @@ export function ExamSession({
 
         <div className="rounded-lg border border-border bg-surface p-5">
           <div className="mb-4 flex items-start justify-between gap-3">
-            <p className="font-medium">{question.question[locale]}</p>
+            <div className="font-medium"><RichText text={question.question[locale]} /></div>
             <button
               type="button"
               onClick={() => toggleFlag(currentIndex)}
@@ -237,7 +238,7 @@ export function ExamSession({
                       : "border-border hover:bg-background"
                   }`}
                 >
-                  {option.text[locale]}
+                  <RichText text={option.text[locale]} inline />
                 </button>
               ))}
           </div>

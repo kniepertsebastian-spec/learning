@@ -18,6 +18,8 @@ export type InternalCourseView = {
   slug: string;
   name: string;
   catalogStatus: "draft" | "in_review" | "approved";
+  includeSectionQuizzes: boolean;
+  includeFinalExam: boolean;
   approvedByName: string | null;
   approvedAt: Date | null;
   createdAt: Date;
@@ -47,6 +49,8 @@ export async function listInternalCourses(organizationId: string): Promise<Inter
       slug: certifications.slug,
       name: certifications.name,
       catalogStatus: certifications.catalogStatus,
+      includeSectionQuizzes: certifications.includeSectionQuizzes,
+      includeFinalExam: certifications.includeFinalExam,
       approvedByName: certifications.approvedByName,
       approvedAt: certifications.approvedAt,
       createdAt: certifications.createdAt,

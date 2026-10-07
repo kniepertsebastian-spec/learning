@@ -27,6 +27,7 @@ export default async function FinalExamStartPage({
 
   if (!certRows.length) notFound();
   const cert = certRows[0];
+  if (!cert.includeFinalExam) notFound(); // Lernpfad ohne Abschlussprüfung
 
   if (!session?.user?.id) {
     return (

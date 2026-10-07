@@ -42,6 +42,9 @@ export async function startInternalCourse(input: {
   documentId: string;
   title: string;
   language: "de" | "en";
+  /** Mit Lektionstests / Abschlussprüfung (Standard ja). Beides aus: reiner Durchlauf der Lektionen, keine KI-Fragen. */
+  includeSectionQuizzes?: boolean;
+  includeFinalExam?: boolean;
   /** Nur für Tests: legt den Auftrag an, startet aber den Worker nicht. */
   startWorker?: boolean;
 }): Promise<{ jobId: string }> {
@@ -72,6 +75,8 @@ export async function startInternalCourse(input: {
     requestedByUserId: input.userId,
     organizationId: input.organizationId,
     documentId: input.documentId,
+    includeSectionQuizzes: input.includeSectionQuizzes ?? true,
+    includeFinalExam: input.includeFinalExam ?? true,
     courseTitle: title,
     courseDescription: `Interner Lernpfad aus dem Firmendokument „${title}“`,
     language: input.language,

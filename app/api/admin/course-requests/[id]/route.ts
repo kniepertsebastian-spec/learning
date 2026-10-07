@@ -31,7 +31,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   } catch (error) {
     if (error instanceof RequestNotFoundError) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (error instanceof InvalidStatusChangeError) {
-      return NextResponse.json({ error: "Diese Statusänderung ist nicht möglich (freigegeben ist endgültig, Ablehnung braucht eine Begründung)." }, { status: 409 });
+      return NextResponse.json({ error: "Diese Statusänderung ist nicht möglich (freigegeben, zurückgezogen und entzogen sind endgültig, Ablehnung braucht eine Begründung)." }, { status: 409 });
     }
     throw error;
   }

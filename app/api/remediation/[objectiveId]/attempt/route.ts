@@ -1,4 +1,4 @@
-import { isObjectiveHidden } from "@/lib/server/catalog/access";
+import { featuresOfObjective, isObjectiveHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
@@ -25,6 +25,10 @@ export async function POST(
   const { objectiveId } = await params;
   if (await isObjectiveHidden(session.user.id, objectiveId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const features = await featuresOfObjective(objectiveId);
+  if (features && !features.includeSectionQuizzes) {
+    return NextResponse.json({ error: "Wiederholungen gibt es nur bei Lernpfaden mit Lektionstests." }, { status: 409 });
   }
   const body = (await request.json()) as RemediationAnswerPayload;
   const db = getDb();

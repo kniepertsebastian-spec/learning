@@ -124,7 +124,9 @@ export type CoursePackageQuestion = z.infer<typeof coursePackageQuestionSchema>;
 
 export const coursePackageObjectiveSchema = courseBlueprintObjectiveSchema.extend({
   sections: z.array(coursePackageSectionSchema).min(1),
-  questions: z.array(coursePackageQuestionSchema).min(1),
+  // Lernpfade ohne Lektionstests und Abschlussprüfung haben keine Fragen; bei allen anderen erzwingt der Worker die
+  // empfohlene Fragenanzahl (validateObjectiveContent).
+  questions: z.array(coursePackageQuestionSchema),
 });
 export type CoursePackageObjective = z.infer<typeof coursePackageObjectiveSchema>;
 
@@ -169,3 +171,9 @@ export const objectiveContentResponseSchema = z.object({
   questions: z.array(coursePackageQuestionSchema).min(1),
 });
 export type ObjectiveContentResponse = z.infer<typeof objectiveContentResponseSchema>;
+
+/** Antwortformat für Lernpfade ohne Fragen (nur Lektionen): `questions` darf fehlen oder leer sein. */
+export const objectiveContentNoQuestionsResponseSchema = z.object({
+  sections: z.array(coursePackageSectionSchema).min(1),
+  questions: z.array(coursePackageQuestionSchema).default([]),
+});
