@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
-import { companyDocumentFiles, companyDocuments, users } from "@/lib/server/db/schema";
+import { companyDocumentFiles, companyDocumentImages, companyDocuments, users } from "@/lib/server/db/schema";
 import { SUPPRESSIBLE_KINDS, type SecretKind } from "@/lib/server/documents/secret-scanner";
+import { inspectImage, MAX_IMAGES_PER_DOCUMENT } from "@/lib/server/documents/images";
 import { cleanFilename, inspectUpload, type UploadRejection } from "@/lib/server/documents/upload";
 
 /**
@@ -37,11 +38,13 @@ export type CompanyDocumentSummary = {
   suppressedFindings: number;
   createdAt: Date;
   uploadedByName: string | null;
+  /** Anzahl angehängter Screenshots. */
+  imageCount: number;
 };
 
 /** Das ist alles, was die Liste über ein Dokument verrät: nie der Inhalt. */
 export const DOCUMENT_LIST_FIELDS = [
-  "id", "title", "originalFilename", "mimeType", "sizeBytes", "pageCount", "excludeFromAi", "suppressedFindings", "createdAt", "uploadedByName",
+  "id", "title", "originalFilename", "mimeType", "sizeBytes", "pageCount", "excludeFromAi", "suppressedFindings", "createdAt", "uploadedByName", "imageCount",
 ] as const;
 
 export async function listCompanyDocuments(organizationId: string): Promise<CompanyDocumentSummary[]> {
@@ -57,6 +60,7 @@ export async function listCompanyDocuments(organizationId: string): Promise<Comp
       suppressed: companyDocuments.scannerSuppressed,
       createdAt: companyDocuments.createdAt,
       uploadedByName: users.name,
+      imageCount: sql<number>`(select count(*)::int from ${companyDocumentImages} where ${companyDocumentImages.documentId} = ${companyDocuments.id})`,
     })
     .from(companyDocuments)
     .leftJoin(users, eq(users.id, companyDocuments.uploadedByUserId))
@@ -187,6 +191,96 @@ export async function deleteCompanyDocument(organizationId: string, documentId: 
     action: "document.deleted",
     targetType: "company_document",
     targetId: row.id,
+    metadata: { organizationId },
+  }).catch(logAuditFailure);
+  return true;
+}
+
+export class AttestationRequiredError extends Error {}
+export class DocumentNotFoundError extends Error {}
+export class TooManyImagesError extends Error {}
+
+export type ImageUploadResult =
+  | { ok: true; image: { id: string; filename: string } }
+  | { ok: false; code: "empty" | "too_large" | "unsupported_type" | "invalid_content"; message: string };
+
+/**
+ * Hängt einen Screenshot an ein Dokument der eigenen Firma. Bilder lassen sich nicht auf Zugangsdaten scannen:
+ * die Person muss bestätigen, dass nichts Vertrauliches zu sehen ist (Passwörter, Schlüssel, Kundendaten).
+ */
+export async function addDocumentImage(input: {
+  organizationId: string;
+  documentId: string;
+  userId: string;
+  attested: boolean;
+  file: { filename: string; mimeType: string; data: Buffer };
+}): Promise<ImageUploadResult> {
+  if (!input.attested) throw new AttestationRequiredError();
+  const db = getDb();
+  const [doc] = await db
+    .select({ id: companyDocuments.id })
+    .from(companyDocuments)
+    .where(and(eq(companyDocuments.id, input.documentId), eq(companyDocuments.organizationId, input.organizationId)))
+    .limit(1);
+  if (!doc) throw new DocumentNotFoundError();
+  const filename = cleanFilename(input.file.filename);
+  const inspection = inspectImage({ filename, mimeType: input.file.mimeType, data: input.file.data });
+  if (!inspection.ok) return inspection;
+
+  const row = await db.transaction(async (tx) => {
+    // Sperre auf das Dokument, damit parallele Uploads die Obergrenze nicht überschreiten.
+    await tx.execute(sql`select 1 from ${companyDocuments} where ${companyDocuments.id} = ${doc.id} for update`);
+    const [{ n }] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(companyDocumentImages)
+      .where(eq(companyDocumentImages.documentId, doc.id));
+    if (n >= MAX_IMAGES_PER_DOCUMENT) throw new TooManyImagesError();
+    const [created] = await tx
+      .insert(companyDocumentImages)
+      .values({
+        documentId: doc.id,
+        organizationId: input.organizationId,
+        filename,
+        mimeType: inspection.mimeType,
+        sizeBytes: input.file.data.byteLength,
+        data: input.file.data,
+        attestedByUserId: input.userId,
+        attestedAt: new Date(),
+      })
+      .returning({ id: companyDocumentImages.id, filename: companyDocumentImages.filename });
+    return created;
+  });
+  await recordAuditEvent({
+    actorUserId: input.userId,
+    action: "document.image_added",
+    targetType: "company_document",
+    targetId: doc.id,
+    metadata: { organizationId: input.organizationId },
+  }).catch(logAuditFailure);
+  return { ok: true, image: row };
+}
+
+export type DocumentImageSummary = { id: string; filename: string; sizeBytes: number };
+
+export async function listDocumentImages(organizationId: string, documentId: string): Promise<DocumentImageSummary[]> {
+  return getDb()
+    .select({ id: companyDocumentImages.id, filename: companyDocumentImages.filename, sizeBytes: companyDocumentImages.sizeBytes })
+    .from(companyDocumentImages)
+    .where(and(eq(companyDocumentImages.documentId, documentId), eq(companyDocumentImages.organizationId, organizationId)))
+    .orderBy(asc(companyDocumentImages.createdAt));
+}
+
+export async function deleteDocumentImage(organizationId: string, documentId: string, imageId: string, actorUserId: string): Promise<boolean> {
+  const [row] = await getDb()
+    .delete(companyDocumentImages)
+    .where(and(eq(companyDocumentImages.id, imageId), eq(companyDocumentImages.documentId, documentId), eq(companyDocumentImages.organizationId, organizationId)))
+    .returning({ id: companyDocumentImages.id });
+  if (!row) return false;
+  await recordAuditEvent({
+    actorUserId,
+    action: "document.image_deleted",
+    targetType: "company_document",
+    targetId: documentId,
     metadata: { organizationId },
   }).catch(logAuditFailure);
   return true;

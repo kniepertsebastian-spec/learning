@@ -1403,6 +1403,33 @@ export const companyDocumentFiles = pgTable("company_document_files", {
 });
 
 /**
+ * Screenshot zu einem Firmendokument (PNG, JPEG, WebP). Bilder lassen sich nicht auf Zugangsdaten scannen; deshalb
+ * bestätigt die hochladende Person beim Upload, dass nichts Vertrauliches zu sehen ist (attested_*). Für die
+ * Kurserstellung wird das Bild von der KI in Text beschrieben, und dieser Text läuft durch den Secret-Scanner.
+ * Gehört der Firma und fällt mit dem Dokument weg.
+ */
+export const companyDocumentImages = pgTable(
+  "company_document_images",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => companyDocuments.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    filename: text("filename").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    data: bytea("data").notNull(),
+    attestedByUserId: uuid("attested_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    attestedAt: timestamp("attested_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("company_document_images_doc_idx").on(table.documentId)],
+);
+
+/**
  * Anfrage einer Firma nach einem allgemeinen Lernpfad. Entweder wird ein vorhandener Lernpfad gewählt
  * (certification_id) oder frei beschrieben (wish_title/-description). Wir (Betreiber) geben frei oder erstellen
  * den Lernpfad, lassen ihn extern prüfen und geben dann frei; bis dahin steht die Anfrage mit aktuellem Status

@@ -23,6 +23,8 @@ export interface FetchedSource {
   retrievedAt: string;
   excerpts: SourceExcerpt[];
   truncated: boolean;
+  /** Hinweise zur Aufbereitung (z. B. ein ausgelassenes Bild), nie Inhalt. */
+  warnings?: string[];
 }
 
 /** Grobe HTML-Text-Extraktion für Nicht-PDF-Quellen - bewusst einfach

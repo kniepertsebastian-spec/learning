@@ -26,6 +26,8 @@ import { GET as listRoute, POST as uploadRoute } from "@/app/api/company/documen
 import { DELETE as deleteRoute } from "@/app/api/company/documents/[id]/route";
 import { GET as downloadRoute } from "@/app/api/company/documents/[id]/download/route";
 import { makePdf } from "@/lib/server/documents/pdf-fixture";
+import { POST as imagePost, GET as imageList } from "@/app/api/company/documents/[id]/images/route";
+import { DELETE as imageDelete } from "@/app/api/company/documents/[id]/images/[imageId]/route";
 import { DOCUMENT_LIST_FIELDS } from "./documents";
 import { loadDocumentSources, DocumentSourceError } from "@/lib/server/internal-courses/document-sources";
 
@@ -40,6 +42,7 @@ function uploadReq(file: { name: string; type: string; data: Buffer }, extra: Re
   for (const [k, v] of Object.entries(extra)) for (const one of Array.isArray(v) ? v : [v]) form.append(k, one);
   return new Request("http://localhost/api/company/documents", { method: "POST", body: form });
 }
+const listedFirst = (data: { images: { id: string }[] }) => data.images[0].id;
 const txt = (name: string, body: string) => ({ name, type: "text/plain", data: Buffer.from(body, "utf8") });
 
 run("Firmendokumente (echte DB)", () => {
@@ -116,6 +119,67 @@ run("Firmendokumente (echte DB)", () => {
     expect(source.excerpts[1].text).toContain("ansible-playbook site.yml -l web");
     await expect(loadDocumentSources(orgB, id)).rejects.toBeInstanceOf(DocumentSourceError);
     await getDb().delete(companyDocuments).where(eq(companyDocuments.id, id)); // spätere Tests zählen die Dokumente
+  });
+
+  it("Screenshots: Bestätigung Pflicht, Typ und Inhalt geprüft, nur eigene Firma, Obergrenze, Löschen", async () => {
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 1)]);
+    const res = await upload("adminA", txt("stichworte.txt", "VLAN 10 Server\nVLAN 20 Clients\nTrunk zu core01"));
+    const docId = (await res.json()).document.id as string;
+    const send = (as: string | null, id: string, file: { name: string; type: string; data: Buffer }, attest = true) => {
+      signInAs(as ? ids[as] : null);
+      const form = new FormData();
+      form.set("file", new File([new Uint8Array(file.data)], file.name, { type: file.type }));
+      if (attest) form.set("attest", "true");
+      return imagePost(new Request("http://x", { method: "POST", body: form }), ctx(id) as never);
+    };
+    expect((await send(null, docId, { name: "a.png", type: "image/png", data: png })).status).toBe(401);
+    expect((await send("learnerA", docId, { name: "a.png", type: "image/png", data: png })).status).toBe(403);
+    const noAttest = await send("adminA", docId, { name: "a.png", type: "image/png", data: png }, false);
+    expect(noAttest.status).toBe(400);
+    expect((await noAttest.json()).code).toBe("attestation_required");
+    expect((await send("adminA", docId, { name: "a.svg", type: "image/svg+xml", data: Buffer.from("<svg/>") })).status).toBe(400);
+    expect((await send("adminA", docId, { name: "a.png", type: "image/png", data: Buffer.from("kein bild") })).status).toBe(400);
+    expect((await send("adminB", docId, { name: "a.png", type: "image/png", data: png })).status).toBe(404); // fremde Firma
+    expect((await send("adminA", docId, { name: "ablauf.png", type: "image/png", data: png })).status).toBe(201);
+
+    signInAs(ids.adminA);
+    const listed = await (await imageList(new Request("http://x"), ctx(docId) as never)).json();
+    expect(listed.images).toHaveLength(1);
+    expect(Object.keys(listed.images[0]).sort()).toEqual(["filename", "id", "sizeBytes"]);
+    signInAs(ids.adminB);
+    expect((await (await imageList(new Request("http://x"), ctx(docId) as never)).json()).images).toHaveLength(0);
+
+    // Bild-Beschreibung geht in die Quelle: Text + Screenshot
+    const describe = async ({ filename }: { filename: string }) => `Ansible-Aufruf in ${filename}:\n\`\`\`\nansible-playbook site.yml -l web\n\`\`\``;
+    const [source] = await loadDocumentSources(orgA, docId, describe as never);
+    expect(source.excerpts.map((e) => e.locator)).toEqual(["Abschnitt 1", "Bild: ablauf.png"]);
+    expect(source.excerpts[1].text).toContain("ansible-playbook site.yml -l web");
+    expect(source.warnings).toBeUndefined();
+    // ohne Beschreiber bleiben Bilder außen vor
+    expect((await loadDocumentSources(orgA, docId))[0].excerpts).toHaveLength(1);
+    // Zugangsdaten in der Beschreibung, leere Antwort und Fehler: Bild entfällt mit Hinweis, der Lauf bleibt möglich
+    for (const [describer, warning] of [
+      [async () => j("Konfiguration:\n-----BEGIN ", "PRIVATE KEY-----\nabc"), /Zugangsdaten/],
+      [async () => "KEIN INHALT", /nichts Lesbares/],
+      [async () => { throw new Error("boom"); }, /nicht gelesen/],
+    ] as const) {
+      const [s] = await loadDocumentSources(orgA, docId, describer as never);
+      expect(s.excerpts.map((e) => e.locator)).toEqual(["Abschnitt 1"]);
+      expect(s.warnings?.join(" ")).toMatch(warning);
+      expect(JSON.stringify(s)).not.toContain("PRIVATE KEY");
+    }
+
+    // Obergrenze
+    for (let i = 1; i < 20; i++) expect((await send("adminA", docId, { name: `b${i}.png`, type: "image/png", data: png })).status).toBe(201);
+    expect((await send("adminA", docId, { name: "zu-viel.png", type: "image/png", data: png })).status).toBe(409);
+
+    // Löschen: fremde Firma 404, eigene löscht
+    const imageId = listedFirst(await (async () => { signInAs(ids.adminA); return (await imageList(new Request("http://x"), ctx(docId) as never)).json(); })());
+    signInAs(ids.adminB);
+    expect((await imageDelete(new Request("http://x", { method: "DELETE" }), { params: Promise.resolve({ id: docId, imageId }) } as never)).status).toBe(404);
+    signInAs(ids.adminA);
+    expect((await imageDelete(new Request("http://x", { method: "DELETE" }), { params: Promise.resolve({ id: docId, imageId }) } as never)).status).toBe(200);
+    await getDb().delete(companyDocuments).where(eq(companyDocuments.id, docId)); // spätere Tests zählen die Dokumente
   });
 
   it("dieselbe Datei in derselben Firma wird nicht doppelt gespeichert, in einer anderen Firma schon", async () => {

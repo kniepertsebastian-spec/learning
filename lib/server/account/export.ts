@@ -73,6 +73,7 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "organization_ai_settings.updated_by_user_id": "Einstellung der Firma; der Verweis auf die änderende Person wird bei Löschung anonymisiert (SET NULL)",
   "company_documents.scanner_suppressed_by_user_id": "Das Dokument gehört der Firma; der Verweis auf den bestätigenden Firmen-Admin wird bei Löschung anonymisiert (SET NULL)",
   "company_documents.uploaded_by_user_id": "Das Dokument gehört der Firma, nicht der Person; der Uploader-Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "company_document_images.attested_by_user_id": "Das Bild gehört der Firma, nicht der Person; der Verweis auf die bestätigende Person wird bei Löschung anonymisiert (SET NULL)",
   "company_invitations.created_by_user_id": "Einladung betrifft die eingeladene Person; bei Löschung anonymisiert",
   "content_generation_jobs.started_by_user_id": OPERATIONAL_REASON,
   "content_reports.resolved_by_user_id": OPERATIONAL_REASON,

@@ -1,9 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { companyDocumentFiles, companyDocuments } from "@/lib/server/db/schema";
+import { companyDocumentFiles, companyDocumentImages, companyDocuments } from "@/lib/server/db/schema";
 import { extractPdfPages } from "@/lib/server/documents/pdf-text";
 import { structuredKindOfMime, structuredPages, StructuredExportError } from "@/lib/server/documents/structured";
 import { scanForSecrets } from "@/lib/server/documents/secret-scanner";
+import type { ImageDescriber } from "./vision";
 import { capExcerpts, type FetchedSource } from "@/lib/server/course-generation/sources";
 
 /** Das Dokument darf (noch) nicht für die KI verwendet werden. Die Meldung ist für die Firma bestimmt. */
@@ -43,7 +44,12 @@ export function redactSuppressedLines(pages: Page[], suppressed: Suppressed | nu
  * geschwärzt, und als Sicherheitsnetz wird der Text nach dem Schwärzen erneut gescannt: bleibt ein Fund übrig,
  * geht nichts an die KI.
  */
-export async function loadDocumentSources(organizationId: string, documentId: string): Promise<FetchedSource[]> {
+export async function loadDocumentSources(
+  organizationId: string,
+  documentId: string,
+  /** Beschreibt Screenshots als Text. Ohne Angabe bleiben angehängte Bilder unberücksichtigt. */
+  describeImage?: ImageDescriber,
+): Promise<FetchedSource[]> {
   const [row] = await getDb()
     .select({
       title: companyDocuments.title,
@@ -88,6 +94,8 @@ export async function loadDocumentSources(organizationId: string, documentId: st
   }
 
   const excerpts = pages.map((p) => ({ locator: locator(p.pageNumber), text: p.text }));
+  const warnings: string[] = [];
+  if (describeImage) excerpts.push(...(await describeImages(organizationId, documentId, describeImage, warnings)));
   const usable = excerpts.reduce((n, e) => n + e.text.replace(REDACTION_MARKER, "").trim().length, 0);
   // Auch eine kurze Stichwortliste reicht als Gliederung (die KI ergänzt dann die Erklärungen); völlig leer nicht.
   if (usable < MIN_USABLE_CHARS) throw new DocumentSourceError("Das Dokument enthält zu wenig Text für einen Lernpfad.");
@@ -101,6 +109,39 @@ export async function loadDocumentSources(organizationId: string, documentId: st
       retrievedAt: new Date().toISOString(),
       excerpts: capped.excerpts,
       truncated: capped.truncated,
+      ...(warnings.length > 0 ? { warnings } : {}),
     },
   ];
+}
+
+/**
+ * Screenshots des Dokuments als Text. Die Beschreibung der KI läuft durch denselben Secret-Scanner wie Dokumenttext:
+ * ein Fund, eine leere Antwort oder ein Fehler lassen nur dieses Bild weg (mit Hinweis), nie den ganzen Lauf scheitern.
+ */
+async function describeImages(organizationId: string, documentId: string, describe: ImageDescriber, warnings: string[]) {
+  const images = await getDb()
+    .select({ filename: companyDocumentImages.filename, mimeType: companyDocumentImages.mimeType, data: companyDocumentImages.data })
+    .from(companyDocumentImages)
+    .where(and(eq(companyDocumentImages.documentId, documentId), eq(companyDocumentImages.organizationId, organizationId)))
+    .orderBy(asc(companyDocumentImages.createdAt));
+  const out: { locator: string; text: string }[] = [];
+  for (const image of images) {
+    let text: string;
+    try {
+      text = (await describe({ mimeType: image.mimeType, data: Buffer.from(image.data), filename: image.filename })).trim();
+    } catch {
+      warnings.push(`Bild „${image.filename}“ konnte nicht gelesen werden und wurde ausgelassen.`);
+      continue;
+    }
+    if (!text || /^KEIN INHALT\.?$/i.test(text)) {
+      warnings.push(`Auf dem Bild „${image.filename}“ war nichts Lesbares zu erkennen.`);
+      continue;
+    }
+    if (scanForSecrets([{ pageNumber: 1, text }]).length > 0) {
+      warnings.push(`Auf dem Bild „${image.filename}“ stehen vermutlich Zugangsdaten; es wurde nicht verwendet.`);
+      continue;
+    }
+    out.push({ locator: `Bild: ${image.filename}`, text });
+  }
+  return out;
 }

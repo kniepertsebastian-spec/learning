@@ -182,3 +182,11 @@ const ONBOARDING_MAX_PER_WINDOW = 60;
 export function checkOnboardingRateLimit(userId: string): RateLimitResult {
   return checkRateLimit("onboarding", userId, ONBOARDING_WINDOW_MS, ONBOARDING_MAX_PER_WINDOW);
 }
+
+const DOCUMENT_IMAGE_WINDOW_MS = 60 * 60 * 1000;
+const DOCUMENT_IMAGE_MAX_PER_WINDOW = 200;
+
+/** Screenshots an Dokumente anhängen: je Nutzer, großzügiger als ganze Dokumente (bis zu 20 je Dokument). */
+export function checkDocumentImageRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("document-image", userId, DOCUMENT_IMAGE_WINDOW_MS, DOCUMENT_IMAGE_MAX_PER_WINDOW);
+}

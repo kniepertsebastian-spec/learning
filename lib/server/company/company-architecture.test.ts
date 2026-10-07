@@ -21,6 +21,7 @@ const ALLOWED_TABLES = new Set([
   "companyClaims",
   "companyDocuments",
   "companyDocumentFiles",
+  "companyDocumentImages",
   "companyCourseEntitlements",
   "courseRequests",
   "courseRequestEvents",

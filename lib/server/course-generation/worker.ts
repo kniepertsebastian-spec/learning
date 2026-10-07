@@ -11,6 +11,8 @@ import {
 } from "./job-service";
 import { importCoursePackage, suggestCourseSlug } from "./importer";
 import { AiAccessUnavailableError, clientForOrganization } from "@/lib/server/internal-courses/ai-client";
+import { LESSONS_MODEL } from "@/lib/claude";
+import { createImageDescriber, type ImageDescriber } from "@/lib/server/internal-courses/vision";
 import { DocumentSourceError, loadDocumentSources } from "@/lib/server/internal-courses/document-sources";
 import {
   createHaikuContentProvider,
@@ -75,7 +77,9 @@ export interface CourseGenerationDeps {
   repairProvider: CourseContentProvider;
   fetchSourcesFn: (urls: string[]) => Promise<FetchedSource[]>;
   /** Interne Lernpfade: Text des Firmendokuments (geschwärzt und gescannt). */
-  loadDocumentSourcesFn: (organizationId: string, documentId: string) => Promise<FetchedSource[]>;
+  loadDocumentSourcesFn: (organizationId: string, documentId: string, describeImage?: ImageDescriber) => Promise<FetchedSource[]>;
+  /** Interne Lernpfade: beschreibt Screenshots über den KI-Zugang der Firma. */
+  describeImageFn?: ImageDescriber;
 }
 
 /**
@@ -97,7 +101,7 @@ async function defaultDeps(
     };
   }
   if (override?.blueprintProvider && override.contentProvider && override.repairProvider) {
-    return { blueprintProvider: override.blueprintProvider, contentProvider: override.contentProvider, repairProvider: override.repairProvider, ...base };
+    return { blueprintProvider: override.blueprintProvider, contentProvider: override.contentProvider, repairProvider: override.repairProvider, ...base, describeImageFn: override.describeImageFn };
   }
   try {
     const client = await clientForOrganization(job.organizationId);
@@ -106,6 +110,7 @@ async function defaultDeps(
       contentProvider: createHaikuContentProvider(client),
       repairProvider: createSonnetRepairProvider(client),
       ...base,
+      describeImageFn: createImageDescriber(LESSONS_MODEL, client),
     };
   } catch (error) {
     if (error instanceof AiAccessUnavailableError) throw new PreflightError(error.message);
@@ -419,7 +424,7 @@ export async function executeCourseGenerationJob(
     try {
       sources =
         job.organizationId && job.documentId
-          ? await deps.loadDocumentSourcesFn(job.organizationId, job.documentId)
+          ? await deps.loadDocumentSourcesFn(job.organizationId, job.documentId, deps.describeImageFn)
           : await deps.fetchSourcesFn(job.sourceUrls);
     } catch (error) {
       if (error instanceof DocumentSourceError) throw new PreflightError(error.message);
@@ -438,7 +443,7 @@ export async function executeCourseGenerationJob(
     await updateCourseGenerationJob(jobId, {
       status: "blueprint_generating",
       phase: "blueprint",
-      message: `Blueprint wird über ${deps.blueprintProvider.name} erstellt …`,
+      message: `Blueprint wird über ${deps.blueprintProvider.name} erstellt …${sources.flatMap((x) => x.warnings ?? []).map((w) => ` Hinweis: ${w}`).join("")}`,
     });
     // Kosten synchron im Callback aufsummieren statt async recordSpend() im
     // Callback selbst aufzurufen - ein dort geworfener BudgetExceededError

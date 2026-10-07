@@ -70,6 +70,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     suppressedFindings: d.suppressedFindings,
     createdAt: d.createdAt.toISOString(),
     uploadedByName: d.uploadedByName,
+    imageCount: d.imageCount,
   }));
   const requestRows = courseRequests.map((r) => ({
     id: r.id,
