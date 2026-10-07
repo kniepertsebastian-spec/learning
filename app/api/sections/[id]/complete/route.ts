@@ -13,7 +13,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Markiert eine Lektion als durchgearbeitet (für Lernpfade ohne Lektionstests: der Abschluss ist das Durcharbeiten
- * aller Lektionen). Wiederholen ändert nichts. Gesperrte oder unbekannte Lektionen: 404.
+ * aller Lektionen). Wiederholen frischt nur den Zeitpunkt auf. Gesperrte oder unbekannte Lektionen: 404.
  */
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -26,7 +26,11 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   const [section] = await db.select({ id: sections.id }).from(sections).where(eq(sections.id, sectionId)).limit(1);
   if (!section) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await db.insert(lessonCompletions).values({ userId: session.user.id, sectionId }).onConflictDoNothing();
+  // Erneutes Markieren (z. B. in einer neuen Runde einer Pflichtschulung) setzt den Zeitpunkt neu.
+  await db
+    .insert(lessonCompletions)
+    .values({ userId: session.user.id, sectionId })
+    .onConflictDoUpdate({ target: [lessonCompletions.userId, lessonCompletions.sectionId], set: { completedAt: new Date() } });
   await syncAssignmentsForSection(session.user.id, sectionId);
   return NextResponse.json({ ok: true });
 }

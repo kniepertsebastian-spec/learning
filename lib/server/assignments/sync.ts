@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   certifications,
@@ -25,6 +25,9 @@ import {
  *    als durchgearbeitet markiert ist; in_progress, sobald eine markiert ist. Die Abschlussprüfung (falls vorhanden)
  *    ist dort wie sonst eine freiwillige Selbstkontrolle und kein Abschlusskriterium (es gibt keine Bestehensgrenze).
  *  - Es geht nur vorwärts: abgeschlossen bleibt abgeschlossen, auch wenn die Quote später sinkt.
+ *  - Neue Runde (Pflicht mit Wiederholung, `round` > 1): Es zählt nur, was nach Beginn der Runde nachgewiesen wurde,
+ *    also Lektionen, die erneut als durchgearbeitet markiert wurden, bzw. Lernziele, die erneut geübt wurden und
+ *    weiterhin als beherrscht gelten. Der Fortschritt aus früheren Runden bleibt erhalten, zählt aber nicht mehr.
  *  - Es wird nur bei Lernereignissen aktualisiert, nicht beim Zuweisen. Wer schon alles beherrscht,
  *    gilt deshalb erst beim nächsten Lernereignis als abgeschlossen.
  */
@@ -33,7 +36,7 @@ import {
 export async function syncAssignmentStatus(userId: string, certificationId: string, now: Date = new Date()): Promise<void> {
   const db = getDb();
   const open = await db
-    .select({ id: companyAssignments.id, status: companyAssignments.status })
+    .select({ id: companyAssignments.id, status: companyAssignments.status, round: companyAssignments.round, roundStartedAt: companyAssignments.roundStartedAt })
     .from(companyAssignments)
     .where(
       and(
@@ -43,6 +46,8 @@ export async function syncAssignmentStatus(userId: string, certificationId: stri
       ),
     );
   if (open.length === 0) return; // der Normalfall: keine Zuweisung, kein weiterer Aufwand
+  // Nur ab der zweiten Runde zählt der Beginn der Runde als Untergrenze für Nachweise.
+  const since = open.find((a) => a.round > 1)?.roundStartedAt ?? null;
 
   const [features] = await db
     .select({ quizzes: certifications.includeSectionQuizzes })
@@ -50,7 +55,7 @@ export async function syncAssignmentStatus(userId: string, certificationId: stri
     .where(eq(certifications.id, certificationId))
     .limit(1);
   if (features && !features.quizzes) {
-    await syncByLessons(userId, certificationId, open, now);
+    await syncByLessons(userId, certificationId, open, now, since);
     return;
   }
 
@@ -68,7 +73,13 @@ export async function syncAssignmentStatus(userId: string, certificationId: stri
       .from(objectiveProgress)
       .innerJoin(objectives, eq(objectives.id, objectiveProgress.objectiveId))
       .innerJoin(domains, eq(domains.id, objectives.domainId))
-      .where(and(eq(objectiveProgress.userId, userId), eq(domains.certificationId, certificationId))),
+      .where(
+        and(
+          eq(objectiveProgress.userId, userId),
+          eq(domains.certificationId, certificationId),
+          ...(since ? [gte(objectiveProgress.lastAttemptAt, since)] : []),
+        ),
+      ),
   ]);
 
   const total = totalRow?.count ?? 0;
@@ -94,6 +105,7 @@ async function syncByLessons(
   certificationId: string,
   open: { id: string; status: AssignmentStatus }[],
   now: Date,
+  since: Date | null,
 ): Promise<void> {
   const db = getDb();
   const [[totalRow], [doneRow]] = await Promise.all([
@@ -109,7 +121,13 @@ async function syncByLessons(
       .innerJoin(sections, eq(sections.id, lessonCompletions.sectionId))
       .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
       .innerJoin(domains, eq(domains.id, objectives.domainId))
-      .where(and(eq(lessonCompletions.userId, userId), eq(domains.certificationId, certificationId))),
+      .where(
+        and(
+          eq(lessonCompletions.userId, userId),
+          eq(domains.certificationId, certificationId),
+          ...(since ? [gte(lessonCompletions.completedAt, since)] : []),
+        ),
+      ),
   ]);
   const total = totalRow?.count ?? 0;
   const done = doneRow?.count ?? 0;

@@ -152,20 +152,20 @@ run("Pflichtschulungen (echte DB + SMTP-Testserver)", () => {
   });
 
   it("Lauf: Erinnerung vor der Frist (einmal), nur an offene Zuweisungen", async () => {
-    const r1 = await runMandatoryMaintenance(new Date(t0.getTime() + 2 * DAY)); // noch 12 Tage: zu früh
+    const r1 = await runMandatoryMaintenance(new Date(t0.getTime() + 2 * DAY), { organizationIds: [orgA, orgB] }); // noch 12 Tage: zu früh
     expect(r1.reminders).toBe(0);
     const day8 = new Date(t0.getTime() + 8 * DAY); // noch 6 Tage ≤ 7
-    const r2 = await runMandatoryMaintenance(day8);
+    const r2 = await runMandatoryMaintenance(day8, { organizationIds: [orgA, orgB] });
     expect(r2.reminders).toBeGreaterThanOrEqual(3); // learnerA, learnerA2, newbie (plus ggf. Reste anderer Läufe)
     for (const k of ["learnerA", "learnerA2", "newbie"]) expect(mailsTo(k, "Erinnerung"), k).toHaveLength(1);
     expect(mailsTo("doneA")).toHaveLength(0);
     expect(mailsTo("adminA")).toHaveLength(0);
-    await runMandatoryMaintenance(day8);
+    await runMandatoryMaintenance(day8, { organizationIds: [orgA, orgB] });
     expect(mailsTo("learnerA", "Erinnerung")).toHaveLength(1); // nicht doppelt
   });
 
   it("Lauf: nach der Frist „überfällig“ an die Person; Eskalation erst nach den eingestellten Tagen, als Sammelmail an Admin und Mentor", async () => {
-    await runMandatoryMaintenance(new Date(t0.getTime() + 15 * DAY)); // 1 Tag überfällig
+    await runMandatoryMaintenance(new Date(t0.getTime() + 15 * DAY), { organizationIds: [orgA, orgB] }); // 1 Tag überfällig
     expect(mailsTo("learnerA", "Frist abgelaufen")).toHaveLength(1);
     expect(mailsTo("adminA", "überfällig")).toHaveLength(0);
     expect(mailsTo("mentorA", "überfällig")).toHaveLength(0);
@@ -173,7 +173,7 @@ run("Pflichtschulungen (echte DB + SMTP-Testserver)", () => {
     // learnerA2 schließt ab: bekommt keine Eskalation mehr
     await getDb().update(companyAssignments).set({ status: "completed", completedAt: new Date() }).where(eq(companyAssignments.userId, ids.learnerA2));
     const day18 = new Date(t0.getTime() + 18 * DAY);
-    const result = await runMandatoryMaintenance(day18);
+    const result = await runMandatoryMaintenance(day18, { organizationIds: [orgA, orgB] });
     expect(result.escalations).toBeGreaterThanOrEqual(2);
     for (const k of ["adminA", "mentorA"]) {
       const digest = mailsTo(k, "überfällig");
@@ -184,7 +184,7 @@ run("Pflichtschulungen (echte DB + SMTP-Testserver)", () => {
       expect(text).not.toContain(mail("learnerA2"));
     }
     expect(mailsTo("learnerA", "überfällig")).toHaveLength(0); // Lernende bekommen keine Sammelmail
-    await runMandatoryMaintenance(day18);
+    await runMandatoryMaintenance(day18, { organizationIds: [orgA, orgB] });
     expect(mailsTo("adminA", "überfällig")).toHaveLength(1); // nicht erneut
     expect(await getDb().select().from(assignmentNotices).where(eq(assignmentNotices.kind, "escalation"))).not.toHaveLength(0);
   });
@@ -193,12 +193,12 @@ run("Pflichtschulungen (echte DB + SMTP-Testserver)", () => {
     const [a] = await getDb().select().from(companyAssignments).where(eq(companyAssignments.userId, ids.learnerA));
     await getDb().delete(assignmentNotices).where(eq(assignmentNotices.assignmentId, a.id));
     restoreEnv();
-    const off = await runMandatoryMaintenance(new Date(t0.getTime() + 20 * DAY));
+    const off = await runMandatoryMaintenance(new Date(t0.getTime() + 20 * DAY), { organizationIds: [orgA, orgB] });
     expect(off).toMatchObject({ skippedNoMail: true, reminders: 0, overdue: 0, escalations: 0 });
     expect(await getDb().select().from(assignmentNotices).where(eq(assignmentNotices.assignmentId, a.id))).toHaveLength(0);
     restoreEnv = useSmtpSinkEnv(sink.port);
     const before = mailsTo("learnerA", "Frist abgelaufen").length;
-    await runMandatoryMaintenance(new Date(t0.getTime() + 20 * DAY));
+    await runMandatoryMaintenance(new Date(t0.getTime() + 20 * DAY), { organizationIds: [orgA, orgB] });
     expect(mailsTo("learnerA", "Frist abgelaufen").length).toBe(before + 1);
   });
 
@@ -207,13 +207,13 @@ run("Pflichtschulungen (echte DB + SMTP-Testserver)", () => {
     await getDb().delete(assignmentNotices).where(eq(assignmentNotices.assignmentId, a.id));
     restoreEnv();
     restoreEnv = useSmtpSinkEnv(1); // Port 1: niemand lauscht
-    const failed = await runMandatoryMaintenance(new Date(t0.getTime() + 21 * DAY));
+    const failed = await runMandatoryMaintenance(new Date(t0.getTime() + 21 * DAY), { organizationIds: [orgA, orgB] });
     expect(failed.overdue).toBe(0);
     expect(await getDb().select().from(assignmentNotices).where(eq(assignmentNotices.assignmentId, a.id))).toHaveLength(0);
     restoreEnv();
     restoreEnv = useSmtpSinkEnv(sink.port);
     const before = mailsTo("learnerA", "Frist abgelaufen").length;
-    await runMandatoryMaintenance(new Date(t0.getTime() + 21 * DAY));
+    await runMandatoryMaintenance(new Date(t0.getTime() + 21 * DAY), { organizationIds: [orgA, orgB] });
     expect(mailsTo("learnerA", "Frist abgelaufen").length).toBe(before + 1);
   });
 

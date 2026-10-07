@@ -10,6 +10,9 @@ export type MandatoryRuleRow = {
   dueInDays: number;
   reminderDaysBefore: number;
   escalateAfterDays: number;
+  repeatEveryMonths: number | null;
+  applyOnChange: boolean;
+  departments: string[];
   assigned: number;
   completed: number;
   overdue: number;
@@ -34,11 +37,13 @@ async function call(url: string, method: string, body?: unknown): Promise<{ erro
 export function MandatoryRulesPanel({
   rules,
   paths,
+  departments,
   canEdit,
   locale,
 }: {
   rules: MandatoryRuleRow[];
   paths: { id: string; name: string }[];
+  departments: { id: string; name: string }[];
   canEdit: boolean;
   locale: "de" | "en";
 }) {
@@ -51,6 +56,10 @@ export function MandatoryRulesPanel({
   const [dueInDays, setDueInDays] = useState(30);
   const [reminder, setReminder] = useState(7);
   const [escalate, setEscalate] = useState(3);
+  const [depIds, setDepIds] = useState<string[]>([]);
+  const [repeat, setRepeat] = useState<number | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [applyOnChange, setApplyOnChange] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,12 +68,14 @@ export function MandatoryRulesPanel({
     e.preventDefault();
     setBusy(true);
     setNotice(null);
-    const { error: err, data } = await call("/api/company/mandatory", "POST", { certificationId: pathId, roles, dueInDays, reminderDaysBefore: reminder, escalateAfterDays: escalate });
+    const { error: err, data } = await call("/api/company/mandatory", "POST", { certificationId: pathId, roles, dueInDays, reminderDaysBefore: reminder, escalateAfterDays: escalate, departmentIds: depIds, repeatEveryMonths: repeat, confirmRepeatReset: repeat !== null && confirmReset, applyOnChange });
     setBusy(false);
     setError(err);
     if (!err) {
       setNotice(de ? `Pflicht angelegt, ${data?.assigned ?? 0} Person(en) zugewiesen.` : `Rule created, ${data?.assigned ?? 0} people assigned.`);
       setPathId("");
+      setRepeat(null);
+      setConfirmReset(false);
       router.refresh();
     }
   }
@@ -81,7 +92,7 @@ export function MandatoryRulesPanel({
       <h2 className="text-lg font-medium">{de ? "Pflichtschulungen" : "Mandatory training"}</h2>
       <p className="mt-1 text-sm text-foreground/70">
         {de
-          ? "Ein Lernpfad wird für Rollen verpflichtend: vorhandene Mitglieder bekommen ihn sofort, neue beim Beitritt, jeweils mit Frist. Vor der Frist gibt es eine Erinnerung, danach eine Meldung an die Person und später eine Sammelmail an Mentoren und Firmen-Admins (nur mit eingerichtetem Mailversand)."
+          ? "Ein Lernpfad wird für Rollen (und auf Wunsch Abteilungen) verpflichtend: vorhandene Mitglieder bekommen ihn sofort, neue beim Beitritt, jeweils mit Frist. Vor der Frist gibt es eine Erinnerung, danach eine Meldung an die Person und später eine Sammelmail an Mentoren und Firmen-Admins (nur mit eingerichtetem Mailversand)."
           : "A learning path becomes mandatory for roles: existing members get it immediately, new members when they join, each with a deadline. A reminder goes out before the deadline, a notice to the person after it and later a digest to mentors and admins (only with mail set up)."}
       </p>
 
@@ -92,10 +103,17 @@ export function MandatoryRulesPanel({
               <div className="min-w-0">
                 <p className="font-medium break-words">{r.learningPath}</p>
                 <p className="text-foreground/70">
-                  {r.roles.map((x) => roleLabels[x]).join(", ")} · {de ? `Frist ${r.dueInDays} Tage` : `${r.dueInDays} days`} ·{" "}
+                  {r.roles.map((x) => roleLabels[x]).join(", ")} · {r.departments.length > 0 ? r.departments.join(", ") : de ? "alle Abteilungen" : "all departments"} · {de ? `Frist ${r.dueInDays} Tage` : `${r.dueInDays} days`} ·{" "}
                   {r.reminderDaysBefore > 0 ? (de ? `Erinnerung ${r.reminderDaysBefore} Tage vorher` : `reminder ${r.reminderDaysBefore} days before`) : de ? "keine Erinnerung" : "no reminder"} ·{" "}
                   {de ? `Eskalation nach ${r.escalateAfterDays} Tagen` : `escalation after ${r.escalateAfterDays} days`}
                 </p>
+                {(r.repeatEveryMonths !== null || !r.applyOnChange) && (
+                  <p className="text-foreground/70" data-testid="mandatory-extras">
+                    {r.repeatEveryMonths !== null && (de ? `Wiederholung ${r.repeatEveryMonths} Monate nach dem Abschluss (Status wird dann zurückgesetzt)` : `Repeats ${r.repeatEveryMonths} months after completion (status is reset)`)}
+                    {r.repeatEveryMonths !== null && !r.applyOnChange ? " · " : ""}
+                    {!r.applyOnChange && (de ? "nicht bei Rollen-/Abteilungswechsel" : "not on role/department change")}
+                  </p>
+                )}
                 <p className="mt-1">
                   {r.completed}/{r.assigned} {de ? "abgeschlossen" : "completed"}
                   {r.overdue > 0 && <span className="ml-2 text-red-600">{r.overdue} {de ? "überfällig" : "overdue"}</span>}
@@ -132,6 +150,17 @@ export function MandatoryRulesPanel({
               </label>
             ))}
           </fieldset>
+          {departments.length > 0 && (
+            <fieldset className="flex flex-wrap gap-4 text-sm">
+              <legend className="mb-1">{de ? "Abteilungen (keine Auswahl = alle)" : "Departments (none selected = all)"}</legend>
+              {departments.map((d) => (
+                <label key={d.id} className="flex items-center gap-2">
+                  <input type="checkbox" checked={depIds.includes(d.id)} onChange={(e) => setDepIds((x) => (e.target.checked ? [...x, d.id] : x.filter((y) => y !== d.id)))} />
+                  {d.name}
+                </label>
+              ))}
+            </fieldset>
+          )}
           <div className="grid gap-3 sm:grid-cols-3">
             {[
               { label: de ? "Frist (Tage)" : "Deadline (days)", value: dueInDays, set: setDueInDays, min: 1, max: 365 },
@@ -144,6 +173,47 @@ export function MandatoryRulesPanel({
               </label>
             ))}
           </div>
+          <label className="flex flex-col gap-1 text-sm sm:max-w-xs">
+            {de ? "Wiederholung" : "Repetition"}
+            <select
+              className={field}
+              value={repeat === null ? "" : String(repeat)}
+              onChange={(e) => {
+                setRepeat(e.target.value === "" ? null : Number(e.target.value));
+                setConfirmReset(false);
+              }}
+              aria-label={de ? "Wiederholung" : "Repetition"}
+            >
+              <option value="">{de ? "einmalig, keine Wiederholung" : "once, no repetition"}</option>
+              {[6, 12, 24, 36].map((m) => (
+                <option key={m} value={m}>
+                  {de ? `alle ${m} Monate (nach dem Abschluss)` : `every ${m} months (after completion)`}
+                </option>
+              ))}
+            </select>
+          </label>
+          {repeat !== null && (
+            <div role="note" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="repeat-warning">
+              <p className="font-medium">{de ? "Achtung: Der Status wird zurückgesetzt" : "Warning: the status will be reset"}</p>
+              <p className="mt-1">
+                {de
+                  ? `${repeat} Monate nach dem Abschluss beginnt für jede Person eine neue Runde: Der Status springt von „abgeschlossen“ zurück auf „zugewiesen“, es gibt eine neue Frist und neue Erinnerungen. Als abgeschlossen zählt dann nur, was in der neuen Runde erneut nachgewiesen wird (Lektionen erneut durcharbeiten bzw. Lernziele erneut üben). Der letzte Abschluss bleibt vermerkt. In der Statusübersicht wirkt die Person bis dahin wieder als „offen“, auch wenn sie den Lernpfad früher bestanden hat.`
+                  : `${repeat} months after completion a new round starts for each person: the status goes from “completed” back to “assigned”, with a new deadline and reminders. Only what is shown again in the new round counts as completed. The last completion is kept on record. Until then the status overview shows the person as open again.`}
+              </p>
+              <label className="mt-2 flex items-start gap-2">
+                <input type="checkbox" checked={confirmReset} onChange={(e) => setConfirmReset(e.target.checked)} className="mt-0.5" />
+                <span>{de ? "Ich habe das gelesen und will die Wiederholung mit Statusrücksetzung." : "I have read this and want the repetition with status reset."}</span>
+              </label>
+            </div>
+          )}
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={applyOnChange} onChange={(e) => setApplyOnChange(e.target.checked)} className="mt-0.5" />
+            <span>
+              {de
+                ? "Auch zuweisen, wenn jemand Rolle oder Abteilung wechselt und dadurch unter diese Regel fällt (sonst nur beim Anlegen der Regel und beim Beitritt)."
+                : "Also assign when someone changes role or department and falls under this rule (otherwise only when the rule is created and on joining)."}
+            </span>
+          </label>
           {error && (
             <p role="alert" className="text-sm text-red-600">
               {error}
@@ -155,7 +225,7 @@ export function MandatoryRulesPanel({
             </p>
           )}
           <div>
-            <button type="submit" className={btn} disabled={busy || !pathId || roles.length === 0}>
+            <button type="submit" className={btn} disabled={busy || !pathId || roles.length === 0 || (repeat !== null && !confirmReset)}>
               {de ? "Pflicht anlegen" : "Create rule"}
             </button>
           </div>

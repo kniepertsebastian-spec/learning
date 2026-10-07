@@ -4,7 +4,7 @@ import { checkOnboardingRateLimit } from "@/lib/server/auth-rate-limit";
 import { ASSIGN_ROLES } from "@/lib/server/company/access";
 import { listAssignableLearningPaths } from "@/lib/server/company/assignments";
 import { requireCompanyApi } from "@/lib/server/company/guard";
-import { createMandatoryRule, InvalidRuleError, listMandatoryRules, RuleExistsError, UnknownCourseError } from "@/lib/server/company/mandatory";
+import { createMandatoryRule, InvalidRuleError, listMandatoryRules, RepeatNotConfirmedError, RuleExistsError, UnknownCourseError, UnknownDepartmentError } from "@/lib/server/company/mandatory";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,10 @@ const createSchema = z.object({
   dueInDays: z.number().int(),
   reminderDaysBefore: z.number().int().optional(),
   escalateAfterDays: z.number().int().optional(),
+  departmentIds: z.array(z.string().uuid()).max(50).optional(),
+  repeatEveryMonths: z.number().int().nullable().optional(),
+  confirmRepeatReset: z.boolean().optional(),
+  applyOnChange: z.boolean().optional(),
 });
 
 /** Pflichtregeln der eigenen Firma mit Stand, dazu die zuweisbaren Lernpfade. */
@@ -45,8 +49,12 @@ export async function POST(request: Request) {
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     if (error instanceof InvalidRuleError) {
-      return NextResponse.json({ error: "Frist 1 bis 365 Tage, Erinnerung 0 bis 60 Tage vorher, Eskalation 1 bis 60 Tage nach der Frist." }, { status: 400 });
+      return NextResponse.json({ error: "Frist 1 bis 365 Tage, Erinnerung 0 bis 60 Tage vorher, Eskalation 1 bis 60 Tage nach der Frist, Wiederholung 1 bis 60 Monate." }, { status: 400 });
     }
+    if (error instanceof RepeatNotConfirmedError) {
+      return NextResponse.json({ error: "Bitte bestätige, dass bei jeder Wiederholung der Status zurückgesetzt wird.", code: "confirm_repeat_reset" }, { status: 400 });
+    }
+    if (error instanceof UnknownDepartmentError) return NextResponse.json({ error: "Abteilung nicht gefunden." }, { status: 404 });
     if (error instanceof UnknownCourseError) return NextResponse.json({ error: "Lernpfad nicht gefunden." }, { status: 404 });
     if (error instanceof RuleExistsError) return NextResponse.json({ error: "Für diesen Lernpfad gibt es schon eine Pflichtregel." }, { status: 409 });
     throw error;

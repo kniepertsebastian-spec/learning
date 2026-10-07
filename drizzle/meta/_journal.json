@@ -295,6 +295,13 @@
       "when": 1791398540428,
       "tag": "0041_mandatory_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791407317877,
+      "tag": "0042_departments_repeat",
+      "breakpoints": true
     }
   ]
 }

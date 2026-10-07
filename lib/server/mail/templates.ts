@@ -123,3 +123,14 @@ export function overdueDigestMessage(
       `\n\nÜbersicht im Firmenbereich:\n\n${input.link}`,
   };
 }
+
+/** Lernende: eine Pflichtschulung beginnt erneut (Wiederholung). */
+export function repeatDueMessage(to: string, input: { courseName: string; organizationName: string; dueAt: Date; link: string }): MailMessage {
+  return {
+    to,
+    subject: `Wiederholung fällig: „${input.courseName}“`,
+    text:
+      `Hallo,\n\nder Lernpfad „${input.courseName}“ (${input.organizationName}) ist eine Pflichtschulung mit Wiederholung und beginnt erneut. ` +
+      `Dein Stand wurde zurückgesetzt, die neue Frist ist der ${formatDate(input.dueAt)}.\n\nHier geht es los:\n\n${input.link}`,
+  };
+}

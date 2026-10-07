@@ -1242,6 +1242,8 @@ export const organizationMemberships = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role").$type<CompanyRole>().notNull(),
+    /** Abteilung innerhalb der Firma (frei wählbar, optional). Fällt die Abteilung weg, bleibt die Person ohne. */
+    departmentId: uuid("department_id").references((): AnyPgColumn => departments.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -1282,6 +1284,14 @@ export const companyAssignments = pgTable(
     assignedByUserId: uuid("assigned_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    /**
+     * Runde der Zuweisung (1 = erste). Bei Pflicht mit Wiederholung beginnt nach Ablauf der Zeit eine neue Runde: Status
+     * zurück auf „zugewiesen“, neue Frist; als abgeschlossen zählt dann nur, was nach `roundStartedAt` nachgewiesen wurde.
+     */
+    round: integer("round").notNull().default(1),
+    roundStartedAt: timestamp("round_started_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Abschluss der vorherigen Runde (bleibt als Nachweis stehen, wenn eine neue Runde beginnt). */
+    lastCompletedAt: timestamp("last_completed_at", { withTimezone: true }),
     /** Gesetzt, wenn die Zuweisung aus einer Pflichtregel stammt (Pflichtschulung). */
     mandatoryRuleId: uuid("mandatory_rule_id").references((): AnyPgColumn => mandatoryRules.id, { onDelete: "set null" }),
   },
@@ -1777,10 +1787,17 @@ export const mandatoryRules = pgTable(
     reminderDaysBefore: integer("reminder_days_before").notNull().default(7),
     /** Tage nach Fristablauf, ab denen Mentor und Firmen-Admin informiert werden. */
     escalateAfterDays: integer("escalate_after_days").notNull().default(3),
+    /** Wiederholung: so viele Monate nach dem Abschluss beginnt eine neue Runde (leer = einmalig). */
+    repeatEveryMonths: integer("repeat_every_months"),
+    /** Gilt die Regel auch, wenn jemand die Rolle oder Abteilung wechselt (Entscheidung der Firma je Regel)? */
+    applyOnChange: boolean("apply_on_change").notNull().default(true),
+    /** true = alle Abteilungen (auch Personen ohne); false = nur die in mandatory_rule_departments. */
+    allDepartments: boolean("all_departments").notNull().default(true),
     createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    check("mandatory_rules_repeat_check", sql`${table.repeatEveryMonths} is null or ${table.repeatEveryMonths} between 1 and 60`),
     unique("mandatory_rules_org_cert_unique").on(table.organizationId, table.certificationId),
     check("mandatory_rules_roles_check", sql`cardinality(${table.roles}) > 0 and ${table.roles} <@ array['company_admin', 'mentor', 'learner']::text[]`),
     check("mandatory_rules_due_check", sql`${table.dueInDays} between 1 and 365`),
@@ -1808,4 +1825,33 @@ export const assignmentNotices = pgTable(
     unique("assignment_notices_assignment_kind_unique").on(table.assignmentId, table.kind),
     check("assignment_notices_kind_check", sql`${table.kind} in ('reminder', 'overdue', 'escalation')`),
   ],
+);
+
+/** Abteilung einer Firma (z. B. „Operations“). Gehört der Firma; Mitglieder ordnet der Firmen-Admin zu. */
+export const departments = pgTable(
+  "departments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("departments_org_name_unique").on(table.organizationId, table.name)],
+);
+
+/** Auf welche Abteilungen eine Pflichtregel eingeschränkt ist (nur wirksam, wenn all_departments = false). */
+export const mandatoryRuleDepartments = pgTable(
+  "mandatory_rule_departments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ruleId: uuid("rule_id")
+      .notNull()
+      .references(() => mandatoryRules.id, { onDelete: "cascade" }),
+    departmentId: uuid("department_id")
+      .notNull()
+      .references(() => departments.id, { onDelete: "cascade" }),
+  },
+  (table) => [unique("mandatory_rule_departments_unique").on(table.ruleId, table.departmentId)],
 );

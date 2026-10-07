@@ -38,6 +38,8 @@ const ALLOWED_TABLES = new Set([
   // Pflichtschulungen: Regeln je Firma und welche Erinnerungen verschickt wurden (nur Art und Zeitpunkt)
   "mandatoryRules",
   "assignmentNotices",
+  "departments",
+  "mandatoryRuleDepartments",
   // Aufträge der internen Lernpfade: nur Stand und Meldung, keine Lerndaten
   "courseGenerationJobs",
 ]);

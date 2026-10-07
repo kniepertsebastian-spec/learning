@@ -6,6 +6,8 @@ import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { CompanyModulesPanel } from "@/components/CompanyModulesPanel";
+import { DepartmentsPanel } from "@/components/DepartmentsPanel";
+import { listDepartments, listMembersWithDepartment } from "@/lib/server/company/departments";
 import { MandatoryRulesPanel } from "@/components/MandatoryRulesPanel";
 import { listMandatoryRules } from "@/lib/server/company/mandatory";
 import { OnboardingsPanel } from "@/components/OnboardingsPanel";
@@ -47,7 +49,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   const de = locale === "de";
   const isAdmin = membership.role === "company_admin";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates, onboardingPlans, mandatoryRules] = await Promise.all([
+  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates, onboardingPlans, mandatoryRules, departmentList, departmentMembers] = await Promise.all([
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
     canAssign ? listAssignableLearningPaths(membership.organizationId) : [],
@@ -62,6 +64,8 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     listResponsibleCandidates(membership.organizationId),
     canAssign ? listOnboardingPlans(membership.organizationId) : [],
     canAssign ? listMandatoryRules(membership.organizationId) : [],
+    canAssign ? listDepartments(membership.organizationId) : [],
+    isAdmin ? listMembersWithDepartment(membership.organizationId) : [],
   ]);
   const documentRows = documents.map((d) => ({
     id: d.id,
@@ -141,7 +145,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
       {active === "status" && (
         <>
           <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
-          {canAssign && <MandatoryRulesPanel rules={mandatoryRules} paths={paths.map((p) => ({ id: p.id, name: p.name }))} canEdit={isAdmin} locale={locale} />}
+          {canAssign && <MandatoryRulesPanel rules={mandatoryRules} paths={paths.map((p) => ({ id: p.id, name: p.name }))} departments={departmentList.map((d) => ({ id: d.id, name: d.name }))} canEdit={isAdmin} locale={locale} />}
         </>
       )}
 
@@ -198,7 +202,12 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
 
       {active === "documents" && <DocumentsPanel documents={documentRows} locale={locale} canSuppress={isAdmin} />}
 
-      {active === "team" && invitations && <InvitationsPanel invitations={invitations} locale={locale} mailEnabled={isMailConfigured()} />}
+      {active === "team" && invitations && (
+        <>
+          <InvitationsPanel invitations={invitations} locale={locale} mailEnabled={isMailConfigured()} />
+          <DepartmentsPanel departments={departmentList} members={departmentMembers} locale={locale} />
+        </>
+      )}
     </div>
   );
 }
