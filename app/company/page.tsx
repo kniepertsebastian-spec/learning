@@ -4,12 +4,14 @@ import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
+import { PracticeTasksPanel } from "@/components/PracticeTasksPanel";
 import { InternalCoursesPanel } from "@/components/InternalCoursesPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
 import { ASSIGN_ROLES, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
 import { getAiSettings, resolveAiAccess } from "@/lib/server/company/ai-settings";
 import { isOverdue, listAssignableLearningPaths, listAssignableMembers } from "@/lib/server/company/assignments";
 import { listCourseRequests, listRequestableCourses } from "@/lib/server/company/course-requests";
+import { listPracticeTasksForOrg } from "@/lib/server/company/practice-tasks";
 import { listInternalCourseJobs, listInternalCourses } from "@/lib/server/company/internal-courses-list";
 import { listCompanyDocuments } from "@/lib/server/company/documents";
 import { requireCompanyPage } from "@/lib/server/company/guard";
@@ -36,7 +38,7 @@ export default async function CompanyPage() {
   ]);
   const de = locale === "de";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess] = await Promise.all([
+  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice] = await Promise.all([
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
     canAssign ? listAssignableLearningPaths(membership.organizationId) : [],
@@ -46,6 +48,7 @@ export default async function CompanyPage() {
     listInternalCourseJobs(membership.organizationId),
     listInternalCourses(membership.organizationId),
     resolveAiAccess(membership.organizationId),
+    listPracticeTasksForOrg(membership.organizationId),
   ]);
   const documentRows = documents.map((d) => ({
     id: d.id,
@@ -79,6 +82,8 @@ export default async function CompanyPage() {
     dueAt: e.dueAt?.toISOString() ?? null,
     completedAt: e.completedAt?.toISOString() ?? null,
     overdue: isOverdue(e),
+    practiceConfirmed: e.practiceConfirmed,
+    practiceTotal: e.practiceTotal,
   }));
   const aiSettings = membership.role === "company_admin" ? await getAiSettings(membership.organizationId) : null;
   // Einladungen verwaltet nur der Firmen-Admin (der Mentor sieht sie nicht).
@@ -103,6 +108,13 @@ export default async function CompanyPage() {
       </div>
 
       <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
+
+      <PracticeTasksPanel
+        tasks={practice.tasks.map((t) => ({ id: t.id, title: t.title, description: t.description, learningPath: t.learningPath, assignees: t.assignees, submitted: t.submitted, confirmed: t.confirmed, rework: t.rework }))}
+        pending={practice.pending.map((p) => ({ ...p, submittedAt: p.submittedAt.toISOString() }))}
+        paths={paths.map((p) => ({ id: p.id, name: p.name }))}
+        locale={locale}
+      />
 
       <CourseRequestsPanel requests={requestRows} catalog={catalog} locale={locale} />
 

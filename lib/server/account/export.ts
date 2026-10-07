@@ -10,6 +10,8 @@ import {
   objectiveProgress,
   organizationMemberships,
   organizations,
+  practiceTaskSubmissions,
+  practiceTasks,
   quizAnswers,
   quizAttempts,
   remediationSessions,
@@ -55,6 +57,8 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "blueprint_drafts.generated_by_user_id": OPERATIONAL_REASON,
   "blueprint_drafts.edited_by_user_id": OPERATIONAL_REASON,
   "certification_sources.approved_by": OPERATIONAL_REASON,
+  "practice_tasks.created_by_user_id": "Die Aufgabe gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "practice_task_submissions.reviewed_by_user_id": "Bestätigung betrifft die abgebende Person (steht in deren Export); der Verweis auf die prüfende Person wird bei Löschung anonymisiert (SET NULL)",
   "company_assignments.assigned_by_user_id": "Zuweisung betrifft die zugewiesene Person, nicht die zuweisende; bei Löschung anonymisiert",
   "company_course_entitlements.released_by_user_id": OPERATIONAL_REASON,
   "course_request_events.actor_user_id": "Verlauf einer Firmenanfrage (Bearbeiter oder Anfragender); gehört der Firma, bei Löschung anonymisiert (SET NULL)",
@@ -110,6 +114,20 @@ export async function exportAccountData(userId: string) {
     .from(companyAssignments)
     .where(eq(companyAssignments.userId, userId));
 
+  // Eigene Abgaben zu Praxisaufgaben samt Bestätigung (Nachweise gehören der Person).
+  const practiceSubmissions = await db
+    .select({
+      task: practiceTasks.title,
+      status: practiceTaskSubmissions.status,
+      note: practiceTaskSubmissions.learnerNote,
+      submittedAt: practiceTaskSubmissions.submittedAt,
+      reviewedAt: practiceTaskSubmissions.reviewedAt,
+      reviewerNote: practiceTaskSubmissions.reviewerNote,
+    })
+    .from(practiceTaskSubmissions)
+    .innerJoin(practiceTasks, eq(practiceTasks.id, practiceTaskSubmissions.taskId))
+    .where(eq(practiceTaskSubmissions.userId, userId));
+
   const acceptedInvitations = await db
     .select({
       role: companyInvitations.role,
@@ -147,7 +165,7 @@ export async function exportAccountData(userId: string) {
     format: "learning-export-v1",
     exportedAt: new Date().toISOString(),
     account,
-    company: { membership: membership ?? null, assignments, acceptedInvitations },
+    company: { membership: membership ?? null, assignments, practiceSubmissions, acceptedInvitations },
     learning: {
       quizAttempts: quizAttemptRows.map((attempt) => ({
         ...attempt,

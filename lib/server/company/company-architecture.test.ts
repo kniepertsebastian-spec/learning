@@ -25,6 +25,9 @@ const ALLOWED_TABLES = new Set([
   "courseRequests",
   "courseRequestEvents",
   "organizationAiSettings",
+  // Praxisaufgaben und ihre Abgaben (von der Firma verwaltet, Bestätigung durch den Mentor)
+  "practiceTasks",
+  "practiceTaskSubmissions",
   // Aufträge der internen Lernpfade: nur Stand und Meldung, keine Lerndaten
   "courseGenerationJobs",
 ]);
@@ -112,6 +115,9 @@ describe("Firmenbereich liest keine Lerndetails", () => {
       "assignedAt",
       "dueAt",
       "completedAt",
+      // bewusst ergänzt (Praxisaufgaben): nur Zahlen „x von y bestätigt“, keine Inhalte der Abgaben
+      "practiceConfirmed",
+      "practiceTotal",
     ]);
   });
 });

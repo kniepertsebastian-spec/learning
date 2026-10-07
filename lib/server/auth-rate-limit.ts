@@ -158,3 +158,11 @@ const INTERNAL_COURSE_MAX_PER_WINDOW = 5;
 export function checkInternalCourseRateLimit(organizationId: string): RateLimitResult {
   return checkRateLimit("internal-course", organizationId, INTERNAL_COURSE_WINDOW_MS, INTERNAL_COURSE_MAX_PER_WINDOW);
 }
+
+const PRACTICE_TASK_WINDOW_MS = 60 * 60 * 1000;
+const PRACTICE_TASK_MAX_PER_WINDOW = 60;
+
+/** Praxisaufgaben anlegen, abgeben und prüfen: je Nutzer. */
+export function checkPracticeTaskRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("practice-task", userId, PRACTICE_TASK_WINDOW_MS, PRACTICE_TASK_MAX_PER_WINDOW);
+}

@@ -253,6 +253,13 @@
       "when": 1791335937825,
       "tag": "0035_request_withdrawn_revoked",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791341320017,
+      "tag": "0036_practice_tasks",
+      "breakpoints": true
     }
   ]
 }

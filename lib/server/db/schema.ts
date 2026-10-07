@@ -40,6 +40,9 @@ export type CompanyRole = "company_admin" | "mentor" | "learner";
  * Lernfortschritt sieht (zusammen mit Datum und Frist). */
 export type AssignmentStatus = "assigned" | "in_progress" | "completed";
 
+/** Stand einer Praxisaufgabe bei einer Person: abgegeben, vom Mentor bestätigt oder zur Nacharbeit zurück. Ohne Zeile = offen. */
+export type PracticeSubmissionStatus = "submitted" | "confirmed" | "rework";
+
 /** Phase 3: allgemeiner (von uns erstellter) oder interner (firmeneigener) Lernpfad. */
 export type CourseKind = "general" | "internal";
 /** Menschliche Freigabe eines Lernpfads, bevor er an Kunden gehen darf. */
@@ -1531,4 +1534,61 @@ export const companyClaims = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("company_claims_user_idx").on(table.userId)],
+);
+
+/**
+ * Praxisaufgabe einer Firma zu einem ihrer Lernpfade (z. B. „Setze einen Testserver auf“). Alle, denen der
+ * Lernpfad zugewiesen ist, sehen sie; Mentor oder Firmen-Admin bestätigen die Erledigung. Archivierte Aufgaben
+ * zählen nicht mehr, bleiben aber samt Abgaben erhalten (Nachweise gehören der Person).
+ */
+export const practiceTasks = pgTable(
+  "practice_tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [index("practice_tasks_org_cert_idx").on(table.organizationId, table.certificationId)],
+);
+
+/**
+ * Abgabe einer Person zu einer Praxisaufgabe: eigene Notiz (freiwillig), Bestätigung oder Nacharbeit durch eine
+ * ANDERE Person der Firma (Mentor/Firmen-Admin, nie die eigene Abgabe). Bestätigt ist endgültig. Der zusammengesetzte
+ * Fremdschlüssel stellt sicher, dass die Person Mitglied der Firma ist; sie fällt mit der Mitgliedschaft weg.
+ */
+export const practiceTaskSubmissions = pgTable(
+  "practice_task_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => practiceTasks.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    status: text("status").$type<PracticeSubmissionStatus>().notNull().default("submitted"),
+    learnerNote: text("learner_note"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewerNote: text("reviewer_note"),
+  },
+  (table) => [
+    check("practice_task_submissions_status_check", sql`${table.status} in ('submitted', 'confirmed', 'rework')`),
+    foreignKey({
+      columns: [table.userId, table.organizationId],
+      foreignColumns: [organizationMemberships.userId, organizationMemberships.organizationId],
+      name: "practice_task_submissions_member_fk",
+    }).onDelete("cascade"),
+    unique("practice_task_submissions_task_user_unique").on(table.taskId, table.userId),
+    index("practice_task_submissions_org_status_idx").on(table.organizationId, table.status),
+  ],
 );
