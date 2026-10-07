@@ -162,6 +162,15 @@ export type CoursePackageV1 = z.infer<typeof coursePackageV1Schema>;
 export const courseBlueprintGenerationResponseSchema = courseBlueprintV1Schema.omit({
   requestId: true,
 });
+/**
+ * Was die KI beim Blueprint tatsächlich liefern muss: ohne `sources`. Die Quellen (ID, Titel, Adresse, Abrufdatum)
+ * kennt die App selbst; die KI hat daran nichts zu erfinden und ließ `retrievedAt` im Praxislauf weg (Gate 3).
+ * Der Provider setzt die echten Quellen nach dem Aufruf ein.
+ */
+export const courseBlueprintAiResponseSchema = courseBlueprintGenerationResponseSchema
+  .omit({ sources: true })
+  .extend({ sources: z.array(z.unknown()).optional() });
+
 export type CourseBlueprintGenerationResponse = z.infer<
   typeof courseBlueprintGenerationResponseSchema
 >;
