@@ -90,8 +90,8 @@ export function DocumentsPanel({
       <h2 className="text-lg font-medium">{de ? "Firmendokumente" : "Company documents"}</h2>
       <p className="mt-1 text-sm text-foreground/70">
         {de
-          ? "PDF oder Textdatei (.txt, .md), bis 10 MB. Jedes Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft. Wird etwas gefunden, wird das Dokument nicht gespeichert."
-          : "PDF or text file (.txt, .md), up to 10 MB. Every document is checked for passwords, keys and tokens before it is stored. If something is found, the document is not stored."}
+          ? "PDF, Textdatei (.txt, .md) oder Wiki-/Doku-Export (.json, .xml, .html, z. B. Wiki.js, MediaWiki), bis 10 MB. Listen, Tabellen, Befehle und Stichwörter sind in Ordnung. Jedes Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft. Wird etwas gefunden, wird das Dokument nicht gespeichert."
+          : "PDF, text file (.txt, .md) or wiki/docs export (.json, .xml, .html, e.g. Wiki.js, MediaWiki), up to 10 MB. Lists, tables, commands and keywords are fine. Every document is checked for passwords, keys and tokens before it is stored. If something is found, the document is not stored."}
       </p>
 
       <form onSubmit={(e) => void upload(e)} className="mt-4 flex flex-col gap-3">
@@ -99,7 +99,7 @@ export function DocumentsPanel({
           ref={fileRef}
           type="file"
           required
-          accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
+          accept=".pdf,.txt,.md,.json,.xml,.html,.htm"
           aria-label={de ? "Datei" : "File"}
           className="text-sm"
         />

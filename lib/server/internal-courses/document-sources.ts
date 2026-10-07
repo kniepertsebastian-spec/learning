@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { companyDocumentFiles, companyDocuments } from "@/lib/server/db/schema";
 import { extractPdfPages } from "@/lib/server/documents/pdf-text";
+import { structuredKindOfMime, structuredPages, StructuredExportError } from "@/lib/server/documents/structured";
 import { scanForSecrets } from "@/lib/server/documents/secret-scanner";
 import { capExcerpts, type FetchedSource } from "@/lib/server/course-generation/sources";
 
@@ -63,6 +64,17 @@ export async function loadDocumentSources(organizationId: string, documentId: st
   if (row.mimeType === "application/pdf") {
     pages = (await extractPdfPages(Buffer.from(row.data))).map((p) => ({ pageNumber: p.pageNumber, text: p.text }));
     locator = (n) => `S. ${n}`;
+  } else if (structuredKindOfMime(row.mimeType)) {
+    let converted: ReturnType<typeof structuredPages>;
+    try {
+      converted = structuredPages(structuredKindOfMime(row.mimeType)!, Buffer.from(row.data).toString("utf-8"));
+    } catch (err) {
+      if (err instanceof StructuredExportError) throw new DocumentSourceError(err.message);
+      throw err;
+    }
+    pages = converted.map((p) => ({ pageNumber: p.pageNumber, text: p.text }));
+    const titles = new Map(converted.map((p) => [p.pageNumber, p.title]));
+    locator = (n) => `Seite ${n}: ${titles.get(n) ?? ""}`.trim();
   } else {
     pages = [{ pageNumber: 1, text: Buffer.from(row.data).toString("utf-8") }];
     locator = () => "Abschnitt 1";

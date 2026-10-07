@@ -27,6 +27,7 @@ import { DELETE as deleteRoute } from "@/app/api/company/documents/[id]/route";
 import { GET as downloadRoute } from "@/app/api/company/documents/[id]/download/route";
 import { makePdf } from "@/lib/server/documents/pdf-fixture";
 import { DOCUMENT_LIST_FIELDS } from "./documents";
+import { loadDocumentSources, DocumentSourceError } from "@/lib/server/internal-courses/document-sources";
 
 const run = TEST_DB ? describe : describe.skip;
 const j = (...p: string[]) => p.join("");
@@ -100,6 +101,21 @@ run("Firmendokumente (echte DB)", () => {
     const pdf = await upload("mentorA", { name: "Handbuch.pdf", type: "application/pdf", data: makePdf([["Seite eins mit genug Text."], ["Seite zwei mit genug Text."]]) });
     expect(pdf.status).toBe(201);
     expect((await docsOf(orgA)).find((d) => d.originalFilename === "Handbuch.pdf")).toMatchObject({ pageCount: 2, excludeFromAi: false, title: "Handbuch" });
+  });
+
+  it("Wiki-Export (JSON): wird angenommen und als Quelle mit Seitenverweisen aufbereitet; Zeilen-Schwärzung und fremde Firma greifen", async () => {
+    const wiki = JSON.stringify({ pages: [
+      { title: "VLAN", content: "- VLAN 10: Server\n- VLAN 20: Clients" },
+      { title: "Ansible", content: "Aufruf: `ansible-playbook site.yml -l web`" },
+    ] });
+    const res = await upload("adminA", { name: "wiki.json", type: "application/json", data: Buffer.from(wiki) });
+    expect(res.status).toBe(201);
+    const id = (await res.json()).document.id as string;
+    const [source] = await loadDocumentSources(orgA, id);
+    expect(source.excerpts.map((e) => e.locator)).toEqual(["Seite 1: VLAN", "Seite 2: Ansible"]);
+    expect(source.excerpts[1].text).toContain("ansible-playbook site.yml -l web");
+    await expect(loadDocumentSources(orgB, id)).rejects.toBeInstanceOf(DocumentSourceError);
+    await getDb().delete(companyDocuments).where(eq(companyDocuments.id, id)); // spätere Tests zählen die Dokumente
   });
 
   it("dieselbe Datei in derselben Firma wird nicht doppelt gespeichert, in einer anderen Firma schon", async () => {
