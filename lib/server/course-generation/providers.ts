@@ -3,7 +3,7 @@ import type { ZodType } from "zod";
 import { generateStructured, type AIUsage } from "@/lib/ai/generate";
 import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/claude";
 import {
-  courseBlueprintGenerationResponseSchema,
+  courseBlueprintAiResponseSchema,
   objectiveContentNoQuestionsResponseSchema,
   objectiveContentResponseSchema,
   COURSE_BLUEPRINT_SCHEMA_VERSION,
@@ -134,12 +134,14 @@ export function createSonnetBlueprintProvider(client?: GoogleGenAI): BlueprintPr
       const result = await generateStructured(
         blueprintSystemPrompt(input.outline),
         userPrompt,
-        courseBlueprintGenerationResponseSchema,
+        courseBlueprintAiResponseSchema,
         CURRICULUM_MODEL,
         onUsage,
         client,
       );
-      return { ...result, schemaVersion: COURSE_BLUEPRINT_SCHEMA_VERSION };
+      // Die Quellen kommen aus der App, nicht aus der KI-Antwort (siehe courseBlueprintAiResponseSchema).
+      const sources = input.sources.map((s) => ({ id: s.id, title: s.title, url: s.url, retrievedAt: s.retrievedAt }));
+      return { ...result, sources, schemaVersion: COURSE_BLUEPRINT_SCHEMA_VERSION };
     },
   };
 }
