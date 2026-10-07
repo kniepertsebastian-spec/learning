@@ -25,6 +25,8 @@ const ALLOWED_TABLES = new Set([
   "courseRequests",
   "courseRequestEvents",
   "organizationAiSettings",
+  // Firmenmodule (Unterlagen der Firma, Verantwortlicher, gültig bis)
+  "companyModules",
   // Praxisaufgaben und ihre Abgaben (von der Firma verwaltet, Bestätigung durch den Mentor)
   "practiceTasks",
   "practiceTaskSubmissions",

@@ -4,6 +4,7 @@ import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
+import { CompanyModulesPanel } from "@/components/CompanyModulesPanel";
 import { PracticeTasksPanel } from "@/components/PracticeTasksPanel";
 import { InternalCoursesPanel } from "@/components/InternalCoursesPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
@@ -11,6 +12,7 @@ import { ASSIGN_ROLES, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
 import { getAiSettings, resolveAiAccess } from "@/lib/server/company/ai-settings";
 import { isOverdue, listAssignableLearningPaths, listAssignableMembers } from "@/lib/server/company/assignments";
 import { listCourseRequests, listRequestableCourses } from "@/lib/server/company/course-requests";
+import { listModulesForOrg, listResponsibleCandidates } from "@/lib/server/company/modules";
 import { listPracticeTasksForOrg } from "@/lib/server/company/practice-tasks";
 import { listInternalCourseJobs, listInternalCourses } from "@/lib/server/company/internal-courses-list";
 import { listCompanyDocuments } from "@/lib/server/company/documents";
@@ -38,7 +40,7 @@ export default async function CompanyPage() {
   ]);
   const de = locale === "de";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice] = await Promise.all([
+  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates] = await Promise.all([
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
     canAssign ? listAssignableLearningPaths(membership.organizationId) : [],
@@ -49,6 +51,8 @@ export default async function CompanyPage() {
     listInternalCourses(membership.organizationId),
     resolveAiAccess(membership.organizationId),
     listPracticeTasksForOrg(membership.organizationId),
+    listModulesForOrg(membership.organizationId),
+    listResponsibleCandidates(membership.organizationId),
   ]);
   const documentRows = documents.map((d) => ({
     id: d.id,
@@ -108,6 +112,14 @@ export default async function CompanyPage() {
       </div>
 
       <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
+
+      <CompanyModulesPanel
+        modules={modules}
+        paths={paths.map((p) => ({ id: p.id, name: p.name }))}
+        people={responsibleCandidates}
+        currentUserId={membership.userId}
+        locale={locale}
+      />
 
       <PracticeTasksPanel
         tasks={practice.tasks.map((t) => ({ id: t.id, title: t.title, description: t.description, learningPath: t.learningPath, assignees: t.assignees, submitted: t.submitted, confirmed: t.confirmed, rework: t.rework }))}

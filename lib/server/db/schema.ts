@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  date,
   type AnyPgColumn,
   boolean,
   check,
@@ -1591,4 +1592,35 @@ export const practiceTaskSubmissions = pgTable(
     unique("practice_task_submissions_task_user_unique").on(table.taskId, table.userId),
     index("practice_task_submissions_org_status_idx").on(table.organizationId, table.status),
   ],
+);
+
+/**
+ * Firmenmodul: eine kurze Unterlage der Firma (Text, z. B. „Unser Ticket-Prozess“) zu einem ihrer Lernpfade, mit einer
+ * verantwortlichen Person (Mentor oder Firmen-Admin) und „gültig bis“. Wer den Lernpfad zugewiesen hat, sieht sie auf
+ * der Lernpfad-Seite; nach Ablauf bleibt der Inhalt für Lernende verborgen, bis die verantwortliche Person verlängert.
+ * Gehört der Firma: der Betreiber liest sie nie. Fällt die verantwortliche Person weg, bleibt das Modul ohne
+ * Verantwortlichen bestehen (SET NULL) und fällt in der Verwaltung auf.
+ */
+export const companyModules = pgTable(
+  "company_modules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    /** Markdown (ohne rohes HTML dargestellt). */
+    body: text("body").notNull(),
+    responsibleUserId: uuid("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
+    /** Letzter Tag der Gültigkeit (einschließlich), als Datum ohne Zeitzone. */
+    validUntil: date("valid_until").notNull(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [index("company_modules_org_cert_idx").on(table.organizationId, table.certificationId)],
 );

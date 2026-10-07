@@ -7,6 +7,9 @@ import { eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, objectives, sections, lessons, objectiveProgress } from "@/lib/server/db/schema";
+import { getCompanyMembership } from "@/lib/server/company/access";
+import { listModulesForPath } from "@/lib/server/company/modules";
+import { CompanyModulesSection } from "@/components/CompanyModulesSection";
 import { getServerLocale } from "@/lib/server/locale";
 import { RemediationService } from "@/lib/server/remediation/service";
 import { getStudyProfile } from "@/lib/server/study/profile";
@@ -184,6 +187,17 @@ export default async function CertDetailPage({
     }
   };
 
+  // Firmenmodule: nur für Mitglieder der Firma, der sie gehören (siehe lib/server/company/modules.ts)
+  const companyMembership = session?.user?.id ? await getCompanyMembership(session.user.id) : null;
+  const companyModules = companyMembership
+    ? await listModulesForPath({
+        organizationId: companyMembership.organizationId,
+        userId: companyMembership.userId,
+        role: companyMembership.role,
+        certificationId: cert.id,
+      })
+    : [];
+
   return (
     <div className="flex flex-1 flex-col">
       <Link
@@ -224,6 +238,10 @@ export default async function CertDetailPage({
           </div>
         )}
       </div>
+
+      {companyMembership && companyModules.length > 0 && (
+        <CompanyModulesSection modules={companyModules} companyName={companyMembership.organizationName} locale={locale} />
+      )}
 
       {!session && (
         <div className="mb-6 flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">

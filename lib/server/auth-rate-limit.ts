@@ -166,3 +166,11 @@ const PRACTICE_TASK_MAX_PER_WINDOW = 60;
 export function checkPracticeTaskRateLimit(userId: string): RateLimitResult {
   return checkRateLimit("practice-task", userId, PRACTICE_TASK_WINDOW_MS, PRACTICE_TASK_MAX_PER_WINDOW);
 }
+
+const COMPANY_MODULE_WINDOW_MS = 60 * 60 * 1000;
+const COMPANY_MODULE_MAX_PER_WINDOW = 60;
+
+/** Firmenmodule anlegen, ändern und archivieren: je Nutzer. */
+export function checkCompanyModuleRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("company-module", userId, COMPANY_MODULE_WINDOW_MS, COMPANY_MODULE_MAX_PER_WINDOW);
+}
