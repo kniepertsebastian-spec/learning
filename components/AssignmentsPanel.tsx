@@ -25,9 +25,9 @@ export type MemberOption = { userId: string; name: string | null; email: string;
 export type PathOption = { id: string; name: string; kind: "general" | "internal" };
 
 const STATUS_LABELS: Record<Status, { de: string; en: string }> = {
-  assigned: { de: "Zugewiesen", en: "Assigned" },
+  assigned: { de: "Noch offen", en: "Open" },
   in_progress: { de: "In Arbeit", en: "In progress" },
-  completed: { de: "Abgeschlossen", en: "Completed" },
+  completed: { de: "Bestanden", en: "Passed" },
 };
 
 function formatDate(iso: string | null, locale: "de" | "en") {
@@ -119,8 +119,8 @@ export function AssignmentsPanel({
       <h2 className="text-lg font-medium">{de ? "Lernpfade zuweisen" : "Assign learning paths"}</h2>
       <p className="mt-1 text-sm text-foreground/70">
         {de
-          ? "Du siehst hier nur Status, Zuweisungs-, Frist- und Abschlussdatum. Lernergebnisse und Antworten bleiben bei den Lernenden."
-          : "You only see status, assignment, due and completion dates. Results and answers stay with the learners."}
+          ? "Du siehst hier nur Status, Zuweisungs-, Frist- und Abschlussdatum. Ergebnisse (richtig oder falsch, Punkte, Lernstand) sehen nur die Lernenden selbst: Es sind ihre Daten. Bei Fragen dazu wende dich direkt an die Person."
+          : "You only see status, assignment, due and completion dates. Results (right or wrong, scores, learning progress) are visible to the learners only: it is their data. For questions about it, contact the person directly."}
       </p>
 
       {paths.length === 0 ? (

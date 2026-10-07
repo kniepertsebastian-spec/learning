@@ -115,7 +115,7 @@ export function MandatoryRulesPanel({
                   </p>
                 )}
                 <p className="mt-1">
-                  {r.completed}/{r.assigned} {de ? "abgeschlossen" : "completed"}
+                  {r.completed}/{r.assigned} {de ? "bestanden" : "passed"}
                   {r.overdue > 0 && <span className="ml-2 text-red-600">{r.overdue} {de ? "überfällig" : "overdue"}</span>}
                 </p>
               </div>

@@ -44,7 +44,9 @@
 Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nicht gebaut.
 
 - [ ] **Kein Talent-Score, keine Vergleiche** zwischen Lernenden – weder in Datenmodell noch API
-- [ ] **Arbeitgeber-API liefert nur Status:** zugewiesen / in Arbeit / abgeschlossen, Datum, Frist – technisch erzwungen, nicht nur in der UI
+- [x] **Arbeitgeber-API liefert nur Status:** noch offen / in Arbeit / bestanden, Datum, Frist – technisch erzwungen, nicht nur in der UI
+  - _Technisch erzwungen durch:_ (1) Architektur-Test `company-architecture.test.ts`: `lib/server/company`, `app/api/company` und `app/company` dürfen keine Lerndaten-Tabellen und keine Lern-Module importieren; (2) die Feldliste `COMPANY_STATUS_FIELDS` ist festgeschrieben (neue Felder sind eine bewusste Entscheidung); (3) `results-privacy.test.ts` gegen echte DB: mit echten Ergebnissen einer Person (Beherrschungsgrad, nicht bestandene Prüfung mit Punktzahl) sehen Firmen-Admin und Mentor über KEINE Firmen- oder Lern-Route etwas davon, fremde Prüfungsversuche sind „nicht gefunden“; Gegenprobe: die Person selbst sieht sie. Mutationsproben (Besitzerprüfung entfernt, Ergebnisfeld in den Status eingeschleust) fallen durch.
+  - _Entscheidungen (bitte prüfen):_ Der Stand „bestanden“ heißt bei Lernpfaden ohne Tests „durchgearbeitet“. Praxisaufgaben: Der Mentor bestätigt sie selbst und die Statusübersicht zeigt nur die Zahl bestätigter Aufgaben (x von y), nie Notizen oder Nacharbeit. „In Arbeit“ verrät, dass die Person begonnen hat, sonst nichts.
 - [ ] **Bestanden heißt beherrscht:** wechselnde Fragen, jedes Lernziel nachgewiesen
 - [ ] **Bewertung regelbasiert**, KI nur für Entwürfe und Hinweise – nie Entscheidung über Menschen
 - [ ] **Nachweise gehören dem Lernenden**, Wechselwünsche bleiben privat
