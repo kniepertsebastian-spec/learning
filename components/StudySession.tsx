@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, Flag, Loader2 } from "lucide-react";
 import type { AnswerConfidence, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
+import { RichText } from "@/components/RichText";
 
 const CONFIDENCE_LABEL: Record<AnswerConfidence, { de: string; en: string }> = {
   guessed: { de: "Geraten", en: "Guessed" },
@@ -231,7 +232,7 @@ export function StudySession({
       </div>
 
       <div className="rounded-lg border border-border bg-surface p-5">
-        <p className="mb-4 font-medium">{item.question[locale]}</p>
+        <div className="mb-4 font-medium"><RichText text={item.question[locale]} /></div>
         <div className="flex flex-col gap-2">
           {[...item.options]
             .sort((a, b) => a.orderNum - b.orderNum)
@@ -252,7 +253,7 @@ export function StudySession({
                     : "border-border hover:bg-background"
                 }`}
               >
-                {option.text[locale]}
+                <RichText text={option.text[locale]} inline />
               </button>
             ))}
         </div>

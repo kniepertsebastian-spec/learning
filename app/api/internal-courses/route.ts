@@ -20,6 +20,8 @@ const startSchema = z.object({
   documentId: z.string().uuid(),
   title: z.string().trim().min(1).max(200),
   language: z.enum(["de", "en"]).default("de"),
+  includeSectionQuizzes: z.boolean().default(true),
+  includeFinalExam: z.boolean().default(true),
 });
 
 /** Stand der Erstellung (Aufträge) und die internen Lernpfade der eigenen Firma. */

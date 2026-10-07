@@ -8,6 +8,9 @@ import { capExcerpts, type FetchedSource } from "@/lib/server/course-generation/
 /** Das Dokument darf (noch) nicht für die KI verwendet werden. Die Meldung ist für die Firma bestimmt. */
 export class DocumentSourceError extends Error {}
 
+/** Mindestmenge verwertbarer Zeichen: ein paar Stichwörter genügen. */
+export const MIN_USABLE_CHARS = 30;
+
 export const REDACTION_MARKER = "[Zeile entfernt: vom Scanner gemeldet]";
 
 type Page = { pageNumber: number; text: string };
@@ -74,7 +77,8 @@ export async function loadDocumentSources(organizationId: string, documentId: st
 
   const excerpts = pages.map((p) => ({ locator: locator(p.pageNumber), text: p.text }));
   const usable = excerpts.reduce((n, e) => n + e.text.replace(REDACTION_MARKER, "").trim().length, 0);
-  if (usable < 200) throw new DocumentSourceError("Das Dokument enthält zu wenig Text für einen Lernpfad.");
+  // Auch eine kurze Stichwortliste reicht als Gliederung (die KI ergänzt dann die Erklärungen); völlig leer nicht.
+  if (usable < MIN_USABLE_CHARS) throw new DocumentSourceError("Das Dokument enthält zu wenig Text für einen Lernpfad.");
 
   const capped = capExcerpts(excerpts);
   return [

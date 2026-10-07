@@ -138,3 +138,39 @@ export async function resolveContentTarget(
   if (await hiddenFrom(userId, cert)) return "hidden";
   return cert.kind === "internal" ? "internal" : "ok";
 }
+
+/** Welche Testformen ein Lernpfad hat (interne Lernpfade können ohne Lektionstests und/oder Abschlussprüfung bestehen). */
+export type CertificationFeatures = { includeSectionQuizzes: boolean; includeFinalExam: boolean };
+
+const featureColumns = { includeSectionQuizzes: certifications.includeSectionQuizzes, includeFinalExam: certifications.includeFinalExam };
+
+export async function featuresOfCertification(certId: string): Promise<CertificationFeatures | null> {
+  if (!UUID_RE.test(certId)) return null;
+  const [row] = await getDb().select(featureColumns).from(certifications).where(eq(certifications.id, certId)).limit(1);
+  return row ?? null;
+}
+
+export async function featuresOfSection(sectionId: string): Promise<CertificationFeatures | null> {
+  if (!UUID_RE.test(sectionId)) return null;
+  const [row] = await getDb()
+    .select(featureColumns)
+    .from(sections)
+    .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .innerJoin(certifications, eq(certifications.id, domains.certificationId))
+    .where(eq(sections.id, sectionId))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function featuresOfObjective(objectiveId: string): Promise<CertificationFeatures | null> {
+  if (!UUID_RE.test(objectiveId)) return null;
+  const [row] = await getDb()
+    .select(featureColumns)
+    .from(objectives)
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .innerJoin(certifications, eq(certifications.id, domains.certificationId))
+    .where(eq(objectives.id, objectiveId))
+    .limit(1);
+  return row ?? null;
+}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type Job = { id: string; title: string; status: string; message: string | null; errorMessage: string | null; active: boolean; createdAt: string };
-type Course = { id: string; slug: string; name: string; catalogStatus: "draft" | "in_review" | "approved"; approvedByName: string | null; approvedAt: string | null; createdAt: string };
+type Course = { id: string; slug: string; name: string; catalogStatus: "draft" | "in_review" | "approved"; includeSectionQuizzes: boolean; includeFinalExam: boolean; approvedByName: string | null; approvedAt: string | null; createdAt: string };
 type DocumentOption = { id: string; title: string; excludeFromAi: boolean };
 
 const btn = "rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background disabled:opacity-50";
@@ -31,6 +31,8 @@ export function InternalCoursesPanel({
   const [courses, setCourses] = useState(initialCourses);
   const [documentId, setDocumentId] = useState("");
   const [title, setTitle] = useState("");
+  const [includeSectionQuizzes, setIncludeSectionQuizzes] = useState(true);
+  const [includeFinalExam, setIncludeFinalExam] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const usable = documents.filter((d) => !d.excludeFromAi);
@@ -71,7 +73,7 @@ export function InternalCoursesPanel({
 
   async function start(e: React.FormEvent) {
     e.preventDefault();
-    if (await call("/api/internal-courses", "POST", { documentId, title: title.trim(), language: locale })) setTitle("");
+    if (await call("/api/internal-courses", "POST", { documentId, title: title.trim(), language: locale, includeSectionQuizzes, includeFinalExam })) setTitle("");
   }
 
   const statusLabel = (s: Course["catalogStatus"]) =>
@@ -94,7 +96,8 @@ export function InternalCoursesPanel({
         </p>
       )}
 
-      <form onSubmit={start} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+      <form onSubmit={start} className="mt-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <label className="flex-1 text-sm font-medium">
           {de ? "Dokument" : "Document"}
           <select
@@ -124,6 +127,35 @@ export function InternalCoursesPanel({
         <button type="submit" disabled={busy || !aiConfigured || !documentId} data-testid="internal-start" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
           {de ? "Entwurf erstellen" : "Create draft"}
         </button>
+        </div>
+        <fieldset className="flex flex-col gap-1.5 text-sm" data-testid="internal-tests">
+          <legend className="mb-1 font-medium">{de ? "Tests" : "Tests"}</legend>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={includeSectionQuizzes} onChange={(e) => setIncludeSectionQuizzes(e.target.checked)} data-testid="internal-quizzes" />
+            {de ? "Lektionstests integrieren" : "Include lesson tests"}
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={includeFinalExam} onChange={(e) => setIncludeFinalExam(e.target.checked)} data-testid="internal-exam" />
+            {de ? "Abschlussprüfung integrieren" : "Include final exam"}
+          </label>
+          <p className="text-xs text-foreground/70" data-testid="internal-tests-hint">
+            {!includeSectionQuizzes && !includeFinalExam
+              ? de
+                ? "Reiner Durchlauf: Es entstehen nur Lektionen, keine Fragen (das ist deutlich günstiger). Der Lernpfad gilt als abgeschlossen, sobald alle Lektionen durchgearbeitet sind."
+                : "Plain walkthrough: only lessons, no questions (much cheaper). The path counts as completed once all lessons are worked through."
+              : !includeSectionQuizzes
+                ? de
+                  ? "Fragen entstehen nur für die Abschlussprüfung. Lektionen werden ohne Test abgeschlossen; die Prüfung ist eine Selbstkontrolle und zählt nicht für den Abschluss."
+                  : "Questions are created for the final exam only. Lessons are completed without a test; the exam is a self-check and does not count towards completion."
+                : !includeFinalExam
+                  ? de
+                    ? "Fragen entstehen für die Lektionstests; es gibt keine Abschlussprüfung."
+                    : "Questions are created for the lesson tests; there is no final exam."
+                  : de
+                    ? "Lektionstests und Abschlussprüfung (Standard). Der Lernpfad gilt als abgeschlossen, wenn jedes Lernziel beherrscht wird."
+                    : "Lesson tests and final exam (default). The path counts as completed once every objective is mastered."}
+          </p>
+        </fieldset>
       </form>
 
       {jobs.length > 0 && (
@@ -154,6 +186,9 @@ export function InternalCoursesPanel({
                 <span>
                   <span className="font-medium">{c.name}</span>{" "}
                   <span className="text-foreground/70">· {statusLabel(c.catalogStatus)}</span>
+                  {!c.includeSectionQuizzes && !c.includeFinalExam && (
+                    <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 text-xs">{de ? "ohne Tests" : "no tests"}</span>
+                  )}
                 </span>
                 <span className="flex gap-2">
                   <Link href={`/cert/${c.slug}`} className={btn}>{de ? "Ansehen" : "View"}</Link>

@@ -33,6 +33,7 @@ export default async function StudySessionPage({
     .where(eq(certifications.slug, slug))
     .limit(1);
   if (!cert) notFound();
+  if (!cert.includeSectionQuizzes) notFound(); // Übungssitzungen gibt es nur mit Lektionstests
 
   // R2.3: liest die bereits persistierte aktive Session oder baut eine neue -
   // idempotent, ein Reload dieser Seite ändert nichts an der Zusammenstellung.

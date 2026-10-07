@@ -1,4 +1,4 @@
-import { isCertificationHidden } from "@/lib/server/catalog/access";
+import { featuresOfCertification, isCertificationHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
@@ -19,6 +19,10 @@ export async function POST(
   const { certId } = await params;
   if (await isCertificationHidden(session.user.id, certId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const features = await featuresOfCertification(certId);
+  if (features && !features.includeFinalExam) {
+    return NextResponse.json({ error: "Für diesen Lernpfad gibt es keine Abschlussprüfung." }, { status: 409 });
   }
 
   const db = getDb();

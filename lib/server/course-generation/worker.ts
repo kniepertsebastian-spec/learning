@@ -24,6 +24,7 @@ import {
 } from "./providers";
 import {
   coursePackageV1Schema,
+  objectiveContentNoQuestionsResponseSchema,
   objectiveContentResponseSchema,
   COURSE_PACKAGE_SCHEMA_VERSION,
   type CourseBlueprintDomain,
@@ -33,6 +34,7 @@ import {
   type CoursePackageV1,
   type ObjectiveContentResponse,
 } from "./schemas";
+import { looksLikeOutline } from "./outline";
 import { fetchSources, type FetchedSource } from "./sources";
 import { pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
 import { getDb } from "@/lib/server/db/client";
@@ -111,6 +113,18 @@ async function defaultDeps(
   }
 }
 
+/**
+ * Wie die Inhalte dieses Auftrags erzeugt werden: Fragen nur, wenn Lektionstests oder Abschlussprüfung gewünscht sind
+ * (die Prüfung zieht ihre Fragen aus demselben Pool); anwendungsnahe Fragen (Logs, Befehle) bei internen Lernpfaden.
+ */
+function generationModeOf(job: CourseGenerationJob, outline: boolean) {
+  return {
+    withQuestions: job.includeSectionQuizzes || job.includeFinalExam,
+    practical: Boolean(job.organizationId),
+    outline,
+  };
+}
+
 /** Slug des Lernpfads. Interne Lernpfade tragen die Auftrags-ID, damit Titel verschiedener Firmen nie kollidieren. */
 function plannedSlugFor(job: CourseGenerationJob): string {
   const base = suggestCourseSlug(job.courseTitle, job.certificationVersion ?? undefined);
@@ -141,6 +155,7 @@ async function generateAndValidateObjective(
   entry: ObjectiveEntry,
   sources: FetchedSource[],
   maxAttempts: number,
+  outline: boolean,
 ): Promise<ObjectiveRunResult> {
   const objectiveRowId = objectiveRow.id;
 
@@ -149,7 +164,7 @@ async function generateAndValidateObjective(
   // Tokens/Kosten und macht "Retry" auf einem teilweise erfolgreichen Job
   // sinnvoll statt alles neu zu erzeugen.
   if (objectiveRow.status === "valid" && objectiveRow.contentJson) {
-    const cached = objectiveContentResponseSchema.safeParse(objectiveRow.contentJson);
+    const cached = (job.includeSectionQuizzes || job.includeFinalExam ? objectiveContentResponseSchema : objectiveContentNoQuestionsResponseSchema).safeParse(objectiveRow.contentJson);
     if (cached.success) {
       return { success: true, content: cached.data, errors: [], costUsd: 0 };
     }
@@ -166,6 +181,7 @@ async function generateAndValidateObjective(
     domain: entry.domain,
     objective: entry.objective,
     sourceExcerpts,
+    ...generationModeOf(job, outline),
   };
 
   await updateCourseGenerationObjective(objectiveRowId, { status: "generating" });
@@ -190,7 +206,7 @@ async function generateAndValidateObjective(
     return { success: false, content: null, errors: [(error as Error).message], costUsd: attemptCostUsd };
   }
 
-  let errors = validateAttempt(entry.objective, result, sourceExcerpts);
+  let errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
   let usedProvider = deps.contentProvider;
   let attempts = 1;
 
@@ -206,7 +222,7 @@ async function generateAndValidateObjective(
       errors = [(error as Error).message];
       break;
     }
-    errors = validateAttempt(entry.objective, result, sourceExcerpts);
+    errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
     attempts++;
   }
 
@@ -223,7 +239,7 @@ async function generateAndValidateObjective(
     try {
       usedProvider = deps.repairProvider;
       result = await usedProvider.repairObjective(input, result, errors, trackUsage);
-      errors = validateAttempt(entry.objective, result, sourceExcerpts);
+      errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
       attempts++;
     } catch (error) {
       errors = [...errors, (error as Error).message];
@@ -258,12 +274,13 @@ function validateAttempt(
   objective: CourseBlueprintObjective,
   result: ObjectiveContentResponse,
   sourceExcerpts: { locator: string; text: string }[],
+  mode: { withQuestions?: boolean },
 ): string[] {
-  const schemaCheck = objectiveContentResponseSchema.safeParse(result);
+  const schemaCheck = (mode.withQuestions === false ? objectiveContentNoQuestionsResponseSchema : objectiveContentResponseSchema).safeParse(result);
   if (!schemaCheck.success) {
     return schemaCheck.error.issues.slice(0, 5).map((issue) => `${issue.path.join(".")}: ${issue.message}`);
   }
-  return validateObjectiveContent(objective, result, sourceExcerpts);
+  return validateObjectiveContent(objective, result, sourceExcerpts, { withQuestions: mode.withQuestions });
 }
 
 /**
@@ -284,8 +301,10 @@ function validateAttempt(
  * Resume-Logik pro Objective) gibt es hier nichts mehr zu generieren, nur
  * noch die bewusst zurückgehaltene Freigabe.
  */
-function importOwner(job: CourseGenerationJob): { organizationId: string } | undefined {
-  return job.organizationId ? { organizationId: job.organizationId } : undefined;
+function importOwner(job: CourseGenerationJob) {
+  return job.organizationId
+    ? { organizationId: job.organizationId, includeSectionQuizzes: job.includeSectionQuizzes, includeFinalExam: job.includeFinalExam }
+    : undefined;
 }
 
 export async function publishPreparedCourseGenerationPackage(jobId: string): Promise<void> {
@@ -411,6 +430,10 @@ export async function executeCourseGenerationJob(
       throw new PreflightError((error as Error).message);
     }
 
+    // Stichwortliste statt Text? Dann leitet die KI Lernziele aus den Stichwörtern ab und ergänzt Erklärungen.
+    // Beschreibungen von Screenshots (Locator „Bild: …“) zählen nicht mit: sie sind ausformulierte KI-Texte.
+    const outline = looksLikeOutline(sources.flatMap((s) => s.excerpts.filter((e) => !e.locator.startsWith("Bild:")).map((e) => e.text)));
+
     // Blueprint
     await updateCourseGenerationJob(jobId, {
       status: "blueprint_generating",
@@ -428,6 +451,7 @@ export async function executeCourseGenerationJob(
         courseTitle: job.courseTitle,
         courseDescription: job.courseDescription,
         language: job.language as "de" | "en",
+        outline,
         provider: job.provider,
         certificationVersion: job.certificationVersion ?? undefined,
         sources,
@@ -469,7 +493,9 @@ export async function executeCourseGenerationJob(
     await updateCourseGenerationJob(jobId, {
       estimatedCostUsd: roughEstimate === null ? null : roughEstimate.toString(),
       status: "blueprint_ready",
-      message: `Blueprint bereit: ${blueprint.domains.length} Domain(s), ${allObjectives.length} Objective(s).`,
+      message:
+        `Blueprint bereit: ${blueprint.domains.length} Domain(s), ${allObjectives.length} Objective(s).` +
+        (outline ? " Die Quelle ist überwiegend eine Stichwortliste: Erklärungen werden aus Fachwissen ergänzt, bitte den Entwurf genau prüfen." : ""),
     });
 
     const canaryIndex = pickCanaryIndex(allObjectives);
@@ -505,6 +531,7 @@ export async function executeCourseGenerationJob(
       canaryEntry,
       sources,
       MAX_CANARY_ATTEMPTS,
+      outline,
     );
     await recordSpend(canaryResult.costUsd);
     if (!canaryResult.success) {
@@ -544,6 +571,7 @@ export async function executeCourseGenerationJob(
           entry,
           sources,
           MAX_REPAIR_ATTEMPTS,
+          outline,
         );
         await recordSpend(result.costUsd);
         if (result.success) {

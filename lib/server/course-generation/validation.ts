@@ -59,10 +59,13 @@ export function validateObjectiveContent(
   objective: CourseBlueprintObjective,
   content: ObjectiveContentResponse,
   sourceExcerpts: SourceExcerpt[],
+  /** false: Lernpfad ohne Fragen, die Fragenregeln entfallen. */
+  options: { withQuestions?: boolean } = {},
 ): string[] {
   const errors: string[] = [];
+  const withQuestions = options.withQuestions !== false;
 
-  if (content.questions.length < objective.recommendedQuestions) {
+  if (withQuestions && content.questions.length < objective.recommendedQuestions) {
     errors.push(
       `Nur ${content.questions.length} von ${objective.recommendedQuestions} empfohlenen Fragen erhalten.`,
     );
@@ -91,7 +94,7 @@ export function validateObjectiveContent(
     }
   }
 
-  if (objective.complexity === "high" && !content.questions.some((q) => q.type === "scenario")) {
+  if (withQuestions && objective.complexity === "high" && !content.questions.some((q) => q.type === "scenario")) {
     errors.push("Komplexes Objective ohne mindestens eine Szenario-Frage (type: scenario).");
   }
 

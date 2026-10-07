@@ -267,6 +267,13 @@
       "when": 1791342171419,
       "tag": "0037_company_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791343873738,
+      "tag": "0038_test_optional_courses",
+      "breakpoints": true
     }
   ]
 }

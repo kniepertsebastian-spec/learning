@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { ArrowLeft, BookOpen, Target } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, Target } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import { SectionQuiz } from "@/components/SectionQuiz";
 import type { SectionQuizQuestion } from "@/components/SectionQuiz";
@@ -27,6 +28,10 @@ interface SectionContentProps {
   questions: SectionQuizQuestion[];
   /** R4.1/4.2/4.3: siehe SectionQuiz - wird im Offline-Reader gesetzt. */
   offline?: { userId: string };
+  /** false: Lernpfad ohne Lektionstests; statt des Quiz gibt es „Lektion abschließen“. Standard true. */
+  quizEnabled?: boolean;
+  signedIn?: boolean;
+  initialCompleted?: boolean;
 }
 
 export function SectionContent({
@@ -39,9 +44,31 @@ export function SectionContent({
   lesson,
   questions,
   offline,
+  quizEnabled = true,
+  signedIn = true,
+  initialCompleted = false,
 }: SectionContentProps) {
   const { locale } = useLocale();
+  const router = useRouter();
   const [showQuiz, setShowQuiz] = useState(false);
+  const [completed, setCompleted] = useState(initialCompleted);
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
+
+  async function completeLesson() {
+    setCompleting(true);
+    setCompleteError(null);
+    try {
+      const res = await fetch(`/api/sections/${sectionId}/complete`, { method: "POST" });
+      if (!res.ok) throw new Error();
+      setCompleted(true);
+      router.refresh();
+    } catch {
+      setCompleteError(locale === "de" ? "Das hat nicht geklappt. Bitte erneut versuchen." : "That did not work. Please try again.");
+    } finally {
+      setCompleting(false);
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col">
@@ -99,7 +126,34 @@ export function SectionContent({
         </div>
       )}
 
-      {!showQuiz ? (
+      {!quizEnabled ? (
+        <div className="mb-8 flex flex-col gap-3" data-testid="lesson-complete">
+          {!signedIn ? (
+            <p className="text-sm text-foreground/70">
+              {locale === "de" ? "Melde dich an, um diese Lektion als durchgearbeitet zu markieren." : "Sign in to mark this lesson as completed."}
+            </p>
+          ) : completed ? (
+            <p className="flex items-center gap-2 text-sm font-medium text-emerald-600" role="status">
+              <Check className="h-4 w-4" aria-hidden="true" />
+              {locale === "de" ? "Lektion durchgearbeitet" : "Lesson completed"}
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void completeLesson()}
+              disabled={completing}
+              data-testid="lesson-complete-button"
+              className="w-fit rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {locale === "de" ? "Lektion abschließen" : "Complete lesson"}
+            </button>
+          )}
+          {completeError && <p role="alert" className="text-sm text-red-500">{completeError}</p>}
+          <Link href={`/cert/${certSlug}`} className="w-fit text-sm text-accent hover:underline">
+            {locale === "de" ? "Zurück zum Lernpfad" : "Back to learning path"}
+          </Link>
+        </div>
+      ) : !showQuiz ? (
         <button
           type="button"
           onClick={() => setShowQuiz(true)}

@@ -136,6 +136,13 @@ export const certifications = pgTable("certifications", {
   ownerOrganizationId: uuid("owner_organization_id").references(() => organizations.id, { onDelete: "cascade" }),
   /** Menschliche Freigabe vor jeder Weitergabe an Kunden: draft -> in_review -> approved. Bestehende Lernpfade gelten als freigegeben. */
   catalogStatus: text("catalog_status").$type<CatalogStatus>().notNull().default("approved"),
+  /**
+   * Lernpfade, die ohne Tests auskommen („reine Absolvierung zum Verständnis“, nur interne Lernpfade): ohne
+   * Lektionstests gibt es keine Abschnittsquizze, Übungssitzungen und Wiederholungen; ohne Abschlussprüfung keine
+   * Prüfung. Bei allgemeinen Lernpfaden und allen älteren immer true.
+   */
+  includeSectionQuizzes: boolean("include_section_quizzes").notNull().default(true),
+  includeFinalExam: boolean("include_final_exam").notNull().default(true),
   /** Wer den Lernpfad fachlich geprüft hat (Name des externen Prüfers, auch ohne Konto) und wann. */
   approvedByName: text("approved_by_name"),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
@@ -1115,6 +1122,9 @@ export const courseGenerationJobs = pgTable(
     organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     /** Quelle eines internen Lernpfads. SET NULL: das Dokument darf gelöscht werden, der erzeugte Lernpfad bleibt. */
     documentId: uuid("document_id").references(() => companyDocuments.id, { onDelete: "set null" }),
+    /** Nur interne Lernpfade: mit Lektionstests und/oder Abschlussprüfung erstellen (sonst keine Fragen, günstiger). */
+    includeSectionQuizzes: boolean("include_section_quizzes").notNull().default(true),
+    includeFinalExam: boolean("include_final_exam").notNull().default(true),
     courseTitle: text("course_title").notNull(),
     courseDescription: text("course_description").notNull(),
     language: text("language").notNull(),
@@ -1623,4 +1633,24 @@ export const companyModules = pgTable(
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (table) => [index("company_modules_org_cert_idx").on(table.organizationId, table.certificationId)],
+);
+
+/**
+ * Eine Lektion als „durchgearbeitet“ markiert. Gilt für Lernpfade ohne Lektionstests: dort ist der Abschluss die
+ * Absolvierung aller Lektionen (bei Lernpfaden mit Tests zählt weiter das Beherrschen jedes Lernziels). Gehört der
+ * Person und fällt mit dem Konto weg.
+ */
+export const lessonCompletions = pgTable(
+  "lesson_completions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => sections.id, { onDelete: "cascade" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("lesson_completions_user_section_unique").on(table.userId, table.sectionId)],
 );
