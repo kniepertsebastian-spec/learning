@@ -12,6 +12,7 @@ import {
   type CourseRequestStatus,
 } from "@/lib/server/db/schema";
 import { SETTABLE_REQUEST_STATUSES } from "@/lib/course-requests";
+import { notifyCompanyEntitlementRevoked, notifyCompanyRequestStatus } from "@/lib/server/company/request-notifications";
 
 /**
  * Betreiberseite der Kundenanfragen (nur Plattform-Admins, siehe requireAdminApi): Anfragen aller Firmen
@@ -149,6 +150,7 @@ export async function setRequestStatus(input: {
     targetId: input.requestId,
     metadata: { status: input.status },
   }).catch(logAuditFailure);
+  void notifyCompanyRequestStatus(input.requestId);
 }
 
 /**
@@ -200,6 +202,7 @@ export async function releaseRequest(input: {
     targetId: input.requestId,
     metadata: { organizationId: result.organizationId, certificationId: result.certificationId },
   }).catch(logAuditFailure);
+  void notifyCompanyRequestStatus(input.requestId);
   return result;
 }
 
@@ -291,7 +294,10 @@ export async function revokeEntitlement(input: {
   actorUserId: string;
 }): Promise<void> {
   const note = cleanNote(input.note) ?? "Freigabe entzogen";
+  let courseName = "Lernpfad";
   await getDb().transaction(async (tx) => {
+    const [course] = await tx.select({ name: certifications.name }).from(certifications).where(eq(certifications.id, input.certificationId)).limit(1);
+    if (course) courseName = course.name;
     const [entitlement] = await tx
       .delete(companyCourseEntitlements)
       .where(and(eq(companyCourseEntitlements.organizationId, input.organizationId), eq(companyCourseEntitlements.certificationId, input.certificationId)))
@@ -313,4 +319,5 @@ export async function revokeEntitlement(input: {
     targetId: input.organizationId,
     metadata: { certificationId: input.certificationId },
   }).catch(logAuditFailure);
+  void notifyCompanyEntitlementRevoked(input.organizationId, courseName, note);
 }

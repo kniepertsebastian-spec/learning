@@ -17,7 +17,7 @@
 | 0 Fundament und Sicherheit | Gate 0 **offen**. Erledigt: CSP mit Nonce, Rate-Limits, Backup- und Restore-Skripte (im Direkt-Modus geprüft), CI, Repo aufgeräumt, Sicherheitsupdates, Server-Härtung ausgerollt und mit `scripts/check-server.sh` geprüft. Offen: Offsite-Backup und Restore auf dem echten Server, Branch Protection auf `main`, Hoster-Firewall und Test von außen (`nc -vz <ip> 5432`), Monitoring auf dem Server einrichten (Timer, Testmail, Alarmprobe), Dockerfile mit `standalone` (braucht einen Docker-Lauf), Service Worker, 502-Fehlertexte der Admin-Routen, Error-Tracking |
 | 1 Mandanten, Rollen, Rechte | **erledigt** (Gate 1) |
 | 2 Accounts | **erledigt** (Gate 2). Offen: Entscheidung zur Auth-Bibliothek (Empfehlung: bei `next-auth` 5.0.0-beta.32 bleiben), Mailanbieter für den Kundenbetrieb (Google Workspace mit AV-Vertrag oder EU-Anbieter) |
-| 3 Firmenfunktionen | **in Arbeit**. Gebaut: Zuweisen mit Frist, Statusansicht mit automatischer Nachführung, Firmendokumente mit Scanner, Kundenanfragen und Freigaben, fachliche Prüfung, KI-Zugang je Firma (Verschlüsselung, Schlüsselprüfung). Offen: echter Probelauf des KI-Schritts „Dokument → interner Lernpfad“ (gebaut, nur mit Fake-KI getestet), E-Mail-Benachrichtigung bei Anfragen, Praxisaufgaben, Firmenmodule, Abrechnung/Limits bei „unser Zugang“, Gate 3 |
+| 3 Firmenfunktionen | **in Arbeit**. Gebaut: Zuweisen mit Frist, Statusansicht mit automatischer Nachführung, Firmendokumente mit Scanner, Kundenanfragen und Freigaben, fachliche Prüfung, KI-Zugang je Firma (Verschlüsselung, Schlüsselprüfung). Offen: echter Probelauf des KI-Schritts „Dokument → interner Lernpfad“ (gebaut, nur mit Fake-KI getestet), Praxisaufgaben, Firmenmodule, Abrechnung/Limits bei „unser Zugang“, Gate 3 |
 | 4 bis 7 | nicht begonnen |
 
 **Festgelegte Entscheidungen des Betreibers (Phase 3):**
@@ -35,7 +35,7 @@
 1. PR #77 mergen und ausrollen (neue Variable `APP_ENCRYPTION_KEY` in der `.env`, `openssl rand -base64 32`, nicht ins Datenbank-Backup; Firmen ohne bisherige Zuweisung brauchen zuerst eine Freigabe über `/admin/requests`).
 2. Phase 0 abschließen (Betreiber auf dem Server): Offsite-Backup mit echtem Restore, Branch Protection, Test von außen, Monitoring-Timer.
 3. Den KI-Schritt für interne Lernpfade mit einem echten Firmendokument und echtem Schlüssel ausprobieren (gebaut, bisher nur mit Fake-KI getestet).
-4. E-Mail-Benachrichtigungen bei Anfragen, danach Praxisaufgaben und Firmenmodule, dann Gate 3.
+4. Praxisaufgaben mit Bestätigung durch den Mentor und Firmenmodule mit Verantwortlichem und „gültig bis“, dann Gate 3 (E-Mail-Benachrichtigungen bei Anfragen sind gebaut).
 
 ---
 
@@ -221,7 +221,10 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Nicht geprüft:_ ein echter Aufruf bei Google mit einem gültigen Schlüssel (hier gesperrt); die Prüfung ist über den Ersatz getestet. Der eigentliche KI-Aufruf mit dem Schlüssel der Firma ist noch nicht gebaut: `lib/claude.ts` hat einen globalen Client mit `GEMINI_API_KEY`, für BYOK braucht es einen Client je Schlüssel (kommt mit dem KI-Schritt)
   - _Betrieb:_ `APP_ENCRYPTION_KEY` (`openssl rand -base64 32`) in die `.env` auf dem Server, **nicht ins Datenbank-Backup legen**. Geht er verloren, müssen die Firmen ihre Schlüssel neu eingeben
   - _Noch offen:_ Abrechnung und Limits bei „unser Zugang“ (Kosten tragen wir, Budget je Firma fehlt); ob „unser Zugang“ ein Vertragsmerkmal sein soll (Freischaltung durch den Betreiber)
-- [ ] Benachrichtigung per E-Mail: Betreiber bei neuer Anfrage, Firma bei Statusänderung und Freigabe (bisher nur die Ansichten)
+- [x] Benachrichtigung per E-Mail: Betreiber bei neuer Anfrage, Firma bei Statusänderung und Freigabe
+  - _Gebaut (`lib/server/company/request-notifications.ts`):_ Bei einer neuen Anfrage bekommen alle Plattform-Admins mit bestätigter Adresse eine Mail (Firma, Anfragender, Titel, Link zu `/admin/requests`). Bei jeder Statusänderung (Stand gesetzt, Freigabe, Ablehnung) bekommen der Anfragende und alle Firmen-Admins **der Firma** eine Mail mit Stand und Hinweis (ohne Dubletten, nur wer noch zur Firma gehört); bei entzogener Freigabe die Firmen-Admins mit dem Hinweis. Die Mails sind ein Hinweis, nie die einzige Quelle: ohne eingerichteten Versand oder bei Fehlern läuft die Aktion unverändert weiter (nach dem Speichern, ohne Warten)
+  - _Geprüft gegen echte DB und lokalen SMTP-Server (5 Tests, alle 432 Tests grün):_ Empfängerkreis (kein unbestätigter Betreiber, keine Lernenden, keine anderen Firmen, keine Dubletten), Inhalt und Links, Verhalten ohne Versand. 5 Mutationstests (unbestätigte Betreiber, alle Mitglieder, Admins aller Firmen, Freigabe und neue Anfrage ohne Mail) fallen auf. Nicht im Browser und nicht mit einem echten Mailanbieter geprüft
+  - _Nicht enthalten:_ Mail bei zurückgezogener Anfrage an den Betreiber, Mail beim Abschluss der Prüfung interner Lernpfade, Einstellungen zum Abbestellen. Texte sind nur Deutsch
 - [x] Lern-APIs prüfen die Sichtbarkeit (Entwürfe und interne Lernpfade anderer Firmen sind „nicht vorhanden“)
   - _Gebaut (`lib/server/catalog/access.ts`, dieselbe Regel wie die Seiten):_ Guards an `/api/progress`, `exams` (auch die Prüfung selbst, nicht nur die `certId` im Pfad), `study-profile`, `cert/.../offline-package`, `sections/[id]/attempt`, `remediation/[objectiveId]` (GET und Versuch), `study-sessions` (start, Versuch, skip, feedback) und beim Sync offline aufgezeichneter Ereignisse (wer den Lernpfad nicht mehr sehen darf, bekommt nichts mehr verbucht). Gesperrte Ziele antworten wie nicht vorhanden (404), fehlende Ziele und ungültige IDs behalten die bisherige Fehlerbehandlung
   - _Inhaltsmeldungen:_ Meldungen zu Fragen oder Lektionen **interner** Lernpfade werden abgelehnt (422): sie landen sonst in der Prüfliste des Betreibers und widersprächen der Festlegung, dass der Betreiber interne Inhalte nicht sieht

@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
+import { notifyOperatorsNewRequest } from "./request-notifications";
 import {
   certifications,
   companyCourseEntitlements,
@@ -170,6 +171,7 @@ export async function createCourseRequest(input: {
     targetId: created.id,
     metadata: { organizationId: input.organizationId, catalog: certificationId !== null },
   }).catch(logAuditFailure);
+  void notifyOperatorsNewRequest(created.id);
   return created;
 }
 

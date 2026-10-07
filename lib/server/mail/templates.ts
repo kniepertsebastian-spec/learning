@@ -55,3 +55,32 @@ export function companyConfirmMessage(to: string, link: string, companyName: str
       `Der Link ist 24 Stunden gültig und nur einmal verwendbar.${FOOTER}`,
   };
 }
+
+/** Betreiber: eine Firma hat einen Lernpfad angefragt. */
+export function newCourseRequestMessage(
+  to: string,
+  input: { organizationName: string; requester: string; title: string; wish: boolean; link: string },
+): MailMessage {
+  return {
+    to,
+    subject: `Neue Anfrage von ${input.organizationName}`,
+    text:
+      `Hallo,\n\n${input.organizationName} hat ${input.wish ? "einen Lernpfad gewünscht" : "einen Lernpfad aus dem Katalog angefragt"}:\n\n` +
+      `  ${input.title}\n  Angefragt von: ${input.requester}\n\nHier bearbeiten:\n\n${input.link}`,
+  };
+}
+
+/** Firma: Stand ihrer Anfrage hat sich geändert (inklusive Freigabe, Ablehnung, entzogener Freigabe). */
+export function courseRequestStatusMessage(
+  to: string,
+  input: { title: string; statusLabel: string; note: string | null; link: string },
+): MailMessage {
+  return {
+    to,
+    subject: `Ihre Anfrage „${input.title}“: ${input.statusLabel}`,
+    text:
+      `Hallo,\n\nder Stand Ihrer Anfrage „${input.title}“ ist jetzt: ${input.statusLabel}.\n` +
+      (input.note ? `\nHinweis: ${input.note}\n` : "") +
+      `\nDie Anfragen finden Sie im Firmenbereich:\n\n${input.link}`,
+  };
+}
