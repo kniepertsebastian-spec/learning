@@ -55,6 +55,8 @@ export interface ImportedCourse {
 export async function importCoursePackage(
   pkg: CoursePackageV1,
   slugOverride?: string,
+  /** Interner Lernpfad einer Firma: gehört genau dieser Organisation und startet wie jeder KI-Entwurf als "draft". */
+  owner?: { organizationId: string },
 ): Promise<ImportedCourse> {
   const db = getDb();
   const slug = slugOverride ?? suggestCourseSlug(pkg.title, pkg.certificationVersion);
@@ -86,6 +88,7 @@ export async function importCoursePackage(
         scoreScale: pkg.scoreScale,
         // KI-generierte Lernpfade brauchen die fachliche Freigabe (Name und Datum), bevor sie an Kunden gehen dürfen.
         catalogStatus: "draft",
+        ...(owner ? { kind: "internal" as const, ownerOrganizationId: owner.organizationId } : {}),
       })
       .returning();
 

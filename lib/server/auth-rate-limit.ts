@@ -150,3 +150,11 @@ const COMPANY_CLAIM_MAX_PER_WINDOW = 5;
 export function checkCompanyClaimRateLimit(userId: string): RateLimitResult {
   return checkRateLimit("company-claim", userId, COMPANY_CLAIM_WINDOW_MS, COMPANY_CLAIM_MAX_PER_WINDOW);
 }
+
+const INTERNAL_COURSE_WINDOW_MS = 60 * 60 * 1000;
+const INTERNAL_COURSE_MAX_PER_WINDOW = 5;
+
+/** Interne Lernpfade erstellen (jeder Auftrag ruft die KI auf): je Firma, nicht je Person. */
+export function checkInternalCourseRateLimit(organizationId: string): RateLimitResult {
+  return checkRateLimit("internal-course", organizationId, INTERNAL_COURSE_WINDOW_MS, INTERNAL_COURSE_MAX_PER_WINDOW);
+}

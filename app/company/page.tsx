@@ -4,11 +4,13 @@ import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
+import { InternalCoursesPanel } from "@/components/InternalCoursesPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
 import { ASSIGN_ROLES, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
-import { getAiSettings } from "@/lib/server/company/ai-settings";
+import { getAiSettings, resolveAiAccess } from "@/lib/server/company/ai-settings";
 import { isOverdue, listAssignableLearningPaths, listAssignableMembers } from "@/lib/server/company/assignments";
 import { listCourseRequests, listRequestableCourses } from "@/lib/server/company/course-requests";
+import { listInternalCourseJobs, listInternalCourses } from "@/lib/server/company/internal-courses-list";
 import { listCompanyDocuments } from "@/lib/server/company/documents";
 import { requireCompanyPage } from "@/lib/server/company/guard";
 import { listCompanyStatus } from "@/lib/server/company/status";
@@ -34,13 +36,16 @@ export default async function CompanyPage() {
   ]);
   const de = locale === "de";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths, documents, courseRequests, catalog] = await Promise.all([
+  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess] = await Promise.all([
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
     canAssign ? listAssignableLearningPaths(membership.organizationId) : [],
     listCompanyDocuments(membership.organizationId),
     listCourseRequests(membership.organizationId),
     listRequestableCourses(membership.organizationId),
+    listInternalCourseJobs(membership.organizationId),
+    listInternalCourses(membership.organizationId),
+    resolveAiAccess(membership.organizationId),
   ]);
   const documentRows = documents.map((d) => ({
     id: d.id,
@@ -100,6 +105,14 @@ export default async function CompanyPage() {
       <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
 
       <CourseRequestsPanel requests={requestRows} catalog={catalog} locale={locale} />
+
+      <InternalCoursesPanel
+        documents={documents.map((d) => ({ id: d.id, title: d.title, excludeFromAi: d.excludeFromAi }))}
+        initialJobs={internalJobs.map((j) => ({ ...j, createdAt: j.createdAt.toISOString() }))}
+        initialCourses={internalCourses.map((c) => ({ ...c, approvedAt: c.approvedAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString() }))}
+        aiConfigured={aiAccess.kind !== "none"}
+        locale={locale}
+      />
 
       <DocumentsPanel documents={documentRows} locale={locale} canSuppress={membership.role === "company_admin"} />
 

@@ -1,3 +1,4 @@
+import { isStudySessionHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
@@ -17,6 +18,9 @@ export async function POST(
   }
 
   const { sessionId } = await params;
+  if (await isStudySessionHidden(session.user.id, sessionId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   try {
     await skipStudySession(sessionId, session.user.id);
     return NextResponse.json({ status: "skipped" });

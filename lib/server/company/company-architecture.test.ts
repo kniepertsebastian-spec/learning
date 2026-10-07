@@ -25,6 +25,8 @@ const ALLOWED_TABLES = new Set([
   "courseRequests",
   "courseRequestEvents",
   "organizationAiSettings",
+  // Aufträge der internen Lernpfade: nur Stand und Meldung, keine Lerndaten
+  "courseGenerationJobs",
 ]);
 // Erlaubte Imports aus lib/server/* (alles andere, z. B. progress, quiz, remediation, exam, study, sync, analytics, review, sections, offline, ai, admin, wäre ein Zugriff auf Lerndetails).
 // "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen, "auth-rate-limit"

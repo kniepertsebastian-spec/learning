@@ -205,8 +205,10 @@ export async function requestJson(
   userPrompt: string,
   model: string,
   onUsage?: (usage: AIUsage) => void,
+  /** Client mit eigenem Schlüssel (BYOK einer Firma). Ohne Angabe gilt der Client der Plattform. */
+  clientOverride?: GoogleGenAI,
 ): Promise<string> {
-  const client = getGeminiClient();
+  const client = clientOverride ?? getGeminiClient();
   const maxAttempts = 2; // maxRetries = 1
 
   const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
@@ -261,8 +263,9 @@ export async function generateStructured<T>(
   schema: ZodType<T>,
   model: string,
   onUsage?: (usage: AIUsage) => void,
+  clientOverride?: GoogleGenAI,
 ): Promise<T> {
-  let rawText = await requestJson(systemPrompt, userPrompt, model, onUsage);
+  let rawText = await requestJson(systemPrompt, userPrompt, model, onUsage, clientOverride);
 
   // War 2 (= 1 Korrekturversuch) - bei gemini-3.6-flash traten in Produktion
   // wiederholt ("Expected ',' or '}' after property value") JSON-Syntaxfehler
@@ -282,6 +285,7 @@ export async function generateStructured<T>(
         `Deine vorherige Antwort war kein valides JSON:\n${rawText}\n\nHäufigste Ursache: ein nicht escapetes Anführungszeichen (") innerhalb eines String-Werts. Bitte antworte erneut ausschließlich mit validem JSON (alle " innerhalb von Strings als \\" escapen) für folgende Anfrage:\n${userPrompt}`,
         model,
         onUsage,
+        clientOverride,
       );
       continue;
     }
@@ -299,6 +303,7 @@ export async function generateStructured<T>(
       `Deine vorherige Antwort erfüllte das erwartete Schema nicht (${result.error.message}):\n${rawText}\n\nBitte korrigiere sie und antworte erneut ausschließlich mit validem JSON für folgende Anfrage:\n${userPrompt}`,
       model,
       onUsage,
+      clientOverride,
     );
   }
 

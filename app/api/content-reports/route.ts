@@ -1,3 +1,4 @@
+import { resolveContentTarget } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -28,6 +29,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
 
+  // Meldungen landen in der Prüfliste des Betreibers. Unsichtbare Ziele gibt es nicht, und interne
+  // Lernpfade gehören der Firma: ihre Inhalte gehen nie an den Betreiber (auch nicht als Meldung).
+  const target = await resolveContentTarget(session.user.id, parsed.data.targetType, parsed.data.targetId);
+  if (target === "hidden") return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (target === "internal") {
+    return NextResponse.json(
+      { error: "Inhalte interner Lernpfade können nicht an den Betreiber gemeldet werden." },
+      { status: 422 },
+    );
+  }
   await reportContent({ reporterUserId: session.user.id, ...parsed.data });
   return NextResponse.json({ status: "ok" }, { status: 201 });
 }

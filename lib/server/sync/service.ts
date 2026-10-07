@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { isSectionHidden, isStudySessionHidden } from "@/lib/server/catalog/access";
 import { getDb } from "@/lib/server/db/client";
 import { syncEvents, type SyncEventStatus, type SyncEventType } from "@/lib/server/db/schema";
 import {
@@ -158,10 +159,14 @@ async function finalizeTerminal(
 async function applyEvent(userId: string, event: SyncEventInput): Promise<unknown> {
   if (event.type === "section_quiz") {
     const payload = event.payload as SectionQuizPayload;
+    // Offline aufgezeichnet, später synchronisiert: wer den Lernpfad inzwischen nicht mehr sehen darf
+    // (z. B. aus der Firma entfernt), bekommt nichts mehr verbucht.
+    if (await isSectionHidden(userId, payload.sectionId)) throw new SectionNotFoundError(payload.sectionId);
     return recordSectionQuizAttempt(userId, payload.sectionId, payload.answers);
   }
   if (event.type === "study_session") {
     const payload = event.payload as StudySessionPayload;
+    if (await isStudySessionHidden(userId, payload.sessionId)) throw new StudySessionNotFoundError(payload.sessionId);
     return completeStudySession(payload.sessionId, userId, payload.answers);
   }
   throw new Error(`Unbekannter Sync-Ereignistyp: ${event.type}`);

@@ -1,3 +1,4 @@
+import { isCertificationHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -43,6 +44,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
   const { certificationId, goalValue, goalType, energyLevel } = parsed.data;
+  if (await isCertificationHidden(session.user.id, certificationId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const existing = await peekActiveOrTodaySession(session.user.id, certificationId);
   if (existing) {
