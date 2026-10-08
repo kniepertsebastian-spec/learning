@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { FileDropZone } from "@/components/FileDropZone";
 import { useRouter } from "next/navigation";
 import { SECRET_KIND_LABELS, type SecretKind } from "@/lib/server/documents/secret-scanner";
 
@@ -129,7 +130,7 @@ export function DocumentsPanel({
 }) {
   const router = useRouter();
   const de = locale === "de";
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [title, setTitle] = useState("");
   const [excludeFromAi, setExcludeFromAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,7 +140,7 @@ export function DocumentsPanel({
 
   async function upload(e: React.FormEvent, suppressKinds: SecretKind[] = []) {
     e.preventDefault();
-    const file = fileRef.current?.files?.[0];
+    const file = files[0];
     if (!file) return;
     setPending(true);
     setError(null);
@@ -165,7 +166,7 @@ export function DocumentsPanel({
     );
     setTitle("");
     setExcludeFromAi(false);
-    if (fileRef.current) fileRef.current.value = "";
+    setFiles([]);
     router.refresh();
   }
 
@@ -184,19 +185,12 @@ export function DocumentsPanel({
       <h2 className="text-lg font-medium">{de ? "Firmendokumente" : "Company documents"}</h2>
       <p className="mt-1 text-sm text-foreground/70">
         {de
-          ? "PDF, Textdatei (.txt, .md) oder Wiki-/Doku-Export (.json, .xml, .html, z. B. Wiki.js, MediaWiki), bis 10 MB. Listen, Tabellen, Befehle und Stichwörter sind in Ordnung. Jedes Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft. Wird etwas gefunden, wird das Dokument nicht gespeichert."
-          : "PDF, text file (.txt, .md) or wiki/docs export (.json, .xml, .html, e.g. Wiki.js, MediaWiki), up to 10 MB. Lists, tables, commands and keywords are fine. Every document is checked for passwords, keys and tokens before it is stored. If something is found, the document is not stored."}
+          ? "PDF, Textdatei (.txt, .md), Konfiguration und Skripte (.yml, .yaml, .py, .sh, .sql …) oder Wiki-/Doku-Export (.json, .xml, .html, z. B. Wiki.js, MediaWiki), bis 10 MB. Listen, Tabellen, Befehle und Stichwörter sind in Ordnung. Jedes Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft. Wird etwas gefunden, wird das Dokument nicht gespeichert."
+          : "PDF, text file (.txt, .md), configuration and scripts (.yml, .yaml, .py, .sh, .sql …) or wiki/docs export (.json, .xml, .html, e.g. Wiki.js, MediaWiki), up to 10 MB. Lists, tables, commands and keywords are fine. Every document is checked for passwords, keys and tokens before it is stored. If something is found, the document is not stored."}
       </p>
 
       <form onSubmit={(e) => void upload(e)} className="mt-4 flex flex-col gap-3">
-        <input
-          ref={fileRef}
-          type="file"
-          required
-          accept=".pdf,.txt,.md,.json,.xml,.html,.htm"
-          aria-label={de ? "Datei" : "File"}
-          className="text-sm"
-        />
+        <FileDropZone files={files} onChange={setFiles} locale={locale} maxFiles={1} maxBytes={10 * 1024 * 1024} disabled={pending} testId="documents-drop" />
         <input
           type="text"
           value={title}
@@ -213,8 +207,9 @@ export function DocumentsPanel({
         <div>
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || files.length === 0}
             className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            data-testid="documents-upload"
           >
             {pending ? (de ? "Wird geprüft …" : "Checking …") : de ? "Hochladen" : "Upload"}
           </button>

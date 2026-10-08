@@ -68,6 +68,33 @@ export function capExcerpts(excerpts: SourceExcerpt[]): { excerpts: SourceExcerp
 }
 
 /**
+ * Deckelt die Gesamtmenge Text über mehrere Quellen. Passt alles, bleibt alles; sonst bekommt jede Quelle ihren Anteil
+ * (mindestens 2.000 Zeichen), der Rest einer Quelle wird abgeschnitten und mit Hinweis vermerkt.
+ */
+export function capTotalChars(sources: FetchedSource[], maxTotal: number): FetchedSource[] {
+  const size = (s: FetchedSource) => s.excerpts.reduce((n, e) => n + e.text.length, 0);
+  const total = sources.reduce((n, s) => n + size(s), 0);
+  if (total <= maxTotal) return sources;
+  return sources.map((source) => {
+    const allowance = Math.max(2_000, Math.floor((maxTotal * size(source)) / total));
+    if (size(source) <= allowance) return source;
+    let budget = allowance;
+    const excerpts: SourceExcerpt[] = [];
+    for (const e of source.excerpts) {
+      if (budget <= 0) break;
+      excerpts.push(e.text.length > budget ? { locator: e.locator, text: e.text.slice(0, budget) } : e);
+      budget -= e.text.length;
+    }
+    return {
+      ...source,
+      excerpts,
+      truncated: true,
+      warnings: [...(source.warnings ?? []), `„${source.title}“ wurde gekürzt, weil alle Dateien zusammen sehr viel Text sind.`],
+    };
+  });
+}
+
+/**
  * Gate A (course_generation.md Abschnitt 3.4): "Erreichbarkeit und erlaubte
  * Dateitypen der Quellen" + "erfolgreiche Text- und PDF-Extraktion" +
  * "Mindestmenge verwertbaren Quelltexts" - ruft eine einzelne Quell-URL ab

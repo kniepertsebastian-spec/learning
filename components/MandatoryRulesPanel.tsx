@@ -13,6 +13,8 @@ export type MandatoryRuleRow = {
   repeatEveryMonths: number | null;
   applyOnChange: boolean;
   departments: string[];
+  /** Katalogkurs, der noch freigeschaltet werden muss. */
+  pendingRelease: boolean;
   assigned: number;
   completed: number;
   overdue: number;
@@ -37,12 +39,15 @@ async function call(url: string, method: string, body?: unknown): Promise<{ erro
 export function MandatoryRulesPanel({
   rules,
   paths,
+  catalog = [],
   departments,
   canEdit,
   locale,
 }: {
   rules: MandatoryRuleRow[];
   paths: { id: string; name: string }[];
+  /** Kurse aus unserem Katalog, die noch nicht freigeschaltet sind. */
+  catalog?: { id: string; name: string }[];
   departments: { id: string; name: string }[];
   canEdit: boolean;
   locale: "de" | "en";
@@ -51,6 +56,7 @@ export function MandatoryRulesPanel({
   const router = useRouter();
   const roleLabels = de ? ROLE_DE : ROLE_EN;
   const free = paths.filter((p) => !rules.some((r) => r.learningPath === p.name));
+  const freeCatalog = catalog.filter((p) => !rules.some((r) => r.learningPath === p.name) && !paths.some((x) => x.id === p.id));
   const [pathId, setPathId] = useState("");
   const [roles, setRoles] = useState<string[]>(["learner"]);
   const [dueInDays, setDueInDays] = useState(30);
@@ -72,7 +78,12 @@ export function MandatoryRulesPanel({
     setBusy(false);
     setError(err);
     if (!err) {
-      setNotice(de ? `Pflicht angelegt, ${data?.assigned ?? 0} Person(en) zugewiesen.` : `Rule created, ${data?.assigned ?? 0} people assigned.`);
+      const waiting = catalog.some((c) => c.id === pathId);
+      setNotice(
+        waiting
+          ? de ? "Pflicht angelegt. Der Kurs ist noch nicht für euch freigeschaltet; wir haben die Freischaltung angefragt. Sobald wir ihn freigeben, wird er automatisch zugewiesen." : "Rule created. The course is not yet released for you; we requested it. It will be assigned automatically once we release it."
+          : de ? `Pflicht angelegt, ${data?.assigned ?? 0} Person(en) zugewiesen.` : `Rule created, ${data?.assigned ?? 0} people assigned.`,
+      );
       setPathId("");
       setRepeat(null);
       setConfirmReset(false);
@@ -102,6 +113,11 @@ export function MandatoryRulesPanel({
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="font-medium break-words">{r.learningPath}</p>
+                {r.pendingRelease && (
+                  <p className="mt-0.5 inline-block rounded bg-amber-500/15 px-2 py-0.5 text-xs" data-testid="mandatory-pending">
+                    {de ? "Wartet auf Freischaltung durch uns – wird danach automatisch zugewiesen" : "Waiting for our release – assigned automatically afterwards"}
+                  </p>
+                )}
                 <p className="text-foreground/70">
                   {r.roles.map((x) => roleLabels[x]).join(", ")} · {r.departments.length > 0 ? r.departments.join(", ") : de ? "alle Abteilungen" : "all departments"} · {de ? `Frist ${r.dueInDays} Tage` : `${r.dueInDays} days`} ·{" "}
                   {r.reminderDaysBefore > 0 ? (de ? `Erinnerung ${r.reminderDaysBefore} Tage vorher` : `reminder ${r.reminderDaysBefore} days before`) : de ? "keine Erinnerung" : "no reminder"} ·{" "}
@@ -135,12 +151,30 @@ export function MandatoryRulesPanel({
           <h3 className="font-medium">{de ? "Neue Pflicht" : "New rule"}</h3>
           <select className={`${field} min-w-0`} value={pathId} onChange={(e) => setPathId(e.target.value)} required aria-label={de ? "Lernpfad" : "Learning path"}>
             <option value="">{de ? "Lernpfad wählen …" : "Choose learning path …"}</option>
-            {free.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+            <optgroup label={de ? "Eure Kurse und freigeschaltete Kurse" : "Your courses and released courses"}>
+              {free.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </optgroup>
+            {freeCatalog.length > 0 && (
+              <optgroup label={de ? "Aus unserem Katalog (noch nicht freigeschaltet)" : "From our catalog (not yet released)"}>
+                {freeCatalog.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
+          {catalog.some((c) => c.id === pathId) && (
+            <p className="text-xs text-foreground/70" data-testid="mandatory-catalog-hint">
+              {de
+                ? "Dieser Kurs ist noch nicht für euch freigeschaltet. Wir fragen ihn damit bei uns an; die Pflicht wirkt, sobald wir ihn freigeben."
+                : "This course is not yet released for you. This requests it from us; the rule takes effect once we release it."}
+            </p>
+          )}
           <fieldset className="flex flex-wrap gap-4 text-sm">
             <legend className="mb-1">{de ? "Gilt für" : "Applies to"}</legend>
             {(["learner", "mentor", "company_admin"] as const).map((role) => (

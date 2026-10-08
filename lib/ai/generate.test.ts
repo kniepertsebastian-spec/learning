@@ -145,3 +145,113 @@ describe("isRetryableError", () => {
     expect(isRetryableError(new Error("Gemini hat keine Textantwort zurückgegeben."))).toBe(false);
   });
 });
+
+import { z } from "zod";
+import type { GoogleGenAI } from "@google/genai";
+import { generateStructured, isSchemaRejection, toGeminiJsonSchema } from "./generate";
+import { groundedLessonsAndQuestionsResponseSchema, lessonsAndQuestionsForObjectiveResponseSchema, curriculumDraftForDomainResponseSchema } from "@/lib/server/ai/schemas";
+import { courseBlueprintAiResponseSchema, objectiveContentNoQuestionsResponseSchema, objectiveContentResponseSchema } from "@/lib/server/course-generation/schemas";
+
+const ALLOWED = new Set(["type", "properties", "required", "items", "enum", "minItems", "maxItems", "minimum", "maximum", "anyOf", "description"]);
+function schemaKeywords(node: unknown, found = new Set<string>(), underProperties = false): Set<string> {
+  if (Array.isArray(node)) node.forEach((n) => schemaKeywords(n, found));
+  else if (node && typeof node === "object") {
+    for (const [k, v] of Object.entries(node)) {
+      // Namen unter "properties" sind Feldnamen, keine Schlüsselwörter
+      if (!underProperties) found.add(k);
+      schemaKeywords(v, found, k === "properties" && !underProperties);
+    }
+  }
+  return found;
+}
+
+describe("Antwortschema für Gemini (strukturierte Ausgabe)", () => {
+  it("alle Schemas der Kurserzeugung werden umgewandelt und enthalten nur von Gemini verstandene Schlüsselwörter", () => {
+    for (const [name, schema] of Object.entries({
+      courseBlueprintAiResponseSchema,
+      objectiveContentResponseSchema,
+      objectiveContentNoQuestionsResponseSchema,
+      groundedLessonsAndQuestionsResponseSchema,
+      lessonsAndQuestionsForObjectiveResponseSchema,
+      curriculumDraftForDomainResponseSchema,
+    })) {
+      const json = toGeminiJsonSchema(schema as never);
+      expect(json, name).toBeDefined();
+      expect(json!.type, name).toBe("object");
+      for (const key of schemaKeywords(json)) expect(ALLOWED.has(key), `${name}: ${key}`).toBe(true);
+    }
+  });
+
+  it("Pflichtfelder, Aufzählungen und Anzahlen bleiben erhalten (genau 4 Antwortoptionen, Schwierigkeit als Aufzählung)", () => {
+    const json = toGeminiJsonSchema(objectiveContentResponseSchema as never) as { properties: Record<string, never> };
+    const question = (json.properties.questions as { items: { properties: Record<string, { minItems?: number; maxItems?: number; enum?: string[] }>; required: string[] } }).items;
+    expect(question.required).toEqual(expect.arrayContaining(["question", "options", "explanation", "sourceLocator"]));
+    expect(question.properties.options.minItems).toBe(4);
+    expect(question.properties.options.maxItems).toBe(4);
+    expect(question.properties.type.enum).toEqual(["knowledge", "comprehension", "application", "scenario", "troubleshooting"]);
+  });
+
+  it("ein Feld namens wie ein Schlüsselwort (z. B. „type“, „items“) wird nicht weggefiltert", () => {
+    const json = toGeminiJsonSchema(z.object({ type: z.string(), items: z.array(z.string()), enum: z.number() }) as never) as { properties: Record<string, unknown> };
+    expect(Object.keys(json.properties)).toEqual(["type", "items", "enum"]);
+  });
+
+  it("literale Werte (schemaVersion: \"1.0\") werden zur Aufzählung", () => {
+    const json = toGeminiJsonSchema(z.object({ v: z.literal("1.0") }) as never) as { properties: { v: { enum: string[] } } };
+    expect(json.properties.v.enum).toEqual(["1.0"]);
+  });
+});
+
+type Call = { config: { responseJsonSchema?: unknown; responseMimeType?: string } };
+function fakeClient(handler: (call: Call, n: number) => string | Error) {
+  const calls: Call[] = [];
+  const client = {
+    models: {
+      generateContent: async (args: Call) => {
+        calls.push(args);
+        const out = handler(args, calls.length);
+        if (out instanceof Error) throw out;
+        return { text: out, usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1 } };
+      },
+    },
+  } as unknown as GoogleGenAI;
+  return { client, calls };
+}
+const small = z.object({ name: z.string(), count: z.number().int() });
+
+describe("generateStructured mit Antwortschema", () => {
+  it("schickt das Schema an Gemini mit und liefert die geprüfte Antwort", async () => {
+    const { client, calls } = fakeClient(() => '{"name":"a","count":2}');
+    await expect(generateStructured("sys", "user", small, "m", undefined, client)).resolves.toEqual({ name: "a", count: 2 });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].config.responseMimeType).toBe("application/json");
+    expect(calls[0].config.responseJsonSchema).toMatchObject({ type: "object", required: ["name", "count"] });
+  });
+
+  it("die Korrekturversuche behalten das Schema", async () => {
+    const { client, calls } = fakeClient((_c, n) => (n === 1 ? '{"name":"a"}' : '{"name":"a","count":3}'));
+    await expect(generateStructured("sys", "user", small, "m", undefined, client)).resolves.toEqual({ name: "a", count: 3 });
+    expect(calls).toHaveLength(2);
+    expect(calls[1].config.responseJsonSchema).toBeDefined();
+  });
+
+  it("lehnt Gemini das Schema ab (zu komplex), geht es einmal ohne Schema weiter und fragt dasselbe Schema künftig gar nicht erst mit", async () => {
+    const reject = new Error('{"error":{"code":400,"message":"The specified schema produces a constraint that has too many states for serving.","status":"INVALID_ARGUMENT"}}');
+    const schemaA = z.object({ a: z.string() });
+    const first = fakeClient((c) => (c.config.responseJsonSchema ? reject : '{"a":"x"}'));
+    await expect(generateStructured("sys", "user", schemaA, "m", undefined, first.client)).resolves.toEqual({ a: "x" });
+    expect(first.calls.map((c) => Boolean(c.config.responseJsonSchema))).toEqual([true, false]);
+    const second = fakeClient(() => '{"a":"y"}');
+    await expect(generateStructured("sys", "user", schemaA, "m", undefined, second.client)).resolves.toEqual({ a: "y" });
+    expect(second.calls).toHaveLength(1);
+    expect(second.calls[0].config.responseJsonSchema).toBeUndefined();
+  });
+
+  it("ein ungültiger API-Schlüssel ist keine Schema-Ablehnung: kein Umweg ohne Schema, der Fehler kommt sofort", async () => {
+    const invalidKey = new Error('{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}');
+    expect(isSchemaRejection(invalidKey)).toBe(false);
+    const { client, calls } = fakeClient(() => invalidKey);
+    await expect(generateStructured("sys", "user", z.object({ k: z.string() }), "m", undefined, client)).rejects.toThrow(/API key not valid/);
+    expect(calls).toHaveLength(1);
+  });
+});

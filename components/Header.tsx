@@ -35,9 +35,10 @@ export function Header({
 
           {userId && (
             <Link
-              href="/account"
+              href="/profile"
               className="rounded-md border border-border p-2 hover:bg-background"
-              aria-label={locale === "de" ? "Mein Konto" : "My account"}
+              aria-label={locale === "de" ? "Mein Profil" : "My profile"}
+              data-testid="header-profile-link"
             >
               <UserRound className="h-4 w-4" aria-hidden="true" />
             </Link>

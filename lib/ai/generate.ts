@@ -30,6 +30,53 @@ export function isRetryableError(error: unknown): boolean {
 
 export const isRetryableAnthropicError = isRetryableError;
 
+/** JSON-Schema-Schlüsselwörter, die Gemini als Antwortschema versteht. Alles andere (minLength, format, pattern, $schema …) entfällt: Zod prüft es danach ohnehin. */
+const GEMINI_SCHEMA_KEYS = new Set(["type", "properties", "required", "items", "enum", "minItems", "maxItems", "minimum", "maximum", "anyOf", "description"]);
+
+function sanitizeForGemini(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(sanitizeForGemini);
+  if (!node || typeof node !== "object") return node;
+  const source = node as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (key === "const") {
+      out.enum = [value];
+    } else if (key === "properties" && value && typeof value === "object") {
+      // Eigenschaftsnamen sind frei wählbar und dürfen nicht gefiltert werden, nur ihre Werte.
+      out.properties = Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([name, child]) => [name, sanitizeForGemini(child)]));
+    } else if (GEMINI_SCHEMA_KEYS.has(key)) {
+      out[key] = sanitizeForGemini(value);
+    }
+  }
+  return out;
+}
+
+/**
+ * Antwortschema für Gemini aus dem Zod-Schema. Gemini erzwingt es beim Erzeugen (strukturierte Ausgabe): Felder fehlen
+ * nicht mehr, Typen und Anzahlen stimmen, das JSON ist vollständig. Das war die Hauptursache für „Antwortformat-Fehler“.
+ * Was sich nicht abbilden lässt (z. B. „genau eine Option ist richtig“), prüft Zod weiterhin danach. `undefined`,
+ * wenn sich das Schema nicht umwandeln lässt: dann läuft der Aufruf wie früher ohne Schema.
+ */
+export function toGeminiJsonSchema(schema: ZodType): Record<string, unknown> | undefined {
+  try {
+    const raw = z.toJSONSchema(schema, { io: "input", unrepresentable: "any", target: "draft-7" });
+    const cleaned = sanitizeForGemini(raw);
+    return cleaned && typeof cleaned === "object" ? (cleaned as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Schemas (nach Fingerabdruck), die Gemini abgelehnt hat (zu komplex o. ä.): für sie läuft die Anfrage ohne Schema weiter. */
+const rejectedSchemas = new Set<string>();
+const schemaKey = (schema: Record<string, unknown>) => JSON.stringify(schema);
+
+/** Lehnt Gemini das Antwortschema selbst ab (HTTP 400 INVALID_ARGUMENT zum Schema), nicht etwa einen falschen Schlüssel. */
+export function isSchemaRejection(error: unknown): boolean {
+  const message = errorMessage(error);
+  return /INVALID_ARGUMENT|"code":\s*400/i.test(message) && /schema|constraint|too many states|nesting|response_json_schema|responseJsonSchema/i.test(message) && !/API key|API_KEY/i.test(message);
+}
+
 function extractJson(text: string): string {
   const start = text.indexOf("{");
   if (start === -1) return text;
@@ -207,12 +254,15 @@ export async function requestJson(
   onUsage?: (usage: AIUsage) => void,
   /** Client mit eigenem Schlüssel (BYOK einer Firma). Ohne Angabe gilt der Client der Plattform. */
   clientOverride?: GoogleGenAI,
+  /** Antwortschema (siehe toGeminiJsonSchema): Gemini hält sich beim Erzeugen daran. */
+  jsonSchema?: Record<string, unknown>,
 ): Promise<string> {
   const client = clientOverride ?? getGeminiClient();
   const maxAttempts = 2; // maxRetries = 1
 
   const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
+  let useSchema = Boolean(jsonSchema) && !rejectedSchemas.has(schemaKey(jsonSchema!));
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const response = await client.models.generateContent({
@@ -231,6 +281,7 @@ export async function requestJson(
           maxOutputTokens: 65536,
           thinkingConfig: { thinkingBudget: 0 },
           responseMimeType: "application/json",
+          ...(useSchema ? { responseJsonSchema: jsonSchema } : {}),
         },
       });
 
@@ -248,6 +299,14 @@ export async function requestJson(
       return response.text;
     } catch (error) {
       if (error instanceof AIGenerationError) throw error;
+      if (useSchema && isSchemaRejection(error)) {
+        // Gemini nimmt dieses Schema nicht an: einmal ohne Schema weitermachen (wie früher) und es nicht erneut versuchen.
+        console.warn("Gemini hat das Antwortschema abgelehnt, weiter ohne Schema:", errorMessage(error).slice(0, 300));
+        rejectedSchemas.add(schemaKey(jsonSchema!));
+        useSchema = false;
+        attempt--;
+        continue;
+      }
       if (attempt === maxAttempts || !isRetryableError(error)) {
         throw error;
       }
@@ -265,7 +324,8 @@ export async function generateStructured<T>(
   onUsage?: (usage: AIUsage) => void,
   clientOverride?: GoogleGenAI,
 ): Promise<T> {
-  let rawText = await requestJson(systemPrompt, userPrompt, model, onUsage, clientOverride);
+  const jsonSchema = toGeminiJsonSchema(schema);
+  let rawText = await requestJson(systemPrompt, userPrompt, model, onUsage, clientOverride, jsonSchema);
 
   // War 2 (= 1 Korrekturversuch) - bei gemini-3.6-flash traten in Produktion
   // wiederholt ("Expected ',' or '}' after property value") JSON-Syntaxfehler
@@ -286,6 +346,7 @@ export async function generateStructured<T>(
         model,
         onUsage,
         clientOverride,
+        jsonSchema,
       );
       continue;
     }
@@ -304,6 +365,7 @@ export async function generateStructured<T>(
       model,
       onUsage,
       clientOverride,
+      jsonSchema,
     );
   }
 

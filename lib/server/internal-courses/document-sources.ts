@@ -1,11 +1,11 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { companyDocumentFiles, companyDocumentImages, companyDocuments } from "@/lib/server/db/schema";
+import { companyDocumentFiles, companyDocumentImages, companyDocuments, courseGenerationJobDocuments } from "@/lib/server/db/schema";
 import { extractPdfPages } from "@/lib/server/documents/pdf-text";
 import { structuredKindOfMime, structuredPages, StructuredExportError } from "@/lib/server/documents/structured";
 import { scanForSecrets } from "@/lib/server/documents/secret-scanner";
 import type { ImageDescriber } from "./vision";
-import { capExcerpts, type FetchedSource } from "@/lib/server/course-generation/sources";
+import { capExcerpts, capTotalChars, type FetchedSource } from "@/lib/server/course-generation/sources";
 
 /** Das Dokument darf (noch) nicht für die KI verwendet werden. Die Meldung ist für die Firma bestimmt. */
 export class DocumentSourceError extends Error {}
@@ -49,6 +49,13 @@ export async function loadDocumentSources(
   documentId: string,
   /** Beschreibt Screenshots als Text. Ohne Angabe bleiben angehängte Bilder unberücksichtigt. */
   describeImage?: ImageDescriber,
+  options: {
+    /** Bei mehreren Dateien je Kurs: Dateiname vor jedem Verweis (sonst heißt jede Datei „Abschnitt 1“ und die KI kann sie nicht auseinanderhalten). */
+    locatorPrefix?: string;
+    sourceId?: string;
+    /** Mindestmenge Text in DIESER Datei (bei mehreren Dateien zählt die Summe, eine leere Datei darf dabei sein). */
+    minChars?: number;
+  } = {},
 ): Promise<FetchedSource[]> {
   const [row] = await getDb()
     .select({
@@ -93,17 +100,20 @@ export async function loadDocumentSources(
     );
   }
 
-  const excerpts = pages.map((p) => ({ locator: locator(p.pageNumber), text: p.text }));
+  const withPrefix = (base: string) => (options.locatorPrefix ? `${options.locatorPrefix} · ${base}` : base);
+  const excerpts = pages.map((p) => ({ locator: withPrefix(locator(p.pageNumber)), text: p.text }));
   const warnings: string[] = [];
-  if (describeImage) excerpts.push(...(await describeImages(organizationId, documentId, describeImage, warnings)));
+  if (describeImage) {
+    excerpts.push(...(await describeImages(organizationId, documentId, describeImage, warnings)).map((e) => ({ ...e, locator: withPrefix(e.locator) })));
+  }
   const usable = excerpts.reduce((n, e) => n + e.text.replace(REDACTION_MARKER, "").trim().length, 0);
   // Auch eine kurze Stichwortliste reicht als Gliederung (die KI ergänzt dann die Erklärungen); völlig leer nicht.
-  if (usable < MIN_USABLE_CHARS) throw new DocumentSourceError("Das Dokument enthält zu wenig Text für einen Lernpfad.");
+  if (usable < (options.minChars ?? MIN_USABLE_CHARS)) throw new DocumentSourceError("Das Dokument enthält zu wenig Text für einen Lernpfad.");
 
   const capped = capExcerpts(excerpts);
   return [
     {
-      id: "doc-1",
+      id: options.sourceId ?? "doc-1",
       title: row.title,
       url: `dokument:${documentId}`,
       retrievedAt: new Date().toISOString(),
@@ -144,4 +154,42 @@ async function describeImages(organizationId: string, documentId: string, descri
     out.push({ locator: `Bild: ${image.filename}`, text });
   }
   return out;
+}
+
+/** Höchstmenge Text über alle Dateien eines Kurses (Kostenschutz; je Datei gilt zusätzlich die Grenze von capExcerpts). */
+export const MAX_TOTAL_SOURCE_CHARS = 480_000;
+
+/**
+ * Quellen eines Kursauftrags: eine oder viele Dateien (temporär hochgeladen oder gespeicherte Dokumente). Bei einer Datei
+ * wie bisher; bei mehreren trägt jeder Verweis den Dateinamen, eine zu kleine Datei ist erlaubt (es zählt die Summe) und
+ * die Gesamtmenge wird gedeckelt, mit Hinweis. Ein Fund des Scanners oder ein ausgeschlossenes Dokument stoppt den ganzen Auftrag.
+ */
+export async function loadJobSources(organizationId: string, jobId: string, describeImage?: ImageDescriber, legacyDocumentId?: string | null): Promise<FetchedSource[]> {
+  const links = await getDb()
+    .select({ documentId: courseGenerationJobDocuments.documentId })
+    .from(courseGenerationJobDocuments)
+    .where(eq(courseGenerationJobDocuments.jobId, jobId))
+    .orderBy(asc(courseGenerationJobDocuments.orderNum));
+  const ids = links.length > 0 ? links.map((l) => l.documentId) : legacyDocumentId ? [legacyDocumentId] : [];
+  if (ids.length === 0) throw new DocumentSourceError("Dem Auftrag sind keine Dateien zugeordnet.");
+  if (ids.length === 1) return loadDocumentSources(organizationId, ids[0], describeImage);
+
+  const sources: FetchedSource[] = [];
+  const used = new Map<string, number>();
+  for (const [i, documentId] of ids.entries()) {
+    const [doc] = await getDb().select({ title: companyDocuments.title }).from(companyDocuments).where(and(eq(companyDocuments.id, documentId), eq(companyDocuments.organizationId, organizationId))).limit(1);
+    if (!doc) throw new DocumentSourceError("Eine der Dateien gibt es nicht mehr.");
+    const seen = (used.get(doc.title) ?? 0) + 1;
+    used.set(doc.title, seen);
+    const prefix = seen === 1 ? doc.title : `${doc.title} (${seen})`;
+    try {
+      sources.push(...(await loadDocumentSources(organizationId, documentId, describeImage, { locatorPrefix: prefix, sourceId: `doc-${i + 1}`, minChars: 0 })));
+    } catch (error) {
+      if (error instanceof DocumentSourceError) throw new DocumentSourceError(`${doc.title}: ${error.message}`);
+      throw error;
+    }
+  }
+  const usable = sources.reduce((n, s) => n + s.excerpts.reduce((m, e) => m + e.text.replace(REDACTION_MARKER, "").trim().length, 0), 0);
+  if (usable < MIN_USABLE_CHARS) throw new DocumentSourceError("Die Dateien enthalten zu wenig Text für einen Kurs.");
+  return capTotalChars(sources, MAX_TOTAL_SOURCE_CHARS);
 }

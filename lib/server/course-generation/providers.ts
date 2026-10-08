@@ -205,7 +205,7 @@ const OUTLINE_CONTENT_PROMPT = [
   "Wo du über die Quelle hinausgehst, formuliere vorsichtig und allgemeingültig. Erfinde keine firmenspezifischen Details (Namen, Adressen, Werte, Abläufe), die nicht in der Quelle stehen.",
 ];
 
-const CHEAT_SHEET_PROMPT = [
+export const CHEAT_SHEET_PROMPT = [
   "Der Merkzettel ist ein Nachschlagezettel für später, kein zweiter Lektionstext: die wichtigsten Befehle (in einem Codeblock mit Sprachangabe),",
   "Optionen, Pfade, Werte und Reihenfolgen als Stichpunkte oder kleine Tabelle. Bei Quellen aus einer Firma gehören auch firmeneigene Dinge hinein,",
   "die man sich merken muss und nach denen kaum jemand direkt fragt (Servernamen und wofür sie da sind, Adressen, Ablauf, Ansprechstelle),",

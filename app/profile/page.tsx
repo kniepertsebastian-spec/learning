@@ -1,0 +1,102 @@
+export const dynamic = "force-dynamic";
+
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { getDb } from "@/lib/server/db/client";
+import { users } from "@/lib/server/db/schema";
+import { listMyAssignments, type MyAssignment } from "@/lib/server/assignments/sync";
+import { getCurrentUser } from "@/lib/server/auth-guards";
+import { getCompanyMembership } from "@/lib/server/company/access";
+import { getServerLocale } from "@/lib/server/locale";
+
+const ROLE_LABEL = {
+  company_admin: { de: "Firmen-Admin", en: "Company admin" },
+  mentor: { de: "Mentor", en: "Mentor" },
+  learner: { de: "Lernende/r", en: "Learner" },
+} as const;
+
+/** Statuswörter wie im Firmenbereich: Bestanden / In Arbeit / Noch offen. */
+const STATUS_LABEL = {
+  completed: { de: "Bestanden", en: "Passed" },
+  in_progress: { de: "In Arbeit", en: "In progress" },
+  assigned: { de: "Noch offen", en: "Not started" },
+} as const;
+
+/**
+ * Eigenes Profil: wer ich bin und welche Kurse meine Firma mir bereitgestellt hat, mit Stand (bestanden / in Arbeit / noch offen)
+ * und Datum. Es sind die eigenen Daten; die Firma sieht davon nur Status und Daten, nie Ergebnisse.
+ */
+export default async function ProfilePage() {
+  const [user, locale] = await Promise.all([getCurrentUser(), getServerLocale()]);
+  if (!user) redirect("/login?from=%2Fprofile");
+  const de = locale === "de";
+  const [membership, assignments, [row]] = await Promise.all([
+    getCompanyMembership(user.id),
+    listMyAssignments(user.id),
+    getDb().select({ name: users.name }).from(users).where(eq(users.id, user.id)).limit(1),
+  ]);
+  const fmt = (d: Date) => d.toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" });
+  const done = assignments.filter((a) => a.status === "completed");
+  const rest = assignments.filter((a) => a.status !== "completed");
+
+  const item = (a: MyAssignment) => (
+    <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm" data-testid="profile-course">
+      <Link href={`/cert/${a.slug}`} className="font-medium hover:text-accent">{a.learningPath}</Link>
+      <span className="text-foreground/70" data-testid="profile-course-status">
+        {STATUS_LABEL[a.status][locale]}
+        {a.status === "completed" && a.completedAt ? ` · ${fmt(a.completedAt)}` : ""}
+        {a.status !== "completed" && a.dueAt ? ` · ${de ? "Frist" : "Due"} ${fmt(a.dueAt)}` : ""}
+        {a.status !== "completed" && a.lastCompletedAt ? ` · ${de ? "zuletzt bestanden" : "last passed"} ${fmt(a.lastCompletedAt)}` : ""}
+      </span>
+    </li>
+  );
+
+  return (
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6" data-testid="profile-page">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold">{de ? "Mein Profil" : "My profile"}</h1>
+          <p className="mt-1 break-words text-sm text-foreground/70" data-testid="profile-identity">
+            {row?.name ? `${row.name} · ` : ""}{user.email}
+            {membership ? ` · ${membership.organizationName} (${ROLE_LABEL[membership.role][locale]})` : ""}
+          </p>
+        </div>
+        <Link href="/account" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background" data-testid="profile-account-link">
+          {de ? "Konto & Daten" : "Account & data"}
+        </Link>
+      </header>
+
+      <section className="rounded-xl border border-border bg-surface p-5" data-testid="profile-courses">
+        <h2 className="font-semibold">{de ? "Kurse deiner Firma" : "Your company's courses"}</h2>
+        <p className="mt-1 text-xs text-foreground/70">
+          {de
+            ? "Das sind die Kurse, die deine Firma dir bereitgestellt hat. Deine Firma sieht dazu nur Status und Daten, keine Ergebnisse oder Antworten."
+            : "These are the courses your company provided. Your company only sees status and dates, never results or answers."}
+        </p>
+        {assignments.length === 0 ? (
+          <p className="mt-3 text-sm text-foreground/70" data-testid="profile-empty">
+            {membership
+              ? de ? "Deine Firma hat dir noch keinen Kurs bereitgestellt." : "Your company has not provided any course yet."
+              : de ? "Du gehörst keiner Firma an." : "You do not belong to a company."}
+          </p>
+        ) : (
+          <>
+            {done.length > 0 && (
+              <>
+                <h3 className="mt-4 text-sm font-medium">{de ? `Absolviert (${done.length})` : `Completed (${done.length})`}</h3>
+                <ul className="mt-2 flex flex-col gap-2" data-testid="profile-done">{done.map(item)}</ul>
+              </>
+            )}
+            {rest.length > 0 && (
+              <>
+                <h3 className="mt-4 text-sm font-medium">{de ? `Offen (${rest.length})` : `Open (${rest.length})`}</h3>
+                <ul className="mt-2 flex flex-col gap-2" data-testid="profile-open">{rest.map(item)}</ul>
+              </>
+            )}
+          </>
+        )}
+      </section>
+    </main>
+  );
+}

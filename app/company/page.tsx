@@ -8,8 +8,9 @@ import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { CompanyModulesPanel } from "@/components/CompanyModulesPanel";
 import { DepartmentsPanel } from "@/components/DepartmentsPanel";
 import { listDepartments, listMembersWithDepartment } from "@/lib/server/company/departments";
+import { listCheatSheetStatus } from "@/lib/server/internal-courses/cheat-sheets";
 import { MandatoryRulesPanel } from "@/components/MandatoryRulesPanel";
-import { listMandatoryRules } from "@/lib/server/company/mandatory";
+import { listCatalogCoursesForRules, listMandatoryRules } from "@/lib/server/company/mandatory";
 import { OnboardingsPanel } from "@/components/OnboardingsPanel";
 import { listOnboardingPlans } from "@/lib/server/company/onboardings";
 import { PracticeTasksPanel } from "@/components/PracticeTasksPanel";
@@ -49,7 +50,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   const de = locale === "de";
   const isAdmin = membership.role === "company_admin";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates, onboardingPlans, mandatoryRules, departmentList, departmentMembers] = await Promise.all([
+  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates, onboardingPlans, mandatoryRules, departmentList, departmentMembers, cheatSheetStatus, ruleCatalog] = await Promise.all([
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
     canAssign ? listAssignableLearningPaths(membership.organizationId) : [],
@@ -66,6 +67,8 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     canAssign ? listMandatoryRules(membership.organizationId) : [],
     canAssign ? listDepartments(membership.organizationId) : [],
     isAdmin ? listMembersWithDepartment(membership.organizationId) : [],
+    listCheatSheetStatus(membership.organizationId),
+    canAssign ? listCatalogCoursesForRules(membership.organizationId) : [],
   ]);
   const documentRows = documents.map((d) => ({
     id: d.id,
@@ -120,8 +123,9 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   const waitingForReview = internalCourses.filter((c) => c.catalogStatus !== "approved").length + internalJobs.filter((j) => j.active).length;
   const needsAttention = practice.pending.length + modules.filter((m) => m.state === "expired").length;
   const tabs: CompanyTab[] = [
-    { id: "status", label: de ? "Zuweisungen" : "Assignments", badge: overdue, badgeTitle: de ? "überfällig" : "overdue" },
-    { id: "paths", label: de ? "Lernpfade" : "Learning paths", badge: waitingForReview, badgeTitle: de ? "Entwürfe oder Aufträge in Arbeit" : "drafts or jobs in progress" },
+    { id: "status", label: de ? "Ergebnisse" : "Results", badge: overdue, badgeTitle: de ? "überfällig" : "overdue" },
+    ...(canAssign ? [{ id: "mandatory", label: de ? "Pflichtschulung" : "Mandatory training", badge: mandatoryRules.reduce((n, r) => n + r.overdue, 0), badgeTitle: de ? "überfällig" : "overdue" }] : []),
+    { id: "paths", label: de ? "Interne Learnings" : "Internal learning", badge: waitingForReview, badgeTitle: de ? "Entwürfe oder Aufträge in Arbeit" : "drafts or jobs in progress" },
     { id: "work", label: de ? "Aufgaben & Module" : "Tasks & modules", badge: needsAttention, badgeTitle: de ? "wartet auf Bestätigung oder abgelaufen" : "awaiting confirmation or expired" },
     ...(canAssign ? [{ id: "onboarding", label: "Onboarding" }] : []),
     { id: "documents", label: de ? "Dokumente" : "Documents" },
@@ -142,11 +146,10 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
 
       <CompanyTabs tabs={tabs} active={active} ariaLabel={de ? "Bereiche des Firmenbereichs" : "Company area sections"} />
 
-      {active === "status" && (
-        <>
-          <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
-          {canAssign && <MandatoryRulesPanel rules={mandatoryRules} paths={paths.map((p) => ({ id: p.id, name: p.name }))} departments={departmentList.map((d) => ({ id: d.id, name: d.name }))} canEdit={isAdmin} locale={locale} />}
-        </>
+      {active === "status" && <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />}
+
+      {active === "mandatory" && canAssign && (
+        <MandatoryRulesPanel rules={mandatoryRules} paths={paths.map((p) => ({ id: p.id, name: p.name }))} catalog={ruleCatalog} departments={departmentList.map((d) => ({ id: d.id, name: d.name }))} canEdit={isAdmin} locale={locale} />
       )}
 
       {active === "paths" && (
@@ -155,6 +158,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
             documents={documents.map((d) => ({ id: d.id, title: d.title, excludeFromAi: d.excludeFromAi }))}
             initialJobs={internalJobs.map((j) => ({ ...j, createdAt: j.createdAt.toISOString() }))}
             initialCourses={internalCourses.map((c) => ({ ...c, approvedAt: c.approvedAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString() }))}
+            cheatSheets={cheatSheetStatus.map((c) => ({ certificationId: c.certificationId, lessons: c.lessons, withCheatSheet: c.withCheatSheet, run: c.run ? { status: c.run.status, total: c.run.total, created: c.run.created, skipped: c.run.skipped, failed: c.run.failed, message: c.run.message } : null }))}
             aiConfigured={aiAccess.kind !== "none"}
             locale={locale}
           />

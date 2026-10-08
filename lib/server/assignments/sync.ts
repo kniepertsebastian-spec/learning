@@ -173,6 +173,8 @@ export type MyAssignment = {
   assignedAt: Date;
   dueAt: Date | null;
   completedAt: Date | null;
+  /** Bei Pflichten mit Wiederholung: der letzte Abschluss einer früheren Runde. */
+  lastCompletedAt: Date | null;
 };
 
 /** Die eigenen Zuweisungen des Nutzers: was die Firma ihm aufgetragen hat (Transparenz für den Lernenden). */
@@ -187,6 +189,7 @@ export async function listMyAssignments(userId: string): Promise<MyAssignment[]>
       assignedAt: companyAssignments.assignedAt,
       dueAt: companyAssignments.dueAt,
       completedAt: companyAssignments.completedAt,
+      lastCompletedAt: companyAssignments.lastCompletedAt,
     })
     .from(companyAssignments)
     .innerJoin(certifications, eq(certifications.id, companyAssignments.certificationId))

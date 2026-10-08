@@ -13,7 +13,7 @@ import { importCoursePackage, suggestCourseSlug } from "./importer";
 import { AiAccessUnavailableError, clientForOrganization } from "@/lib/server/internal-courses/ai-client";
 import { LESSONS_MODEL } from "@/lib/claude";
 import { createImageDescriber, type ImageDescriber } from "@/lib/server/internal-courses/vision";
-import { DocumentSourceError, loadDocumentSources } from "@/lib/server/internal-courses/document-sources";
+import { DocumentSourceError, loadJobSources } from "@/lib/server/internal-courses/document-sources";
 import {
   createHaikuContentProvider,
   createSonnetBlueprintProvider,
@@ -40,7 +40,7 @@ import { looksLikeOutline } from "./outline";
 import { fetchSources, type FetchedSource } from "./sources";
 import { pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
 import { getDb } from "@/lib/server/db/client";
-import { certifications } from "@/lib/server/db/schema";
+import { certifications, courseGenerationJobDocuments } from "@/lib/server/db/schema";
 import { eq } from "drizzle-orm";
 
 export class PreflightError extends Error {}
@@ -71,13 +71,40 @@ const MAX_BATCH_ERROR_RATE = envFloat("COURSE_GEN_MAX_BATCH_ERROR_RATE", 0.3);
 const MAX_IDENTICAL_ERRORS = envInt("COURSE_GEN_MAX_IDENTICAL_ERRORS", 2);
 const HARD_MAX_OBJECTIVES = envInt("COURSE_GEN_HARD_MAX_OBJECTIVES", 80);
 
+/** Höchstmenge Quelltext, die an die KI für EIN Lernziel geht (bei Kursen mit vielen Dateien sonst Hunderttausende Zeichen je Aufruf). */
+export const MAX_EXCERPT_CHARS_PER_OBJECTIVE = 80_000;
+
+/**
+ * Welche Textstellen die KI für ein Lernziel bekommt: die vom Blueprint genannten; fehlt die Angabe oder passt keine
+ * (die KI schreibt Verweise manchmal leicht anders), alle, jeweils auf die Höchstmenge gekürzt.
+ */
+export function selectSourceExcerpts(sources: FetchedSource[], locators: string[], maxChars = MAX_EXCERPT_CHARS_PER_OBJECTIVE) {
+  const all = sources.flatMap((s) => s.excerpts);
+  const picked = locators.length === 0 ? all : all.filter((e) => locators.includes(e.locator));
+  const chosen = picked.length > 0 ? picked : all;
+  const out: typeof all = [];
+  let used = 0;
+  for (const e of chosen) {
+    if (used >= maxChars) break;
+    const room = maxChars - used;
+    out.push(e.text.length > room ? { ...e, text: e.text.slice(0, room) } : e);
+    used += Math.min(e.text.length, room);
+  }
+  return out;
+}
+
+async function hasJobDocuments(jobId: string): Promise<boolean> {
+  const [row] = await getDb().select({ id: courseGenerationJobDocuments.id }).from(courseGenerationJobDocuments).where(eq(courseGenerationJobDocuments.jobId, jobId)).limit(1);
+  return Boolean(row);
+}
+
 export interface CourseGenerationDeps {
   blueprintProvider: BlueprintProvider;
   contentProvider: CourseContentProvider;
   repairProvider: CourseContentProvider;
   fetchSourcesFn: (urls: string[]) => Promise<FetchedSource[]>;
   /** Interne Lernpfade: Text des Firmendokuments (geschwärzt und gescannt). */
-  loadDocumentSourcesFn: (organizationId: string, documentId: string, describeImage?: ImageDescriber) => Promise<FetchedSource[]>;
+  loadDocumentSourcesFn: (organizationId: string, jobId: string, describeImage?: ImageDescriber, legacyDocumentId?: string | null) => Promise<FetchedSource[]>;
   /** Interne Lernpfade: beschreibt Screenshots über den KI-Zugang der Firma. */
   describeImageFn?: ImageDescriber;
 }
@@ -91,7 +118,7 @@ async function defaultDeps(
   job: CourseGenerationJob,
   override?: Partial<CourseGenerationDeps>,
 ): Promise<CourseGenerationDeps> {
-  const base = { fetchSourcesFn: fetchSources, loadDocumentSourcesFn: loadDocumentSources };
+  const base = { fetchSourcesFn: fetchSources, loadDocumentSourcesFn: loadJobSources };
   if (!job.organizationId) {
     return {
       blueprintProvider: resolveBlueprintProvider(job.blueprintProvider),
@@ -175,11 +202,7 @@ async function generateAndValidateObjective(
     }
   }
 
-  const sourceExcerpts = sources.flatMap((source) =>
-    entry.objective.sourceLocators.length === 0
-      ? source.excerpts
-      : source.excerpts.filter((excerpt) => entry.objective.sourceLocators.includes(excerpt.locator)),
-  );
+  const sourceExcerpts = selectSourceExcerpts(sources, entry.objective.sourceLocators);
   const input = {
     courseTitle: job.courseTitle,
     language: job.language as "de" | "en",
@@ -400,8 +423,8 @@ export async function executeCourseGenerationJob(
     if (!job.organizationId && job.sourceUrls.length === 0) {
       throw new PreflightError("Mindestens eine Quelle (sourceUrls) ist erforderlich.");
     }
-    if (job.organizationId && !job.documentId) {
-      throw new PreflightError("Für einen internen Lernpfad ist ein Quelldokument erforderlich.");
+    if (job.organizationId && !job.documentId && !(await hasJobDocuments(jobId))) {
+      throw new PreflightError("Für einen internen Kurs ist mindestens eine Datei erforderlich.");
     }
     // Der Slug-Kollisionscheck in importCoursePackage() greift erst GANZ am
     // Ende (nach Blueprint + allen Objective-Aufrufen) - ohne diesen
@@ -423,8 +446,8 @@ export async function executeCourseGenerationJob(
     let sources: FetchedSource[];
     try {
       sources =
-        job.organizationId && job.documentId
-          ? await deps.loadDocumentSourcesFn(job.organizationId, job.documentId, deps.describeImageFn)
+        job.organizationId && (job.documentId || (await hasJobDocuments(jobId)))
+          ? await deps.loadDocumentSourcesFn(job.organizationId, jobId, deps.describeImageFn, job.documentId)
           : await deps.fetchSourcesFn(job.sourceUrls);
     } catch (error) {
       if (error instanceof DocumentSourceError) throw new PreflightError(error.message);
@@ -443,7 +466,7 @@ export async function executeCourseGenerationJob(
     await updateCourseGenerationJob(jobId, {
       status: "blueprint_generating",
       phase: "blueprint",
-      message: `Blueprint wird über ${deps.blueprintProvider.name} erstellt …${sources.flatMap((x) => x.warnings ?? []).map((w) => ` Hinweis: ${w}`).join("")}`,
+      message: `Blueprint wird mit ${deps.blueprintProvider.model} erstellt …${sources.flatMap((x) => x.warnings ?? []).map((w) => ` Hinweis: ${w}`).join("")}`,
     });
     // Kosten synchron im Callback aufsummieren statt async recordSpend() im
     // Callback selbst aufzurufen - ein dort geworfener BudgetExceededError

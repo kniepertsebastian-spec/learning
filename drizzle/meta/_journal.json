@@ -309,6 +309,27 @@
       "when": 1791440311716,
       "tag": "0043_lesson_cheat_sheet",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791444980150,
+      "tag": "0044_cheat_sheet_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791450776387,
+      "tag": "0045_job_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791451250516,
+      "tag": "0046_mandatory_pending_release",
+      "breakpoints": true
     }
   ]
 }

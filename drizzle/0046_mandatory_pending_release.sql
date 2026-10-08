@@ -1,0 +1,1 @@
+ALTER TABLE "mandatory_rules" ADD COLUMN "pending_release" boolean DEFAULT false NOT NULL;

@@ -1404,12 +1404,34 @@ export const companyDocuments = pgTable(
     scannerSuppressed: jsonb("scanner_suppressed").$type<{ kind: string; pageNumber: number; line: number }[]>(),
     scannerSuppressedByUserId: uuid("scanner_suppressed_by_user_id").references(() => users.id, { onDelete: "set null" }),
     scannerSuppressedAt: timestamp("scanner_suppressed_at", { withTimezone: true }),
+    /**
+     * Nur für einen Kursauftrag hochgeladen (Drag and drop im Formular „Neuer interner Kurs“): erscheint nicht unter
+     * „Dokumente“, wird nach dem Auftrag gelöscht (siehe cleanupJobDocuments). Gleiche Dateien dürfen mehrfach
+     * vorkommen, die Eindeutigkeit je Firma gilt nur für gespeicherte Dokumente.
+     */
+    temporary: boolean("temporary").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    unique("company_documents_org_checksum_unique").on(table.organizationId, table.checksum),
+    uniqueIndex("company_documents_org_checksum_unique").on(table.organizationId, table.checksum).where(sql`${table.temporary} = false`),
     index("company_documents_org_idx").on(table.organizationId),
   ],
+);
+
+/** Welche Dokumente zu einem Kursauftrag gehören (ein Kurs kann aus vielen Dateien entstehen). Fällt mit Auftrag oder Dokument weg. */
+export const courseGenerationJobDocuments = pgTable(
+  "course_generation_job_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => courseGenerationJobs.id, { onDelete: "cascade" }),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => companyDocuments.id, { onDelete: "cascade" }),
+    orderNum: integer("order_num").notNull(),
+  },
+  (table) => [unique("course_generation_job_documents_unique").on(table.jobId, table.documentId)],
 );
 
 /** Dateiinhalt eines Firmendokuments (wird mit dem Dokument gelöscht und über pg_dump mitgesichert). */
@@ -1799,6 +1821,8 @@ export const mandatoryRules = pgTable(
     applyOnChange: boolean("apply_on_change").notNull().default(true),
     /** true = alle Abteilungen (auch Personen ohne); false = nur die in mandatory_rule_departments. */
     allDepartments: boolean("all_departments").notNull().default(true),
+    /** true = der Kurs ist ein Kurs aus unserem Katalog, der für die Firma noch nicht freigeschaltet ist; die Regel wirkt erst nach der Freischaltung. */
+    pendingRelease: boolean("pending_release").notNull().default(false),
     createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1860,4 +1884,38 @@ export const mandatoryRuleDepartments = pgTable(
       .references(() => departments.id, { onDelete: "cascade" }),
   },
   (table) => [unique("mandatory_rule_departments_unique").on(table.ruleId, table.departmentId)],
+);
+
+/**
+ * Nachträgliches Erzeugen von Merkzetteln für Lektionen, die noch keinen haben (ältere Kurse). Je Lauf ein Eintrag mit
+ * Fortschritt, damit die Firma ihn sieht; höchstens ein laufender Lauf je Lernpfad. Enthält nur Zahlen und Meldungen,
+ * nie Inhalte. Gehört der Firma.
+ */
+export const cheatSheetRuns = pgTable(
+  "cheat_sheet_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    startedByUserId: uuid("started_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    status: text("status").$type<"running" | "done" | "failed">().notNull().default("running"),
+    total: integer("total").notNull(),
+    created: integer("created").notNull().default(0),
+    /** Verworfen, weil der Scanner etwas gefunden hat. */
+    skipped: integer("skipped").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    message: text("message"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    check("cheat_sheet_runs_status_check", sql`${table.status} in ('running', 'done', 'failed')`),
+    index("cheat_sheet_runs_cert_idx").on(table.certificationId, table.startedAt),
+    // Höchstens ein laufender Lauf je Lernpfad, auch bei gleichzeitigen Starts.
+    uniqueIndex("cheat_sheet_runs_one_running").on(table.certificationId).where(sql`${table.status} = 'running'`),
+  ],
 );
