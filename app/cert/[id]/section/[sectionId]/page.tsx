@@ -118,6 +118,7 @@ export default async function SectionPage({
         content: lesson.content,
         keyTakeaways: lesson.keyTakeaways ?? null,
         examFocusPoints: lesson.examFocusPoints ?? null,
+        cheatSheet: lesson.cheatSheet ?? null,
       }}
       questions={quizEnabled ? quizQuestions : []}
       quizEnabled={quizEnabled}

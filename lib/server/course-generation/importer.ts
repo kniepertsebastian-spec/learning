@@ -9,9 +9,24 @@ import {
   questions,
   questionOptions,
 } from "@/lib/server/db/schema";
+import { scanForSecrets } from "@/lib/server/documents/secret-scanner";
 import { type CoursePackageV1 } from "./schemas";
 
 export class CoursePackageImportError extends Error {}
+
+/**
+ * Der Merkzettel wird aus Quellen gebaut, die der Secret-Scanner schon geprüft hat; die KI könnte aber trotzdem etwas
+ * zusammensetzen, das wie ein Zugang aussieht. Findet der Scanner in einer Sprachfassung etwas, entfällt der ganze
+ * Merkzettel dieser Lektion (die Lektion bleibt). Lieber kein Merkzettel als einer mit einem Passwort.
+ */
+export function safeCheatSheet(sheet: { de: string; en: string } | undefined): { de: string; en: string } | null {
+  if (!sheet) return null;
+  const pages = [
+    { pageNumber: 1, text: sheet.de },
+    { pageNumber: 2, text: sheet.en },
+  ];
+  return scanForSecrets(pages).length > 0 ? null : sheet;
+}
 
 /** Wie suggestSlug() in lib/server/admin/blueprint.ts, aber ohne dessen
  * Modul zu importieren (das zieht die gesamte R1-Blueprint-Admin-Logik mit
@@ -149,6 +164,7 @@ export async function importCoursePackage(
             content: section.content,
             keyTakeaways: section.keyTakeaways,
             examFocusPoints: section.examFocusPoints,
+            cheatSheet: safeCheatSheet(section.cheatSheet),
             promptVersion: pkg.generation.promptVersion,
             modelVersion: pkg.generation.contentModel,
             reviewStatus: "unreviewed",

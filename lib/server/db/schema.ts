@@ -218,6 +218,12 @@ export const lessons = pgTable("lessons", {
   content: jsonb("content").$type<Localized<string>>().notNull(),
   keyTakeaways: jsonb("key_takeaways").$type<Localized<string[]>>(),
   examFocusPoints: jsonb("exam_focus_points").$type<Localized<string[]>>(),
+  /**
+   * Merkzettel zur Lektion (Markdown, zweisprachig): zum Nachschlagen und Wiederholen, bei Firmen-Lernpfaden auch die
+   * firmeneigenen Namen und Abläufe aus den Quellen (z. B. welcher Server wofür). Wird mit dem Kurs erzeugt und mit ihm
+   * geprüft; bei älteren Lektionen leer.
+   */
+  cheatSheet: jsonb("cheat_sheet").$type<Localized<string>>(),
   version: integer("version").notNull().default(1),
   promptVersion: text("prompt_version"),
   modelVersion: text("model_version"),

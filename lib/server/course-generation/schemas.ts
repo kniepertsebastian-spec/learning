@@ -89,6 +89,15 @@ export const courseBlueprintV1Schema = z.object({
 });
 export type CourseBlueprintV1 = z.infer<typeof courseBlueprintV1Schema>;
 
+/**
+ * Merkzettel einer Lektion. Bewusst nachsichtig: fehlt er oder ist er unbrauchbar (null, leer, nur eine Sprache), wird er
+ * weggelassen, statt die ganze Erzeugung scheitern zu lassen. Die Lektion selbst ist das Wichtige.
+ */
+const lenientCheatSheetSchema = z.unknown().transform((value): { de: string; en: string } | undefined => {
+  const parsed = localizedStringSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+});
+
 export const coursePackageSectionSchema = z.object({
   title: localizedStringSchema,
   estimatedMinutes: z.number().int().min(5).max(120),
@@ -96,6 +105,7 @@ export const coursePackageSectionSchema = z.object({
   content: localizedStringSchema,
   keyTakeaways: localizedStringArraySchema,
   examFocusPoints: localizedStringArraySchema,
+  cheatSheet: lenientCheatSheetSchema.optional(),
 });
 export type CoursePackageSection = z.infer<typeof coursePackageSectionSchema>;
 

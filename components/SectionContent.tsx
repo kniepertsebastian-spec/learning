@@ -6,8 +6,9 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { ArrowLeft, BookOpen, Check, Target } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, ClipboardList, Target } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
+import { RichText } from "@/components/RichText";
 import { SectionQuiz } from "@/components/SectionQuiz";
 import type { SectionQuizQuestion } from "@/components/SectionQuiz";
 import type { Localized } from "@/lib/types";
@@ -24,6 +25,8 @@ interface SectionContentProps {
     content: Localized<string>;
     keyTakeaways: Localized<string[]> | null;
     examFocusPoints: Localized<string[]> | null;
+    /** Merkzettel zum Nachschlagen (Markdown); bei älteren Lektionen leer. */
+    cheatSheet?: Localized<string> | null;
   };
   questions: SectionQuizQuestion[];
   /** R4.1/4.2/4.3: siehe SectionQuiz - wird im Offline-Reader gesetzt. */
@@ -124,6 +127,23 @@ export function SectionContent({
             ))}
           </ul>
         </div>
+      )}
+
+      {lesson.cheatSheet?.[locale] && (
+        <section className="mb-8 rounded-lg border border-accent/40 bg-accent/5 p-4" data-testid="cheat-sheet" aria-label={locale === "de" ? "Merkzettel" : "Cheat sheet"}>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-medium">
+            <span className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-accent" aria-hidden="true" />
+              {locale === "de" ? "Merkzettel" : "Cheat sheet"}
+            </span>
+            <Link href={`/cert/${certSlug}/cheatsheets`} className="text-xs font-normal text-accent hover:underline">
+              {locale === "de" ? "Alle Merkzettel dieses Kurses" : "All cheat sheets of this course"}
+            </Link>
+          </div>
+          <div className="text-sm text-foreground/90">
+            <RichText text={lesson.cheatSheet[locale]} />
+          </div>
+        </section>
       )}
 
       {!quizEnabled ? (

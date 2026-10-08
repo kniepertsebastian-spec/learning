@@ -312,6 +312,11 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [ ] Rolle „Externer Prüfer“ mit Zugriff nur auf zugewiesene **allgemeine** Kurse (nie auf interne Lernpfade einer Firma)
 
 ### Didaktik
+- [x] Merkzettel (Cheat Sheet) nach jeder Lektion
+  - _Gebaut (Migration `0043`: `lessons.cheat_sheet`; Karte „Merkzettel“ unter jeder Lektion, Sammelseite `/cert/[id]/cheatsheets` mit Druck/PDF, Link auf der Kursseite, im Offline-Paket enthalten):_ Die KI erzeugt den Merkzettel beim Erstellen des Kurses zusammen mit der Lektion (zweisprachig, Markdown, höchstens etwa 12 Zeilen): wichtigste Befehle im Codeblock, Optionen, Pfade, Werte, Reihenfolgen, bei Firmenquellen auch firmeneigene Dinge, die man sich merken muss und nach denen kaum jemand direkt fragt (Servernamen und wofür sie da sind, Adressen, Ablauf, Ansprechstelle), wörtlich wie in der Quelle, nichts erfunden. Er wird mit dem Kurs geprüft (bei internen Lernpfaden von der Firma). Kein KI-Aufruf pro Person und keine Kosten beim Lernen. Tabellen werden jetzt in allen Markdown-Texten als Tabelle dargestellt.
+  - _Sicherheit:_ Der Scanner prüft beide Sprachfassungen vor dem Speichern; bei einem Fund entfällt nur der Merkzettel dieser Lektion (Lektion und Kurs bleiben). Fehlt der Merkzettel oder ist er unbrauchbar, scheitert die Erzeugung nicht. Er erscheint nur dort, wo der Lernpfad sichtbar ist (interne Lernpfade: nur die eigene Firma, Test im Browser: fremde Firma bekommt 404). Anzeige als sicheres Markdown (kein HTML, keine Links).
+  - _Geprüft:_ 7 Tests (Schema nachsichtig, Prompt, Scanner, Weg bis in die Datenbank) mit Mutationsproben, Test der Tabellendarstellung, Browser (390 px, Lektion mit und ohne Merkzettel, Sammelseite, Fremde).
+  - _Nicht geprüft/offen:_ echte KI-Qualität der Merkzettel (Lauf mit `gate3 --ai` und echtem Dokument), **bereits erzeugte Kurse haben keinen Merkzettel** (nachträglich erzeugen wäre ein eigener Schritt, bei internen Kursen durch die Firma), der ältere Admin-Erzeugungsweg (`lib/server/ai/service.ts`) erzeugt noch keine Merkzettel.
 - [ ] Kompetenzmodell mit Konzept- und Tool-Ebene
 - [ ] Brückenpfade (z. B. AWS → Azure, Prometheus → Azure Monitor)
 - [ ] Modul „KI-Ergebnisse prüfen“ (generierten Code lesen, Fehler finden)
