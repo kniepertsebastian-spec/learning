@@ -91,10 +91,31 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
     return () => window.clearInterval(interval);
   }, [job, active, loadJob]);
 
+  /** Vor dem Start geprüfte, aber fehlerhafte Quellen: der Betreiber entscheidet, ob sie entfernt werden und es weitergeht. */
+  const [badSources, setBadSources] = useState<{ url: string; error: string }[] | null>(null);
+  const [pendingPayload, setPendingPayload] = useState<Record<string, unknown> | null>(null);
+
+  async function createJob(payload: Record<string, unknown>) {
+    const response = await fetch("/api/admin/course-generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = (await response.json()) as { job?: Job; error?: string };
+    if (!response.ok) throw new Error(data.error ?? `Status ${response.status}`);
+    if (data.job) {
+      setJob(data.job);
+      setShowForm(false);
+      setBadSources(null);
+      setPendingPayload(null);
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setRequestError(null);
+    setBadSources(null);
     const form = new FormData(event.currentTarget);
     const sourceUrls = sourceUrlList;
     if (sourceUrls.length === 0) {
@@ -102,29 +123,58 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
       setRequestError(locale === "de" ? "Bitte mindestens eine Quelle einfügen." : "Please add at least one source.");
       return;
     }
+    const payload = {
+      courseTitle: form.get("courseTitle"),
+      courseDescription: form.get("courseDescription"),
+      language: form.get("language"),
+      provider: form.get("provider"),
+      certificationVersion: form.get("certificationVersion") || undefined,
+      sourceUrls,
+      autoPublish: form.get("autoPublish") === "on",
+      initialCostLimitUsd: Number(form.get("initialCostLimitUsd")),
+      absoluteCostLimitUsd: Number(form.get("absoluteCostLimitUsd")),
+    };
 
     try {
-      const response = await fetch("/api/admin/course-generation", {
+      // Erst die Quellen prüfen: eine kaputte soll nicht den ganzen Lauf scheitern lassen, sondern gemeldet werden.
+      const check = await fetch("/api/admin/course-generation/check-sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseTitle: form.get("courseTitle"),
-          courseDescription: form.get("courseDescription"),
-          language: form.get("language"),
-          provider: form.get("provider"),
-          certificationVersion: form.get("certificationVersion") || undefined,
-          sourceUrls,
-          autoPublish: form.get("autoPublish") === "on",
-          initialCostLimitUsd: Number(form.get("initialCostLimitUsd")),
-          absoluteCostLimitUsd: Number(form.get("absoluteCostLimitUsd")),
-        }),
+        body: JSON.stringify({ sourceUrls }),
       });
-      const data = (await response.json()) as { job?: Job; error?: string };
-      if (!response.ok) throw new Error(data.error ?? `Status ${response.status}`);
-      if (data.job) {
-        setJob(data.job);
-        setShowForm(false);
+      if (check.ok) {
+        const { results } = (await check.json()) as { results: { url: string; ok: boolean; error?: string }[] };
+        const bad = results.filter((r) => !r.ok).map((r) => ({ url: r.url, error: r.error ?? "" }));
+        if (bad.length > 0) {
+          setBadSources(bad);
+          setPendingPayload(payload);
+          return;
+        }
       }
+      // Ließ sich die Prüfung selbst nicht ausführen, gilt weiter der Preflight des Auftrags.
+      await createJob(payload);
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : "Auftrag konnte nicht gestartet werden.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function continueWithoutBad() {
+    if (!badSources || !pendingPayload) return;
+    const bad = new Set(badSources.map((b) => b.url));
+    const rest = (pendingPayload.sourceUrls as string[]).filter((u) => !bad.has(u));
+    setSourceUrlList(rest);
+    if (rest.length === 0) {
+      setBadSources(null);
+      setPendingPayload(null);
+      setRequestError(locale === "de" ? "Es ist keine brauchbare Quelle übrig. Bitte andere Quellen einfügen." : "No usable source left. Please add other sources.");
+      return;
+    }
+    setLoading(true);
+    setRequestError(null);
+    try {
+      await createJob({ ...pendingPayload, sourceUrls: rest });
     } catch (error) {
       setRequestError(error instanceof Error ? error.message : "Auftrag konnte nicht gestartet werden.");
     } finally {
@@ -406,6 +456,32 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
         </div>
       )}
 
+      {badSources && (
+        <div role="alert" className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm" data-testid="bad-sources">
+          <p className="font-medium text-red-500">
+            {locale === "de"
+              ? `${badSources.length} Quelle(n) lassen sich nicht verwenden:`
+              : `${badSources.length} source(s) cannot be used:`}
+          </p>
+          <ul className="mt-2 flex flex-col gap-2">
+            {badSources.map((b) => (
+              <li key={b.url}>
+                <span className="block break-all font-mono text-xs">{b.url}</span>
+                <span className="block text-xs text-red-500">{b.error}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3">{locale === "de" ? "Diese Quellen entfernen und mit den übrigen fortfahren?" : "Remove these sources and continue with the rest?"}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" disabled={loading} onClick={() => void continueWithoutBad()} data-testid="bad-sources-continue" className="rounded-md bg-accent px-3 py-1.5 font-medium text-white disabled:opacity-50">
+              {locale === "de" ? "Entfernen und fortfahren" : "Remove and continue"}
+            </button>
+            <button type="button" disabled={loading} onClick={() => { setBadSources(null); setPendingPayload(null); }} data-testid="bad-sources-cancel" className="rounded-md border border-border px-3 py-1.5">
+              {locale === "de" ? "Abbrechen (selbst korrigieren)" : "Cancel (fix myself)"}
+            </button>
+          </div>
+        </div>
+      )}
       {requestError && <p className="mt-3 text-sm text-red-500">{requestError}</p>}
     </section>
   );
