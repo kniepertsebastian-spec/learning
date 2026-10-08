@@ -11,6 +11,8 @@ if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 
 const authMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/server/auth", () => ({ auth: authMock }));
+// Der echte Worker darf nicht nebenher laufen (er würde mit dem Testlauf um den Auftragsstatus konkurrieren).
+vi.mock("@/lib/server/course-generation/runner", () => ({ startCourseGenerationJob: () => {}, startCourseGenerationPublish: () => {}, isCourseGenerationJobActive: () => false }));
 // Dieser Test startet mehr Aufträge als das Limit je Firma erlaubt; das Limit selbst prüfen andere Tests.
 vi.mock("@/lib/server/auth-rate-limit", async (orig) => ({ ...(await orig<typeof import("@/lib/server/auth-rate-limit")>()), checkInternalCourseRateLimit: () => ({ allowed: true, retryAfterSeconds: 0 }) }));
 
