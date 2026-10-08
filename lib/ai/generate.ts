@@ -71,10 +71,13 @@ export function toGeminiJsonSchema(schema: ZodType): Record<string, unknown> | u
 const rejectedSchemas = new Set<string>();
 const schemaKey = (schema: Record<string, unknown>) => JSON.stringify(schema);
 
-/** Lehnt Gemini das Antwortschema selbst ab (HTTP 400 INVALID_ARGUMENT zum Schema), nicht etwa einen falschen Schlüssel. */
+/**
+ * Lehnt Gemini die Anfrage mit dem Antwortschema ab (HTTP 400 INVALID_ARGUMENT)? Jede solche Ablehnung außer einem falschen
+ * Schlüssel zählt: die Fehlertexte dazu wechseln mit der Modellversion, ein Wiederholen ohne Schema schadet nie.
+ */
 export function isSchemaRejection(error: unknown): boolean {
   const message = errorMessage(error);
-  return /INVALID_ARGUMENT|"code":\s*400/i.test(message) && /schema|constraint|too many states|nesting|response_json_schema|responseJsonSchema/i.test(message) && !/API key|API_KEY/i.test(message);
+  return /INVALID_ARGUMENT|"code":\s*400|\b400\b/i.test(message) && !/API key|API_KEY|PERMISSION_DENIED|UNAUTHENTICATED/i.test(message);
 }
 
 function extractJson(text: string): string {
