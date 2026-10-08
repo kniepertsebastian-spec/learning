@@ -340,6 +340,10 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [x] Eigenes Profil (`/profile`)
   - _Gebaut:_ Das Personen-Symbol im Kopf führt jetzt zu „Mein Profil“: Name, E-Mail, Firma und Rolle, die von der Firma bereitgestellten Kurse getrennt nach „Absolviert“ (mit Datum) und „Offen“ (Frist, bei Wiederholungen „zuletzt bestanden“), Link zu „Konto & Daten“ (Passwort, Export, Löschen). Es sind die eigenen Daten der Person, keine Ergebnisse oder Antworten.
   - _Nicht geprüft/offen:_ kein automatischer Test der Seite (nur Browser, 390 px); Teilnahmebescheinigung zum Herunterladen folgt mit dem Punkt unten.
+- [x] Kurse löschen (Betreiber)
+  - _Gebaut (`DELETE /api/admin/certifications/[certId]`, Maske „Kurs löschen“ unten auf der Admin-Seite eines Kurses):_ Für allgemeine Kurse, z. B. doppelt angelegte. Die Maske zeigt zuerst, was dranhängt (Personen mit Lernstand, Firmenzuweisungen, -freischaltungen, Pflichtregeln). Gelöscht wird nach Eintippen des Kurznamens (Slug); hängen Daten dran, zusätzlich mit ausdrücklicher Bestätigung. Nicht während einer Inhaltsgenerierung. Lernziele, Lektionen, Fragen, Quellen, Lernstände und Zuweisungen gehen per Kaskade mit. Audit-Eintrag `certification.deleted` (Name, Slug, Zahlen).
+  - _Entscheidung:_ Interne Kurse einer Firma löscht der Betreiber nicht (404); die Firma verwirft Entwürfe selbst. Freigegebene interne Kurse lassen sich bisher nicht löschen (wegen Zuweisungen), das wäre ein eigener Punkt.
+  - _Geprüft:_ 4 DB-Tests mit Mutationsprobe (Bestätigung bei Daten), Browser (390 px).
 - [ ] Kompetenzmodell mit Konzept- und Tool-Ebene
 - [ ] Brückenpfade (z. B. AWS → Azure, Prometheus → Azure Monitor)
 - [ ] Modul „KI-Ergebnisse prüfen“ (generierten Code lesen, Fehler finden)
