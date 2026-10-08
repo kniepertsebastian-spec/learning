@@ -12,13 +12,16 @@ import { startCourseGenerationJob } from "@/lib/server/course-generation/runner"
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+/** Höchstzahl Quellen je Auftrag (Zertifikate haben oft viele offizielle Seiten: Prüfungsleitfaden, PDF, Dienste-Liste …). */
+const MAX_SOURCE_URLS = 30;
+
 const createJobSchema = z.object({
   courseTitle: z.string().min(1).max(200),
   courseDescription: z.string().min(1).max(2000),
   language: z.enum(["de", "en"]),
   provider: z.string().min(1).max(100),
   certificationVersion: z.string().min(1).max(50).optional(),
-  sourceUrls: z.array(z.string().url()).min(1).max(10),
+  sourceUrls: z.array(z.string().url()).min(1).max(MAX_SOURCE_URLS),
   autoPublish: z.boolean().default(false),
   initialCostLimitUsd: z.number().min(0.1).max(1000).default(2),
   absoluteCostLimitUsd: z.number().min(0.1).max(1000).default(5),
@@ -67,7 +70,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(
-        { error: "Ungültige Anfrage.", details: error.issues },
+        { error: `Ungültige Anfrage: ${describeIssues(error)}`, details: error.issues },
         { status: 400 },
       );
     }
@@ -105,4 +108,17 @@ export async function POST(request: Request) {
 
   startCourseGenerationJob(job.id);
   return NextResponse.json({ job }, { status: 202 });
+}
+
+/** Verständlich, welches Feld nicht passt (bei Quellen mit der Zeilennummer der fehlerhaften Adresse). */
+function describeIssues(error: ZodError): string {
+  return error.issues
+    .slice(0, 3)
+    .map((issue) => {
+      const [field, index] = issue.path;
+      if (field === "sourceUrls" && typeof index === "number") return `Quelle in Zeile ${index + 1} ist keine gültige Adresse`;
+      if (field === "sourceUrls" && issue.code === "too_big") return `höchstens ${MAX_SOURCE_URLS} Quellen`;
+      return `${String(field ?? "Eingabe")}: ${issue.message}`;
+    })
+    .join("; ");
 }
