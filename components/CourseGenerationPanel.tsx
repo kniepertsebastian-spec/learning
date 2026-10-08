@@ -97,7 +97,8 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
     const sourceUrls = String(form.get("sourceUrls") ?? "")
       .split("\n")
       .map((line) => line.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter((line, index, all) => all.indexOf(line) === index);
 
     try {
       const response = await fetch("/api/admin/course-generation", {
