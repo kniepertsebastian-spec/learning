@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { SourceUrlInput } from "@/components/SourceUrlInput";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
 
 interface Job {
@@ -63,6 +64,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
   const online = useOnlineStatus();
   const [job, setJob] = useState<Job | null>(null);
   const [objectives, setObjectives] = useState<Objective[]>([]);
+  const [sourceUrlList, setSourceUrlList] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(true);
@@ -94,11 +96,12 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
     setLoading(true);
     setRequestError(null);
     const form = new FormData(event.currentTarget);
-    const sourceUrls = String(form.get("sourceUrls") ?? "")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .filter((line, index, all) => all.indexOf(line) === index);
+    const sourceUrls = sourceUrlList;
+    if (sourceUrls.length === 0) {
+      setLoading(false);
+      setRequestError(locale === "de" ? "Bitte mindestens eine Quelle einfügen." : "Please add at least one source.");
+      return;
+    }
 
     try {
       const response = await fetch("/api/admin/course-generation", {
@@ -222,21 +225,15 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
             </span>
             <input name="certificationVersion" placeholder="SAA-C03" className="w-full rounded-md border border-border bg-background px-3 py-2" />
           </label>
-          <label className="block text-sm">
+          <div className="block text-sm">
             <span className="mb-1 block font-medium">
-              {locale === "de" ? "Quellen-URLs" : "Source URLs"}
+              {locale === "de" ? "Quellen" : "Sources"}
               <span className="ml-1.5 font-normal text-foreground/50">
-                {locale === "de" ? "- eine pro Zeile, PDF oder Webseite" : "- one per line, PDF or web page"}
+                {locale === "de" ? "- Adressen einfügen, PDF oder Webseite" : "- paste addresses, PDF or web page"}
               </span>
             </span>
-            <textarea
-              name="sourceUrls"
-              required
-              rows={3}
-              placeholder="https://example.org/exam-guide.pdf"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
-            />
-          </label>
+            <SourceUrlInput urls={sourceUrlList} onChange={setSourceUrlList} locale={locale} max={30} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">
               <span className="mb-1 block font-medium">{locale === "de" ? "Zielbudget (USD)" : "Target budget (USD)"}</span>
