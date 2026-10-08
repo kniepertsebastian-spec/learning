@@ -51,7 +51,9 @@ export async function POST(
   if (job.status === "package_ready") {
     startCourseGenerationPublish(id);
   } else {
-    await updateCourseGenerationJob(id, { errorCode: null, errorMessage: null, completedAt: null });
+    // Sofort auf „in der Warteschlange“: sonst bliebe der alte Endstatus stehen, die Oberfläche hielte den Auftrag für beendet,
+    // hörte auf zu aktualisieren und ein zweiter Klick liefe in „Auftrag läuft bereits“.
+    await updateCourseGenerationJob(id, { status: "queued", phase: "queued", message: "Auftrag wird neu gestartet …", errorCode: null, errorMessage: null, completedAt: null });
     startCourseGenerationJob(id);
   }
 

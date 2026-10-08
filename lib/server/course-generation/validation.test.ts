@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateObjectiveContent } from "./validation";
+import { conceptPresent, validateObjectiveContent } from "./validation";
 import type { CourseBlueprintObjective, ObjectiveContentResponse } from "./schemas";
 
 const objective = {
@@ -34,5 +34,16 @@ describe("validateObjectiveContent: Nachsicht bei Sprache und Quellenverweis", (
     expect(validateObjectiveContent(objective, content({ ...withConcept, locator: "Playbook · abschnitt 1" }), excerpts)).toEqual([]);
     expect(validateObjectiveContent(objective, content({ ...withConcept, locator: "Abschnitt 1" }), excerpts)).toEqual([]);
     expect(validateObjectiveContent(objective, content({ ...withConcept, locator: "S. 999 irgendwo" }), excerpts)[0]).toContain("unbekannten Locator");
+  });
+});
+
+describe("conceptPresent", () => {
+  const text = "Mit dem AWS Storage Gateway lassen sich hybride Speicherlösungen aufbauen, die lokale Systeme anbinden.";
+  it("erkennt Konzepte mit Klammerzusatz und Umformulierung, aber keine fremden", () => {
+    expect(conceptPresent("Hybride Speicherlösungen (z.B. AWS Storage Gateway)", text)).toBe(true);
+    expect(conceptPresent("Hybride Speicherlösungen (z.B. Snowball Edge)", text)).toBe(true); // Hauptbegriff genügt
+    expect(conceptPresent("Storage Gateway Typen und lokale Anbindung", text)).toBe(true); // Mehrheit der Wörter
+    expect(conceptPresent("Kubernetes Cluster Autoscaling", text)).toBe(false);
+    expect(conceptPresent("VPC", "Das Netzwerk")).toBe(false); // ein kurzes Einwort-Konzept muss wörtlich vorkommen
   });
 });

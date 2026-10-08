@@ -55,6 +55,26 @@ export function validateBlueprint(blueprint: CourseBlueprintV1): string[] {
  * plausibel"/"Erklärung begründet die Antwort" (Abschnitt 10) brauchen
  * KI-Urteil und sind hier nicht enthalten.
  */
+/**
+ * Kommt ein erforderliches Konzept im Text vor? Blueprint-Konzepte sind oft Beschreibungen mit Zusätzen
+ * („Hybride Speicherlösungen (z. B. AWS Storage Gateway)“), die so nie wörtlich im Lerntext stehen. Es zählt deshalb:
+ * die ganze Angabe, die Angabe ohne Klammerzusatz, der Klammerzusatz selbst oder – bei mehreren Wörtern – wenn die
+ * Mehrheit der bedeutungstragenden Wörter (ab 4 Buchstaben) vorkommt.
+ */
+export function conceptPresent(concept: string, haystack: string): boolean {
+  const text = haystack.toLowerCase();
+  const whole = concept.toLowerCase().trim();
+  if (text.includes(whole)) return true;
+  const withoutParens = whole.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+  if (withoutParens && text.includes(withoutParens)) return true;
+  const inParens = [...whole.matchAll(/\(([^)]*)\)/g)].map((m) => m[1].replace(/^(z\.?\s?b\.?|e\.?g\.?|i\.?e\.?|bzw\.?)\s*/i, "").trim()).filter((x) => x.length >= 3);
+  if (inParens.some((x) => text.includes(x))) return true;
+  const words = [...new Set(withoutParens.split(/[^\p{L}\p{N}-]+/u).filter((w) => w.length >= 4))];
+  if (words.length < 2) return false;
+  const hits = words.filter((w) => text.includes(w)).length;
+  return hits / words.length >= 0.6;
+}
+
 export function validateObjectiveContent(
   objective: CourseBlueprintObjective,
   content: ObjectiveContentResponse,
@@ -89,7 +109,7 @@ export function validateObjectiveContent(
     .join(" ")
     .toLowerCase();
   for (const concept of objective.requiredConcepts) {
-    if (!haystack.includes(concept.toLowerCase())) {
+    if (!conceptPresent(concept, haystack)) {
       errors.push(`Erforderliches Konzept "${concept}" kommt in keiner Lektion/Frage vor.`);
     }
   }
