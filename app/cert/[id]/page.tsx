@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, objectives, sections, lessons, lessonCompletions, objectiveProgress } from "@/lib/server/db/schema";
@@ -72,6 +72,11 @@ export default async function CertDetailPage({
       : [];
 
   const sectionIds = allSections.map((section) => section.id);
+  // Gibt es Merkzettel in diesem Kurs? Dann steht oben der Link zur Sammelseite.
+  const [withCheatSheet] =
+    sectionIds.length > 0
+      ? await db.select({ id: lessons.id }).from(lessons).where(and(inArray(lessons.sectionId, sectionIds), isNotNull(lessons.cheatSheet))).limit(1)
+      : [];
   const lessonRows =
     sectionIds.length > 0
       ? await db
@@ -229,7 +234,16 @@ export default async function CertDetailPage({
           </p>
         </div>
         {session && (
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {withCheatSheet && (
+              <Link
+                href={`/cert/${slug}/cheatsheets`}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
+                data-testid="cheatsheets-link"
+              >
+                {locale === "de" ? "Merkzettel" : "Cheat sheets"}
+              </Link>
+            )}
             {hasExam && (
               <Link
                 href={`/cert/${slug}/history`}

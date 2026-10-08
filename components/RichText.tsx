@@ -23,6 +23,13 @@ const baseComponents: Components = {
     ) : (
       <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-[0.9em]">{children}</code>
     ),
+  table: ({ children }) => (
+    <div className="my-2 max-w-full overflow-x-auto">
+      <table className="w-full border-collapse text-left text-sm">{children}</table>
+    </div>
+  ),
+  th: ({ children }) => <th className="border border-border bg-foreground/5 px-2 py-1 font-medium">{children}</th>,
+  td: ({ children }) => <td className="border border-border px-2 py-1 align-top">{children}</td>,
   ul: ({ children }) => <ul className="my-1 list-disc pl-5">{children}</ul>,
   ol: ({ children }) => <ol className="my-1 list-decimal pl-5">{children}</ol>,
 };

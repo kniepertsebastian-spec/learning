@@ -11,6 +11,7 @@ import {
   type CompanyRole,
 } from "../lib/server/db/schema";
 import { normalizeEmail } from "../lib/server/email";
+import { applyRulesForMember } from "../lib/server/company/mandatory";
 import { recordAuditEvent } from "../lib/server/audit/service";
 
 /**
@@ -36,6 +37,16 @@ function usage(): never {
     'Usage:\n  company:create -- "<Firmenname>"\n  company:set-member -- <organization-id> <email> <company_admin|mentor|learner>\n  company:remove-member -- <email>\n  company:ensure -- "<Firmenname>" <email> [rolle]',
   );
   process.exit(1);
+}
+
+/** Pflichtschulungen der Firma für ein neues oder gewechseltes Mitglied nachziehen (Fehler brechen das Skript nicht ab). */
+async function applyMandatory(organizationId: string, userId: string, reason: "join" | "change" | null) {
+  if (!reason) return;
+  const assigned = await applyRulesForMember(organizationId, userId, reason).catch((err) => {
+    console.error("Pflichtschulungen konnten nicht angewendet werden:", err);
+    return 0;
+  });
+  if (assigned > 0) console.log(`Pflichtschulungen: ${assigned} Lernpfad/Lernpfade zugewiesen.`);
 }
 
 async function findUser(emailArg: string | undefined) {
@@ -93,6 +104,7 @@ async function main() {
     } else {
       await db.insert(organizationMemberships).values({ organizationId: org.id, userId: user.id, role });
     }
+    await applyMandatory(org.id, user.id, existing ? (existing.role !== role ? "change" : null) : "join");
     await recordAuditEvent({
       actorType: "cli",
       action: "membership.set",
@@ -130,6 +142,7 @@ async function main() {
     } else {
       await db.insert(organizationMemberships).values({ organizationId: org.id, userId: user.id, role });
     }
+    await applyMandatory(org.id, user.id, existing ? (existing.role !== role ? "change" : null) : "join");
     await recordAuditEvent({
       actorType: "cli",
       action: "membership.set",

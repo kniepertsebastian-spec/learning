@@ -84,3 +84,53 @@ export function courseRequestStatusMessage(
       `\nDie Anfragen finden Sie im Firmenbereich:\n\n${input.link}`,
   };
 }
+
+const formatDate = (d: Date) => d.toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" });
+
+/** Lernende: die Frist eines zugewiesenen Lernpfads läuft bald ab. */
+export function deadlineReminderMessage(to: string, input: { courseName: string; organizationName: string; dueAt: Date; link: string }): MailMessage {
+  return {
+    to,
+    subject: `Erinnerung: „${input.courseName}“ bis ${formatDate(input.dueAt)}`,
+    text:
+      `Hallo,\n\n${input.organizationName} hat dir den Lernpfad „${input.courseName}“ zugewiesen. Die Frist ist der ${formatDate(input.dueAt)}.\n\n` +
+      `Hier geht es weiter:\n\n${input.link}`,
+  };
+}
+
+/** Lernende: die Frist ist abgelaufen. */
+export function overdueMessage(to: string, input: { courseName: string; organizationName: string; dueAt: Date; link: string }): MailMessage {
+  return {
+    to,
+    subject: `Frist abgelaufen: „${input.courseName}“`,
+    text:
+      `Hallo,\n\ndie Frist für den Lernpfad „${input.courseName}“ (${input.organizationName}) war der ${formatDate(input.dueAt)}. ` +
+      `Bitte schließe ihn möglichst bald ab.\n\nHier geht es weiter:\n\n${input.link}`,
+  };
+}
+
+/** Mentor und Firmen-Admin: Zuweisungen, die schon länger überfällig sind (nur Person, Lernpfad, Frist; nie Lerndaten). */
+export function overdueDigestMessage(
+  to: string,
+  input: { organizationName: string; items: { person: string; courseName: string; dueAt: Date }[]; link: string },
+): MailMessage {
+  return {
+    to,
+    subject: `${input.organizationName}: ${input.items.length} überfällige Zuweisung${input.items.length === 1 ? "" : "en"}`,
+    text:
+      `Hallo,\n\nfolgende Zuweisungen sind überfällig:\n\n` +
+      input.items.map((i) => `  ${i.person}: ${i.courseName} (Frist ${formatDate(i.dueAt)})`).join("\n") +
+      `\n\nÜbersicht im Firmenbereich:\n\n${input.link}`,
+  };
+}
+
+/** Lernende: eine Pflichtschulung beginnt erneut (Wiederholung). */
+export function repeatDueMessage(to: string, input: { courseName: string; organizationName: string; dueAt: Date; link: string }): MailMessage {
+  return {
+    to,
+    subject: `Wiederholung fällig: „${input.courseName}“`,
+    text:
+      `Hallo,\n\nder Lernpfad „${input.courseName}“ (${input.organizationName}) ist eine Pflichtschulung mit Wiederholung und beginnt erneut. ` +
+      `Dein Stand wurde zurückgesetzt, die neue Frist ist der ${formatDate(input.dueAt)}.\n\nHier geht es los:\n\n${input.link}`,
+  };
+}

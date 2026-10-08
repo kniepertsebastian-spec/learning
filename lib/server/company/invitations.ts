@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, asc, eq, gt, isNull } from "drizzle-orm";
+import { applyRulesForNewMember } from "./mandatory";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
 import {
@@ -288,6 +289,11 @@ export async function acceptInvitation(input: {
       targetId: result.organizationId,
       metadata: { role: result.role },
     }).catch(logAuditFailure);
+    // Pflichtschulungen der Firma greifen für das neue Mitglied sofort. Ein Fehler hier darf die Annahme nicht kippen
+    // (die Regeln lassen sich jederzeit nachziehen, die Mitgliedschaft steht schon).
+    await applyRulesForNewMember(result.organizationId, input.userId, now).catch((err) =>
+      console.error("Pflichtschulungen für neues Mitglied fehlgeschlagen:", err),
+    );
   }
   return result;
 }

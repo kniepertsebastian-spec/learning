@@ -218,6 +218,12 @@ export const lessons = pgTable("lessons", {
   content: jsonb("content").$type<Localized<string>>().notNull(),
   keyTakeaways: jsonb("key_takeaways").$type<Localized<string[]>>(),
   examFocusPoints: jsonb("exam_focus_points").$type<Localized<string[]>>(),
+  /**
+   * Merkzettel zur Lektion (Markdown, zweisprachig): zum Nachschlagen und Wiederholen, bei Firmen-Lernpfaden auch die
+   * firmeneigenen Namen und Abläufe aus den Quellen (z. B. welcher Server wofür). Wird mit dem Kurs erzeugt und mit ihm
+   * geprüft; bei älteren Lektionen leer.
+   */
+  cheatSheet: jsonb("cheat_sheet").$type<Localized<string>>(),
   version: integer("version").notNull().default(1),
   promptVersion: text("prompt_version"),
   modelVersion: text("model_version"),
@@ -1242,6 +1248,8 @@ export const organizationMemberships = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role").$type<CompanyRole>().notNull(),
+    /** Abteilung innerhalb der Firma (frei wählbar, optional). Fällt die Abteilung weg, bleibt die Person ohne. */
+    departmentId: uuid("department_id").references((): AnyPgColumn => departments.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -1282,6 +1290,16 @@ export const companyAssignments = pgTable(
     assignedByUserId: uuid("assigned_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    /**
+     * Runde der Zuweisung (1 = erste). Bei Pflicht mit Wiederholung beginnt nach Ablauf der Zeit eine neue Runde: Status
+     * zurück auf „zugewiesen“, neue Frist; als abgeschlossen zählt dann nur, was nach `roundStartedAt` nachgewiesen wurde.
+     */
+    round: integer("round").notNull().default(1),
+    roundStartedAt: timestamp("round_started_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Abschluss der vorherigen Runde (bleibt als Nachweis stehen, wenn eine neue Runde beginnt). */
+    lastCompletedAt: timestamp("last_completed_at", { withTimezone: true }),
+    /** Gesetzt, wenn die Zuweisung aus einer Pflichtregel stammt (Pflichtschulung). */
+    mandatoryRuleId: uuid("mandatory_rule_id").references((): AnyPgColumn => mandatoryRules.id, { onDelete: "set null" }),
   },
   (table) => [
     check(
@@ -1751,4 +1769,95 @@ export const onboardings = pgTable(
     unique("onboardings_plan_user_unique").on(table.planId, table.userId),
     index("onboardings_org_idx").on(table.organizationId),
   ],
+);
+
+/**
+ * Pflichtregel einer Firma: ein Lernpfad ist für bestimmte Rollen verpflichtend, mit Frist (Tage ab Zuweisung).
+ * Wirkt beim Anlegen auf die vorhandenen Mitglieder dieser Rollen und danach auf neue Mitglieder (Einladung
+ * angenommen). Erinnerung vor der Frist und Eskalation nach Ablauf sind je Regel einstellbar. Gehört der Firma;
+ * wird die Regel gelöscht, bleiben die Zuweisungen bestehen (mandatory_rule_id wird leer).
+ */
+export const mandatoryRules = pgTable(
+  "mandatory_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    roles: text("roles").array().$type<CompanyRole[]>().notNull(),
+    dueInDays: integer("due_in_days").notNull(),
+    /** Tage vor der Frist, an denen erinnert wird (0 = keine Erinnerung). */
+    reminderDaysBefore: integer("reminder_days_before").notNull().default(7),
+    /** Tage nach Fristablauf, ab denen Mentor und Firmen-Admin informiert werden. */
+    escalateAfterDays: integer("escalate_after_days").notNull().default(3),
+    /** Wiederholung: so viele Monate nach dem Abschluss beginnt eine neue Runde (leer = einmalig). */
+    repeatEveryMonths: integer("repeat_every_months"),
+    /** Gilt die Regel auch, wenn jemand die Rolle oder Abteilung wechselt (Entscheidung der Firma je Regel)? */
+    applyOnChange: boolean("apply_on_change").notNull().default(true),
+    /** true = alle Abteilungen (auch Personen ohne); false = nur die in mandatory_rule_departments. */
+    allDepartments: boolean("all_departments").notNull().default(true),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("mandatory_rules_repeat_check", sql`${table.repeatEveryMonths} is null or ${table.repeatEveryMonths} between 1 and 60`),
+    unique("mandatory_rules_org_cert_unique").on(table.organizationId, table.certificationId),
+    check("mandatory_rules_roles_check", sql`cardinality(${table.roles}) > 0 and ${table.roles} <@ array['company_admin', 'mentor', 'learner']::text[]`),
+    check("mandatory_rules_due_check", sql`${table.dueInDays} between 1 and 365`),
+    check("mandatory_rules_reminder_check", sql`${table.reminderDaysBefore} between 0 and 60`),
+    check("mandatory_rules_escalate_check", sql`${table.escalateAfterDays} between 1 and 60`),
+  ],
+);
+
+/**
+ * Welche Erinnerung zu einer Zuweisung schon verschickt wurde (Erinnerung vor der Frist, „überfällig“ an die Person,
+ * Eskalation an Mentor und Firmen-Admin). Je Zuweisung und Art höchstens einmal; so ist der tägliche Lauf wiederholbar.
+ * Enthält nie Inhalte, nur Art und Zeitpunkt.
+ */
+export const assignmentNotices = pgTable(
+  "assignment_notices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    assignmentId: uuid("assignment_id")
+      .notNull()
+      .references(() => companyAssignments.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<"reminder" | "overdue" | "escalation">().notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("assignment_notices_assignment_kind_unique").on(table.assignmentId, table.kind),
+    check("assignment_notices_kind_check", sql`${table.kind} in ('reminder', 'overdue', 'escalation')`),
+  ],
+);
+
+/** Abteilung einer Firma (z. B. „Operations“). Gehört der Firma; Mitglieder ordnet der Firmen-Admin zu. */
+export const departments = pgTable(
+  "departments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("departments_org_name_unique").on(table.organizationId, table.name)],
+);
+
+/** Auf welche Abteilungen eine Pflichtregel eingeschränkt ist (nur wirksam, wenn all_departments = false). */
+export const mandatoryRuleDepartments = pgTable(
+  "mandatory_rule_departments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ruleId: uuid("rule_id")
+      .notNull()
+      .references(() => mandatoryRules.id, { onDelete: "cascade" }),
+    departmentId: uuid("department_id")
+      .notNull()
+      .references(() => departments.id, { onDelete: "cascade" }),
+  },
+  (table) => [unique("mandatory_rule_departments_unique").on(table.ruleId, table.departmentId)],
 );

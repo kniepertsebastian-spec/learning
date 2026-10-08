@@ -37,6 +37,7 @@ export interface OfflineSection {
     content: Localized<string>;
     keyTakeaways: Localized<string[]> | null;
     examFocusPoints: Localized<string[]> | null;
+    cheatSheet: Localized<string> | null;
   };
 }
 
@@ -316,6 +317,7 @@ export async function getOfflinePackage(
         content: lesson.content,
         keyTakeaways: lesson.keyTakeaways ?? null,
         examFocusPoints: lesson.examFocusPoints ?? null,
+        cheatSheet: lesson.cheatSheet ?? null,
       },
     });
     readySectionsByObjectiveId.set(s.objectiveId, list);

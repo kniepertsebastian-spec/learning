@@ -11,6 +11,13 @@ describe("RichText (Fragen, Antworten, Erklärungen)", () => {
     expect(out).toContain("%LINK-3-UPDOWN");
     expect(out).toMatch(/\n {2}(<span[^>]*>)?Oct/); // Einrückung bleibt erhalten
   });
+  it("Tabellen (Merkzettel: System, Server) werden als Tabelle mit Rahmen gezeigt, nicht als Textbrei", () => {
+    const out = html("| System | Server |\n|---|---|\n| Web | web01 |\n| Backup | backup01 |");
+    expect(out).toContain("<table");
+    expect(out).toContain("overflow-x-auto");
+    expect(out).toMatch(/<th[^>]*border[^>]*>System<\/th>/);
+    expect(out).toMatch(/<td[^>]*border[^>]*>backup01<\/td>/);
+  });
   it("einzelne Befehle in Backticks als Code", () => {
     expect(html("Welcher Befehl? `ansible-playbook -i hosts site.yml --check`")).toContain("<code");
   });

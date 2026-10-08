@@ -288,6 +288,27 @@
       "when": 1791345201833,
       "tag": "0040_document_images",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791398540428,
+      "tag": "0041_mandatory_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791407317877,
+      "tag": "0042_departments_repeat",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791440311716,
+      "tag": "0043_lesson_cheat_sheet",
+      "breakpoints": true
     }
   ]
 }
