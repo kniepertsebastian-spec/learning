@@ -1,10 +1,11 @@
-import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, ne, notInArray, sql } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
 import {
   assignmentNotices,
   certifications,
   companyAssignments,
+  companyCourseEntitlements,
   departments,
   mandatoryRuleDepartments,
   mandatoryRules,
@@ -17,6 +18,7 @@ import { appUrl, getMailConfig } from "@/lib/server/mail/config";
 import { sendMail } from "@/lib/server/mail/mailer";
 import { deadlineReminderMessage, overdueDigestMessage, overdueMessage, repeatDueMessage } from "@/lib/server/mail/templates";
 import { listAssignableLearningPaths } from "./assignments";
+import { AlreadyReleasedError, createCourseRequest, DuplicateRequestError } from "./course-requests";
 
 /**
  * Pflichtschulungen: eine Regel macht einen Lernpfad für Rollen der Firma verpflichtend, mit Frist (Tage ab
@@ -119,7 +121,17 @@ export async function createMandatoryRule(input: {
   if (repeat !== null && input.confirmRepeatReset !== true) throw new RepeatNotConfirmedError();
   const departmentIds = [...new Set(input.departmentIds ?? [])];
   const paths = await listAssignableLearningPaths(input.organizationId);
-  if (!paths.some((p) => p.id === input.certificationId)) throw new UnknownCourseError();
+  // Ein Kurs aus unserem Katalog, der für die Firma noch nicht freigeschaltet ist: die Regel wartet auf die Freischaltung.
+  let pendingRelease = false;
+  if (!paths.some((p) => p.id === input.certificationId)) {
+    const [catalogCourse] = await getDb()
+      .select({ id: certifications.id })
+      .from(certifications)
+      .where(and(eq(certifications.id, input.certificationId), eq(certifications.kind, "general"), eq(certifications.catalogStatus, "approved")))
+      .limit(1);
+    if (!catalogCourse) throw new UnknownCourseError();
+    pendingRelease = true;
+  }
   if (departmentIds.length > 0) {
     const own = await getDb().select({ id: departments.id }).from(departments).where(and(eq(departments.organizationId, input.organizationId), inArray(departments.id, departmentIds)));
     if (own.length !== departmentIds.length) throw new UnknownDepartmentError();
@@ -134,7 +146,7 @@ export async function createMandatoryRule(input: {
         .values({
           organizationId: input.organizationId, certificationId: input.certificationId, roles, dueInDays: input.dueInDays,
           reminderDaysBefore: reminder, escalateAfterDays: escalate, repeatEveryMonths: repeat, applyOnChange: input.applyOnChange ?? true,
-          allDepartments, createdByUserId: input.userId,
+          allDepartments, pendingRelease, createdByUserId: input.userId,
         })
         .returning({ id: mandatoryRules.id });
       if (!allDepartments) await tx.insert(mandatoryRuleDepartments).values(departmentIds.map((departmentId) => ({ ruleId: row.id, departmentId })));
@@ -143,6 +155,20 @@ export async function createMandatoryRule(input: {
   } catch (error) {
     if (isUniqueViolation(error)) throw new RuleExistsError();
     throw error;
+  }
+  if (pendingRelease) {
+    // Freischaltung anfragen (eine schon offene Anfrage genügt); die Regel wirkt, sobald wir freigeben.
+    await createCourseRequest({ organizationId: input.organizationId, requestedByUserId: input.userId, certificationId: input.certificationId }).catch((error) => {
+      if (!(error instanceof DuplicateRequestError) && !(error instanceof AlreadyReleasedError)) throw error;
+    });
+    await recordAuditEvent({
+      actorUserId: input.userId,
+      action: "mandatory_rule.created",
+      targetType: "mandatory_rule",
+      targetId: rule.id,
+      metadata: { organizationId: input.organizationId, assigned: 0, pendingRelease: true },
+    }).catch(logAuditFailure);
+    return { id: rule.id, assigned: 0 };
   }
   const assigned = await applyRule({ id: rule.id, organizationId: input.organizationId, certificationId: input.certificationId, roles, dueInDays: input.dueInDays, allDepartments }, input.userId, input.now ?? new Date());
   await recordAuditEvent({
@@ -153,6 +179,49 @@ export async function createMandatoryRule(input: {
     metadata: { organizationId: input.organizationId, assigned: assigned.length, repeatEveryMonths: repeat },
   }).catch(logAuditFailure);
   return { id: rule.id, assigned: assigned.length };
+}
+
+/** Kurse aus unserem Katalog, die für die Firma noch nicht freigeschaltet sind: auch sie lassen sich zur Pflicht machen (die Regel wartet dann auf die Freischaltung). */
+export async function listCatalogCoursesForRules(organizationId: string): Promise<{ id: string; name: string }[]> {
+  const db = getDb();
+  const entitled = await db.select({ id: companyCourseEntitlements.certificationId }).from(companyCourseEntitlements).where(eq(companyCourseEntitlements.organizationId, organizationId));
+  return db
+    .select({ id: certifications.id, name: certifications.name })
+    .from(certifications)
+    .where(and(eq(certifications.kind, "general"), eq(certifications.catalogStatus, "approved"), entitled.length > 0 ? notInArray(certifications.id, entitled.map((e) => e.id)) : undefined))
+    .orderBy(asc(certifications.name));
+}
+
+/**
+ * Der Kurs ist für die Firma freigeschaltet: wartende Regeln dafür werden aktiv und weisen den passenden Mitgliedern zu.
+ * Ohne Angabe eines Kurses werden alle wartenden Regeln der Firma geprüft, deren Kurs inzwischen freigeschaltet ist
+ * (Sicherheitsnetz im täglichen Lauf). Gibt die Zahl neu zugewiesener Personen zurück.
+ */
+export async function activatePendingRules(organizationId: string, certificationId?: string, now: Date = new Date()): Promise<number> {
+  const db = getDb();
+  const pending = await db
+    .select()
+    .from(mandatoryRules)
+    .where(and(eq(mandatoryRules.organizationId, organizationId), eq(mandatoryRules.pendingRelease, true), ...(certificationId ? [eq(mandatoryRules.certificationId, certificationId)] : [])));
+  if (pending.length === 0) return 0;
+  const assignable = new Set((await listAssignableLearningPaths(organizationId)).map((p) => p.id));
+  let total = 0;
+  for (const rule of pending) {
+    if (!assignable.has(rule.certificationId)) continue;
+    // Nur wer die Regel wirklich auf „aktiv“ setzt, weist zu (zwei gleichzeitige Freigaben weisen nicht doppelt zu).
+    const [claimed] = await db.update(mandatoryRules).set({ pendingRelease: false }).where(and(eq(mandatoryRules.id, rule.id), eq(mandatoryRules.pendingRelease, true))).returning({ id: mandatoryRules.id });
+    if (!claimed) continue;
+    const assigned = await applyRule(rule, rule.createdByUserId, now);
+    total += assigned.length;
+    await recordAuditEvent({
+      actorUserId: rule.createdByUserId,
+      action: "mandatory_rule.activated",
+      targetType: "mandatory_rule",
+      targetId: rule.id,
+      metadata: { organizationId, assigned: assigned.length },
+    }).catch(logAuditFailure);
+  }
+  return total;
 }
 
 /** Löscht die Regel der eigenen Firma. Bestehende Zuweisungen bleiben (sie sind dann normale Zuweisungen). */
@@ -177,6 +246,8 @@ export type MandatoryRuleView = {
   applyOnChange: boolean;
   /** Namen der Abteilungen, auf die die Regel eingeschränkt ist; leer = alle. */
   departments: string[];
+  /** Katalogkurs, der noch freigeschaltet werden muss: die Regel wartet und weist noch niemandem zu. */
+  pendingRelease: boolean;
   assigned: number;
   completed: number;
   overdue: number;
@@ -195,6 +266,7 @@ export async function listMandatoryRules(organizationId: string, now: Date = new
       repeatEveryMonths: mandatoryRules.repeatEveryMonths,
       applyOnChange: mandatoryRules.applyOnChange,
       allDepartments: mandatoryRules.allDepartments,
+      pendingRelease: mandatoryRules.pendingRelease,
       assigned: sql<number>`count(${companyAssignments.id})::int`,
       completed: sql<number>`count(*) filter (where ${companyAssignments.status} = 'completed')::int`,
       overdue: sql<number>`count(*) filter (where ${companyAssignments.status} <> 'completed' and ${companyAssignments.dueAt} < ${now.toISOString()}::timestamptz)::int`,
@@ -226,7 +298,7 @@ export async function applyRulesForMember(organizationId: string, userId: string
   const rules = await getDb()
     .select()
     .from(mandatoryRules)
-    .where(and(eq(mandatoryRules.organizationId, organizationId), ...(reason === "change" ? [eq(mandatoryRules.applyOnChange, true)] : [])));
+    .where(and(eq(mandatoryRules.organizationId, organizationId), eq(mandatoryRules.pendingRelease, false), ...(reason === "change" ? [eq(mandatoryRules.applyOnChange, true)] : [])));
   let total = 0;
   for (const rule of rules) total += (await applyRule(rule, null, now, userId)).length;
   return total;
@@ -299,6 +371,12 @@ export type MaintenanceResult = { repeats: number; reminders: number; overdue: n
  */
 export async function runMandatoryMaintenance(now: Date = new Date(), options: { organizationIds?: string[] } = {}): Promise<MaintenanceResult> {
   const result: MaintenanceResult = { repeats: 0, reminders: 0, overdue: 0, escalations: 0, skippedNoMail: false };
+  // Sicherheitsnetz: Regeln, die auf eine Freischaltung warten, die inzwischen erfolgt ist (z. B. direkt in der Datenbank eingetragen).
+  const waiting = await getDb()
+    .selectDistinct({ organizationId: mandatoryRules.organizationId })
+    .from(mandatoryRules)
+    .where(and(eq(mandatoryRules.pendingRelease, true), ...(options.organizationIds ? [inArray(mandatoryRules.organizationId, options.organizationIds)] : [])));
+  for (const { organizationId } of waiting) await activatePendingRules(organizationId, undefined, now);
   // Neue Runden beginnen unabhängig vom Mailversand (der Status gehört zur Zuweisung, die Mail ist nur ein Hinweis).
   const repeats = await startDueRepeats(now, options.organizationIds);
   result.repeats = repeats.length;

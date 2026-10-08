@@ -1821,6 +1821,8 @@ export const mandatoryRules = pgTable(
     applyOnChange: boolean("apply_on_change").notNull().default(true),
     /** true = alle Abteilungen (auch Personen ohne); false = nur die in mandatory_rule_departments. */
     allDepartments: boolean("all_departments").notNull().default(true),
+    /** true = der Kurs ist ein Kurs aus unserem Katalog, der für die Firma noch nicht freigeschaltet ist; die Regel wirkt erst nach der Freischaltung. */
+    pendingRelease: boolean("pending_release").notNull().default(false),
     createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

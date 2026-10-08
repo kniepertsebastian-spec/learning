@@ -73,7 +73,7 @@ run("Pflichtschulungen (echte DB + SMTP-Testserver)", () => {
     await member(orgA, "doneA", "learner");
     await member(orgB, "adminB", "company_admin");
     await member(orgB, "learnerB", "learner");
-    for (const [key, extra] of [["course", {}], ["unreleased", {}], ["internB", { kind: "internal" as const, ownerOrganizationId: orgB }]] as const) {
+    for (const [key, extra] of [["course", {}], ["unreleased", { catalogStatus: "draft" as const }], ["internB", { kind: "internal" as const, ownerOrganizationId: orgB }]] as const) {
       const [c] = await d.insert(certifications).values({ slug: `pf-${key}-${tag}`, name: `PF ${key} ${tag}`, provider: "T", examName: "T", examVersion: "1", ...extra }).returning({ id: certifications.id });
       certIds[key] = c.id;
     }
@@ -102,7 +102,7 @@ run("Pflichtschulungen (echte DB + SMTP-Testserver)", () => {
     expect(await getDb().select().from(mandatoryRules).where(eq(mandatoryRules.organizationId, orgA))).toHaveLength(0);
   });
 
-  it("Prüfung: nur zuweisbare Lernpfade, sinnvolle Werte, höchstens eine Regel je Lernpfad", async () => {
+  it("Prüfung: nur zuweisbare Lernpfade und freigegebene Katalogkurse (Entwurf: nicht), sinnvolle Werte, höchstens eine Regel je Lernpfad", async () => {
     expect((await create("adminA", { certificationId: certIds.unreleased })).status).toBe(404);
     expect((await create("adminA", { certificationId: certIds.internB })).status).toBe(404);
     for (const bad of [{ dueInDays: 0 }, { dueInDays: 366 }, { reminderDaysBefore: 61 }, { escalateAfterDays: 0 }, { roles: [] }, { roles: ["hacker"] }]) {

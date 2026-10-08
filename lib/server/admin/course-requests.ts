@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
+import { activatePendingRules } from "@/lib/server/company/mandatory";
 import { getDb } from "@/lib/server/db/client";
 import {
   certifications,
@@ -203,6 +204,8 @@ export async function releaseRequest(input: {
     metadata: { organizationId: result.organizationId, certificationId: result.certificationId },
   }).catch(logAuditFailure);
   void notifyCompanyRequestStatus(input.requestId);
+  // Wartet bei der Firma eine Pflichtregel auf diesen Kurs, wird sie jetzt aktiv.
+  await activatePendingRules(result.organizationId, result.certificationId).catch((error) => console.error("Pflichtregel aktivieren fehlgeschlagen:", error));
   return result;
 }
 
