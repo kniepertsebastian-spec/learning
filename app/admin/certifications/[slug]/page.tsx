@@ -10,6 +10,7 @@ import { getServerLocale } from "@/lib/server/locale";
 import { ContentValidationService } from "@/lib/server/admin/validation";
 import { AnalyticsService } from "@/lib/server/analytics/service";
 import { ContentGenerationControl } from "@/components/ContentGenerationControl";
+import { DeleteCertification } from "@/components/DeleteCertification";
 import { ContentReportQueue } from "@/components/ContentReportQueue";
 import {
   estimateGenerationWork,
@@ -387,6 +388,7 @@ export default async function AdminCertificationPage({
         </div>
 
         <ContentReportQueue certificationId={cert.id} locale={locale} />
+        {cert.kind === "general" && <DeleteCertification certificationId={cert.id} slug={cert.slug} name={cert.name} locale={locale} />}
       </div>
     </div>
   );
