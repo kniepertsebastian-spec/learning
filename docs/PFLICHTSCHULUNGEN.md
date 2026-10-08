@@ -56,6 +56,12 @@ Als abgeschlossen zählt in der neuen Runde nur, was nach dem Beginn der Runde n
 Der Fortschritt aus früheren Runden bleibt gespeichert, zählt aber nicht mehr. Die neue Runde beginnt im täglichen Lauf
 (auch ohne Mailversand); die Person bekommt dann „Wiederholung fällig“.
 
+## Kurse aus unserem Katalog
+
+Eine Pflicht lässt sich auch für einen freigegebenen Katalogkurs anlegen, den die Firma noch nicht nutzen darf (z. B. „Security
+Updates“). Die Regel steht dann auf „Wartet auf Freischaltung“, weist niemandem etwas zu und fragt die Freischaltung bei uns an.
+Sobald wir die Anfrage freigeben, wird die Regel aktiv und weist den passenden Mitgliedern zu (mit Frist ab dem Zeitpunkt der Freigabe).
+
 ## Bewusst nicht enthalten
 
 - Mehrere Abschlüsse als Historie: bewahrt wird nur der letzte Abschluss der vorherigen Runde.
