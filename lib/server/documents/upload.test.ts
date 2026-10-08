@@ -81,4 +81,23 @@ describe("Upload-Prüfung (ohne Datenbank)", () => {
     expect(cleanFilename("")).toBe("dokument");
     expect(cleanFilename("x".repeat(500)).length).toBe(200);
   });
+
+  it("nimmt Konfiguration und Skripte an (yml, yaml, py, sh, sql …), egal welchen MIME-Typ der Browser schickt", async () => {
+    const yaml = "- hosts: web\n  tasks:\n    - name: nginx\n      apt: name=nginx state=present\n";
+    for (const [filename, mimeType] of [
+      ["site.yml", "application/x-yaml"], ["compose.yaml", "text/yaml"], ["site.yml", ""], ["backup.py", "text/x-python"], ["deploy.sh", "application/x-sh"],
+      ["deploy.sh", "application/octet-stream"], ["q.sql", "application/sql"], ["conf.toml", "application/toml"], ["Run.PS1", "text/plain"],
+    ]) {
+      const r = await inspectUpload({ filename, mimeType, data: text(yaml) });
+      expect(r, `${filename} ${mimeType}`).toMatchObject({ ok: true, kind: "text", mimeType: "text/plain", pageCount: 1 });
+    }
+  });
+  it("Skripte: Binärdaten, falscher Typ und Zugangsdaten werden abgelehnt", async () => {
+    expect(await inspectUpload({ filename: "x.py", mimeType: "text/x-python", data: Buffer.from([0x70, 0x00, 0x71, 0x72]) })).toMatchObject({ code: "invalid_content" });
+    expect(await inspectUpload({ filename: "x.py", mimeType: "application/pdf", data: text("print('hallo')") })).toMatchObject({ code: "unsupported_type" });
+    expect(await inspectUpload({ filename: "x.py", mimeType: "image/png", data: text("print('hallo')") })).toMatchObject({ code: "unsupported_type" });
+    expect(await inspectUpload({ filename: "x.exe", mimeType: "application/octet-stream", data: text("MZ") })).toMatchObject({ code: "unsupported_type" });
+    const script = `import os\nKEY = """${SECRET_LINE}\nabc\n-----END PRIVATE KEY-----"""\n`;
+    expect(await inspectUpload({ filename: "deploy.py", mimeType: "text/x-python", data: text(script) })).toMatchObject({ code: "secrets_found" });
+  });
 });

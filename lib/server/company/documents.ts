@@ -64,7 +64,7 @@ export async function listCompanyDocuments(organizationId: string): Promise<Comp
     })
     .from(companyDocuments)
     .leftJoin(users, eq(users.id, companyDocuments.uploadedByUserId))
-    .where(eq(companyDocuments.organizationId, organizationId))
+    .where(and(eq(companyDocuments.organizationId, organizationId), eq(companyDocuments.temporary, false)))
     .orderBy(desc(companyDocuments.createdAt), asc(companyDocuments.title))
     .then((rows) => rows.map(({ suppressed, ...rest }) => ({ ...rest, suppressedFindings: suppressed?.length ?? 0 })));
 }
@@ -82,6 +82,8 @@ export async function uploadCompanyDocument(input: {
   /** Fund-Arten, die als Fehlalarm bestätigt werden (nur durch Firmen-Admins, nur Arten aus SUPPRESSIBLE_KINDS). */
   suppressKinds?: SecretKind[];
   canSuppress?: boolean;
+  /** Nur für einen Kursauftrag (nicht unter „Dokumente“, keine Prüfung auf doppelte Dateien); der Aufrufer löscht es danach. */
+  temporary?: boolean;
 }): Promise<UploadResult> {
   const suppressKinds = [...new Set((input.suppressKinds ?? []).filter((k) => SUPPRESSIBLE_KINDS.includes(k)))];
   if (suppressKinds.length > 0 && !input.canSuppress) throw new SuppressNotAllowedError();
@@ -124,6 +126,7 @@ export async function uploadCompanyDocument(input: {
           checksum,
           pageCount: inspection.pageCount,
           excludeFromAi: input.excludeFromAi,
+          temporary: input.temporary ?? false,
           ...(inspection.suppressed.length > 0
             ? { scannerSuppressed: inspection.suppressed, scannerSuppressedByUserId: input.uploadedByUserId, scannerSuppressedAt: new Date() }
             : {}),
@@ -132,6 +135,7 @@ export async function uploadCompanyDocument(input: {
       await tx.insert(companyDocumentFiles).values({ documentId: row.id, data: input.file.data });
       return row;
     });
+    if (input.temporary) return { ok: true, document, alreadyExisted: false };
     await recordAuditEvent({
       actorUserId: input.uploadedByUserId,
       action: "document.uploaded",
@@ -160,7 +164,7 @@ export async function uploadCompanyDocument(input: {
     const [existing] = await db
       .select({ id: companyDocuments.id, title: companyDocuments.title })
       .from(companyDocuments)
-      .where(and(eq(companyDocuments.organizationId, input.organizationId), eq(companyDocuments.checksum, checksum)))
+      .where(and(eq(companyDocuments.organizationId, input.organizationId), eq(companyDocuments.checksum, checksum), eq(companyDocuments.temporary, false)))
       .limit(1);
     if (!existing) throw error;
     return { ok: true, document: existing, alreadyExisted: true };

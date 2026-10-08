@@ -122,8 +122,9 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   const waitingForReview = internalCourses.filter((c) => c.catalogStatus !== "approved").length + internalJobs.filter((j) => j.active).length;
   const needsAttention = practice.pending.length + modules.filter((m) => m.state === "expired").length;
   const tabs: CompanyTab[] = [
-    { id: "status", label: de ? "Zuweisungen" : "Assignments", badge: overdue, badgeTitle: de ? "überfällig" : "overdue" },
-    { id: "paths", label: de ? "Lernpfade" : "Learning paths", badge: waitingForReview, badgeTitle: de ? "Entwürfe oder Aufträge in Arbeit" : "drafts or jobs in progress" },
+    { id: "status", label: de ? "Ergebnisse" : "Results", badge: overdue, badgeTitle: de ? "überfällig" : "overdue" },
+    ...(canAssign ? [{ id: "mandatory", label: de ? "Pflichtschulung" : "Mandatory training", badge: mandatoryRules.reduce((n, r) => n + r.overdue, 0), badgeTitle: de ? "überfällig" : "overdue" }] : []),
+    { id: "paths", label: de ? "Interne Learnings" : "Internal learning", badge: waitingForReview, badgeTitle: de ? "Entwürfe oder Aufträge in Arbeit" : "drafts or jobs in progress" },
     { id: "work", label: de ? "Aufgaben & Module" : "Tasks & modules", badge: needsAttention, badgeTitle: de ? "wartet auf Bestätigung oder abgelaufen" : "awaiting confirmation or expired" },
     ...(canAssign ? [{ id: "onboarding", label: "Onboarding" }] : []),
     { id: "documents", label: de ? "Dokumente" : "Documents" },
@@ -144,11 +145,10 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
 
       <CompanyTabs tabs={tabs} active={active} ariaLabel={de ? "Bereiche des Firmenbereichs" : "Company area sections"} />
 
-      {active === "status" && (
-        <>
-          <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />
-          {canAssign && <MandatoryRulesPanel rules={mandatoryRules} paths={paths.map((p) => ({ id: p.id, name: p.name }))} departments={departmentList.map((d) => ({ id: d.id, name: d.name }))} canEdit={isAdmin} locale={locale} />}
-        </>
+      {active === "status" && <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />}
+
+      {active === "mandatory" && canAssign && (
+        <MandatoryRulesPanel rules={mandatoryRules} paths={paths.map((p) => ({ id: p.id, name: p.name }))} departments={departmentList.map((d) => ({ id: d.id, name: d.name }))} canEdit={isAdmin} locale={locale} />
       )}
 
       {active === "paths" && (

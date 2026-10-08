@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { FileDropZone } from "@/components/FileDropZone";
 import { CheatSheetBackfill, type CheatSheetStatusView } from "@/components/CheatSheetBackfill";
 
 type Job = { id: string; title: string; status: string; message: string | null; errorMessage: string | null; active: boolean; createdAt: string };
@@ -32,7 +33,9 @@ export function InternalCoursesPanel({
   const de = locale === "de";
   const [jobs, setJobs] = useState(initialJobs);
   const [courses, setCourses] = useState(initialCourses);
-  const [documentId, setDocumentId] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [storedIds, setStoredIds] = useState<string[]>([]);
+  const [fileProblems, setFileProblems] = useState<{ filename: string; message: string; findings?: { kind: string; label: string; pageNumber: number; line: number }[] }[]>([]);
   const [title, setTitle] = useState("");
   const [includeSectionQuizzes, setIncludeSectionQuizzes] = useState(true);
   const [includeFinalExam, setIncludeFinalExam] = useState(true);
@@ -76,7 +79,35 @@ export function InternalCoursesPanel({
 
   async function start(e: React.FormEvent) {
     e.preventDefault();
-    if (await call("/api/internal-courses", "POST", { documentId, title: title.trim(), language: locale, includeSectionQuizzes, includeFinalExam })) setTitle("");
+    setError(null);
+    setFileProblems([]);
+    setBusy(true);
+    const form = new FormData();
+    form.set("title", title.trim());
+    form.set("language", locale);
+    form.set("includeSectionQuizzes", String(includeSectionQuizzes));
+    form.set("includeFinalExam", String(includeFinalExam));
+    for (const f of files) form.append("files", f);
+    for (const id of storedIds) form.append("documentIds", id);
+    let res: Response;
+    try {
+      res = await fetch("/api/internal-courses", { method: "POST", body: form });
+    } catch {
+      setBusy(false);
+      setError(de ? "Das Hochladen hat nicht geklappt. Bitte erneut versuchen." : "Upload failed. Please try again.");
+      return;
+    }
+    setBusy(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setError(data?.error ?? (de ? "Das hat nicht geklappt." : "That did not work."));
+      if (Array.isArray(data?.files)) setFileProblems(data.files);
+      return;
+    }
+    setTitle("");
+    setFiles([]);
+    setStoredIds([]);
+    await refresh();
   }
 
   const statusLabel = (s: Course["catalogStatus"]) =>
@@ -84,11 +115,11 @@ export function InternalCoursesPanel({
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="internal-courses">
-      <h2 className="text-lg font-medium">{de ? "Interne Lernpfade" : "Internal learning paths"}</h2>
+      <h2 className="text-lg font-medium">{de ? "Interne Learnings" : "Internal learning"}</h2>
       <p className="mt-1 text-sm text-foreground/70">
         {de
-          ? "Aus einem Firmendokument erstellt die KI einen Entwurf. Ihr prüft ihn und gebt ihn frei; erst dann sehen ihn Lernende und er lässt sich zuweisen. Wir sehen weder Dokument noch Lernpfad."
-          : "The AI drafts a learning path from a company document. You review and approve it; only then can learners see and be assigned to it. We see neither the document nor the path."}
+          ? "Aus euren Dateien (eine oder viele) erstellt die KI einen Kurs-Entwurf. Ihr prüft ihn und gebt ihn frei; erst dann sehen ihn Lernende und er lässt sich zuweisen. Wir sehen weder Dateien noch Kurs."
+          : "The AI drafts a course from your files (one or many). You review and approve it; only then can learners see and be assigned to it. We see neither the files nor the course."}
       </p>
 
       {error && <p role="alert" data-testid="internal-error" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p>}
@@ -100,24 +131,49 @@ export function InternalCoursesPanel({
       )}
 
       <form onSubmit={start} className="mt-4 flex flex-col gap-3">
+        <FileDropZone files={files} onChange={setFiles} locale={locale} maxFiles={50} maxBytes={10 * 1024 * 1024} disabled={busy} testId="internal-drop" />
+        <p className="text-xs text-foreground/70" data-testid="internal-files-hint">
+          {de
+            ? "Bis zu 50 Dateien je Kurs (z. B. PDFs, Texte, Konfiguration wie .yml, Skripte wie .py). Die Dateien liegen nur für die Erstellung bereit und werden danach gelöscht."
+            : "Up to 50 files per course (e.g. PDFs, text, config such as .yml, scripts such as .py). Files are kept only for the generation and deleted afterwards."}
+        </p>
+        {usable.length > 0 && (
+          <details className="text-sm" data-testid="internal-stored">
+            <summary className="cursor-pointer text-foreground/80">
+              {de ? `Gespeicherte Dokumente hinzufügen (${storedIds.length} gewählt)` : `Add stored documents (${storedIds.length} selected)`}
+            </summary>
+            <ul className="mt-2 flex flex-col gap-1">
+              {usable.map((d) => (
+                <li key={d.id}>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={storedIds.includes(d.id)} onChange={(e) => setStoredIds(e.target.checked ? [...storedIds, d.id] : storedIds.filter((x) => x !== d.id))} />
+                    {d.title}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+        {fileProblems.length > 0 && (
+          <ul className="flex flex-col gap-1 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500" data-testid="internal-file-problems">
+            {fileProblems.map((p, i) => (
+              <li key={i}>
+                <span className="font-medium">{p.filename}</span>: {p.message}
+                {p.findings?.map((f, k) => (
+                  <span key={k} className="block pl-3 text-xs">{f.label} ({de ? "Seite" : "page"} {f.pageNumber}, {de ? "Zeile" : "line"} {f.line})</span>
+                ))}
+              </li>
+            ))}
+            <li className="text-xs">
+              {de
+                ? "Stellen schwärzen und erneut wählen. Ein Firmen-Admin kann einen Fehlalarm unter „Dokumente“ bestätigen; das Dokument lässt sich dann hier unter „Gespeicherte Dokumente“ wählen."
+                : "Redact the lines and choose again. A company admin can confirm a false alarm under “Documents”; the document can then be picked here under “Stored documents”."}
+            </li>
+          </ul>
+        )}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <label className="flex-1 text-sm font-medium">
-          {de ? "Dokument" : "Document"}
-          <select
-            value={documentId}
-            onChange={(e) => setDocumentId(e.target.value)}
-            required
-            data-testid="internal-document"
-            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          >
-            <option value="">{usable.length ? (de ? "Bitte wählen …" : "Choose …") : de ? "Kein Dokument für die KI verfügbar" : "No document available for AI"}</option>
-            {usable.map((d) => (
-              <option key={d.id} value={d.id}>{d.title}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex-1 text-sm font-medium">
-          {de ? "Titel des Lernpfads" : "Learning path title"}
+          {de ? "Titel des Kurses" : "Course title"}
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -127,7 +183,7 @@ export function InternalCoursesPanel({
             className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
         </label>
-        <button type="submit" disabled={busy || !aiConfigured || !documentId} data-testid="internal-start" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+        <button type="submit" disabled={busy || !aiConfigured || files.length + storedIds.length === 0} data-testid="internal-start" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
           {de ? "Entwurf erstellen" : "Create draft"}
         </button>
         </div>

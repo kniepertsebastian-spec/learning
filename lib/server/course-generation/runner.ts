@@ -1,3 +1,4 @@
+import { cleanupJobDocumentsIfDone } from "@/lib/server/internal-courses/temporary-documents";
 import { executeCourseGenerationJob, publishPreparedCourseGenerationPackage } from "./worker";
 
 /**
@@ -28,6 +29,9 @@ export function startCourseGenerationJob(jobId: string): void {
       // try/catch-Klammer dort (z.B. beim initialen getCourseGenerationJob).
       console.error(`Course generation job ${jobId} failed outside its own error handling:`, error);
     })
+    // Temporäre Dateien eines Kurses der Firma verschwinden nach Erfolg oder Abbruch (nach einem Fehler bleiben sie für den nächsten Versuch).
+    .then(() => cleanupJobDocumentsIfDone(jobId))
+    .catch((error) => console.error(`Aufräumen der temporären Dateien (${jobId}) fehlgeschlagen:`, error))
     .finally(() => activeJobs.delete(jobId));
   activeJobs.set(jobId, processPromise);
 }

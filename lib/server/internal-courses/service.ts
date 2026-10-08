@@ -6,10 +6,12 @@ import { getDb } from "@/lib/server/db/client";
 import {
   certifications,
   companyDocuments,
+  courseGenerationJobDocuments,
   courseGenerationJobs,
   TERMINAL_COURSE_GENERATION_JOB_STATUSES,
 } from "@/lib/server/db/schema";
 import { AiAccessUnavailableError, clientForOrganization } from "./ai-client";
+import { purgeOrphanTemporaryDocuments } from "./temporary-documents";
 
 /**
  * Interne Lernpfade einer Firma: Firmendokument → KI-Entwurf → Prüfung durch Mentor oder Firmen-Admin der Firma →
@@ -22,6 +24,9 @@ export const INTERNAL_INITIAL_COST_LIMIT_USD = 1;
 export const INTERNAL_ABSOLUTE_COST_LIMIT_USD = 3;
 /** Gleichzeitig laufende Aufträge je Firma. */
 export const MAX_ACTIVE_JOBS_PER_ORGANIZATION = 2;
+
+/** Höchstzahl Dateien je Kurs (z. B. eine ganze Umgebung mit 30 Konfigurations- und Skriptdateien). */
+export const MAX_FILES_PER_COURSE = 50;
 
 export class DocumentUnavailableError extends Error {}
 export class TooManyActiveJobsError extends Error {}
@@ -39,7 +44,9 @@ export function cleanCourseTitle(title: string): string {
 export async function startInternalCourse(input: {
   organizationId: string;
   userId: string;
-  documentId: string;
+  /** Eine oder mehrere Dateien (temporär hochgeladen oder gespeicherte Dokumente). */
+  documentId?: string;
+  documentIds?: string[];
   title: string;
   language: "de" | "en";
   /** Mit Lektionstests / Abschlussprüfung (Standard ja). Beides aus: reiner Durchlauf der Lektionen, keine KI-Fragen. */
@@ -49,13 +56,16 @@ export async function startInternalCourse(input: {
   startWorker?: boolean;
 }): Promise<{ jobId: string }> {
   const title = cleanCourseTitle(input.title);
-  const [doc] = await getDb()
+  await purgeOrphanTemporaryDocuments().catch((e) => console.error("Aufräumen temporärer Dateien fehlgeschlagen:", e));
+  const documentIds = [...new Set(input.documentIds ?? (input.documentId ? [input.documentId] : []))];
+  if (documentIds.length === 0) throw new DocumentUnavailableError("Bitte mindestens eine Datei angeben.");
+  if (documentIds.length > MAX_FILES_PER_COURSE) throw new DocumentUnavailableError(`Höchstens ${MAX_FILES_PER_COURSE} Dateien je Kurs.`);
+  const docs = await getDb()
     .select({ id: companyDocuments.id, excludeFromAi: companyDocuments.excludeFromAi })
     .from(companyDocuments)
-    .where(and(eq(companyDocuments.id, input.documentId), eq(companyDocuments.organizationId, input.organizationId)))
-    .limit(1);
-  if (!doc) throw new DocumentUnavailableError("Das Dokument gibt es nicht.");
-  if (doc.excludeFromAi) throw new DocumentUnavailableError("Dieses Dokument ist von der KI-Verarbeitung ausgeschlossen.");
+    .where(and(inArray(companyDocuments.id, documentIds), eq(companyDocuments.organizationId, input.organizationId)));
+  if (docs.length !== documentIds.length) throw new DocumentUnavailableError("Eine der Dateien gibt es nicht.");
+  if (docs.some((d) => d.excludeFromAi)) throw new DocumentUnavailableError("Eine der Dateien ist von der KI-Verarbeitung ausgeschlossen.");
 
   // Früh und verständlich scheitern, wenn die Firma keinen nutzbaren KI-Zugang hat (der Worker prüft es erneut).
   await clientForOrganization(input.organizationId);
@@ -74,7 +84,7 @@ export async function startInternalCourse(input: {
   const job = await createCourseGenerationJob({
     requestedByUserId: input.userId,
     organizationId: input.organizationId,
-    documentId: input.documentId,
+    documentId: documentIds[0],
     includeSectionQuizzes: input.includeSectionQuizzes ?? true,
     includeFinalExam: input.includeFinalExam ?? true,
     courseTitle: title,
@@ -88,13 +98,14 @@ export async function startInternalCourse(input: {
     absoluteCostLimitUsd: INTERNAL_ABSOLUTE_COST_LIMIT_USD,
     blueprintProvider: "anthropic-sonnet",
   });
+  await getDb().insert(courseGenerationJobDocuments).values(documentIds.map((documentId, orderNum) => ({ jobId: job.id, documentId, orderNum })));
   await recordAuditEvent({
     actorUserId: input.userId,
     action: "internal_course.started",
     targetType: "organization",
     targetId: input.organizationId,
     // Nur IDs, nie Titel oder Inhalt des Dokuments.
-    metadata: { jobId: job.id, documentId: input.documentId },
+    metadata: { jobId: job.id, documentId: documentIds[0], fileCount: documentIds.length },
   }).catch(logAuditFailure);
   if (input.startWorker !== false) startCourseGenerationJob(job.id);
   return { jobId: job.id };

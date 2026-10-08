@@ -1404,12 +1404,34 @@ export const companyDocuments = pgTable(
     scannerSuppressed: jsonb("scanner_suppressed").$type<{ kind: string; pageNumber: number; line: number }[]>(),
     scannerSuppressedByUserId: uuid("scanner_suppressed_by_user_id").references(() => users.id, { onDelete: "set null" }),
     scannerSuppressedAt: timestamp("scanner_suppressed_at", { withTimezone: true }),
+    /**
+     * Nur für einen Kursauftrag hochgeladen (Drag and drop im Formular „Neuer interner Kurs“): erscheint nicht unter
+     * „Dokumente“, wird nach dem Auftrag gelöscht (siehe cleanupJobDocuments). Gleiche Dateien dürfen mehrfach
+     * vorkommen, die Eindeutigkeit je Firma gilt nur für gespeicherte Dokumente.
+     */
+    temporary: boolean("temporary").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    unique("company_documents_org_checksum_unique").on(table.organizationId, table.checksum),
+    uniqueIndex("company_documents_org_checksum_unique").on(table.organizationId, table.checksum).where(sql`${table.temporary} = false`),
     index("company_documents_org_idx").on(table.organizationId),
   ],
+);
+
+/** Welche Dokumente zu einem Kursauftrag gehören (ein Kurs kann aus vielen Dateien entstehen). Fällt mit Auftrag oder Dokument weg. */
+export const courseGenerationJobDocuments = pgTable(
+  "course_generation_job_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => courseGenerationJobs.id, { onDelete: "cascade" }),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => companyDocuments.id, { onDelete: "cascade" }),
+    orderNum: integer("order_num").notNull(),
+  },
+  (table) => [unique("course_generation_job_documents_unique").on(table.jobId, table.documentId)],
 );
 
 /** Dateiinhalt eines Firmendokuments (wird mit dem Dokument gelöscht und über pg_dump mitgesichert). */

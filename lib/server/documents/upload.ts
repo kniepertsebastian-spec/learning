@@ -1,3 +1,4 @@
+import { EXTRA_TEXT_EXTENSIONS } from "@/lib/documents/file-types";
 import { extractPdfPages, type ExtractedPage } from "./pdf-text";
 import { StructuredExportError, structuredKindOf, structuredPages, type StructuredKind } from "./structured";
 import { isSuppressible, scanForSecrets, type SecretFinding, type SecretKind } from "./secret-scanner";
@@ -22,6 +23,18 @@ const STRUCTURED_MIME: Record<StructuredKind, { stored: string; accepted: string
   xml: { stored: "application/xml", accepted: ["application/xml", "text/xml"] },
   html: { stored: "text/html", accepted: ["text/html"] },
 };
+
+/**
+ * Weitere Textdateien: Konfiguration, Playbooks und Skripte, wie sie in einer technischen Umgebung vorkommen (z. B. Ansible,
+ * Docker Compose, Shell- und Python-Skripte). Sie werden als reiner Text gelesen; maßgeblich sind Endung und Inhalt (UTF-8, keine
+ * Binärdaten, Secret-Scanner), weil Browser für diese Endungen sehr unterschiedliche MIME-Typen schicken.
+ */
+export { EXTRA_TEXT_EXTENSIONS };
+const EXTRA_TEXT = new Set(EXTRA_TEXT_EXTENSIONS);
+/** MIME-Typen, die für solche Textdateien vorkommen; alles mit text/ wird ebenfalls angenommen. */
+const isPlausibleTextMime = (mime: string) =>
+  mime === "" || mime === "application/octet-stream" || mime.startsWith("text/") || mime.startsWith("application/x-") ||
+  ["application/yaml", "application/toml", "application/sql", "application/javascript", "application/typescript", "application/powershell"].includes(mime);
 
 const PDF_MAGIC = Buffer.from("%PDF-", "ascii");
 
@@ -66,6 +79,10 @@ export async function inspectUpload(
     if (!["text/plain", "text/markdown", "text/x-markdown", "application/octet-stream", ""].includes(mime)) return unsupported();
     kind = "text";
     mimeType = ext === "md" ? "text/markdown" : "text/plain";
+  } else if (EXTRA_TEXT.has(ext)) {
+    if (!isPlausibleTextMime(mime)) return unsupported();
+    kind = "text";
+    mimeType = "text/plain";
   } else if (structuredKindOf(ext)) {
     structuredKind = structuredKindOf(ext);
     const expected = STRUCTURED_MIME[structuredKind!];
@@ -136,6 +153,6 @@ export async function inspectUpload(
   return { ok: true, kind, mimeType, pages, pageCount: pages.length, suppressed };
 
   function unsupported(): UploadRejection {
-    return { ok: false, code: "unsupported_type", message: "Erlaubt sind PDF (.pdf), Textdateien (.txt, .md) und Wiki-/Doku-Exporte (.json, .xml, .html), Typ und Endung müssen zusammenpassen." };
+    return { ok: false, code: "unsupported_type", message: "Erlaubt sind PDF (.pdf), Textdateien (.txt, .md), Konfiguration und Skripte (z. B. .yml, .yaml, .py, .sh, .sql) und Wiki-/Doku-Exporte (.json, .xml, .html). Typ und Endung müssen zusammenpassen." };
   }
 }
