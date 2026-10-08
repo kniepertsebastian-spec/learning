@@ -19,6 +19,9 @@ interface Job {
   absoluteCostLimitUsd: string;
   autoPublish: boolean;
   resultCertificationId: string | null;
+  courseTitle?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Objective {
@@ -30,11 +33,14 @@ interface Objective {
   inputTokens: number;
   outputTokens: number;
   costUsd: string | null;
+  attempts?: number;
+  validationErrorsJson?: string[];
 }
 
 const TERMINAL_STATUSES = new Set([
   "preflight_failed",
   "canary_failed",
+  "circuit_breaker_open",
   "package_ready",
   "published",
   "cost_limit_reached",
@@ -84,6 +90,27 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
       // transienter Polling-Fehler - nächster Tick versucht es erneut
     }
   }, [router]);
+
+  // Den letzten Auftrag wiederherstellen (nach Neuladen oder Seitenwechsel), sofern er nicht veröffentlicht ist:
+  // so bleibt sichtbar, wo es zuletzt stand, und die Generierung lässt sich neu starten.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/admin/course-generation", { cache: "no-store" });
+        if (!response.ok) return;
+        const { jobs } = (await response.json()) as { jobs: Job[] };
+        const latest = jobs[0];
+        if (!latest || latest.status === "published" || latest.status === "cancelled" || cancelled) return;
+        await loadJob(latest.id);
+      } catch {
+        // ohne Wiederherstellung bleibt das Formular
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadJob]);
 
   useEffect(() => {
     if (!job || !active) return;
@@ -388,6 +415,40 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
             </div>
           )}
 
+          {!active && job.status !== "published" && (
+            <div className="rounded-md border border-border p-3 text-xs" data-testid="last-state">
+              <p className="font-medium">{locale === "de" ? "Letzter Stand" : "Last state"}{job.courseTitle ? `: ${job.courseTitle}` : ""}</p>
+              <p className="mt-1 text-foreground/70">
+                {locale === "de" ? "Zuletzt in Phase" : "Last in phase"} „{PHASE_LABEL[job.phase]?.[locale] ?? job.phase}“
+                {job.updatedAt ? ` · ${new Date(job.updatedAt).toLocaleString(locale === "de" ? "de-DE" : "en-GB")}` : ""}
+              </p>
+              {objectives.length > 0 && (
+                <p className="mt-1 text-foreground/70">
+                  {locale === "de"
+                    ? `${validCount} von ${objectives.length} Lernzielen fertig und gespeichert${failedCount > 0 ? `, ${failedCount} fehlgeschlagen` : ""}.`
+                    : `${validCount} of ${objectives.length} objectives done and saved${failedCount > 0 ? `, ${failedCount} failed` : ""}.`}
+                </p>
+              )}
+              {objectives.filter((o) => o.status === "failed" && (o.validationErrorsJson?.length ?? 0) > 0).map((o) => (
+                <div key={o.id} className="mt-2" data-testid="failed-objective">
+                  <p className="font-mono font-medium">{o.code}</p>
+                  <ul className="list-disc pl-4 text-red-600">
+                    {o.validationErrorsJson!.slice(0, 4).map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              {RETRYABLE_STATUSES.has(job.status) && job.status !== "package_ready" && (
+                <p className="mt-2 text-foreground/70">
+                  {locale === "de"
+                    ? "Mit „Generierung neu starten“ geht es dort weiter: bereits fertige Lernziele bleiben erhalten, nur das Fehlende wird neu erzeugt."
+                    : "“Restart generation” continues from there: finished objectives are kept, only what is missing is generated again."}
+                </p>
+              )}
+            </div>
+          )}
+
           <p className="text-xs text-foreground/50">
             {locale === "de" ? "Kosten" : "Cost"}: ~${Number(job.actualCostUsd).toFixed(4)}
             {job.estimatedCostUsd && ` (${locale === "de" ? "geschätzt" : "estimated"} ~$${Number(job.estimatedCostUsd).toFixed(4)})`}
@@ -440,7 +501,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
               >
                 {job.status === "package_ready"
                   ? locale === "de" ? "Jetzt veröffentlichen" : "Publish now"
-                  : locale === "de" ? "Erneut versuchen" : "Retry"}
+                  : locale === "de" ? "Generierung neu starten" : "Restart generation"}
               </button>
             )}
             {!active && (

@@ -1092,6 +1092,8 @@ export const COURSE_GENERATION_JOB_STATUSES: CourseGenerationJobStatus[] = [
 export const TERMINAL_COURSE_GENERATION_JOB_STATUSES: CourseGenerationJobStatus[] = [
   "preflight_failed",
   "canary_failed",
+  // Vom Fehlerschutz gestoppt: der Lauf steht still (erneutes Starten möglich), er blockiert keinen Titel und keinen Platz.
+  "circuit_breaker_open",
   "package_ready",
   "published",
   "cost_limit_reached",
