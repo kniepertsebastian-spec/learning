@@ -8,6 +8,7 @@ import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { CompanyModulesPanel } from "@/components/CompanyModulesPanel";
 import { DepartmentsPanel } from "@/components/DepartmentsPanel";
 import { listDepartments, listMembersWithDepartment } from "@/lib/server/company/departments";
+import { listCheatSheetStatus } from "@/lib/server/internal-courses/cheat-sheets";
 import { MandatoryRulesPanel } from "@/components/MandatoryRulesPanel";
 import { listMandatoryRules } from "@/lib/server/company/mandatory";
 import { OnboardingsPanel } from "@/components/OnboardingsPanel";
@@ -49,7 +50,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   const de = locale === "de";
   const isAdmin = membership.role === "company_admin";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates, onboardingPlans, mandatoryRules, departmentList, departmentMembers] = await Promise.all([
+  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates, onboardingPlans, mandatoryRules, departmentList, departmentMembers, cheatSheetStatus] = await Promise.all([
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
     canAssign ? listAssignableLearningPaths(membership.organizationId) : [],
@@ -66,6 +67,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     canAssign ? listMandatoryRules(membership.organizationId) : [],
     canAssign ? listDepartments(membership.organizationId) : [],
     isAdmin ? listMembersWithDepartment(membership.organizationId) : [],
+    listCheatSheetStatus(membership.organizationId),
   ]);
   const documentRows = documents.map((d) => ({
     id: d.id,
@@ -155,6 +157,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
             documents={documents.map((d) => ({ id: d.id, title: d.title, excludeFromAi: d.excludeFromAi }))}
             initialJobs={internalJobs.map((j) => ({ ...j, createdAt: j.createdAt.toISOString() }))}
             initialCourses={internalCourses.map((c) => ({ ...c, approvedAt: c.approvedAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString() }))}
+            cheatSheets={cheatSheetStatus.map((c) => ({ certificationId: c.certificationId, lessons: c.lessons, withCheatSheet: c.withCheatSheet, run: c.run ? { status: c.run.status, total: c.run.total, created: c.run.created, skipped: c.run.skipped, failed: c.run.failed, message: c.run.message } : null }))}
             aiConfigured={aiAccess.kind !== "none"}
             locale={locale}
           />

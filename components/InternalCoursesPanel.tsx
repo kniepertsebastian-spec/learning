@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { CheatSheetBackfill, type CheatSheetStatusView } from "@/components/CheatSheetBackfill";
 
 type Job = { id: string; title: string; status: string; message: string | null; errorMessage: string | null; active: boolean; createdAt: string };
 type Course = { id: string; slug: string; name: string; catalogStatus: "draft" | "in_review" | "approved"; includeSectionQuizzes: boolean; includeFinalExam: boolean; approvedByName: string | null; approvedAt: string | null; createdAt: string };
@@ -17,12 +18,14 @@ export function InternalCoursesPanel({
   documents,
   initialJobs,
   initialCourses,
+  cheatSheets,
   aiConfigured,
   locale,
 }: {
   documents: DocumentOption[];
   initialJobs: Job[];
   initialCourses: Course[];
+  cheatSheets: CheatSheetStatusView[];
   aiConfigured: boolean;
   locale: "de" | "en";
 }) {
@@ -204,6 +207,7 @@ export function InternalCoursesPanel({
                   )}
                 </span>
               </div>
+              <CheatSheetBackfill courseId={c.id} initial={cheatSheets.find((x) => x.certificationId === c.id)} aiConfigured={aiConfigured} locale={locale} />
               {c.catalogStatus === "approved" && c.approvedByName && c.approvedAt && (
                 <p className="mt-1 text-foreground/70">
                   {de ? "Freigegeben von" : "Approved by"} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB")}

@@ -64,6 +64,8 @@ const ALLOWED_SERVER_MODULES = new Set([
   // KI-Zugang der Firma: Verschlüsselung der Schlüssel und Prüfung des Schlüssels (keine Lerndaten)
   "crypto",
   "byok",
+  // Merkzettel nachträglich erzeugen: zählt Lektionen mit/ohne Merkzettel (Kursinhalt, keine Lerndaten) und startet den Lauf
+  "internal-courses",
 ]);
 
 function sourceFiles(dir: string): string[] {

@@ -1861,3 +1861,37 @@ export const mandatoryRuleDepartments = pgTable(
   },
   (table) => [unique("mandatory_rule_departments_unique").on(table.ruleId, table.departmentId)],
 );
+
+/**
+ * Nachträgliches Erzeugen von Merkzetteln für Lektionen, die noch keinen haben (ältere Kurse). Je Lauf ein Eintrag mit
+ * Fortschritt, damit die Firma ihn sieht; höchstens ein laufender Lauf je Lernpfad. Enthält nur Zahlen und Meldungen,
+ * nie Inhalte. Gehört der Firma.
+ */
+export const cheatSheetRuns = pgTable(
+  "cheat_sheet_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    startedByUserId: uuid("started_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    status: text("status").$type<"running" | "done" | "failed">().notNull().default("running"),
+    total: integer("total").notNull(),
+    created: integer("created").notNull().default(0),
+    /** Verworfen, weil der Scanner etwas gefunden hat. */
+    skipped: integer("skipped").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    message: text("message"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    check("cheat_sheet_runs_status_check", sql`${table.status} in ('running', 'done', 'failed')`),
+    index("cheat_sheet_runs_cert_idx").on(table.certificationId, table.startedAt),
+    // Höchstens ein laufender Lauf je Lernpfad, auch bei gleichzeitigen Starts.
+    uniqueIndex("cheat_sheet_runs_one_running").on(table.certificationId).where(sql`${table.status} = 'running'`),
+  ],
+);
