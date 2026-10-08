@@ -93,6 +93,12 @@ export function selectSourceExcerpts(sources: FetchedSource[], locators: string[
   return out;
 }
 
+/** Häufigster Fehlergrund der fehlgeschlagenen Lernziele, damit die Meldung nicht nur eine Quote nennt. */
+function topErrorHint(errorCounts: Map<string, number>): string {
+  const top = [...errorCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+  return top ? ` Häufigster Grund (${top[1]}×): ${top[0].slice(0, 300)}` : "";
+}
+
 async function hasJobDocuments(jobId: string): Promise<boolean> {
   const [row] = await getDb().select({ id: courseGenerationJobDocuments.id }).from(courseGenerationJobDocuments).where(eq(courseGenerationJobDocuments.jobId, jobId)).limit(1);
   return Boolean(row);
@@ -616,7 +622,7 @@ export async function executeCourseGenerationJob(
         ([, count]) => count >= MAX_IDENTICAL_ERRORS,
       );
       if (batchErrorRate > MAX_BATCH_ERROR_RATE) {
-        circuitOpenMessage = `Fehlerquote im Batch (${(batchErrorRate * 100).toFixed(0)}%) über dem Grenzwert (${(MAX_BATCH_ERROR_RATE * 100).toFixed(0)}%).`;
+        circuitOpenMessage = `Fehlerquote im Batch (${(batchErrorRate * 100).toFixed(0)}%) über dem Grenzwert (${(MAX_BATCH_ERROR_RATE * 100).toFixed(0)}%).${topErrorHint(errorCounts)}`;
         break;
       }
       if (maxIdenticalHit) {

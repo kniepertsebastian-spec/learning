@@ -84,7 +84,7 @@ export function validateObjectiveContent(
 
   const haystack = [
     ...content.sections.flatMap((section) => [section.content.en, section.content.de]),
-    ...content.questions.flatMap((question) => [question.question.en, question.explanation.en]),
+    ...content.questions.flatMap((question) => [question.question.en, question.explanation.en, question.question.de, question.explanation.de]),
   ]
     .join(" ")
     .toLowerCase();
@@ -98,11 +98,16 @@ export function validateObjectiveContent(
     errors.push("Komplexes Objective ohne mindestens eine Szenario-Frage (type: scenario).");
   }
 
-  const knownLocators = new Set(sourceExcerpts.map((excerpt) => excerpt.locator));
+  // Ein ungenauer Quellenverweis einer Frage (Schreibweise, Dateiname-Zusatz) ist kein Grund, den ganzen Lernbaustein zu verwerfen:
+  // der Verweis wird nirgends weiterverwendet. Fehlerhaft ist nur ein Verweis, der gar nichts mit den Quellen zu tun hat,
+  // und auch das nur, wenn überhaupt Quellen bekannt sind und der Verweis weder ein bekannter noch ein Teilstring ist.
+  const normalize = (value: string) => value.trim().toLowerCase();
+  const known = sourceExcerpts.map((excerpt) => normalize(excerpt.locator));
   content.questions.forEach((question, index) => {
-    if (question.sourceLocator !== null && !knownLocators.has(question.sourceLocator)) {
-      errors.push(`Frage ${index + 1} zitiert unbekannten Locator "${question.sourceLocator}".`);
-    }
+    if (question.sourceLocator === null || known.length === 0) return;
+    const cited = normalize(question.sourceLocator);
+    if (!cited || known.some((k) => k === cited || k.includes(cited) || cited.includes(k))) return;
+    errors.push(`Frage ${index + 1} zitiert unbekannten Locator "${question.sourceLocator}".`);
   });
 
   return errors;
