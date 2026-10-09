@@ -63,6 +63,7 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "blueprint_drafts.edited_by_user_id": OPERATIONAL_REASON,
   "certification_sources.approved_by": OPERATIONAL_REASON,
   "company_modules.responsible_user_id": "Zuordnung der Firma (wer ein Modul betreut), nicht persönliche Lerndaten; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "company_course_groups.created_by_user_id": "Die Kursgruppe gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "company_modules.created_by_user_id": "Das Modul gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "cheat_sheet_runs.started_by_user_id": "Der Lauf gehört der Firma (nur Zahlen und Meldungen); der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "mandatory_rules.created_by_user_id": "Die Regel gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",

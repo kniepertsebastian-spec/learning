@@ -45,6 +45,9 @@ const ALLOWED_TABLES = new Set([
   // Anmeldung über das Firmenkonto: Einstellungen der Firma und ihre bestätigten E-Mail-Domains (keine Lerndaten)
   "organizationSso",
   "organizationDomains",
+  // Kursgruppen der Firma (UI U6): Zusammenstellungen von Kursen, keine Lerndaten
+  "companyCourseGroups",
+  "companyCourseGroupItems",
 ]);
 // Erlaubte Imports aus lib/server/* (alles andere, z. B. progress, quiz, remediation, exam, study, sync, analytics, review, sections, offline, ai, admin, wäre ein Zugriff auf Lerndetails).
 // "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen, "auth-rate-limit"

@@ -358,6 +358,13 @@
       "when": 1791537148515,
       "tag": "0050_generation_job_category",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1791538414959,
+      "tag": "0051_company_course_groups",
+      "breakpoints": true
     }
   ]
 }

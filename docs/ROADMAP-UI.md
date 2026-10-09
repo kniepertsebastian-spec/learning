@@ -374,24 +374,26 @@ Route `/company`. Ersetzt `CompanyTabs` durch Sidebar-Navigation im Firmenkontex
 
 ### Übersicht
 
-- [ ] Kopf: Overline „Firmenbereich“, Titel „Übersicht“, rechts „Mitarbeitende einladen“ (secondary) und „Lernpfad zuweisen“ (primary Bernstein, Plus-Icon).
-- [ ] **Datenschutz-Zeile** (statt Textwand): Schild-Icon in Mint, „**Privacy by Design:** Du siehst Status und Termine. Punkte, Antworten und Lernstand bleiben bei den Lernenden.“, rechts „Mehr erfahren“ (öffnet `Dialog` mit dem bisherigen ausführlichen Text).
-- [ ] **Vier Stat-Kacheln:** Mitarbeitende (offene Einladungen), Aktive Lernpfade (über n Zertifizierungen), Überfällig (Koralle, „Erinnerung möglich“), Abschlussquote letzte 90 Tage (Mint). Nur aus Status-Feldern berechnet (Leitplanke).
-- [ ] **Kursgruppen** (Raster, min. 280 px): je Karte Farbkachel + Name + „n Kurse · Herkunft“, Kurs-Chips mit Punkt (Katalogkurs Info-Blau, Internes Learning Bernstein, Pflichtschulung Koralle; Legende über dem Raster), unten `AvatarStack` + „n Personen“/„Alle · 14“ + Button „Zuweisen“. Letzte Kachel gestrichelt: „Kursgruppe anlegen“ mit Beispielen.
-- [ ] **Zuweisungen** (`DataTable`): Filter-Segment „Alle / Überfällig / Abgeschlossen“, Personensuche; Spalten Person (Avatar, Name, Team), Lernpfad, Status-Pill (Abgeschlossen Mint, In Bearbeitung Info, Überfällig Koralle, Nicht begonnen neutral), Frist (überfällig in Koralle), Abgeschlossen am. **Keine weiteren Spalten** (Leitplanke `COMPANY_STATUS_FIELDS`).
-- [ ] Seitenspalte: **Pflichtschulungen** (je Schulung „x / y“ + Balken + Fälligkeit) und **Offene Einladungen** (gestrichelter Avatar, Adresse, „seit n Tagen“, „Erinnerung senden“).
-- [ ] „Lernpfad zuweisen“ als `Dialog` in drei Schritten: Personen wählen (Mehrfachauswahl mit Suche) → Lernpfad **oder Kursgruppe** wählen → Frist. Ersetzt das heutige Inline-Formular.
-- [ ] Sidebar unten: Plan-Kachel (nur wenn Platz-Limits existieren; sonst weglassen).
+- [x] Kopf: Overline „Firmenbereich“, Titel „Übersicht“, rechts „Mitarbeitende einladen“ (secondary) und „Lernpfad zuweisen“ (primary Bernstein, Plus-Icon).
+- [x] **Datenschutz-Zeile** (statt Textwand): Schild-Icon in Mint, „**Privacy by Design:** Du siehst Status und Termine. Punkte, Antworten und Lernstand bleiben bei den Lernenden.“, rechts „Mehr erfahren“ (öffnet `Dialog` mit dem bisherigen ausführlichen Text).
+- [x] **Vier Stat-Kacheln:** Mitarbeitende (offene Einladungen), Aktive Lernpfade (über n Zertifizierungen), Überfällig (Koralle, „Erinnerung möglich“), Abschlussquote letzte 90 Tage (Mint). Nur aus Status-Feldern berechnet (Leitplanke).
+- [x] **Kursgruppen** (Raster, min. 280 px): je Karte Farbkachel + Name + „n Kurse · Herkunft“, Kurs-Chips mit Punkt (Katalogkurs Info-Blau, Internes Learning Bernstein, Pflichtschulung Koralle; Legende über dem Raster), unten `AvatarStack` + „n Personen“/„Alle · 14“ + Button „Zuweisen“. Letzte Kachel gestrichelt: „Kursgruppe anlegen“ mit Beispielen.
+- [x] **Zuweisungen** (`DataTable`): Filter-Segment „Alle / Überfällig / Abgeschlossen“, Personensuche; Spalten Person (Avatar, Name, Team), Lernpfad, Status-Pill (Abgeschlossen Mint, In Bearbeitung Info, Überfällig Koralle, Nicht begonnen neutral), Frist (überfällig in Koralle), Abgeschlossen am. **Keine weiteren Spalten** (Leitplanke `COMPANY_STATUS_FIELDS`).
+- [x] Seitenspalte: **Pflichtschulungen** (je Schulung „x / y“ + Balken + Fälligkeit) und **Offene Einladungen** (gestrichelter Avatar, Adresse, „seit n Tagen“, „Erinnerung senden“).
+- [x] „Lernpfad zuweisen“ als `Dialog` in drei Schritten: Personen wählen (Mehrfachauswahl mit Suche) → Lernpfad **oder Kursgruppe** wählen → Frist. Ersetzt das heutige Inline-Formular.
+- [x] Sidebar unten: Plan-Kachel (nur wenn Platz-Limits existieren; sonst weglassen).
 
 ### Datenmodell Firmen-Kursgruppen
 
-- [ ] `company_course_groups` (`id`, `organization_id`, `name` (de/en), `color` aus fester Palette, `position`, `created_at`, `created_by`).
-- [ ] `company_course_group_items` (`group_id`, `certification_id`, `position`) – m:n; erlaubt Katalogkurse (mit Firmenfreigabe), interne Lernpfade und Pflichtschulungen der eigenen Firma. Serverseitig prüfen, dass jeder Kurs für die Firma freigegeben bzw. ihr eigener ist.
-- [ ] **Gruppe zuweisen** erzeugt für jede Person und jeden Kurs eine normale Zuweisung (bestehende Logik), gemeinsame Frist. Die Gruppe wird an der Zuweisung vermerkt (`assignment.group_id`, nullable), damit „Alle · 14“ und Avatare berechnet werden können. Spätere Änderungen an der Gruppe ändern bestehende Zuweisungen **nicht** automatisch; Hinweis im Dialog.
-- [ ] Rechte: anlegen/ändern/zuweisen nur Rollen, die heute zuweisen dürfen (Firmen-Admin, Mentor laut Phase 3). Audit-Event bei Anlegen, Ändern, Zuweisen.
-- [ ] Architektur-Test erweitern: Kursgruppen-Code importiert keine Lerndaten-Tabellen.
+- [x] `company_course_groups` (`id`, `organization_id`, `name` (de/en), `color` aus fester Palette, `position`, `created_at`, `created_by`).
+- [x] `company_course_group_items` (`group_id`, `certification_id`, `position`) – m:n; erlaubt Katalogkurse (mit Firmenfreigabe), interne Lernpfade und Pflichtschulungen der eigenen Firma. Serverseitig prüfen, dass jeder Kurs für die Firma freigegeben bzw. ihr eigener ist.
+- [x] **Gruppe zuweisen** erzeugt für jede Person und jeden Kurs eine normale Zuweisung (bestehende Logik), gemeinsame Frist. Die Gruppe wird an der Zuweisung vermerkt (`assignment.group_id`, nullable), damit „Alle · 14“ und Avatare berechnet werden können. Spätere Änderungen an der Gruppe ändern bestehende Zuweisungen **nicht** automatisch; Hinweis im Dialog.
+- [x] Rechte: anlegen/ändern/zuweisen nur Rollen, die heute zuweisen dürfen (Firmen-Admin, Mentor laut Phase 3). Audit-Event bei Anlegen, Ändern, Zuweisen.
+- [x] Architektur-Test erweitern: Kursgruppen-Code importiert keine Lerndaten-Tabellen.
 
-**Gate U6:** Screen 4 nachgebaut; eine Testfirma legt eine gemischte Gruppe an und weist sie zu; Statusansicht zeigt die entstandenen Zuweisungen; `results-privacy.test.ts` weiter grün.
+**Stand Gate U6: größtenteils erfüllt (geprüft), mit Abweichungen.** Geprüft: Übersicht in Dunkel/Hell bei 1440 und 390 px ohne horizontales Scrollen (Firmen-Admin und Mentor); eine Testfirma legt im Browser eine gemischte Gruppe (Katalogkurs + interne Lernpfade) an und weist sie per Dialog in drei Schritten zu, die Zuweisungen erscheinen in der Statusansicht; DB-Tests (`course-groups.test.ts`): gemischte Gruppe, nur freigegebene/eigene Kurse (fremde, nicht freigegebene, Entwürfe → 404), Rechte (Lernende 403), Mandantentrennung (fremde Gruppe 404), Frist und Audit, Löschen lässt Zuweisungen bestehen; `company-architecture.test.ts` (nur die zwei neuen Tabellen erlaubt) und `results-privacy.test.ts` grün; 685+ Tests. **Abweichungen:** (1) **Die übrigen Tabs wurden nicht auf eigene Routen verschoben:** Pflichtschulung, Interne Learnings, Aufgaben & Module, Onboarding, Dokumente, Team und Anmeldung liegen weiter unter `/company?tab=…` (jetzt über die Sidebar erreichbar, die Tab-Leiste entfällt); `/company/members`, `/company/groups` usw. gibt es nicht. (2) In der Navigation fehlen „Mitarbeitende“, „Kursgruppen“ (liegen auf der Übersicht) und „Zertifikate“ (U9), „Einstellungen“. (3) „Erinnerung senden“ bei offenen Einladungen und die Plan-Kachel (Platz-Limits gibt es nicht) fehlen. (4) „Abschlussquote“ = abgeschlossene Zuweisungen ÷ alle Zuweisungen der letzten 90 Tage (Zuweisungsdatum). (5) Kurs-Chips: „Pflichtschulung“ gilt, wenn der Kurs Ziel einer Pflichtregel der Firma ist. (6) Die Zeile „Zuweisungen“ hat die zusätzliche Aktion „Verwalten“ (Frist ändern/Entfernen) aus dem alten Panel; Daten-Spalten bleiben auf `COMPANY_STATUS_FIELDS` beschränkt (Praxis-Zähler entfallen in der Tabelle).
+
+**Gate U6 (Vorgabe):** Screen 4 nachgebaut; eine Testfirma legt eine gemischte Gruppe an und weist sie zu; Statusansicht zeigt die entstandenen Zuweisungen; `results-privacy.test.ts` weiter grün.
 
 ---
 

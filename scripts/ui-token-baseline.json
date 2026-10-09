@@ -59,10 +59,6 @@
     "hex": 0,
     "palette": 4
   },
-  "components/AssignmentsPanel.tsx": {
-    "hex": 0,
-    "palette": 5
-  },
   "components/AuthRecovery.tsx": {
     "hex": 0,
     "palette": 8

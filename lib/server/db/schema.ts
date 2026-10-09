@@ -11,6 +11,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -1297,6 +1298,37 @@ export const organizationMemberships = pgTable(
  * Der zusammengesetzte Fremdschlüssel stellt auf Datenbankebene sicher, dass
  * userId wirklich Mitglied von organizationId ist.
  */
+/** Kursgruppen einer Firma (UI U6): eigene Zusammenstellungen aus freigegebenen Katalogkursen, internen Lernpfaden und Pflichtschulungen. */
+export const companyCourseGroups = pgTable(
+  "company_course_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: jsonb("name").$type<Localized<string>>().notNull(),
+    color: text("color").$type<CourseCategoryColor>().notNull().default("info"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [index("company_course_groups_org_idx").on(table.organizationId)],
+);
+
+export const companyCourseGroupItems = pgTable(
+  "company_course_group_items",
+  {
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => companyCourseGroups.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.groupId, table.certificationId] })],
+);
+
 export const companyAssignments = pgTable(
   "company_assignments",
   {
@@ -1325,6 +1357,8 @@ export const companyAssignments = pgTable(
     lastCompletedAt: timestamp("last_completed_at", { withTimezone: true }),
     /** Gesetzt, wenn die Zuweisung aus einer Pflichtregel stammt (Pflichtschulung). */
     mandatoryRuleId: uuid("mandatory_rule_id").references((): AnyPgColumn => mandatoryRules.id, { onDelete: "set null" }),
+    /** UI U6: gesetzt, wenn die Zuweisung über eine Kursgruppe entstand (nur Herkunft; spätere Änderungen an der Gruppe ändern sie nicht). */
+    groupId: uuid("group_id").references((): AnyPgColumn => companyCourseGroups.id, { onDelete: "set null" }),
   },
   (table) => [
     check(
