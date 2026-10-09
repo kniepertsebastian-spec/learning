@@ -7,6 +7,8 @@ export interface ObjectiveGenerationUsage {
   model: string;
   promptTokens: number;
   completionTokens: number;
+  /** Davon aus dem Kontext-Cache gelesen (günstiger), falls bekannt. */
+  cachedTokens?: number;
   acceptedLessonCount: number;
   acceptedQuestionCount: number;
 }
@@ -27,7 +29,7 @@ export async function recordObjectiveGenerationCost(
   usage: ObjectiveGenerationUsage,
 ): Promise<void> {
   const totalTokens = usage.promptTokens + usage.completionTokens;
-  const estimatedCostUsd = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model);
+  const estimatedCostUsd = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model, usage.cachedTokens);
 
   await getDb()
     .insert(objectiveGenerationCosts)

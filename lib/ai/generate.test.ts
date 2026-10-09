@@ -150,7 +150,7 @@ import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured, isSchemaRejection, toGeminiJsonSchema } from "./generate";
 import { groundedLessonsAndQuestionsResponseSchema, lessonsAndQuestionsForObjectiveResponseSchema, curriculumDraftForDomainResponseSchema } from "@/lib/server/ai/schemas";
-import { courseBlueprintAiResponseSchema, objectiveContentNoQuestionsResponseSchema, objectiveContentResponseSchema } from "@/lib/server/course-generation/schemas";
+import { courseBlueprintAiResponseSchema, objectiveContentAiResponseSchema, objectiveContentNoQuestionsAiResponseSchema, objectiveContentNoQuestionsResponseSchema, objectiveContentResponseSchema, questionsOnlyAiResponseSchema } from "@/lib/server/course-generation/schemas";
 
 const ALLOWED = new Set(["type", "properties", "required", "items", "enum", "minItems", "maxItems", "minimum", "maximum", "anyOf", "description"]);
 function schemaKeywords(node: unknown, found = new Set<string>(), underProperties = false): Set<string> {
@@ -171,6 +171,9 @@ describe("Antwortschema für Gemini (strukturierte Ausgabe)", () => {
       courseBlueprintAiResponseSchema,
       objectiveContentResponseSchema,
       objectiveContentNoQuestionsResponseSchema,
+      objectiveContentAiResponseSchema,
+      objectiveContentNoQuestionsAiResponseSchema,
+      questionsOnlyAiResponseSchema,
       groundedLessonsAndQuestionsResponseSchema,
       lessonsAndQuestionsForObjectiveResponseSchema,
       curriculumDraftForDomainResponseSchema,

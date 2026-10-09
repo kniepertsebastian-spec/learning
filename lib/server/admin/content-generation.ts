@@ -27,12 +27,14 @@ function truncate(value: string, maxLength = 4_000): string {
 
 /** Passend zur USAGE-Zeile aus lib/ai/generate.ts's requestJson(). */
 const USAGE_LINE_PATTERN =
-  /^USAGE model=(\S+) promptTokens=(\d+) completionTokens=(\d+) totalTokens=(\d+)$/;
+  /^USAGE model=(\S+) promptTokens=(\d+) completionTokens=(\d+) totalTokens=(\d+)(?: cachedTokens=(\d+))?$/;
 
 /**
  * Eingebaute Preise je Million Token (USD) für bekannte Modelle, damit die Kosten auch ohne Einträge in der .env laufen.
  * gemini-3.8-flash: 0,75 / 3,75 (Standardpreis lt. Google-Auskunft, vom Betreiber im Oktober 2026 bestätigt; Einführungspreis,
- * soll ab 1.1.2027 steigen). Die Variablen in der .env haben immer Vorrang. Zwischenspeicher-Preise werden nicht berücksichtigt.
+ * soll ab 1.1.2027 steigen). Die Variablen in der .env haben immer Vorrang.
+ * Aus dem Kontext-Cache gelesene Eingabe-Token kosten bei Gemini 10 % des Eingabepreises (gemini-3.8-flash: 0,075 statt
+ * 0,75); überschreibbar mit GEMINI_CACHED_PROMPT_PRICE_FACTOR.
  */
 const BUILT_IN_PRICES: Record<string, { prompt: number; completion: number }> = {
   "gemini-3.8-flash": { prompt: 0.75, completion: 3.75 },
@@ -67,14 +69,26 @@ export function isPricingConfigured(): boolean {
   return pricesFor(CURRICULUM_MODEL) !== null && pricesFor(LESSONS_MODEL) !== null;
 }
 
+function cachedPriceFactor(): number {
+  const value = Number(process.env.GEMINI_CACHED_PROMPT_PRICE_FACTOR);
+  return Number.isFinite(value) && value >= 0 && value <= 1 && process.env.GEMINI_CACHED_PROMPT_PRICE_FACTOR !== undefined ? value : 0.1;
+}
+
+/** `cachedTokens` ist der Teil der `promptTokens`, den Gemini aus dem Kontext-Cache gelesen hat. */
 export function estimateCostUsd(
   promptTokens: number,
   completionTokens: number,
   model: string,
+  cachedTokens = 0,
 ): number | null {
   const prices = pricesFor(model);
   if (!prices) return null;
-  return (promptTokens / 1_000_000) * prices.prompt + (completionTokens / 1_000_000) * prices.completion;
+  const cached = Math.min(Math.max(cachedTokens, 0), promptTokens);
+  return (
+    ((promptTokens - cached) / 1_000_000) * prices.prompt +
+    (cached / 1_000_000) * prices.prompt * cachedPriceFactor() +
+    (completionTokens / 1_000_000) * prices.completion
+  );
 }
 
 export interface AiBudgetStatus {
@@ -163,7 +177,7 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
   function trackUsageLine(line: string): Partial<typeof contentGenerationJobs.$inferInsert> | null {
     const match = USAGE_LINE_PATTERN.exec(line);
     if (!match) return null;
-    const [, model, linePromptTokensRaw, lineCompletionTokensRaw] = match;
+    const [, model, linePromptTokensRaw, lineCompletionTokensRaw, , lineCachedTokensRaw] = match;
     modelsSeen.add(model);
     const linePromptTokens = Number(linePromptTokensRaw);
     const lineCompletionTokens = Number(lineCompletionTokensRaw);
@@ -171,7 +185,7 @@ async function executeJob(jobId: string, certificationId: string, slug: string) 
     completionTokens += lineCompletionTokens;
     totalTokens += linePromptTokens + lineCompletionTokens;
 
-    const lineCostUsd = estimateCostUsd(linePromptTokens, lineCompletionTokens, model);
+    const lineCostUsd = estimateCostUsd(linePromptTokens, lineCompletionTokens, model, Number(lineCachedTokensRaw ?? 0));
     if (lineCostUsd !== null) {
       estimatedCostUsdSum += lineCostUsd;
       anyCostKnown = true;

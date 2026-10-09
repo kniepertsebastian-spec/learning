@@ -55,14 +55,16 @@ describe("Merkzettel: Schema und Schutz (ohne Datenbank)", () => {
     let seen = "";
     const client = {
       models: {
-        generateContent: async (args: { contents: string }) => {
-          seen = args.contents;
-          return { text: JSON.stringify({ sections: [section({ cheatSheet: { de: "x", en: "x" } })], questions: [] }), usageMetadata: {} };
+        generateContent: async (args: { contents: string; config: { systemInstruction?: string } }) => {
+          seen = `${args.config.systemInstruction ?? ""}\n${args.contents}`;
+          // Die KI antwortet einsprachig (ein String je Textfeld); der Provider legt den Text in beide Sprachfelder.
+          const mono = { title: "VLAN", estimatedMinutes: 15, difficulty: "beginner", content: "Ein VLAN trennt Broadcast-Domänen.", keyTakeaways: ["a", "b"], examFocusPoints: ["a", "b"], cheatSheet: "x" };
+          return { text: JSON.stringify({ sections: [mono], questions: [] }), usageMetadata: {} };
         },
       },
     } as unknown as GoogleGenAI;
     const provider = createHaikuContentProvider(client);
-    await provider.generateObjective(
+    const out = await provider.generateObjective(
       {
         courseTitle: "Betrieb", withQuestions: false, practical: true,
         objective: { id: "o", code: "1.1", title: "T", description: "D", examWeight: 1, complexity: "medium", requiredConcepts: ["a", "b"], commonMisconceptions: [], lessonPlan: ["x"], sourceLocators: [], recommendedQuestions: 4, requiredScenarios: [] },
@@ -71,6 +73,7 @@ describe("Merkzettel: Schema und Schutz (ohne Datenbank)", () => {
       } as never,
       () => undefined,
     );
+    expect(out.sections[0].cheatSheet).toEqual({ de: "x", en: "x" });
     expect(seen).toContain("cheatSheet");
     expect(seen).toContain("Servernamen");
     expect(seen).toContain("GENAU so geschrieben wie in der Quelle");

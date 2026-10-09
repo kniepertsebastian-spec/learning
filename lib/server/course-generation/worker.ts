@@ -38,7 +38,7 @@ import {
 } from "./schemas";
 import { looksLikeOutline } from "./outline";
 import { fetchSources, type FetchedSource } from "./sources";
-import { pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
+import { autoFixObjectiveContent, missingQuestionsOnly, pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
 import { getDb } from "@/lib/server/db/client";
 import { certificationCategories, certifications, courseGenerationJobDocuments } from "@/lib/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -72,8 +72,10 @@ const MAX_BATCH_ERROR_RATE = envFloat("COURSE_GEN_MAX_BATCH_ERROR_RATE", 0.3);
 const MAX_IDENTICAL_ERRORS = envInt("COURSE_GEN_MAX_IDENTICAL_ERRORS", 2);
 const HARD_MAX_OBJECTIVES = envInt("COURSE_GEN_HARD_MAX_OBJECTIVES", 80);
 
-/** Höchstmenge Quelltext, die an die KI für EIN Lernziel geht (bei Kursen mit vielen Dateien sonst Hunderttausende Zeichen je Aufruf). */
-export const MAX_EXCERPT_CHARS_PER_OBJECTIVE = 80_000;
+/** Höchstmenge Quelltext, die an die KI für EIN Lernziel geht (bei Kursen mit vielen Dateien sonst Hunderttausende Zeichen je Aufruf).
+ * War 80.000 Zeichen (≈ 20k Token je Aufruf). Seit Text- und HTML-Quellen in Abschnitte zerlegt werden (sources.ts),
+ * trifft die Auswahl per Locator gezielt; 30.000 Zeichen reichen dann für ein Lernziel. Per Env überschreibbar. */
+export const MAX_EXCERPT_CHARS_PER_OBJECTIVE = envInt("COURSE_GEN_MAX_EXCERPT_CHARS", 30_000);
 
 /**
  * Welche Textstellen die KI für ein Lernziel bekommt: die vom Blueprint genannten; fehlt die Angabe oder passt keine
@@ -223,7 +225,7 @@ async function generateAndValidateObjective(
 
   let attemptCostUsd = 0;
   const trackUsage = (usage: AIUsage) => {
-    const cost = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model);
+    const cost = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model, usage.cachedTokens);
     if (cost !== null) attemptCostUsd += cost;
   };
 
@@ -241,9 +243,29 @@ async function generateAndValidateObjective(
     return { success: false, content: null, errors: [(error as Error).message], costUsd: attemptCostUsd };
   }
 
+  // Was sich ohne KI beheben lässt (doppelte Fragen, unbekannte Quellenverweise), wird ohne KI behoben.
+  const autoFix = (content: ObjectiveContentResponse) => autoFixObjectiveContent(content, sourceExcerpts).content;
+  result = autoFix(result);
   let errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
   let usedProvider = deps.contentProvider;
   let attempts = 1;
+
+  /**
+   * Teil-Reparatur: fehlen nur Fragen (Anzahl oder Szenario-Frage), liefert der Provider genau diese nach. Lektionen
+   * und alte Antwort gehen dabei nicht erneut an die KI und werden nicht neu geschrieben.
+   */
+  const topUpQuestions = async (provider: CourseContentProvider): Promise<boolean> => {
+    const need = missingQuestionsOnly(entry.objective, result, errors);
+    if (!need || !provider.generateQuestions) return false;
+    const extra = await provider.generateQuestions(
+      input,
+      { ...need, existingQuestions: result.questions.map((q) => q.question[input.language]) },
+      trackUsage,
+    );
+    result = autoFix({ ...result, questions: [...result.questions, ...extra] });
+    errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
+    return true;
+  };
 
   while (errors.length > 0 && attempts < maxAttempts) {
     await updateCourseGenerationObjective(objectiveRowId, {
@@ -252,18 +274,21 @@ async function generateAndValidateObjective(
       validationErrorsJson: errors,
     });
     try {
-      result = await usedProvider.repairObjective(input, result, errors, trackUsage);
+      if (!(await topUpQuestions(usedProvider))) {
+        result = autoFix(await usedProvider.repairObjective(input, result, errors, trackUsage));
+        errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
+      }
     } catch (error) {
       errors = [(error as Error).message];
       break;
     }
-    errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
     attempts++;
   }
 
-  if (errors.length > 0) {
-    // Abschnitt 6/11: nach den günstigen Versuchen EIN gesammelter
-    // Sonnet-Reparaturversuch, bevor das Objective endgültig scheitert.
+  // Abschnitt 6/11: nach den günstigen Versuchen EIN Reparaturversuch mit dem Reparatur-Modell - aber nur, wenn das
+  // tatsächlich ein anderes Modell ist. Standardmäßig sind beide gemini-3.8-flash; dann wäre es nur ein weiterer
+  // identischer Versuch zum vollen Preis.
+  if (errors.length > 0 && deps.repairProvider.model !== deps.contentProvider.model) {
     await updateCourseGenerationObjective(objectiveRowId, {
       status: "repairing",
       attempts,
@@ -273,8 +298,10 @@ async function generateAndValidateObjective(
     });
     try {
       usedProvider = deps.repairProvider;
-      result = await usedProvider.repairObjective(input, result, errors, trackUsage);
-      errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
+      if (!(await topUpQuestions(usedProvider))) {
+        result = autoFix(await usedProvider.repairObjective(input, result, errors, trackUsage));
+        errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
+      }
       attempts++;
     } catch (error) {
       errors = [...errors, (error as Error).message];
@@ -508,7 +535,7 @@ export async function executeCourseGenerationJob(
         sources,
       },
       (usage) => {
-        const cost = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model);
+        const cost = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model, usage.cachedTokens);
         if (cost !== null) blueprintCostUsd += cost;
       },
     );

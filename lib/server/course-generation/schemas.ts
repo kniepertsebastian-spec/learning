@@ -198,3 +198,109 @@ export const objectiveContentNoQuestionsResponseSchema = z.object({
   sections: z.array(coursePackageSectionSchema).min(1),
   questions: z.array(coursePackageQuestionSchema).default([]),
 });
+
+/**
+ * Antwortformat der KI für EIN Lernziel, einsprachig. Die Kursgenerierung schreibt jeden Text nur noch in der Sprache
+ * des Auftrags (`job.language`) statt in Deutsch UND Englisch - das halbiert ungefähr die Ausgabe-Token, den teuersten
+ * Teil jedes Aufrufs. `toBilingualObjectiveContent()` legt den Text danach in beide Sprachfelder des bestehenden
+ * Datenformats, damit Import, Offline-Paket und Oberfläche unverändert bleiben (die Oberfläche zeigt einen Kurs damit
+ * immer in seiner Kurssprache).
+ */
+const lenientMonoCheatSheetSchema = z.unknown().transform((value): string | undefined =>
+  typeof value === "string" && value.trim().length > 0 ? value : undefined,
+);
+
+export const monoSectionSchema = z.object({
+  title: z.string().min(1),
+  estimatedMinutes: z.number().int().min(5).max(120),
+  difficulty: lenientDifficultySchema,
+  content: z.string().min(1),
+  keyTakeaways: z.array(z.string().min(1)).min(2),
+  examFocusPoints: z.array(z.string().min(1)).min(2),
+  /** Nur die erste Section eines Lernziels trägt den Merkzettel (einer pro Lernziel statt pro Section). */
+  cheatSheet: lenientMonoCheatSheetSchema.optional(),
+});
+
+export const monoQuestionSchema = z
+  .object({
+    difficulty: lenientDifficultySchema,
+    type: lenientQuestionTypeSchema,
+    question: z.string().min(1),
+    options: z
+      .array(z.object({ text: z.string().min(1), isCorrect: z.boolean(), rationale: z.string().min(1).nullable().optional() }))
+      .length(4),
+    explanation: z.string().min(1),
+    sourceLocator: z.string().min(1).nullable(),
+  })
+  .refine(exactlyOneCorrectOption, exactlyOneCorrectOptionMessage);
+
+export const objectiveContentAiResponseSchema = z.object({
+  sections: z.array(monoSectionSchema).min(1),
+  questions: z.array(monoQuestionSchema).min(1),
+});
+export const objectiveContentNoQuestionsAiResponseSchema = z.object({
+  sections: z.array(monoSectionSchema).min(1),
+  questions: z.array(monoQuestionSchema).default([]),
+});
+/** Nur Fragen: zum gezielten Nachliefern fehlender Fragen, ohne die Lektionen neu zu schreiben. */
+export const questionsOnlyAiResponseSchema = z.object({ questions: z.array(monoQuestionSchema).min(1) });
+
+export type MonoSection = z.infer<typeof monoSectionSchema>;
+export type MonoQuestion = z.infer<typeof monoQuestionSchema>;
+export type ObjectiveContentAiResponse = z.infer<typeof objectiveContentAiResponseSchema>;
+
+const both = (text: string) => ({ de: text, en: text });
+const bothList = (list: string[]) => ({ de: list, en: list });
+
+export function toBilingualQuestion(q: MonoQuestion): CoursePackageQuestion {
+  return {
+    difficulty: q.difficulty,
+    type: q.type,
+    question: both(q.question),
+    options: q.options.map((o) => ({
+      text: both(o.text),
+      isCorrect: o.isCorrect,
+      ...(!o.isCorrect && o.rationale ? { rationale: both(o.rationale) } : {}),
+    })),
+    explanation: both(q.explanation),
+    sourceLocator: q.sourceLocator,
+  };
+}
+
+export function toBilingualObjectiveContent(content: { sections: MonoSection[]; questions: MonoQuestion[] }): ObjectiveContentResponse {
+  return {
+    sections: content.sections.map((s) => ({
+      title: both(s.title),
+      estimatedMinutes: s.estimatedMinutes,
+      difficulty: s.difficulty,
+      content: both(s.content),
+      keyTakeaways: bothList(s.keyTakeaways),
+      examFocusPoints: bothList(s.examFocusPoints),
+      ...(s.cheatSheet ? { cheatSheet: both(s.cheatSheet) } : {}),
+    })),
+    questions: content.questions.map(toBilingualQuestion),
+  };
+}
+
+/** Umkehrung für Reparatur-Prompts: nur die eine Sprachfassung zurück an die KI schicken, nicht beide. */
+export function toMonoObjectiveContent(content: ObjectiveContentResponse, language: "de" | "en") {
+  return {
+    sections: content.sections.map((s) => ({
+      title: s.title[language],
+      estimatedMinutes: s.estimatedMinutes,
+      difficulty: s.difficulty,
+      content: s.content[language],
+      keyTakeaways: s.keyTakeaways[language],
+      examFocusPoints: s.examFocusPoints[language],
+      ...(s.cheatSheet ? { cheatSheet: s.cheatSheet[language] } : {}),
+    })),
+    questions: content.questions.map((q) => ({
+      difficulty: q.difficulty,
+      type: q.type,
+      question: q.question[language],
+      options: q.options.map((o) => ({ text: o.text[language], isCorrect: o.isCorrect, ...(o.rationale ? { rationale: o.rationale[language] } : {}) })),
+      explanation: q.explanation[language],
+      sourceLocator: q.sourceLocator,
+    })),
+  };
+}
