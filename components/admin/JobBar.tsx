@@ -1,7 +1,8 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, Loader2, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { jobStepFill, jobStepIndex } from "@/lib/admin/job-steps";
 import { useLocale } from "@/lib/i18n";
 import { fmt } from "@/lib/quiz/keys";
@@ -13,6 +14,12 @@ interface ListedJob {
   actualCostUsd: string;
   initialCostLimitUsd: string;
   absoluteCostLimitUsd: string;
+  message?: string | null;
+  /** Letztes Lebenszeichen (Auftrag oder Lernziel) und ob der Lauf ohne Lebenszeichen hängt, siehe GET /api/admin/course-generation. */
+  lastActivityAt?: string;
+  stale?: boolean;
+  /** In diesem Serverprozess arbeitet ein Worker daran (sonst wird ein hängender Auftrag automatisch fortgesetzt). */
+  active?: boolean;
 }
 
 const DONE = new Set(["published", "package_ready", "cancelled", "failed", "preflight_failed", "canary_failed"]);
@@ -20,7 +27,27 @@ const DONE = new Set(["published", "package_ready", "cancelled", "failed", "pref
 /** Leiste über dem Katalog: laufende Generierungen mit Schritt, 5-teiligem Balken und Kosten (Werte aus dem bestehenden Auftrag). */
 export function JobBar() {
   const { t } = useLocale();
-  const [jobs, setJobs] = useState<Array<ListedJob & { fraction: number }>>([]);
+  const [jobs, setJobs] = useState<Array<ListedJob & { fraction: number; idleMinutes: number }>>([]);
+  const [cancelling, setCancelling] = useState<Set<string>>(new Set());
+
+  const cancelJob = useCallback(
+    async (job: ListedJob) => {
+      if (!window.confirm(fmt(t.admin_catalog.jobCancelConfirm, { name: job.courseTitle ?? "" }))) return;
+      setCancelling((prev) => new Set(prev).add(job.id));
+      try {
+        const res = await fetch(`/api/admin/course-generation/${job.id}/cancel`, { method: "POST" });
+        // Abgebrochen (oder inzwischen ohnehin beendet): sofort aus der Leiste nehmen, der nächste Abruf bestätigt es.
+        if (res.ok || res.status === 409) setJobs((prev) => prev.filter((j) => j.id !== job.id));
+      } finally {
+        setCancelling((prev) => {
+          const next = new Set(prev);
+          next.delete(job.id);
+          return next;
+        });
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +72,9 @@ export function JobBar() {
                 // Fortschritt bleibt geschätzt
               }
             }
-            return { ...j, fraction };
+            // Minuten ohne Lebenszeichen hier beim Abruf berechnen, nicht beim Rendern (Render bleibt rein).
+            const idleMinutes = j.lastActivityAt ? Math.max(1, Math.round((Date.now() - new Date(j.lastActivityAt).getTime()) / 60_000)) : 0;
+            return { ...j, fraction, idleMinutes };
           }),
         );
         if (!cancelled) setJobs(withProgress);
@@ -79,7 +108,26 @@ export function JobBar() {
                 {fmt(t.admin_catalog.jobCost, { a: Number(j.actualCostUsd).toFixed(2), b: Number(j.initialCostLimitUsd).toFixed(2) })} · {fmt(t.admin_catalog.jobLimit, { n: Number(j.absoluteCostLimitUsd).toFixed(2) })}
               </p>
             </div>
-            <p className="mt-1 text-xs text-subtle">{fmt(t.admin_catalog.jobStep, { x: step + 1, name: names[step] })}</p>
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-subtle">{fmt(t.admin_catalog.jobStep, { x: step + 1, name: names[step] })}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void cancelJob(j)}
+                disabled={cancelling.has(j.id)}
+                iconLeft={<X className="h-4 w-4" aria-hidden="true" />}
+                data-testid="job-cancel"
+              >
+                {cancelling.has(j.id) ? t.admin_catalog.jobCancelling : t.admin_catalog.jobCancel}
+              </Button>
+            </div>
+            {j.message && <p className="mt-1 text-xs text-muted">{j.message}</p>}
+            {j.stale && (
+              <p className="mt-2 flex items-start gap-2 text-xs text-warning-text" role="status" data-testid="job-stale">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {fmt(j.active ? t.admin_catalog.jobStaleHung : t.admin_catalog.jobStaleResuming, { n: j.idleMinutes })}
+              </p>
+            )}
             <div className="mt-2 flex gap-1" role="progressbar" aria-valuemin={0} aria-valuemax={5} aria-valuenow={step + 1} aria-label={names[step]}>
               {fill.map((pct, i) => (
                 <span key={i} className="h-1.5 flex-1 overflow-hidden rounded-full bg-track">

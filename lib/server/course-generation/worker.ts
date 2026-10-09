@@ -1,8 +1,9 @@
-import type { AIUsage } from "@/lib/ai/generate";
+import { isRetryableError, type AIUsage } from "@/lib/ai/generate";
 import { estimateCostUsd } from "@/lib/server/admin/content-generation";
 import {
   getCourseGenerationJob,
   markCourseGenerationJobFailed,
+  touchCourseGenerationJob,
   updateCourseGenerationJob,
   updateCourseGenerationObjective,
   upsertCourseGenerationObjective,
@@ -25,6 +26,7 @@ import {
   type CourseContentProvider,
 } from "./providers";
 import {
+  courseBlueprintV1Schema,
   coursePackageV1Schema,
   objectiveContentNoQuestionsResponseSchema,
   objectiveContentResponseSchema,
@@ -227,6 +229,8 @@ async function generateAndValidateObjective(
   const trackUsage = (usage: AIUsage) => {
     const cost = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model, usage.cachedTokens);
     if (cost !== null) attemptCostUsd += cost;
+    // Lebenszeichen nach jeder KI-Antwort (siehe recoverStaleCourseGenerationJobs); ein Fehler hier stört den Lauf nicht.
+    void touchCourseGenerationJob(jobId).catch(() => undefined);
   };
 
   let result: ObjectiveContentResponse;
@@ -435,6 +439,9 @@ export async function executeCourseGenerationJob(
     }
   };
 
+  // Bei einer Fortsetzung zählen die Kosten der früheren Läufe in der Anzeige mit (vorher begann sie wieder bei 0).
+  // Das Sicherheitslimit gilt wie bisher je Lauf; automatische Fortsetzungen sind auf MAX_AUTO_RESUMES begrenzt.
+  const previousSpendUsd = Number(job.actualCostUsd) || 0;
   let spentUsd = 0;
   let initialLimitWarningShown = false;
   /**
@@ -448,7 +455,7 @@ export async function executeCourseGenerationJob(
    */
   const recordSpend = async (delta: number) => {
     spentUsd += delta;
-    const values: { actualCostUsd: string; message?: string } = { actualCostUsd: spentUsd.toString() };
+    const values: { actualCostUsd: string; message?: string } = { actualCostUsd: (previousSpendUsd + spentUsd).toString() };
     if (!initialLimitWarningShown && spentUsd >= Number(job.initialCostLimitUsd)) {
       initialLimitWarningShown = true;
       values.message = `Zielbudget ($${job.initialCostLimitUsd}) erreicht, läuft weiter bis zum Sicherheitslimit ($${job.absoluteCostLimitUsd}) …`;
@@ -511,36 +518,51 @@ export async function executeCourseGenerationJob(
     // Beschreibungen von Screenshots (Locator „Bild: …“) zählen nicht mit: sie sind ausformulierte KI-Texte.
     const outline = looksLikeOutline(sources.flatMap((s) => s.excerpts.filter((e) => !e.locator.startsWith("Bild:")).map((e) => e.text)));
 
-    // Blueprint
-    await updateCourseGenerationJob(jobId, {
-      status: "blueprint_generating",
-      phase: "blueprint",
-      message: `Blueprint wird mit ${deps.blueprintProvider.model} erstellt …${sources.flatMap((x) => x.warnings ?? []).map((w) => ` Hinweis: ${w}`).join("")}`,
-    });
-    // Kosten synchron im Callback aufsummieren statt async recordSpend() im
-    // Callback selbst aufzurufen - ein dort geworfener BudgetExceededError
-    // würde sonst nicht in diesem try/catch landen, sondern als unhandled
-    // rejection enden (derselbe Grund, aus dem generateAndValidateObjective
-    // die Kosten zurückgibt statt sie selbst zu verbuchen).
-    let blueprintCostUsd = 0;
-    const blueprintResult = await deps.blueprintProvider.generateBlueprint(
-      {
-        courseTitle: job.courseTitle,
-        courseDescription: job.courseDescription,
-        language: job.language as "de" | "en",
-        outline,
-        provider: job.provider,
-        certificationVersion: job.certificationVersion ?? undefined,
-        courseType: job.courseType,
-        sources,
-      },
-      (usage) => {
-        const cost = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model, usage.cachedTokens);
-        if (cost !== null) blueprintCostUsd += cost;
-      },
-    );
-    await recordSpend(blueprintCostUsd);
-    const blueprint: CourseBlueprintV1 = { ...blueprintResult, requestId: jobId };
+    // Blueprint. Bei einer Fortsetzung (erneuter Versuch, automatische Fortsetzung nach Neustart) wird der bereits
+    // erzeugte Blueprint wiederverwendet: Ein neuer kostet einen Aufruf und hätte andere Lernziele, zu denen die schon
+    // fertigen Lernziel-Inhalte (gespeichert je Blueprint-Lernziel-ID) nicht mehr passen würden.
+    // Nur ein gültiger: ein gespeicherter, aber von Gate B verworfener Blueprint würde sonst bei jedem Versuch erneut scheitern.
+    const storedBlueprint = job.blueprintJson ? courseBlueprintV1Schema.safeParse(job.blueprintJson) : null;
+    let blueprint: CourseBlueprintV1;
+    if (storedBlueprint?.success && validateBlueprint(storedBlueprint.data).length === 0) {
+      blueprint = storedBlueprint.data;
+      await updateCourseGenerationJob(jobId, {
+        status: "blueprint_validating",
+        phase: "blueprint",
+        message: "Vorhandener Blueprint wird weiterverwendet …",
+      });
+    } else {
+      await updateCourseGenerationJob(jobId, {
+        status: "blueprint_generating",
+        phase: "blueprint",
+        message: `Blueprint wird mit ${deps.blueprintProvider.model} erstellt …${sources.flatMap((x) => x.warnings ?? []).map((w) => ` Hinweis: ${w}`).join("")}`,
+      });
+      // Kosten synchron im Callback aufsummieren statt async recordSpend() im
+      // Callback selbst aufzurufen - ein dort geworfener BudgetExceededError
+      // würde sonst nicht in diesem try/catch landen, sondern als unhandled
+      // rejection enden (derselbe Grund, aus dem generateAndValidateObjective
+      // die Kosten zurückgibt statt sie selbst zu verbuchen).
+      let blueprintCostUsd = 0;
+      const blueprintResult = await deps.blueprintProvider.generateBlueprint(
+        {
+          courseTitle: job.courseTitle,
+          courseDescription: job.courseDescription,
+          language: job.language as "de" | "en",
+          outline,
+          provider: job.provider,
+          certificationVersion: job.certificationVersion ?? undefined,
+          courseType: job.courseType,
+          sources,
+        },
+        (usage) => {
+          const cost = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model, usage.cachedTokens);
+          if (cost !== null) blueprintCostUsd += cost;
+          void touchCourseGenerationJob(jobId).catch(() => undefined);
+        },
+      );
+      await recordSpend(blueprintCostUsd);
+      blueprint = { ...blueprintResult, requestId: jobId };
+    }
 
     // Gate B: Blueprint-Validierung
     await updateCourseGenerationJob(jobId, {
@@ -629,6 +651,7 @@ export async function executeCourseGenerationJob(
     let processed = 0;
     let batchSize = INITIAL_BATCH_SIZE;
     const errorCounts = new Map<string, number>();
+    const failedEntries: ObjectiveEntry[] = [];
     let circuitOpenMessage: string | null = null;
 
     while (processed < remaining.length) {
@@ -641,6 +664,8 @@ export async function executeCourseGenerationJob(
 
       let batchFailures = 0;
       for (const entry of batch) {
+        // Abbruch je Lernziel prüfen, nicht nur je Batch: ein Klick auf „Abbrechen“ greift so nach höchstens einem Lernziel.
+        await checkNotCancelled();
         const result = await generateAndValidateObjective(
           jobId,
           objectiveRows.get(entry.objective.id)!,
@@ -656,8 +681,11 @@ export async function executeCourseGenerationJob(
           results.set(entry.objective.id, { ...entry, content: result.content! });
         } else {
           batchFailures++;
+          failedEntries.push(entry);
           const errorKey = result.errors[0] ?? "unbekannter Fehler";
-          errorCounts.set(errorKey, (errorCounts.get(errorKey) ?? 0) + 1);
+          // Vorübergehende API-Fehler (Netz, 429/503, Zeitüberschreitung) sind kein „immer gleicher Inhaltsfehler“: sie
+          // lösen den Fehlerschutz für identische Fehler nicht aus (die Fehlerquote je Batch zählt sie weiterhin).
+          if (!isRetryableError(new Error(errorKey))) errorCounts.set(errorKey, (errorCounts.get(errorKey) ?? 0) + 1);
         }
       }
 
@@ -683,6 +711,32 @@ export async function executeCourseGenerationJob(
       throw new CircuitBreakerOpenError(circuitOpenMessage);
     }
 
+    // Zweiter Durchgang: einzelne gescheiterte Lernziele (unterhalb der Fehlerschwelle) werden noch einmal erzeugt,
+    // bevor der ganze Lauf daran scheitert. Vorher endete jeder Lauf mit auch nur einem gescheiterten Lernziel erst
+    // beim Zusammensetzen des Pakets und musste von Hand neu gestartet werden.
+    if (failedEntries.length > 0) {
+      await updateCourseGenerationJob(jobId, {
+        status: "repairing",
+        message: `Zweiter Versuch für ${failedEntries.length} Lernziel(e) …`,
+      });
+      const stillFailed: string[] = [];
+      for (const entry of failedEntries) {
+        await checkNotCancelled();
+        const row = await upsertCourseGenerationObjective(jobId, entry.domain.id, entry.objective.id, entry.objective.code, false);
+        const result = await generateAndValidateObjective(jobId, row, deps, job, entry, sources, MAX_REPAIR_ATTEMPTS, outline);
+        await recordSpend(result.costUsd);
+        if (result.success) results.set(entry.objective.id, { ...entry, content: result.content! });
+        else stillFailed.push(`${entry.objective.code}: ${result.errors[0] ?? "unbekannter Fehler"}`);
+      }
+      if (stillFailed.length > 0) {
+        throw new Error(
+          `${stillFailed.length} Lernziel(e) konnten auch im zweiten Versuch nicht erzeugt werden (${stillFailed.slice(0, 3).join(" | ").slice(0, 600)}). ` +
+            "„Erneut versuchen“ setzt bei diesen Lernzielen fort; fertige bleiben erhalten.",
+        );
+      }
+    }
+    await checkNotCancelled();
+
     // Vollständige Kursvalidierung + Paket zusammensetzen
     await updateCourseGenerationJob(jobId, {
       status: "validating",
@@ -704,6 +758,7 @@ export async function executeCourseGenerationJob(
       return;
     }
 
+    await checkNotCancelled();
     await updateCourseGenerationJob(jobId, { status: "importing", message: "Kurs wird importiert …" });
     const imported = await importCoursePackage(pkgValidation.data, job.organizationId ? plannedSlugFor(job) : undefined, importOwner(job));
     await applyCourseGroup(job, imported.certificationId);

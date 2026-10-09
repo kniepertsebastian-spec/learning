@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, notInArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, max, ne, notInArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   courseGenerationJobs,
@@ -135,10 +135,125 @@ export async function updateCourseGenerationJob(
   id: string,
   values: Partial<typeof courseGenerationJobs.$inferInsert>,
 ): Promise<void> {
+  // Ein abgebrochener Auftrag bleibt abgebrochen: setzt der noch laufende Worker danach einen anderen Status
+  // („validating“, „importing“, „failed“ …), wird das ignoriert. Sonst würde ein Abbruch kurz vor Schluss überschrieben
+  // und der Kurs trotzdem veröffentlicht. Nur Felder ohne Statuswechsel (Meldung, Kosten) gehen weiter durch.
+  const keepCancelled = values.status !== undefined && values.status !== "cancelled";
   await getDb()
     .update(courseGenerationJobs)
     .set({ ...values, updatedAt: new Date() })
-    .where(eq(courseGenerationJobs.id, id));
+    .where(keepCancelled ? and(eq(courseGenerationJobs.id, id), ne(courseGenerationJobs.status, "cancelled")) : eq(courseGenerationJobs.id, id));
+}
+
+/** Lebenszeichen eines laufenden Auftrags (nach jeder KI-Antwort), damit „hängt“ von „arbeitet langsam“ unterscheidbar ist. */
+export async function touchCourseGenerationJob(id: string): Promise<void> {
+  await getDb().update(courseGenerationJobs).set({ updatedAt: new Date() }).where(eq(courseGenerationJobs.id, id));
+}
+
+/** Nicht-terminale Status, in denen ein Worker arbeiten müsste. */
+const RUNNING_STATUSES: CourseGenerationJobStatus[] = [
+  "queued",
+  "preflight",
+  "blueprint_requested",
+  "blueprint_generating",
+  "blueprint_validating",
+  "cost_estimating",
+  "blueprint_ready",
+  "canary_generating",
+  "canary_validating",
+  "content_generating",
+  "batch_generating",
+  "validating",
+  "repairing",
+  "importing",
+];
+
+/** Ab wann ein laufender Auftrag ohne Lebenszeichen als hängend gilt (eine KI-Anfrage samt Wiederholungen dauert höchstens etwa 12 Minuten). */
+export const STALE_AFTER_MS = 15 * 60_000;
+/** Wie oft ein verwaister Auftrag automatisch fortgesetzt wird, bevor er als unterbrochen endet (Schutz vor Absturzschleifen). */
+export const MAX_AUTO_RESUMES = 2;
+const AUTO_RESUME_PREFIX = "auto_resume:";
+
+/** Letztes Lebenszeichen je Auftrag: der jüngere Zeitpunkt aus Auftrag und seinen Lernzielen. */
+export async function lastActivityByJob(jobIds: string[]): Promise<Map<string, Date>> {
+  if (jobIds.length === 0) return new Map();
+  const rows = await getDb()
+    .select({ jobId: courseGenerationObjectives.jobId, last: max(courseGenerationObjectives.updatedAt) })
+    .from(courseGenerationObjectives)
+    .where(inArray(courseGenerationObjectives.jobId, jobIds))
+    .groupBy(courseGenerationObjectives.jobId);
+  return new Map(rows.filter((r) => r.last).map((r) => [r.jobId, r.last as Date]));
+}
+
+export type StaleJobAction = "resumed" | "interrupted";
+
+/**
+ * Findet laufende Aufträge, an denen in diesem Prozess niemand arbeitet und die seit STALE_AFTER_MS kein Lebenszeichen
+ * gegeben haben - typischerweise nach einem Neustart des Servers (Deployment, Absturz): Der Worker läuft im
+ * App-Prozess, der Auftrag stand danach für immer auf „läuft“. Solche Aufträge werden automatisch fortgesetzt (bereits
+ * gültige Lernziele werden dabei nicht neu erzeugt, der Blueprint wird wiederverwendet), höchstens MAX_AUTO_RESUMES-mal;
+ * danach enden sie als „failed“ mit errorCode "interrupted" und lassen sich von Hand erneut starten.
+ * Die Übernahme ist ein bedingtes Update (gleicher Status, weiterhin ohne Lebenszeichen), damit nie zwei Worker denselben Auftrag
+ * starten.
+ */
+export async function recoverStaleCourseGenerationJobs(
+  isActive: (jobId: string) => boolean,
+  start: (jobId: string) => void,
+  now: Date = new Date(),
+): Promise<Array<{ jobId: string; action: StaleJobAction }>> {
+  const db = getDb();
+  const threshold = new Date(now.getTime() - STALE_AFTER_MS);
+  const candidates = await db
+    .select()
+    .from(courseGenerationJobs)
+    .where(and(inArray(courseGenerationJobs.status, RUNNING_STATUSES), lt(courseGenerationJobs.updatedAt, threshold)));
+  if (candidates.length === 0) return [];
+  const activity = await lastActivityByJob(candidates.map((c) => c.id));
+  const out: Array<{ jobId: string; action: StaleJobAction }> = [];
+  for (const job of candidates) {
+    if (isActive(job.id)) continue;
+    const objectiveActivity = activity.get(job.id);
+    if (objectiveActivity && objectiveActivity >= threshold) continue;
+    const resumes = job.errorCode?.startsWith(AUTO_RESUME_PREFIX) ? Number(job.errorCode.slice(AUTO_RESUME_PREFIX.length)) || 0 : 0;
+    // Bedingte Übernahme: nur, wenn der Auftrag noch im selben Status und weiterhin ohne Lebenszeichen ist. Setzt sie
+    // updatedAt neu, scheitert jede zweite, gleichzeitige Übernahme an der Zeitbedingung.
+    const claimWhere = and(
+      eq(courseGenerationJobs.id, job.id),
+      eq(courseGenerationJobs.status, job.status),
+      lt(courseGenerationJobs.updatedAt, threshold),
+    );
+    if (resumes >= MAX_AUTO_RESUMES) {
+      const claimed = await db
+        .update(courseGenerationJobs)
+        .set({
+          status: "failed",
+          errorCode: "interrupted",
+          errorMessage: `Der Lauf wurde ${resumes + 1}-mal unterbrochen (z. B. Neustart des Servers) und nicht mehr automatisch fortgesetzt. „Erneut versuchen“ setzt beim nächsten offenen Lernziel fort.`,
+          completedAt: now,
+          updatedAt: now,
+        })
+        .where(claimWhere)
+        .returning({ id: courseGenerationJobs.id });
+      if (claimed.length > 0) out.push({ jobId: job.id, action: "interrupted" });
+      continue;
+    }
+    const claimed = await db
+      .update(courseGenerationJobs)
+      .set({
+        status: "queued",
+        phase: "queued",
+        errorCode: `${AUTO_RESUME_PREFIX}${resumes + 1}`,
+        message: "Unterbrochener Lauf wird automatisch fortgesetzt (bereits fertige Lernziele bleiben erhalten) …",
+        updatedAt: now,
+      })
+      .where(claimWhere)
+      .returning({ id: courseGenerationJobs.id });
+    if (claimed.length > 0) {
+      start(job.id);
+      out.push({ jobId: job.id, action: "resumed" });
+    }
+  }
+  return out;
 }
 
 export async function markCourseGenerationJobFailed(

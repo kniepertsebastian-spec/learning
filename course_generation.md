@@ -1046,3 +1046,22 @@ teure Teil, deshalb setzen die Maßnahmen vor allem dort an.
 - **Batch-Modus: noch nicht umgesetzt.** Die Gemini Batch API rechnet laut Google etwa den halben Preis ab, liefert aber
   asynchron (bis 24 h). Sinnvoll für die Massengenerierung nach dem Canary; dafür muss der Worker Aufträge einreichen,
   den Lauf über Neustarts hinweg abfragen und Canary/Circuit Breaker darauf umstellen. Eigenes Arbeitspaket.
+
+## Anhang: Robustheit und hängende Läufe (Oktober 2026)
+
+- **KI-Anfragen:** Zeitlimit je Anfrage (`GEMINI_REQUEST_TIMEOUT_MS`, Standard 180 s). Vorübergehende Fehler (429, 5xx,
+  Netz, Zeitüberschreitung, leere Antwort) werden bis zu `GEMINI_MAX_ATTEMPTS` (Standard 4) mal mit wachsender Pause
+  wiederholt (2 s, 6 s, 18 s; Basis `GEMINI_RETRY_BASE_MS`). Sie lösen den Fehlerschutz „gleicher Fehler zweimal“ nicht
+  mehr aus.
+- **Zweiter Durchgang:** Einzelne gescheiterte Lernziele werden am Ende noch einmal erzeugt, bevor der Lauf scheitert.
+- **Fortsetzen:** Ein erneuter Versuch verwendet den gespeicherten, gültigen Blueprint weiter (vorher wurde er neu
+  erzeugt: Zusatzkosten und neue Lernziele, zu denen die fertigen Inhalte nicht mehr passten). Die Kostenanzeige zählt
+  frühere Läufe mit; das Sicherheitslimit gilt je Lauf.
+- **Hängende Läufe:** Der Worker läuft im App-Prozess. Nach einem Neustart blieb ein Auftrag bisher für immer auf
+  „läuft“. Jetzt gibt jede KI-Antwort ein Lebenszeichen (`updatedAt`). Ein Watchdog (`instrumentation.ts`, alle
+  5 Minuten, zusätzlich beim Abruf der Auftragsliste) setzt Aufträge ohne Lebenszeichen seit 15 Minuten, an denen in
+  diesem Prozess niemand arbeitet, automatisch fort (`recoverStaleCourseGenerationJobs`), höchstens zweimal
+  (Zähler in `errorCode` als `auto_resume:N`); danach enden sie als `failed`/`interrupted` und lassen sich erneut
+  starten.
+- **Abbrechen:** Knopf in der Auftragsleiste über dem Katalog. Der Worker prüft vor jedem Lernziel, vor der Validierung
+  und vor dem Import; ein abgebrochener Auftrag kann vom Worker nicht mehr auf einen anderen Status gesetzt werden.

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   isRetryableAnthropicError,
   isRetryableError,
@@ -265,5 +265,44 @@ describe("generateStructured mit Antwortschema", () => {
     const { client, calls } = fakeClient(() => invalidKey);
     await expect(generateStructured("sys", "user", z.object({ k: z.string() }), "m", undefined, client)).rejects.toThrow(/API key not valid/);
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe("vorübergehende Fehler: Wiederholen statt Aufgeben", () => {
+  const prevBase = process.env.GEMINI_RETRY_BASE_MS;
+  beforeAll(() => {
+    process.env.GEMINI_RETRY_BASE_MS = "0";
+  });
+  afterAll(() => {
+    if (prevBase === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
+    else process.env.GEMINI_RETRY_BASE_MS = prevBase;
+  });
+
+  it("503 und Zeitüberschreitung werden wiederholt, danach kommt die Antwort", async () => {
+    const timeout = Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" });
+    const { client, calls } = fakeClient((_c, n) => (n === 1 ? new Error('{"error":{"code":503,"status":"UNAVAILABLE"}}') : n === 2 ? timeout : '{"name":"a","count":1}'));
+    await expect(generateStructured("sys", "user", small, "m", undefined, client)).resolves.toEqual({ name: "a", count: 1 });
+    expect(calls).toHaveLength(3);
+  });
+
+  it("jede Anfrage hat ein Zeitlimit, damit eine hängende Verbindung den Lauf nicht blockiert", async () => {
+    const { client, calls } = fakeClient(() => '{"name":"a","count":1}');
+    await generateStructured("sys", "user", small, "m", undefined, client);
+    expect((calls[0].config as { abortSignal?: unknown }).abortSignal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("eine leere Antwort wird einmal neu angefragt statt das Lernziel scheitern zu lassen", async () => {
+    let n = 0;
+    const client = {
+      models: { generateContent: async () => ({ text: ++n === 1 ? "" : '{"name":"a","count":2}', usageMetadata: {} }) },
+    } as unknown as GoogleGenAI;
+    await expect(generateStructured("sys", "user", small, "m", undefined, client)).resolves.toEqual({ name: "a", count: 2 });
+    expect(n).toBe(2);
+  });
+
+  it("nach der Höchstzahl an Versuchen kommt der Fehler", async () => {
+    const { client, calls } = fakeClient(() => new Error("429 RESOURCE_EXHAUSTED"));
+    await expect(generateStructured("sys", "user", small, "m", undefined, client)).rejects.toThrow(/429/);
+    expect(calls).toHaveLength(4);
   });
 });

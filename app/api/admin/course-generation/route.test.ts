@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const guard = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/server/auth-guards", () => ({ requireAdminApi: guard }));
 vi.mock("@/lib/server/admin/rate-limit", () => ({ checkCourseGenerationRateLimit: () => ({ allowed: true, retryAfterSeconds: 0 }) }));
-vi.mock("@/lib/server/course-generation/job-service", () => ({ createCourseGenerationJob: vi.fn(async () => ({ id: "j1" })), listCourseGenerationJobs: vi.fn(), DuplicateCourseGenerationJobError: class extends Error {} }));
-vi.mock("@/lib/server/course-generation/runner", () => ({ startCourseGenerationJob: vi.fn() }));
+vi.mock("@/lib/server/course-generation/job-service", () => ({ createCourseGenerationJob: vi.fn(async () => ({ id: "j1" })), listCourseGenerationJobs: vi.fn(), DuplicateCourseGenerationJobError: class extends Error {}, isTerminalCourseGenerationStatus: () => false, lastActivityByJob: vi.fn(async () => new Map()), STALE_AFTER_MS: 900_000 }));
+vi.mock("@/lib/server/course-generation/runner", () => ({ startCourseGenerationJob: vi.fn(), isCourseGenerationJobActive: () => false, recoverStaleCourseGenerationJobsNow: vi.fn(async () => undefined) }));
 
 import { POST } from "./route";
 
