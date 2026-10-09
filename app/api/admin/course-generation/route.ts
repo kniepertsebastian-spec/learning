@@ -5,9 +5,17 @@ import { requireAdminApi } from "@/lib/server/auth-guards";
 import {
   createCourseGenerationJob,
   DuplicateCourseGenerationJobError,
+  isTerminalCourseGenerationStatus,
+  lastActivityByJob,
   listCourseGenerationJobs,
+  STALE_AFTER_MS,
 } from "@/lib/server/course-generation/job-service";
-import { startCourseGenerationJob } from "@/lib/server/course-generation/runner";
+import {
+  isCourseGenerationJobActive,
+  recoverStaleCourseGenerationJobsNow,
+  startCourseGenerationJob,
+} from "@/lib/server/course-generation/runner";
+import type { CourseGenerationJobStatus } from "@/lib/server/db/schema";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,7 +48,24 @@ export async function GET() {
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;
 
-  const jobs = await listCourseGenerationJobs(10);
+  // Zusätzlich zum Watchdog: verwaiste Aufträge fortsetzen, sobald jemand die Liste ansieht (höchstens einmal je Minute).
+  await recoverStaleCourseGenerationJobsNow();
+  const listed = await listCourseGenerationJobs(10);
+  const activity = await lastActivityByJob(listed.filter((j) => !isTerminalCourseGenerationStatus(j.status as CourseGenerationJobStatus)).map((j) => j.id));
+  const now = Date.now();
+  // Letztes Lebenszeichen (Auftrag oder eines seiner Lernziele) und ob der Auftrag hängt: läuft laut Status, aber seit
+  // STALE_AFTER_MS ohne Lebenszeichen. `active`: in diesem Serverprozess arbeitet tatsächlich ein Worker daran.
+  const jobs = listed.map((job) => {
+    const objectiveActivity = activity.get(job.id);
+    const lastActivityAt = objectiveActivity && objectiveActivity > job.updatedAt ? objectiveActivity : job.updatedAt;
+    const running = !isTerminalCourseGenerationStatus(job.status as CourseGenerationJobStatus);
+    return {
+      ...job,
+      lastActivityAt,
+      active: isCourseGenerationJobActive(job.id),
+      stale: running && now - lastActivityAt.getTime() > STALE_AFTER_MS,
+    };
+  });
   return NextResponse.json({ jobs }, { headers: { "Cache-Control": "no-store" } });
 }
 

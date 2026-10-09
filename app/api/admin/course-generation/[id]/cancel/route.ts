@@ -6,6 +6,7 @@ import {
   isTerminalCourseGenerationStatus,
   updateCourseGenerationJob,
 } from "@/lib/server/course-generation/job-service";
+import { isCourseGenerationJobActive } from "@/lib/server/course-generation/runner";
 import type { CourseGenerationJobStatus } from "@/lib/server/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,12 @@ export async function POST(
     );
   }
 
-  await updateCourseGenerationJob(id, { status: "cancelled" });
+  // Arbeitet in diesem Prozess kein Worker daran (z. B. nach einem Neustart hängen geblieben), meldet auch keiner mehr
+  // den Abschluss: dann hier gleich als beendet vermerken. Sonst prüft der laufende Worker vor jedem Lernziel nach.
+  await updateCourseGenerationJob(id, {
+    status: "cancelled",
+    ...(isCourseGenerationJobActive(id) ? {} : { completedAt: new Date(), message: "Auftrag wurde abgebrochen." }),
+  });
   const updated = await getCourseGenerationJob(id);
   return NextResponse.json({ job: updated });
 }

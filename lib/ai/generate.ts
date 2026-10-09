@@ -23,7 +23,8 @@ export function isStructuredOutputParseFailure(error: unknown): boolean {
 export function isRetryableError(error: unknown): boolean {
   const message = errorMessage(error);
   return (
-    /ECONNRESET|ETIMEDOUT|fetch failed|socket hang up|429|500|503|RESOURCE_EXHAUSTED/i.test(message) ||
+    /ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|fetch failed|socket hang up|429|500|502|503|504|RESOURCE_EXHAUSTED|UNAVAILABLE|DEADLINE_EXCEEDED|TimeoutError|timed? ?out|aborted/i.test(message) ||
+    (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) ||
     isStructuredOutputParseFailure(error)
   );
 }
@@ -252,6 +253,27 @@ export interface AIUsage {
   cachedTokens?: number;
 }
 
+function envNumber(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return process.env[name] !== undefined && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+/** Zeitlimit je Gemini-Anfrage (Standard 3 Minuten; eine Lernziel-Antwort braucht typischerweise unter einer Minute). */
+function requestTimeoutMs(): number {
+  return envNumber("GEMINI_REQUEST_TIMEOUT_MS", 180_000);
+}
+/** Versuche je Anfrage bei vorübergehenden Fehlern (Standard 4). */
+function transientAttempts(): number {
+  return Math.max(1, Math.floor(envNumber("GEMINI_MAX_ATTEMPTS", 4)));
+}
+/** Pause vor dem nächsten Versuch: 2 s, 6 s, 18 s … (Basis per GEMINI_RETRY_BASE_MS, in Tests 0), mit etwas Streuung. */
+function retryDelayMs(attempt: number): number {
+  const base = envNumber("GEMINI_RETRY_BASE_MS", 2_000);
+  return base === 0 ? 0 : Math.round(base * 3 ** (attempt - 1) * (0.8 + Math.random() * 0.4));
+}
+function sleep(ms: number): Promise<void> {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+}
+
 export async function requestJson(
   systemPrompt: string,
   userPrompt: string,
@@ -263,7 +285,9 @@ export async function requestJson(
   jsonSchema?: Record<string, unknown>,
 ): Promise<string> {
   const client = clientOverride ?? getGeminiClient();
-  const maxAttempts = 2; // maxRetries = 1
+  // Vorübergehende Fehler (429/503, Netzwerk, Zeitüberschreitung, leere Antwort) mit wachsender Pause wiederholen,
+  // statt sofort aufzugeben: ein einzelner Aussetzer der API soll kein Lernziel und keinen Kurslauf kosten.
+  const maxAttempts = transientAttempts();
 
   let useSchema = Boolean(jsonSchema) && !rejectedSchemas.has(schemaKey(jsonSchema!));
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -289,6 +313,8 @@ export async function requestJson(
           thinkingConfig: { thinkingBudget: 0 },
           responseMimeType: "application/json",
           ...(useSchema ? { responseJsonSchema: jsonSchema } : {}),
+          // Ohne Zeitlimit kann eine hängende Verbindung den ganzen Kurslauf für Stunden blockieren.
+          abortSignal: AbortSignal.timeout(requestTimeoutMs()),
         },
       });
 
@@ -303,6 +329,11 @@ export async function requestJson(
       onUsage?.({ model, promptTokens, completionTokens, cachedTokens });
 
       if (!response.text) {
+        // Leere Antwort (z. B. abgebrochene Ausgabe): beim nächsten Versuch meist da. Erst nach dem letzten Versuch ein Fehler.
+        if (attempt < maxAttempts) {
+          await sleep(retryDelayMs(attempt));
+          continue;
+        }
         throw new AIGenerationError("Gemini hat keine Textantwort zurückgegeben.");
       }
       return response.text;
@@ -319,6 +350,8 @@ export async function requestJson(
       if (attempt === maxAttempts || !isRetryableError(error)) {
         throw error;
       }
+      console.warn(`Gemini-Anfrage fehlgeschlagen (Versuch ${attempt}/${maxAttempts}), neuer Versuch:`, errorMessage(error).slice(0, 200));
+      await sleep(retryDelayMs(attempt));
     }
   }
 
