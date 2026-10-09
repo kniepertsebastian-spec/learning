@@ -28,7 +28,7 @@
     "palette": 2
   },
   "app/layout.tsx": {
-    "hex": 1,
+    "hex": 2,
     "palette": 0
   },
   "app/login/page.tsx": {

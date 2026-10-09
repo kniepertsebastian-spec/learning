@@ -213,13 +213,13 @@ Basis: **shadcn/ui** (MIT, Code liegt im Repo, Radix-Primitives darunter) – nu
 
 ### Layouts
 
-- [ ] Drei Layouts mit eigener Navigation, jeweils `data-context` am Root:
+- [x] Drei Layouts mit eigener Navigation, jeweils `data-context` am Root:
   - Persönlich: `/`, `/cert/*`, `/profile`, `/account`, neue Seiten aus U8 → `personal`
   - Firma: `/company/*` → `company`
   - Admin: `/admin/*` → `admin`
-- [ ] Aufbau Desktop: Sidebar 248 px (Admin 232 px) links, Inhalt rechts; Inhalt nutzt die Breite (kein festes 780-px-Zentrum mehr). Lesbare Breiten nur dort, wo Text läuft (Lektion max. 740 px, Quiz max. 760 px).
-- [ ] Mobil (< 768 px): Sidebar wird zur oberen Leiste (Logo, Kontextname, Menü-Button) mit `Sheet` für die Navigation. Keine horizontale Seitenscroll-Leiste bei 390 px.
-- [ ] `components/Header.tsx` wird durch die Shell ersetzt. „Sign out“ gibt es nur noch im Benutzermenü.
+- [x] Aufbau Desktop: Sidebar 248 px (Admin 232 px) links, Inhalt rechts; Inhalt nutzt die Breite (kein festes 780-px-Zentrum mehr). Lesbare Breiten nur dort, wo Text läuft (Lektion max. 740 px, Quiz max. 760 px).
+- [x] Mobil (< 768 px): Sidebar wird zur oberen Leiste (Logo, Kontextname, Menü-Button) mit `Sheet` für die Navigation. Keine horizontale Seitenscroll-Leiste bei 390 px.
+- [x] `components/Header.tsx` wird durch die Shell ersetzt. „Sign out“ gibt es nur noch im Benutzermenü.
 
 ### Sidebar (oben nach unten)
 
@@ -231,10 +231,12 @@ Basis: **shadcn/ui** (MIT, Code liegt im Repo, Radix-Primitives darunter) – nu
 
 ### Kopfzeile im Inhalt
 
-- [ ] Persönlich: Suchfeld (max. 460 px, `⌘K`-Hinweis), rechts Streak-Pill (Bernstein-Soft, Flammen-Icon, „9 Tage Serie“) und Benachrichtigungs-Button (44 px).
-- [ ] Admin: Warnstreifen über der gesamten Seite: Schild-Icon, „PLATTFORM-ADMIN“, „Änderungen wirken für alle Kunden und Lernenden.“, rechts Link „Zur Lernansicht“.
+- [x] Persönlich: Suchfeld (max. 460 px, `⌘K`-Hinweis), rechts Streak-Pill (Bernstein-Soft, Flammen-Icon, „9 Tage Serie“) und Benachrichtigungs-Button (44 px).
+- [x] Admin: Warnstreifen über der gesamten Seite: Schild-Icon, „PLATTFORM-ADMIN“, „Änderungen wirken für alle Kunden und Lernenden.“, rechts Link „Zur Lernansicht“.
 
 ### Gate U2
+
+**Stand: erfüllt (geprüft), mit zwei bewussten Lücken.** Geprüft (Browser, Playwright): Kontexte `personal`/`company`/`admin` per `data-context`, Kontextwechsel ohne Neuanmeldung, Lernende sehen weder Firma noch Admin (Switcher nicht klickbar, keine „Bereiche“), Abmelden nur im Benutzermenü, Mobil 390 px: Menü-Sheet erreichbar, kein horizontales Scrollen auf `/`, `/company`, `/admin`, `/profile`, `/account` in Dunkel/Hell; Tests (612) grün. **Lücken:** (1) Das Suchfeld ist sichtbar, aber deaktiviert – die Funktion (⌘K) steht unter „Später“. (2) Der Benachrichtigungs-Button fehlt, weil es noch keine Benachrichtigungen gibt (kein toter Knopf). Zähler-Pills in der Sidebar (z. B. „Wiederholen 12“) folgen mit U3/U6. Nicht geprüft: Screenreader.
 
 - Alle bestehenden Seiten laufen in der neuen Shell, keine Seite mehr mit altem Header.
 - Kontextwechsel ohne Neuanmeldung; Rechte unverändert serverseitig geprüft (bestehende Tests grün).

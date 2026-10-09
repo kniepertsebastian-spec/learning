@@ -6,7 +6,6 @@ import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { MyPracticeTasks } from "@/components/MyPracticeTasks";
-import { SignOutButton } from "@/components/SignOutButton";
 import { listMyAssignments } from "@/lib/server/assignments/sync";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { visibleCertificationsCondition } from "@/lib/server/catalog/visibility";
@@ -46,9 +45,7 @@ export default async function DashboardPage() {
             : "Certifications"}
         </h1>
         <div className="flex items-center gap-2">
-          {session?.user?.id ? (
-            <SignOutButton userId={session.user.id} />
-          ) : (
+          {session?.user?.id ? null : (
             <>
               <Link
                 href="/login"

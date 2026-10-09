@@ -133,6 +133,7 @@
 }
 
 :root[data-context="company"],
+[data-context="company"],
 .light[data-context="company"],
 [data-context="company"] .light {
   --ctx-accent: #e3a21a;
@@ -147,6 +148,7 @@
   --ctx-label: #7a6532;
 }
 .dark[data-context="company"],
+.dark [data-context="company"],
 [data-context="company"] .dark {
   --ctx-accent: #f4b740;
   --ctx-link: #f4b740;
@@ -161,6 +163,7 @@
 }
 
 :root[data-context="admin"],
+[data-context="admin"],
 .light[data-context="admin"],
 [data-context="admin"] .light {
   --ctx-accent: #e85a45;
@@ -175,6 +178,7 @@
   --ctx-label: #8f4f45;
 }
 .dark[data-context="admin"],
+.dark [data-context="admin"],
 [data-context="admin"] .dark {
   --ctx-accent: #ff7a66;
   --ctx-link: #ff9a8a;
