@@ -1921,3 +1921,80 @@ export const cheatSheetRuns = pgTable(
     uniqueIndex("cheat_sheet_runs_one_running").on(table.certificationId).where(sql`${table.status} = 'running'`),
   ],
 );
+
+/**
+ * Anmeldung über das Firmenkonto (OIDC) je Firma. Das Client-Geheimnis liegt verschlüsselt (secret-box). Rollen werden bei
+ * jeder Anmeldung aus den Gruppen des IdP bestimmt (`roleMappings`: Rolle → Gruppennamen, eine Rolle gilt, wenn irgendeine
+ * ihrer Gruppen in den Ansprüchen steht; höchste Rolle gewinnt; ohne Treffer „Lernende“).
+ */
+export const organizationSso = pgTable(
+  "organization_sso",
+  {
+    organizationId: uuid("organization_id")
+      .primaryKey()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(false),
+    /** Adresse des IdP (Aussteller), z. B. https://login.microsoftonline.com/<tenant>/v2.0 */
+    issuer: text("issuer").notNull(),
+    clientId: text("client_id").notNull(),
+    clientSecretEncrypted: text("client_secret_encrypted").notNull(),
+    /** Name des Anspruchs mit den Gruppen (Entra/Okta/Keycloak: meist „groups“). */
+    groupsClaim: text("groups_claim").notNull().default("groups"),
+    roleMappings: jsonb("role_mappings").$type<Record<CompanyRole, string[]>>().notNull(),
+    /** Passwort-Anmeldung für Mitglieder dieser Firma sperren (Firmen-Admins behalten sie als Notzugang). */
+    enforceSso: boolean("enforce_sso").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+/**
+ * E-Mail-Domains einer Firma. Erst nach Bestätigung (DNS-TXT-Eintrag) gilt eine Domain für SSO; eine bestätigte Domain gehört
+ * genau einer Firma (Schutz vor Konto-Übernahme durch eine Firma, die eine fremde Domain eintippt).
+ */
+export const organizationDomains = pgTable(
+  "organization_domains",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    domain: text("domain").notNull(),
+    verificationToken: text("verification_token").notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("organization_domains_org_domain_unique").on(table.organizationId, table.domain),
+    uniqueIndex("organization_domains_verified_unique").on(table.domain).where(sql`${table.verifiedAt} is not null`),
+  ],
+);
+
+/** Verknüpfung eines Kontos mit der Identität im IdP der Firma (Aussteller + Kennung „sub“). */
+export const userIdentities = pgTable(
+  "user_identities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    issuer: text("issuer").notNull(),
+    subject: text("subject").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  },
+  (table) => [unique("user_identities_issuer_subject_unique").on(table.issuer, table.subject), index("user_identities_user_idx").on(table.userId)],
+);
+
+/** Einmaliges, kurzlebiges Ticket: die SSO-Rückkehr beweist die Anmeldung, das Ticket macht daraus die Auth.js-Sitzung. */
+export const ssoLoginTickets = pgTable("sso_login_tickets", {
+  tokenHash: text("token_hash").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -78,7 +78,12 @@ function LoginForm() {
             {isPending ? "Signing in…" : "Sign in"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-foreground/60">
+        <p className="mt-4 text-center text-sm">
+          <Link href="/sso" className="text-accent hover:underline" data-testid="login-sso-link">
+            Sign in with company account (SSO)
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-sm text-foreground/60">
           <Link href="/forgot-password" className="text-accent hover:underline">
             Forgot password?
           </Link>

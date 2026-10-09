@@ -54,6 +54,9 @@ const OPERATIONAL_REASON =
 export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "account_tokens.user_id":
     "Sicherheits-Token (nur Hash, kein Inhalt) für Bestätigung und Reset; wird mit dem Konto gelöscht (CASCADE)",
+  "user_identities.user_id":
+    "Verknüpfung mit dem Firmen-Login (Aussteller und Kennung im IdP der Firma); technische Daten, die mit dem Konto gelöscht werden (CASCADE)",
+  "sso_login_tickets.user_id": "Einmaliges Anmelde-Ticket (nur Hash, wenige Sekunden gültig); wird mit dem Konto gelöscht (CASCADE)",
   "company_claims.user_id":
     "Offene Firmen-Anfrage (Name, Firmen-E-Mail, nur Token-Hash); befristet, wird mit dem Konto gelöscht (CASCADE)",
   "blueprint_drafts.generated_by_user_id": OPERATIONAL_REASON,

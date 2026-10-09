@@ -392,7 +392,11 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 
 ## Phase 7 – Skalierung
 
-- [ ] Anmeldung über Firmenkonto (SSO, z. B. Microsoft Entra ID) und automatische Nutzerverwaltung
+- [x] Anmeldung über Firmenkonto (SSO, OpenID Connect) mit Rollen aus Gruppen
+  - _Gebaut (Migration `0047`: `organization_sso`, `organization_domains`, `user_identities`, `sso_login_tickets`; Reiter „Anmeldung“ für den Firmen-Admin, Seite `/sso`, Routen `/api/sso/start`, `/api/sso/callback`, `/api/company/sso…`; Anleitung `docs/SSO.md`):_ Die Firma trägt Aussteller, Client-ID und -Geheimnis (verschlüsselt) ein, bestätigt ihre E-Mail-Domain per DNS-TXT und ordnet IdP-Gruppen den Rollen zu. Wer sich mit bestätigter Domain anmeldet, wird ohne Einladung Mitglied; die Rolle wird bei jeder Anmeldung neu gesetzt (höchste Rolle gewinnt, sonst Lernende/r, der letzte Firmen-Admin wird nie herabgestuft). Optional wird die Passwort-Anmeldung der Mitglieder gesperrt (Firmen-Admins behalten sie als Notzugang). Ablauf mit PKCE, state, nonce, Prüfung von Aussteller, Empfänger, Signatur und Ablauf; die Sitzung entsteht über ein einmaliges 60-Sekunden-Ticket.
+  - _Entscheidungen (Betreiber, Oktober 2026):_ nur OIDC (kein SAML), Rollen per Gruppen-Zuordnung, Anlage bei der ersten Anmeldung nur für bestätigte Firmen-Domains. Eine bestätigte Domain gehört genau einer Firma; öffentliche Mail-Anbieter sind ausgeschlossen.
+  - _Geprüft:_ 10 + 6 DB-Tests mit Fake-IdP (Signatur, Nonce, Empfänger, Aussteller, Ablauf, fremde Domain, Konto einer anderen Firma, Ticket nur einmal, Rollen, Passwort-Sperre, Domain-Bestätigung, Rechte) mit Mutationsproben (alle bis auf eine doppelt abgesicherte Prüfung fallen durch); Browser (390 px) mit lokalem Fake-IdP über https: Anmeldung als Admin, als Lernender, fremde Domain abgewiesen, Einrichtungsmaske.
+  - _Nicht geprüft/offen:_ **ein echter IdP** (Entra ID, Okta …); die Gruppenlieferung von Entra bei sehr vielen Gruppen; automatisches Entfernen ausgeschiedener Personen (SCIM) und Single Logout (bewusst nicht enthalten); Rate-Limit nur auf dem Start der Anmeldung.
 - [ ] Externer Sicherheitstest (Penetrationstest) und Behebung der Befunde
 
 ---

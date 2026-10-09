@@ -42,6 +42,9 @@ const ALLOWED_TABLES = new Set([
   "mandatoryRuleDepartments",
   // Aufträge der internen Lernpfade: nur Stand und Meldung, keine Lerndaten
   "courseGenerationJobs",
+  // Anmeldung über das Firmenkonto: Einstellungen der Firma und ihre bestätigten E-Mail-Domains (keine Lerndaten)
+  "organizationSso",
+  "organizationDomains",
 ]);
 // Erlaubte Imports aus lib/server/* (alles andere, z. B. progress, quiz, remediation, exam, study, sync, analytics, review, sections, offline, ai, admin, wäre ein Zugriff auf Lerndetails).
 // "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen, "auth-rate-limit"
@@ -66,6 +69,8 @@ const ALLOWED_SERVER_MODULES = new Set([
   "byok",
   // Merkzettel nachträglich erzeugen: zählt Lektionen mit/ohne Merkzettel (Kursinhalt, keine Lerndaten) und startet den Lauf
   "internal-courses",
+  // Anmeldung über das Firmenkonto: OIDC-Abruf und Adresse der Rückkehr (Identität und Rolle, keine Lerndaten)
+  "sso",
 ]);
 
 function sourceFiles(dir: string): string[] {
