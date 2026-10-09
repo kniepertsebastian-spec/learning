@@ -9,6 +9,8 @@ import { CompanyModulesPanel } from "@/components/CompanyModulesPanel";
 import { DepartmentsPanel } from "@/components/DepartmentsPanel";
 import { listDepartments, listMembersWithDepartment } from "@/lib/server/company/departments";
 import { listCheatSheetStatus } from "@/lib/server/internal-courses/cheat-sheets";
+import { SsoPanel } from "@/components/SsoPanel";
+import { getSsoView } from "@/lib/server/company/sso";
 import { MandatoryRulesPanel } from "@/components/MandatoryRulesPanel";
 import { listCatalogCoursesForRules, listMandatoryRules } from "@/lib/server/company/mandatory";
 import { OnboardingsPanel } from "@/components/OnboardingsPanel";
@@ -130,6 +132,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     ...(canAssign ? [{ id: "onboarding", label: "Onboarding" }] : []),
     { id: "documents", label: de ? "Dokumente" : "Documents" },
     ...(isAdmin ? [{ id: "team", label: de ? "Team" : "Team" }] : []),
+    ...(isAdmin ? [{ id: "sso", label: de ? "Anmeldung" : "Sign-in" }] : []),
   ];
   const requested = Array.isArray(tabParam) ? tabParam[0] : tabParam;
   const active = tabs.some((t) => t.id === requested) ? (requested as string) : "status";
@@ -205,6 +208,8 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
       )}
 
       {active === "documents" && <DocumentsPanel documents={documentRows} locale={locale} canSuppress={isAdmin} />}
+
+      {active === "sso" && isAdmin && <SsoPanel view={await getSsoView(membership.organizationId)} />}
 
       {active === "team" && invitations && (
         <>

@@ -4,6 +4,7 @@ import { getDb } from "@/lib/server/db/client";
 import { users } from "@/lib/server/db/schema";
 import { normalizeEmail } from "@/lib/server/email";
 import { isMailConfigured } from "@/lib/server/mail/config";
+import { passwordLoginAllowed } from "@/lib/server/sso/service";
 
 export type AuthenticatedUser = {
   id: string;
@@ -37,6 +38,8 @@ export async function authenticateUser(
   }
   if (!(await bcrypt.compare(password, user.passwordHash))) return null;
   if (isMailConfigured() && !user.emailVerifiedAt) return null;
+  // Erzwingt die Firma die Anmeldung über das Firmenkonto, gilt das Passwort nicht (Firmen-Admins ausgenommen: Notzugang).
+  if (!(await passwordLoginAllowed(user.id))) return null;
 
   return { id: user.id, email: user.email, name: user.name, sessionVersion: user.sessionVersion };
 }

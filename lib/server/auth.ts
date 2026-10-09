@@ -4,6 +4,7 @@ import { checkLoginRateLimit, clientIp } from "./auth-rate-limit";
 import { authenticateUser } from "./credentials";
 import { isSessionTokenValid } from "./session-validity";
 import { normalizeEmail } from "./email";
+import { consumeLoginTicket } from "./sso/service";
 
 /**
  * Credentials-Provider mit JWT-Sessions - kein Auth.js-Adapter/DB-Sessiontabellen
@@ -36,6 +37,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         // Passwortprüfung inkl. E-Mail-Bestätigung: lib/server/credentials.ts
         return authenticateUser(email, password);
+      },
+    }),
+    // Anmeldung über das Firmenkonto: nur mit einem einmaligen Ticket, das /api/sso/callback nach geprüfter Rückkehr vom IdP ausstellt.
+    Credentials({
+      id: "sso",
+      credentials: { ticket: { label: "Ticket", type: "text" } },
+      authorize: async (credentials) => {
+        const ticket = typeof credentials?.ticket === "string" ? credentials.ticket : undefined;
+        return ticket ? consumeLoginTicket(ticket) : null;
       },
     }),
   ],

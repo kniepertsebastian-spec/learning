@@ -67,6 +67,7 @@ services:
       MAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-}
       APP_BASE_URL: ${APP_BASE_URL:-}
+      SSO_ALLOW_PRIVATE_IDP: ${SSO_ALLOW_PRIVATE_IDP:-}
 
       # Uploaded certification source PDFs (R1.1, lib/server/storage/local-disk.ts)
       SOURCES_STORAGE_DIR: /app/data/sources
