@@ -159,14 +159,6 @@
     "hex": 0,
     "palette": 4
   },
-  "components/RichText.tsx": {
-    "hex": 0,
-    "palette": 2
-  },
-  "components/SectionContent.tsx": {
-    "hex": 0,
-    "palette": 7
-  },
   "components/SourceUrlInput.tsx": {
     "hex": 0,
     "palette": 1

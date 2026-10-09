@@ -202,6 +202,9 @@
   --color-switcher-border: var(--ctx-switcher-border);
   --color-nav-active: var(--ctx-active);
   --color-ctx-label: var(--ctx-label);
+  --color-code-key: var(--code-key);
+  --color-code-value: var(--code-value);
+  --color-code-muted: var(--code-muted);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-inset: var(--surface-inset);
@@ -302,3 +305,8 @@ body {
 .anim-pop-in {
   animation: ui-pop-in 150ms ease-out;
 }
+
+/* Syntax-Farben (highlight.js) aus den Tokens: Schlüssel/Schlüsselwörter, Werte/Strings, Kommentare/Ausgabe. */
+.hljs-keyword, .hljs-attr, .hljs-name, .hljs-selector-tag, .hljs-built_in, .hljs-type, .hljs-title, .hljs-section, .hljs-variable { color: var(--code-key); }
+.hljs-string, .hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet, .hljs-meta, .hljs-regexp, .hljs-template-variable { color: var(--code-value); }
+.hljs-comment, .hljs-quote, .hljs-doctag { color: var(--code-muted); font-style: italic; }

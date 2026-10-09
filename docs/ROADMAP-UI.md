@@ -323,10 +323,10 @@ Route `/cert/[id]/section/[sectionId]`.
 
 ### Seitenaufbau
 
-- [ ] Kopfleiste: Breadcrumb (Übersicht / Kurs / Domain / Sektion), rechts „Merkzettel“ (secondary) und „Kurz-Check starten“ (primary). Darunter **Lesefortschritt** als 2-px-Linie in Mint über die volle Breite.
-- [ ] Drei Spalten (Desktop): **Gliederung** links (240–280 px; Sektionen der Domain mit Kreis-Status: erledigt Mint gefüllt mit Häkchen, aktuell Mint-Ring, offen grau; darunter Domain-Fortschritt mit Gewichtung „30 % der Prüfung“), **Artikel** Mitte (max. 740 px), **„Auf dieser Seite“** rechts (200–220 px; H2-Anker, aktiver mit 2-px-Mint-Linie; darunter Quellenkarte mit „Inhalt melden“). Tablet: rechte Spalte entfällt. Mobil: nur Artikel, Gliederung als `Sheet`.
-- [ ] Artikelkopf: Pills „Sektion x von y“, „ca. n Min.“, optional „Hands-on“ (Mint); Titel 38 px; Lead 17 px.
-- [ ] Ende jeder Sektion: Hero-Karte „Sitzt das?“ mit „3 Fragen zu dieser Sektion · ca. 2 Min.“ und „Kurz-Check starten“ (bestehendes `SectionQuiz`).
+- [x] Kopfleiste: Breadcrumb (Übersicht / Kurs / Domain / Sektion), rechts „Merkzettel“ (secondary) und „Kurz-Check starten“ (primary). Darunter **Lesefortschritt** als 2-px-Linie in Mint über die volle Breite.
+- [x] Drei Spalten (Desktop): **Gliederung** links (240–280 px; Sektionen der Domain mit Kreis-Status: erledigt Mint gefüllt mit Häkchen, aktuell Mint-Ring, offen grau; darunter Domain-Fortschritt mit Gewichtung „30 % der Prüfung“), **Artikel** Mitte (max. 740 px), **„Auf dieser Seite“** rechts (200–220 px; H2-Anker, aktiver mit 2-px-Mint-Linie; darunter Quellenkarte mit „Inhalt melden“). Tablet: rechte Spalte entfällt. Mobil: nur Artikel, Gliederung als `Sheet`.
+- [x] Artikelkopf: Pills „Sektion x von y“, „ca. n Min.“, optional „Hands-on“ (Mint); Titel 38 px; Lead 17 px.
+- [x] Ende jeder Sektion: Hero-Karte „Sitzt das?“ mit „3 Fragen zu dieser Sektion · ca. 2 Min.“ und „Kurz-Check starten“ (bestehendes `SectionQuiz`).
 
 ### Neue Inhaltsblöcke im Markdown
 
@@ -344,19 +344,21 @@ Route `/cert/[id]/section/[sectionId]`.
 | Ablauf | `:::steps` mit Listenpunkten `Label \| Befehl` | Schrittkette (Kästen mit Pfeilen, umbrechend) |
 | Praxisbeispiel | `:::practice` mit `### Szenario`, `### Aufgabe`, `### Lösung`, `### Warum` | Praxiskarte (s. u.) |
 
-- [ ] Parser: `remark-gfm` (vorhanden) + `remark-directive` für `:::`-Blöcke; GFM-Alerts über eigenes kleines Remark-Plugin. Unbekannte Direktiven werden als normaler Text gezeigt, nie als HTML.
-- [ ] **Syntax-Highlighting:** von `highlight.js` (Client) auf **Shiki über `rehype-pretty-code` serverseitig** umstellen, wenn `RichText` dafür in eine Server-Komponente überführt werden kann; sonst `highlight.js` behalten und nur Kopfzeile/Zeilenmarkierung ergänzen. Entscheidung im PR begründen. Farbschema an Tokens anpassen (Schlüssel `#8DBBFF`, Werte `#F4B740`, Kommentare/Ausgabe `#7C8699`).
-- [ ] **Terminal-Block:** Kopfzeile (`#121722`) mit drei grauen Punkten, „terminal · bash“, „Kopieren“-Button; Zeilen mit `$ ` werden als Befehl erkannt (Prompt Mint, Befehl hell), alle anderen als Ausgabe (grau). Kopieren übernimmt **nur die Befehle** ohne `$` und ohne Ausgabe. Zeilen mit Fehlern lassen sich markieren (`{7}` → roter Zeilenhintergrund 10 %).
-- [ ] **Praxiskarte:** Kopf mit Werkzeug-Icon und Overline „Praxisbeispiel“ (Info-Blau) + Zeitangabe; „1 · Szenario“ und „2 · Aufgabe“ als zwei Kacheln nebeneinander; „3 · Lösung“ standardmäßig **eingeklappt** (Button „3 · Lösung anzeigen“), darin optional `:::tabs`; „4 · Warum das funktioniert“ erscheint mit der Lösung.
-- [ ] Tabellen: Container mit Radius 14 und horizontalem Scroll, Kopf `#151A23`, erste Spalte bei Befehlen in Geist Mono Mint.
+- [x] Parser: `remark-gfm` (vorhanden) + `remark-directive` für `:::`-Blöcke; GFM-Alerts über eigenes kleines Remark-Plugin. Unbekannte Direktiven werden als normaler Text gezeigt, nie als HTML.
+- [x] **Syntax-Highlighting:** von `highlight.js` (Client) auf **Shiki über `rehype-pretty-code` serverseitig** umstellen, wenn `RichText` dafür in eine Server-Komponente überführt werden kann; sonst `highlight.js` behalten und nur Kopfzeile/Zeilenmarkierung ergänzen. Entscheidung im PR begründen. Farbschema an Tokens anpassen (Schlüssel `#8DBBFF`, Werte `#F4B740`, Kommentare/Ausgabe `#7C8699`).
+- [x] **Terminal-Block:** Kopfzeile (`#121722`) mit drei grauen Punkten, „terminal · bash“, „Kopieren“-Button; Zeilen mit `$ ` werden als Befehl erkannt (Prompt Mint, Befehl hell), alle anderen als Ausgabe (grau). Kopieren übernimmt **nur die Befehle** ohne `$` und ohne Ausgabe. Zeilen mit Fehlern lassen sich markieren (`{7}` → roter Zeilenhintergrund 10 %).
+- [x] **Praxiskarte:** Kopf mit Werkzeug-Icon und Overline „Praxisbeispiel“ (Info-Blau) + Zeitangabe; „1 · Szenario“ und „2 · Aufgabe“ als zwei Kacheln nebeneinander; „3 · Lösung“ standardmäßig **eingeklappt** (Button „3 · Lösung anzeigen“), darin optional `:::tabs`; „4 · Warum das funktioniert“ erscheint mit der Lösung.
+- [x] Tabellen: Container mit Radius 14 und horizontalem Scroll, Kopf `#151A23`, erste Spalte bei Befehlen in Geist Mono Mint.
 
 ### Generator
 
-- [ ] `course_generation.md` und die Generierungs-Prompts um die Blöcke erweitern: je Sektion mindestens ein `[!EXAM]`, bei Hands-on-Themen mindestens ein `:::practice` und Terminal-Blöcke mit realistischer Ausgabe; `[!MISTAKE]` nur, wenn die Quelle einen typischen Fehler hergibt. Nichts erfinden, was nicht in den Quellen steht (Leitplanke Source Grounding).
-- [ ] Zod-Schema/Validierung: Direktiven müssen korrekt geschlossen sein, `:::practice` braucht alle vier Teile, sonst Validierungsfehler wie bei anderen Qualitätsprüfungen.
-- [ ] Backfill-Skript für bestehende Kurse (nur Ergänzung der Blöcke, Inhalte bleiben), mit Kostenanzeige und Rate-Limit wie bei anderen kostenpflichtigen Aktionen; bei internen Lernpfaden prüft die Firma das Ergebnis wie bisher.
+- [x] `course_generation.md` und die Generierungs-Prompts um die Blöcke erweitern: je Sektion mindestens ein `[!EXAM]`, bei Hands-on-Themen mindestens ein `:::practice` und Terminal-Blöcke mit realistischer Ausgabe; `[!MISTAKE]` nur, wenn die Quelle einen typischen Fehler hergibt. Nichts erfinden, was nicht in den Quellen steht (Leitplanke Source Grounding).
+- [x] Zod-Schema/Validierung: Direktiven müssen korrekt geschlossen sein, `:::practice` braucht alle vier Teile, sonst Validierungsfehler wie bei anderen Qualitätsprüfungen.
+- [x] Backfill-Skript für bestehende Kurse (nur Ergänzung der Blöcke, Inhalte bleiben), mit Kostenanzeige und Rate-Limit wie bei anderen kostenpflichtigen Aktionen; bei internen Lernpfaden prüft die Firma das Ergebnis wie bisher.
 
-**Gate U5:** Screen 3 mit echter CKA-Sektion nachgebaut; alle Blocktypen haben Tests (Rendern + „kein HTML durch“); ein neu generierter Kurs enthält die Blöcke; Kopieren aus Terminal-Blöcken liefert nur Befehle.
+**Stand Gate U5: erfüllt (geprüft), mit Lücken.** Geprüft: Seite `/cert/[id]/section/[sectionId]` mit Fixture-Lektion in Dunkel/Hell bei 1440 und 390 px ohne horizontales Scrollen (Browser), drei Spalten, Gliederung als Sheet mobil, Lesefortschritt, „Auf dieser Seite“; alle Blocktypen haben Render-Tests inkl. „kein HTML/Skript/Link/Bild durch“ und „Port:443 wird nicht zur Direktive“; Kopieren aus dem Terminal liefert im Browser nur `kubectl get pods\nkubectl describe pod web`; Validierung und Prompt-Test; Backfill mit Prüfregeln (Text bleibt, Blöcke gültig) auf echter DB getestet; 662 Tests grün. **Entscheidung Highlighting:** `highlight.js` (rehype-highlight) bleibt, weil `RichText` in Client-Komponenten (Quiz, Offline-Reader) läuft; Kopfzeile, Zeilenmarkierung und Terminal bauen wir selbst, Farben aus `--code-*`. **Lücken:** (1) „Mit echter CKA-Sektion nachgebaut“ und „ein neu generierter Kurs enthält die Blöcke“ nicht geprüft – es gibt hier keinen KI-Zugang; geprüft ist nur, dass Prompt und Validierung die Blöcke verlangen/prüfen (Fixture-Lektion mit Blöcken per SQL). (2) `npm run lessons:blocks` nicht mit echter KI gelaufen. (3) Die „Hands-on“-Erkennung und Lesezeit sind Heuristiken. (4) Kein Kostenlimit-Abbruch im Backfill, nur Kostenanzeige.
+
+**Gate U5 (Vorgabe):** Screen 3 mit echter CKA-Sektion nachgebaut; alle Blocktypen haben Tests (Rendern + „kein HTML durch“); ein neu generierter Kurs enthält die Blöcke; Kopieren aus Terminal-Blöcken liefert nur Befehle.
 
 ---
 

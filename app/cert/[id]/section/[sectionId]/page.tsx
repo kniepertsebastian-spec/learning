@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { loadSectionOutline } from "@/lib/server/sections/outline";
 import { notFound } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
@@ -63,6 +64,11 @@ export default async function SectionPage({
     : [];
   const quizEnabled = certRow?.includeSectionQuizzes ?? true;
   const session = await auth();
+  const outline = await loadSectionOutline(session?.user?.id ?? null, sectionId);
+  const [certNameRow] = domainRows[0]
+    ? await db.select({ name: certifications.name }).from(certifications).where(eq(certifications.id, domainRows[0].certificationId)).limit(1)
+    : [];
+  const certName = certNameRow?.name;
   let completed = false;
   if (session?.user?.id && !quizEnabled) {
     const [done] = await db
@@ -116,6 +122,10 @@ export default async function SectionPage({
       objectiveCode={objective.code}
       objectiveTitle={objective.title}
       domainName={domainName}
+      courseName={certName}
+      lessonId={lesson.id}
+      outline={outline}
+      estimatedMinutes={section.estimatedMinutes}
       lesson={{
         content: lesson.content,
         keyTakeaways: lesson.keyTakeaways ?? null,
