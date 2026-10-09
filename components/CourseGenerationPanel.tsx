@@ -244,7 +244,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
   return (
     <section className="h-fit rounded-xl border border-border bg-surface p-5">
       <div className="mb-1 flex items-center gap-1.5">
-        <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
+        <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
         <h2 className="text-lg font-semibold">
           {locale === "de" ? "Kurs automatisch generieren" : "Generate course automatically"}
         </h2>
@@ -348,7 +348,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
           <button
             type="submit"
             disabled={loading || !online}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
             {locale === "de" ? "Kurs generieren" : "Generate course"}
@@ -362,7 +362,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
             <span className="font-medium">
               {PHASE_LABEL[job.phase]?.[locale] ?? job.phase}
             </span>
-            {active && <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" aria-hidden="true" />}
+            {active && <Loader2 className="h-3.5 w-3.5 animate-spin text-link" aria-hidden="true" />}
           </div>
           {job.message && <p className="text-xs text-foreground/60">{job.message}</p>}
 
@@ -467,7 +467,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
           )}
 
           {job.status === "package_ready" && (
-            <p className="rounded-md bg-accent/10 p-2 text-xs text-accent">
+            <p className="rounded-md bg-accent/10 p-2 text-xs text-link">
               {locale === "de"
                 ? "Kurs vollständig generiert und validiert - wartet auf manuelle Freigabe."
                 : "Course fully generated and validated - waiting for manual approval."}
@@ -507,7 +507,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
                 type="button"
                 onClick={handleRetry}
                 disabled={loading}
-                className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
               >
                 {job.status === "package_ready"
                   ? locale === "de" ? "Jetzt veröffentlichen" : "Publish now"
@@ -544,7 +544,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
           </ul>
           <p className="mt-3">{locale === "de" ? "Diese Quellen entfernen und mit den übrigen fortfahren?" : "Remove these sources and continue with the rest?"}</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <button type="button" disabled={loading} onClick={() => void continueWithoutBad()} data-testid="bad-sources-continue" className="rounded-md bg-accent px-3 py-1.5 font-medium text-white disabled:opacity-50">
+            <button type="button" disabled={loading} onClick={() => void continueWithoutBad()} data-testid="bad-sources-continue" className="rounded-md bg-accent px-3 py-1.5 font-medium text-on-accent disabled:opacity-50">
               {locale === "de" ? "Entfernen und fortfahren" : "Remove and continue"}
             </button>
             <button type="button" disabled={loading} onClick={() => { setBadSources(null); setPendingPayload(null); }} data-testid="bad-sources-cancel" className="rounded-md border border-border px-3 py-1.5">

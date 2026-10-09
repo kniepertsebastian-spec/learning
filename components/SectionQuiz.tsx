@@ -121,7 +121,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
         )}
         <Link
           href={`/cert/${certSlug}`}
-          className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
         >
           Back to certification
         </Link>
@@ -147,7 +147,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
         type="button"
         onClick={handleNext}
         disabled={!hasAnsweredCurrent}
-        className="mt-4 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-4 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {quizIndex + 1 >= questions.length
           ? locale === "de"

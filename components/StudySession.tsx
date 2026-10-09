@@ -168,7 +168,7 @@ export function StudySession({
               : "Nothing to study right now - check back later."}
           </p>
         )}
-        <Link href={`/cert/${certSlug}`} className="mt-6 text-sm text-accent hover:underline">
+        <Link href={`/cert/${certSlug}`} className="mt-6 text-sm text-link hover:underline">
           {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
         </Link>
       </div>
@@ -187,7 +187,7 @@ export function StudySession({
               ? `${correctCount} von ${result.results.length} richtig`
               : `${correctCount} of ${result.results.length} correct`}
           </p>
-          <p className="mt-3 text-sm font-medium text-accent">
+          <p className="mt-3 text-sm font-medium text-link">
             {locale === "de" ? "Gut gemacht - weiter so!" : "Well done - keep it up!"}
           </p>
           {offline && (
@@ -210,7 +210,7 @@ export function StudySession({
 
         <Link
           href={`/cert/${certSlug}`}
-          className="mx-auto rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="mx-auto rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
         >
           {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
         </Link>
@@ -226,7 +226,7 @@ export function StudySession({
         <p className="text-sm text-foreground/60">
           {locale === "de" ? "Frage" : "Question"} {currentIndex + 1} / {questionItems.length}
         </p>
-        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-link">
           {CATEGORY_LABEL[item.category][locale]}
         </span>
       </div>
@@ -337,7 +337,7 @@ export function StudySession({
             type="button"
             onClick={() => void handleSubmit()}
             disabled={submitting}
-            className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-60"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
             {locale === "de" ? "Session abschließen" : "Finish session"}
@@ -346,7 +346,7 @@ export function StudySession({
           <button
             type="button"
             onClick={() => setCurrentIndex((i) => Math.min(questionItems.length - 1, i + 1))}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
           >
             {locale === "de" ? "Weiter" : "Next"}
           </button>

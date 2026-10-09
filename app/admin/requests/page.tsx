@@ -15,7 +15,7 @@ export default async function AdminRequestsPage() {
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div>
-        <Link href="/admin" className="text-sm text-accent hover:underline">
+        <Link href="/admin" className="text-sm text-link hover:underline">
           ← Admin
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">{locale === "de" ? "Kundenanfragen und Lernpfad-Freigaben" : "Customer requests and course releases"}</h1>

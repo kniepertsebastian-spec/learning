@@ -68,7 +68,7 @@ function RegisterForm() {
           <p className="mt-4 text-center text-sm text-foreground/60">
             <Link
               href={from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`}
-              className="text-accent hover:underline"
+              className="text-link hover:underline"
             >
               Go to sign in
             </Link>
@@ -170,7 +170,7 @@ function RegisterForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
           >
             {isPending ? "Creating account…" : "Create account"}
           </button>
@@ -179,7 +179,7 @@ function RegisterForm() {
           Already have an account?{" "}
           <Link
             href={from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`}
-            className="text-accent hover:underline"
+            className="text-link hover:underline"
           >
             Sign in
           </Link>

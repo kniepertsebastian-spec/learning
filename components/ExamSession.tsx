@@ -180,7 +180,7 @@ export function ExamSession({
 
         <Link
           href={`/cert/${certSlug}`}
-          className="mx-auto rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="mx-auto rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
         >
           {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
         </Link>
@@ -259,7 +259,7 @@ export function ExamSession({
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+              className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-60"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {locale === "de" ? "Prüfung einreichen" : "Submit exam"}
@@ -268,7 +268,7 @@ export function ExamSession({
             <button
               type="button"
               onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
             >
               {locale === "de" ? "Weiter" : "Next"}
             </button>

@@ -138,7 +138,7 @@ export function RemediationSession({
         <button
           type="button"
           onClick={() => setPhase("quiz")}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
         >
           {locale === "de" ? "Übungsfragen starten" : "Start practice questions"}
         </button>
@@ -166,7 +166,7 @@ export function RemediationSession({
         </p>
         <Link
           href={`/cert/${certSlug}`}
-          className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
         >
           {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
         </Link>
@@ -186,7 +186,7 @@ export function RemediationSession({
         type="button"
         onClick={handleNext}
         disabled={!hasAnsweredCurrent || submitting}
-        className="mt-4 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-4 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {submitting
           ? locale === "de"

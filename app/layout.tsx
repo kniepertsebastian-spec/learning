@@ -10,13 +10,15 @@ import {
   isRoleAllowed,
   STATUS_VIEW_ROLES,
 } from "@/lib/server/company/access";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 const THEME_BOOTSTRAP_SCRIPT = `
 (function () {
   try {
     var stored = window.localStorage.getItem("certstudy-theme");
-    var dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var dark = stored ? stored === "dark" : true;
     document.documentElement.classList.toggle("dark", dark);
   } catch (e) {}
 })();
@@ -54,7 +56,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0f172a",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F6F7F9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0C10" },
+  ],
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -76,6 +81,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <LocaleProvider>
           <ThemeProvider>
+            <TooltipProvider delayDuration={200}>
             <Header
               isAdmin={user?.role === "admin"}
               hasCompanyAccess={hasCompanyAccess}
@@ -84,6 +90,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6">
               {children}
             </main>
+            <Toaster />
+            </TooltipProvider>
           </ThemeProvider>
         </LocaleProvider>
       </body>

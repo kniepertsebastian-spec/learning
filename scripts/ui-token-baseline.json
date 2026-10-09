@@ -1,0 +1,226 @@
+{
+  "app/account/account-forms-section.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "app/admin/certifications/[slug]/page.tsx": {
+    "hex": 0,
+    "palette": 43
+  },
+  "app/admin/page.tsx": {
+    "hex": 0,
+    "palette": 10
+  },
+  "app/cert/[id]/history/[attemptId]/page.tsx": {
+    "hex": 0,
+    "palette": 8
+  },
+  "app/cert/[id]/page.tsx": {
+    "hex": 0,
+    "palette": 13
+  },
+  "app/cert/[id]/remediation/[objectiveId]/page.tsx": {
+    "hex": 0,
+    "palette": 3
+  },
+  "app/invite/[token]/page.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "app/layout.tsx": {
+    "hex": 1,
+    "palette": 0
+  },
+  "app/login/page.tsx": {
+    "hex": 0,
+    "palette": 4
+  },
+  "app/register/page.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "app/sso/page.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/AcceptInvitationButton.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/AccountForms.tsx": {
+    "hex": 0,
+    "palette": 5
+  },
+  "components/ActivityTrends.tsx": {
+    "hex": 0,
+    "palette": 1
+  },
+  "components/AdminRequestsPanel.tsx": {
+    "hex": 0,
+    "palette": 4
+  },
+  "components/AiSettingsPanel.tsx": {
+    "hex": 0,
+    "palette": 4
+  },
+  "components/AssignmentsPanel.tsx": {
+    "hex": 0,
+    "palette": 5
+  },
+  "components/AuthRecovery.tsx": {
+    "hex": 0,
+    "palette": 8
+  },
+  "components/BlueprintPanel.tsx": {
+    "hex": 0,
+    "palette": 7
+  },
+  "components/BlueprintReview.tsx": {
+    "hex": 0,
+    "palette": 25
+  },
+  "components/CheatSheetBackfill.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/CompanyModulesPanel.tsx": {
+    "hex": 0,
+    "palette": 11
+  },
+  "components/CompanyModulesSection.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/ContentGenerationControl.tsx": {
+    "hex": 0,
+    "palette": 11
+  },
+  "components/ContentReportQueue.tsx": {
+    "hex": 0,
+    "palette": 4
+  },
+  "components/CourseGenerationPanel.tsx": {
+    "hex": 0,
+    "palette": 13
+  },
+  "components/CourseRequestsPanel.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/DeleteCertification.tsx": {
+    "hex": 0,
+    "palette": 9
+  },
+  "components/DepartmentsPanel.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/DocumentsPanel.tsx": {
+    "hex": 0,
+    "palette": 8
+  },
+  "components/ExamNavigator.tsx": {
+    "hex": 0,
+    "palette": 3
+  },
+  "components/ExamSession.tsx": {
+    "hex": 0,
+    "palette": 6
+  },
+  "components/ExamTimer.tsx": {
+    "hex": 0,
+    "palette": 1
+  },
+  "components/FileDropZone.tsx": {
+    "hex": 0,
+    "palette": 1
+  },
+  "components/InternalCoursesPanel.tsx": {
+    "hex": 0,
+    "palette": 5
+  },
+  "components/InvitationsPanel.tsx": {
+    "hex": 0,
+    "palette": 3
+  },
+  "components/MandatoryRulesPanel.tsx": {
+    "hex": 0,
+    "palette": 5
+  },
+  "components/ModuleStatusIcon.tsx": {
+    "hex": 0,
+    "palette": 1
+  },
+  "components/MyPracticeTasks.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/OfflinePackageManager.tsx": {
+    "hex": 0,
+    "palette": 6
+  },
+  "components/OnboardingsPanel.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/PracticeTasksPanel.tsx": {
+    "hex": 0,
+    "palette": 4
+  },
+  "components/QuizQuestionCard.tsx": {
+    "hex": 0,
+    "palette": 6
+  },
+  "components/ReadinessCard.tsx": {
+    "hex": 0,
+    "palette": 4
+  },
+  "components/RemediationSession.tsx": {
+    "hex": 0,
+    "palette": 4
+  },
+  "components/RichText.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/SectionContent.tsx": {
+    "hex": 0,
+    "palette": 7
+  },
+  "components/SourceUrlInput.tsx": {
+    "hex": 0,
+    "palette": 1
+  },
+  "components/SourcesManager.tsx": {
+    "hex": 0,
+    "palette": 15
+  },
+  "components/SsoPanel.tsx": {
+    "hex": 0,
+    "palette": 7
+  },
+  "components/StartExamButton.tsx": {
+    "hex": 0,
+    "palette": 1
+  },
+  "components/StartSessionPicker.tsx": {
+    "hex": 0,
+    "palette": 1
+  },
+  "components/StudyGoalPanel.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/StudySession.tsx": {
+    "hex": 0,
+    "palette": 2
+  },
+  "components/SyncStatusBadge.tsx": {
+    "hex": 0,
+    "palette": 5
+  },
+  "components/TodayDashboard.tsx": {
+    "hex": 0,
+    "palette": 4
+  }
+}

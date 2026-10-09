@@ -58,7 +58,7 @@ export function ReadinessCard({ locale, readiness }: { locale: Locale; readiness
       )}
 
       <details className="text-xs text-foreground/70">
-        <summary className="cursor-pointer select-none text-accent hover:underline">
+        <summary className="cursor-pointer select-none text-link hover:underline">
           {locale === "de" ? "Warum diese Einschätzung?" : "Why this estimate?"}
         </summary>
         <ul className="mt-2 flex flex-col gap-1 pl-1">

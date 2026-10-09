@@ -171,33 +171,35 @@ Schrift: **Geist** (Text), **Geist Mono** (Befehle, Codes, Timer, Tastenkürzel,
 
 ### Tokens
 
-- [ ] Alle Tokens aus [Designsprache](#designsprache-verbindlich) in `app/globals.css`: Werte in `:root` (hell) und `.dark`, über `@theme inline` als Tailwind-Farben verfügbar (`bg-surface`, `text-muted`, `border-strong`, `bg-accent`, …), Radius- und Schriftskala ebenso.
-- [ ] Kontextfarben als **ein** Satz Variablen (`--ctx-accent`, `--ctx-on-accent`, `--ctx-sidebar`, `--ctx-sidebar-border`, `--ctx-switcher`, `--ctx-switcher-border`, `--ctx-active`, `--ctx-label`), umgeschaltet über ein Attribut am Layout-Root: `data-context="personal" | "company" | "admin"`. Komponenten nutzen nur `--ctx-*`, nie die Kontextfarbe direkt.
-- [ ] `themeColor` in `app/layout.tsx` auf `#0A0C10` (dunkel) bzw. `#F6F7F9` (hell).
-- [ ] Prüfskript oder ESLint-Regel: im JSX keine Hex-Werte und keine Tailwind-Standardpaletten (`sky-*`, `slate-*`, `emerald-*`, `red-*`, `neutral-*`) mehr außerhalb von `components/ui` und `globals.css`. Bestehende Treffer stehen als Liste im PR und werden schrittweise mit den folgenden Phasen abgebaut.
+- [x] Alle Tokens aus [Designsprache](#designsprache-verbindlich) in `app/globals.css`: Werte in `:root` (hell) und `.dark`, über `@theme inline` als Tailwind-Farben verfügbar (`bg-surface`, `text-muted`, `border-strong`, `bg-accent`, …), Radius- und Schriftskala ebenso.
+- [x] Kontextfarben als **ein** Satz Variablen (`--ctx-accent`, `--ctx-on-accent`, `--ctx-sidebar`, `--ctx-sidebar-border`, `--ctx-switcher`, `--ctx-switcher-border`, `--ctx-active`, `--ctx-label`), umgeschaltet über ein Attribut am Layout-Root: `data-context="personal" | "company" | "admin"`. Komponenten nutzen nur `--ctx-*`, nie die Kontextfarbe direkt.
+- [x] `themeColor` in `app/layout.tsx` auf `#0A0C10` (dunkel) bzw. `#F6F7F9` (hell).
+- [x] Prüfskript oder ESLint-Regel: im JSX keine Hex-Werte und keine Tailwind-Standardpaletten (`sky-*`, `slate-*`, `emerald-*`, `red-*`, `neutral-*`) mehr außerhalb von `components/ui` und `globals.css`. Bestehende Treffer stehen als Liste im PR und werden schrittweise mit den folgenden Phasen abgebaut.
 
 ### Komponenten (`components/ui/`)
 
 Basis: **shadcn/ui** (MIT, Code liegt im Repo, Radix-Primitives darunter) – nur die unten genannten Bausteine übernehmen und auf die Tokens umstellen. Prüfen, dass Radix-Portale mit der CSP (Nonce) funktionieren.
 
-- [ ] `Button` – Varianten `primary` (Kontextakzent, Text `--ctx-on-accent`, 600), `secondary` (`--control`, Rahmen `--border-strong`), `ghost` (transparent, Rahmen), `inverted` (Admin). Größen `sm 36`, `md 44`, `lg 46` px. Optional Icon links/rechts (Pfeil rechts bei „Weiter“-Aktionen).
-- [ ] `Card` – `surface`, Rahmen `border`, Radius 16, Padding 18–24. Variante `hero` (Verlauf + Rahmen `#1F3A30`, Radius 18).
-- [ ] `Badge`/`Pill` – Radius `full`, 12 px, 500. Töne `accent | info | warning | danger | neutral`, jeweils weiche Fläche (12–14 % Alpha) + farbiger Text.
-- [ ] `StatTile` – Label (13, subtle), Wert (26–28, 600, tabular-nums), Unterzeile (12; optional farbig).
-- [ ] `ProgressBar` – Höhe 5/6/8 px, Track `--track`, Füllung Akzent oder Ton.
-- [ ] `SegmentedProgress` – N Segmente à 6 px, Lücke 4 px; Zustände offen/aktuell/richtig/falsch.
-- [ ] `ProgressRing` – SVG, r=52, Strich 10, Track `--track`, Wert mittig (28 px, 700) mit Unterzeile „von 100“.
-- [ ] `Tabs` (Unterstrich) und `SegmentedControl` (Pillen auf `--surface-inset`).
-- [ ] `Callout` – Töne `exam` (Mint, Ziel-Icon, „Prüfungsrelevant“), `mistake` (Bernstein, Warndreieck, „Häufiger Fehler“), `memo` (Info-Blau, Glühbirne, „Merksatz“), `info` (neutral, Schild-Icon). Aufbau: Icon-Kachel 32 px (Radius 9) + Overline-Titel 13/600 + Text 15/1.6. Fläche 6 % Alpha, Rahmen in abgedunkeltem Ton.
-- [ ] `Kbd` – Geist Mono 11 px, Rahmen `--border-strong`, Radius 5–6.
-- [ ] `Avatar` – Initialen, 26–34 px, farbige Fläche; `AvatarStack` mit −6 px Überlappung und 2 px Ring in `--surface`.
-- [ ] `DataTable` – Kopfzeile 12 px `--text-faint`, Zeilen mit `--border-subtle` oben, Zeilenhöhe ≥ 52 px, horizontal scrollbarer Container, Zahlen rechtsbündig mit tabular-nums.
-- [ ] `EmptyState` – Icon, Satz, eine klare Aktion. Ersetzt alle „Noch keine …“-Zeilen.
-- [ ] `Dialog`, `Sheet` (rechts, 360–420 px), `DropdownMenu`, `Select`, `Tooltip`, `Skeleton`, `Toast` (`sonner`).
-- [ ] `SearchField` mit `⌘K`-Hinweis (Funktion selbst siehe [Später](#später)).
-- [ ] Kurze Übersichtsseite (nur für Admins, z. B. `/admin/ui`) mit allen Komponenten in hell und dunkel – dient als Sichtprüfung.
+- [x] `Button` – Varianten `primary` (Kontextakzent, Text `--ctx-on-accent`, 600), `secondary` (`--control`, Rahmen `--border-strong`), `ghost` (transparent, Rahmen), `inverted` (Admin). Größen `sm 36`, `md 44`, `lg 46` px. Optional Icon links/rechts (Pfeil rechts bei „Weiter“-Aktionen).
+- [x] `Card` – `surface`, Rahmen `border`, Radius 16, Padding 18–24. Variante `hero` (Verlauf + Rahmen `#1F3A30`, Radius 18).
+- [x] `Badge`/`Pill` – Radius `full`, 12 px, 500. Töne `accent | info | warning | danger | neutral`, jeweils weiche Fläche (12–14 % Alpha) + farbiger Text.
+- [x] `StatTile` – Label (13, subtle), Wert (26–28, 600, tabular-nums), Unterzeile (12; optional farbig).
+- [x] `ProgressBar` – Höhe 5/6/8 px, Track `--track`, Füllung Akzent oder Ton.
+- [x] `SegmentedProgress` – N Segmente à 6 px, Lücke 4 px; Zustände offen/aktuell/richtig/falsch.
+- [x] `ProgressRing` – SVG, r=52, Strich 10, Track `--track`, Wert mittig (28 px, 700) mit Unterzeile „von 100“.
+- [x] `Tabs` (Unterstrich) und `SegmentedControl` (Pillen auf `--surface-inset`).
+- [x] `Callout` – Töne `exam` (Mint, Ziel-Icon, „Prüfungsrelevant“), `mistake` (Bernstein, Warndreieck, „Häufiger Fehler“), `memo` (Info-Blau, Glühbirne, „Merksatz“), `info` (neutral, Schild-Icon). Aufbau: Icon-Kachel 32 px (Radius 9) + Overline-Titel 13/600 + Text 15/1.6. Fläche 6 % Alpha, Rahmen in abgedunkeltem Ton.
+- [x] `Kbd` – Geist Mono 11 px, Rahmen `--border-strong`, Radius 5–6.
+- [x] `Avatar` – Initialen, 26–34 px, farbige Fläche; `AvatarStack` mit −6 px Überlappung und 2 px Ring in `--surface`.
+- [x] `DataTable` – Kopfzeile 12 px `--text-faint`, Zeilen mit `--border-subtle` oben, Zeilenhöhe ≥ 52 px, horizontal scrollbarer Container, Zahlen rechtsbündig mit tabular-nums.
+- [x] `EmptyState` – Icon, Satz, eine klare Aktion. Ersetzt alle „Noch keine …“-Zeilen.
+- [x] `Dialog`, `Sheet` (rechts, 360–420 px), `DropdownMenu`, `Select`, `Tooltip`, `Skeleton`, `Toast` (`sonner`).
+- [x] `SearchField` mit `⌘K`-Hinweis (Funktion selbst siehe [Später](#später)).
+- [x] Kurze Übersichtsseite (nur für Admins, z. B. `/admin/ui`) mit allen Komponenten in hell und dunkel – dient als Sichtprüfung.
 
 ### Gate U1
+
+**Stand: erfüllt (geprüft).** Geprüft: `tsc`, `eslint`, 605 Tests, `next build`; `/admin/ui` in Dunkel/Hell bei 1280 und 390 px ohne horizontales Scrollen, Fokusring per Tab sichtbar, Dialog/Sheet/Menü/Toast öffnen unter der CSP ohne Konsolenfehler; Kontrast: `npm run check:contrast` (68 Paare, Ergebnis in [UI-KONTRAST.md](UI-KONTRAST.md)); Rohfarben-Ratchet: `npm run lint:ui` (Bestand 315 Treffer in 56 Dateien, darf nur sinken, Abbau mit U2–U9). Nicht geprüft: echte Screenreader.
 
 - Alle Komponenten existieren, nutzen nur Tokens und sind auf der Übersichtsseite in hell/dunkel geprüft.
 - Kontrast aller Textstufen auf `bg`, `surface`, `surface-2` gemessen und dokumentiert.

@@ -73,22 +73,22 @@ function LoginForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
           >
             {isPending ? "Signing in…" : "Sign in"}
           </button>
         </form>
         <p className="mt-4 text-center text-sm">
-          <Link href="/sso" className="text-accent hover:underline" data-testid="login-sso-link">
+          <Link href="/sso" className="text-link hover:underline" data-testid="login-sso-link">
             Sign in with company account (SSO)
           </Link>
         </p>
         <p className="mt-2 text-center text-sm text-foreground/60">
-          <Link href="/forgot-password" className="text-accent hover:underline">
+          <Link href="/forgot-password" className="text-link hover:underline">
             Forgot password?
           </Link>
           {" · "}
-          <Link href="/resend-verification" className="text-accent hover:underline">
+          <Link href="/resend-verification" className="text-link hover:underline">
             Resend confirmation email
           </Link>
         </p>
@@ -96,7 +96,7 @@ function LoginForm() {
           No account?{" "}
           <Link
             href={from === "/" ? "/register" : `/register?from=${encodeURIComponent(from)}`}
-            className="text-accent hover:underline"
+            className="text-link hover:underline"
           >
             Register
           </Link>

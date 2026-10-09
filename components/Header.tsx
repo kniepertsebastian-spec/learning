@@ -23,9 +23,9 @@ export function Header({
     <header className="sticky top-0 z-20 border-b border-border bg-surface/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold">
-          <GraduationCap className="h-6 w-6 text-accent" aria-hidden="true" />
+          <GraduationCap className="h-6 w-6 text-link" aria-hidden="true" />
           <span>{t.appTitle}</span>
-          <span className="hidden rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent sm:inline">
+          <span className="hidden rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-link sm:inline">
             {t.statusBadge}
           </span>
         </Link>

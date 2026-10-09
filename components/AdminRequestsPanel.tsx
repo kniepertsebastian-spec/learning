@@ -119,7 +119,7 @@ function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: Ca
             {r.organizationName} · {r.requesterName ?? r.requesterEmail ?? "–"} · {new Date(r.createdAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}
           </span>
         </span>
-        <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent" data-testid="admin-request-status">
+        <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-link" data-testid="admin-request-status">
           {REQUEST_STATUS_LABELS[r.status][locale]}
         </span>
       </div>
@@ -161,7 +161,7 @@ function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: Ca
               type="button"
               onClick={() => void release()}
               disabled={!courseId && !r.certificationId}
-              className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
             >
               {de ? "Für die Firma freigeben" : "Release for company"}
             </button>

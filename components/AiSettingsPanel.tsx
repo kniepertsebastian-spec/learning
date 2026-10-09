@@ -109,7 +109,7 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
           </div>
         )}
         <div>
-          <button type="submit" disabled={pending} className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+          <button type="submit" disabled={pending} className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
             {pending ? (de ? "Wird geprüft …" : "Checking …") : de ? "Speichern" : "Save"}
           </button>
           <span className="ml-3 text-xs text-foreground/70" data-testid="ai-mode-status">

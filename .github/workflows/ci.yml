@@ -38,6 +38,8 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: npm ci
       - run: npm run lint
+      - run: npm run lint:ui
+      - run: npm run check:contrast
       # Wendet die komplette Migrationskette auf die leere Datenbank an (prüft sie nebenbei).
       - run: npm run db:migrate
         env:

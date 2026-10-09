@@ -208,7 +208,7 @@ export default async function AdminDashboard() {
                 </span>
               </span>
               <div className="mb-1.5 rounded-md border border-dashed border-border bg-background px-3 py-2 font-mono text-xs text-foreground/60">
-                Name<span className="text-accent"> | </span>Gewichtung
+                Name<span className="text-link"> | </span>Gewichtung
                 <span className="ml-2 text-foreground/40">
                   {locale === "de" ? "(Gewichtung optional, Zahl 0-100)" : "(weight optional, number 0-100)"}
                 </span>
@@ -226,7 +226,7 @@ export default async function AdminDashboard() {
                   : "Without \"| number\" the weight defaults to 0. Blank lines are ignored."}
               </span>
             </label>
-            <button type="submit" className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+            <button type="submit" className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90">
               {locale === "de" ? "Kursstruktur anlegen" : "Create course structure"}
             </button>
           </form>

@@ -58,7 +58,7 @@ export default async function DashboardPage() {
               </Link>
               <Link
                 href="/register"
-                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
               >
                 Register
               </Link>
@@ -83,7 +83,7 @@ export default async function DashboardPage() {
                 : de ? "Lernpfade zuweisen und Status ansehen" : "Assign learning paths and view status"}
             </span>
           </span>
-          <ArrowRight className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+          <ArrowRight className="h-5 w-5 shrink-0 text-link" aria-hidden="true" />
         </Link>
       )}
 
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
           <ul className="mt-3 flex flex-col gap-2">
             {assignments.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <Link href={`/cert/${a.slug}`} className="font-medium hover:text-accent">
+                <Link href={`/cert/${a.slug}`} className="font-medium hover:text-link">
                   {a.learningPath}
                 </Link>
                 <span className="text-foreground/70">
@@ -128,11 +128,11 @@ export default async function DashboardPage() {
               href={`/cert/${cert.slug}`}
               className="group rounded-xl border border-border bg-surface p-5 hover:border-accent"
             >
-              <h2 className="mb-1 font-semibold group-hover:text-accent">{cert.name}</h2>
+              <h2 className="mb-1 font-semibold group-hover:text-link">{cert.name}</h2>
               <p className="mb-4 text-sm text-foreground/60">
                 {cert.examName} {cert.examVersion}
               </p>
-              <span className="inline-block rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
+              <span className="inline-block rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent">
                 {session ? "Continue learning →" : "Start learning →"}
               </span>
             </Link>

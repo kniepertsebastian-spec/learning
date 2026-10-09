@@ -110,7 +110,7 @@ export default async function ExamHistoryPage({
                     {attempt.completedAt ? (
                       <Link
                         href={`/cert/${slug}/history/${attempt.attemptId}`}
-                        className="text-accent hover:underline"
+                        className="text-link hover:underline"
                       >
                         {attempt.completedAt.toLocaleDateString(locale === "de" ? "de-DE" : "en-US")}
                       </Link>

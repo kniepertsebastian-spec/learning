@@ -84,7 +84,7 @@ export function ChangePasswordForm({ userId, locale }: { userId: string; locale:
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+        className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
       >
         {de ? "Passwort ändern" : "Change password"}
       </button>
@@ -205,7 +205,7 @@ export function CompanyForm({ locale }: { locale: Locale }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
       >
         {de ? "Bestätigungslink senden" : "Send confirmation link"}
       </button>

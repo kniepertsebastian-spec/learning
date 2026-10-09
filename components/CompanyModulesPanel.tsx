@@ -108,7 +108,7 @@ function ModuleForm({
         </label>
       </div>
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={busy || !title.trim() || !body.trim()} data-testid="module-submit" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+        <button type="submit" disabled={busy || !title.trim() || !body.trim()} data-testid="module-submit" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
           {submitLabel}
         </button>
         {error && <p role="alert" data-testid="module-error" className="text-sm text-red-500">{error}</p>}
@@ -219,7 +219,7 @@ export function CompanyModulesPanel({
 
       {paths.length > 0 ? (
         <details className="mt-3">
-          <summary className="cursor-pointer text-sm font-medium text-accent">{de ? "Modul anlegen" : "Create module"}</summary>
+          <summary className="cursor-pointer text-sm font-medium text-link">{de ? "Modul anlegen" : "Create module"}</summary>
           <ModuleForm paths={paths} people={people} de={de} submitLabel={de ? "Modul anlegen" : "Create module"} onDone={() => undefined} />
         </details>
       ) : (

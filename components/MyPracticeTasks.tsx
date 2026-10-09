@@ -48,7 +48,7 @@ function Task({ t, locale }: { t: MyTaskRow; locale: "de" | "en" }) {
           <span className="font-medium">{t.title}</span>
           <span className="text-foreground/70"> · {t.learningPath}</span>
         </span>
-        <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent" data-testid="my-practice-status">{LABELS[t.status][locale]}</span>
+        <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-link" data-testid="my-practice-status">{LABELS[t.status][locale]}</span>
       </div>
       {t.description && <p className="mt-1 whitespace-pre-wrap text-foreground/70">{t.description}</p>}
       {t.status === "rework" && t.reviewerNote && <p className="mt-2 rounded bg-amber-500/10 px-2 py-1" data-testid="my-practice-reviewer-note">{t.reviewerNote}</p>}

@@ -125,7 +125,7 @@ export function SsoPanel({ view }: { view: SsoViewProps }) {
         </fieldset>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={enabled} disabled={!anyVerified} onChange={(e) => { setEnabled(e.target.checked); if (!e.target.checked) setEnforce(false); }} data-testid="sso-enabled" /> Anmeldung über das Firmenkonto einschalten {!anyVerified && <span className="text-foreground/60">(erst nach einer bestätigten Domain)</span>}</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={enforce} disabled={!enabled} onChange={(e) => setEnforce(e.target.checked)} data-testid="sso-enforce" /> Passwort-Anmeldung für Mitglieder sperren (Firmen-Admins behalten sie als Notzugang)</label>
-        <div><button type="submit" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50" disabled={busy} data-testid="sso-save">Speichern</button></div>
+        <div><button type="submit" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50" disabled={busy} data-testid="sso-save">Speichern</button></div>
       </form>
     </section>
   );

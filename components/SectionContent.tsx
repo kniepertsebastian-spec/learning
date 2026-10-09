@@ -98,13 +98,13 @@ export function SectionContent({
       {lesson.keyTakeaways?.[locale] && lesson.keyTakeaways[locale].length > 0 && (
         <div className="mb-6 rounded-lg border border-border bg-surface p-4">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-            <BookOpen className="h-4 w-4 text-accent" aria-hidden="true" />
+            <BookOpen className="h-4 w-4 text-link" aria-hidden="true" />
             {locale === "de" ? "Wichtige Erkenntnisse" : "Key takeaways"}
           </div>
           <ul className="flex flex-col gap-1">
             {lesson.keyTakeaways[locale].map((point, i) => (
               <li key={i} className="flex gap-2 text-sm text-foreground/80">
-                <span className="mt-0.5 shrink-0 text-accent">✓</span>
+                <span className="mt-0.5 shrink-0 text-link">✓</span>
                 <span>{point}</span>
               </li>
             ))}
@@ -133,10 +133,10 @@ export function SectionContent({
         <section className="mb-8 rounded-lg border border-accent/40 bg-accent/5 p-4" data-testid="cheat-sheet" aria-label={locale === "de" ? "Merkzettel" : "Cheat sheet"}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-medium">
             <span className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-accent" aria-hidden="true" />
+              <ClipboardList className="h-4 w-4 text-link" aria-hidden="true" />
               {locale === "de" ? "Merkzettel" : "Cheat sheet"}
             </span>
-            <Link href={`/cert/${certSlug}/cheatsheets`} className="text-xs font-normal text-accent hover:underline">
+            <Link href={`/cert/${certSlug}/cheatsheets`} className="text-xs font-normal text-link hover:underline">
               {locale === "de" ? "Alle Merkzettel dieses Kurses" : "All cheat sheets of this course"}
             </Link>
           </div>
@@ -163,13 +163,13 @@ export function SectionContent({
               onClick={() => void completeLesson()}
               disabled={completing}
               data-testid="lesson-complete-button"
-              className="w-fit rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="w-fit rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
             >
               {locale === "de" ? "Lektion abschließen" : "Complete lesson"}
             </button>
           )}
           {completeError && <p role="alert" className="text-sm text-red-500">{completeError}</p>}
-          <Link href={`/cert/${certSlug}`} className="w-fit text-sm text-accent hover:underline">
+          <Link href={`/cert/${certSlug}`} className="w-fit text-sm text-link hover:underline">
             {locale === "de" ? "Zurück zum Lernpfad" : "Back to learning path"}
           </Link>
         </div>
@@ -177,7 +177,7 @@ export function SectionContent({
         <button
           type="button"
           onClick={() => setShowQuiz(true)}
-          className="mb-8 w-fit rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+          className="mb-8 w-fit rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:opacity-90"
         >
           {locale === "de" ? "Quiz starten" : "Start quiz"}
         </button>
