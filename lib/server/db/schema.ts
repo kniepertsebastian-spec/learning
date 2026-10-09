@@ -103,9 +103,50 @@ export const users = pgTable(
     /** Zeitpunkt der E-Mail-Bestätigung (lib/server/account/tokens.ts). Null = noch nicht bestätigt.
      * Bestandskonten wurden bei der Einführung als bestätigt markiert. */
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    /** UI U8: Opt-out für E-Mail-Erinnerungen des Prüfungsplaners. */
+    examRemindersOptOut: boolean("exam_reminders_opt_out").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [check("users_role_check", sql`${table.role} in ('learner', 'admin')`)],
+);
+
+export const EXAM_PROVIDERS = ["pearson_vue", "psi", "linux_foundation", "other"] as const;
+export type ExamProvider = (typeof EXAM_PROVIDERS)[number];
+export const EXAM_DELIVERY_MODES = ["online", "test_center"] as const;
+export type ExamDeliveryMode = (typeof EXAM_DELIVERY_MODES)[number];
+export type ExamPlanStatus = "planned" | "passed" | "failed" | "cancelled";
+
+/**
+ * Prüfungsplan einer Person (UI U8): gehört der Person; die Firma sieht davon nichts (`share_with_company` ist standardmäßig aus und
+ * wird erst mit der Freigabe je Zertifikat in U9 ausgewertet – der Firmenbereich liest diese Tabelle nicht, siehe Architektur-Test).
+ */
+export const examPlans = pgTable(
+  "exam_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    /** null = noch nicht gebucht */
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    deliveryMode: text("delivery_mode").$type<ExamDeliveryMode>(),
+    voucherExpiresAt: timestamp("voucher_expires_at", { withTimezone: true }),
+    retakeIncluded: boolean("retake_included").notNull().default(false),
+    shareWithCompany: boolean("share_with_company").notNull().default(false),
+    weeklyGoalHours: integer("weekly_goal_hours").notNull().default(5),
+    status: text("status").$type<ExamPlanStatus>().notNull().default("planned"),
+    /** Wann die letzte Erinnerung dieser Art verschickt wurde (verhindert doppelte Mails). */
+    remindersSent: jsonb("reminders_sent").$type<Record<string, string>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("exam_plans_user_idx").on(table.userId),
+    check("exam_plans_status_check", sql`${table.status} in ('planned', 'passed', 'failed', 'cancelled')`),
+  ],
 );
 
 /** Feste Farbpalette der Kursgruppen (UI U7); die Farbe färbt Kurzcode-Kacheln in Dashboard und Prüfungsplaner. */
@@ -151,6 +192,13 @@ export const certifications = pgTable("certifications", {
   kind: text("kind").$type<CourseKind>().notNull().default("general"),
   /** Nur bei kind = "internal": die Organisation, der der Lernpfad gehört. */
   ownerOrganizationId: uuid("owner_organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  /** UI U8 (vom Betreiber gepflegt): Prüfungsanbieter, Formen, Buchungs-/Testcenter-Link, Gültigkeit, Hinweis auf eine Nachfolgeversion. */
+  examProvider: text("exam_provider").$type<ExamProvider>(),
+  deliveryModes: text("delivery_modes").array().$type<ExamDeliveryMode[]>().notNull().default(sql`'{}'::text[]`),
+  bookingUrl: text("booking_url"),
+  testCenterUrl: text("test_center_url"),
+  validityMonths: integer("validity_months"),
+  successorNote: text("successor_note"),
   /** UI U7: Kursgruppe im Katalog; null = „Nicht zugeordnet“. */
   categoryId: uuid("category_id").references(() => courseCategories.id, { onDelete: "set null" }),
   /** Kurzcode für Kacheln, z. B. K8s, SEC+, PCA (höchstens 6 Zeichen). */

@@ -1,6 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { ExamRemindersToggle } from "@/components/ExamRemindersToggle";
+import { getDb } from "@/lib/server/db/client";
+import { users } from "@/lib/server/db/schema";
 import { AccountForms } from "./account-forms-section";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { getCompanyMembership } from "@/lib/server/company/access";
@@ -11,12 +15,16 @@ export default async function AccountPage() {
   const [user, locale] = await Promise.all([getCurrentUser(), getServerLocale()]);
   if (!user) redirect("/login?from=%2Faccount");
   const membership = await getCompanyMembership(user.id);
+  const [prefs] = await getDb().select({ optOut: users.examRemindersOptOut }).from(users).where(eq(users.id, user.id)).limit(1);
   return (
-    <AccountForms
-      userId={user.id}
-      email={user.email}
-      locale={locale}
-      company={membership ? { name: membership.organizationName, role: membership.role } : null}
-    />
+    <div className="flex flex-col gap-6">
+      <AccountForms
+        userId={user.id}
+        email={user.email}
+        locale={locale}
+        company={membership ? { name: membership.organizationName, role: membership.role } : null}
+      />
+      <ExamRemindersToggle initialOptOut={prefs?.optOut ?? false} />
+    </div>
   );
 }

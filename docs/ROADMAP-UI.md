@@ -439,26 +439,28 @@ Neue Route `/exams` im persönlichen Kontext, Nav-Eintrag „Prüfungsplaner“.
 
 ### Ansicht
 
-- [ ] Kopf: „Prüfungsplaner“ + „Termine, Lernplan und Buchung an einem Ort“, rechts „Termin eintragen“ (primary).
-- [ ] **Nächste Prüfung** (Card `hero`): Countdown-Kachel 132 px („23“ in 52 px, „Tage“), Overline „Nächste Prüfung“, Kursname, Pills mit Datum/Uhrzeit, Prüfungsart („Online mit Aufsicht“ / „Testcenter“) und Buchungsweg („Buchung über Linux Foundation“), Buttons „Zur Buchungsseite ↗“ (Link nach außen) und „In Kalender (.ics)“.
-- [ ] **„Bist du bereit?“**: Empfehlung „drei Prüfungssimulationen in Folge mit mindestens 80 Punkten“, drei Kacheln mit den letzten Simulationsergebnissen (erreicht Mint, offen „–“), Hinweisleiste (Bernstein) „x von 3 erreicht …“, Link „Simulation starten →“. Schwelle und Anzahl als Konstante zentral, nicht pro Komponente.
-- [ ] **Lernplan bis zur Prüfung:** Wochen-Kacheln (KW, Zustand „Erledigt“/„Diese Woche“/„Geplant“, Thema, Beschreibung, „x von y Std.“ + Balken), Wochenziel oben rechts. Aktuelle Woche mit Mint-Rahmen.
-- [ ] **Weitere Prüfungen:** Liste je Kurs mit Kurzcode-Kachel, Titel, „Anbieter · Prüfungsarten“, Status-Pill („Nicht geplant“, „Voucher vorhanden“, „Geplant“), Button „Testcenter finden“ (Pearson VUE) bzw. „Termin buchen“.
-- [ ] **Erinnerungen:** Voucher läuft ab, Wiederholungsversuch enthalten, neue Prüfungsversion angekündigt (vom Admin am Kurs gepflegt). Fußnote: „Freie Termine zeigen die Anbieter nur im eigenen Kandidatenkonto. Wir verlinken direkt dorthin.“
+- [x] Kopf: „Prüfungsplaner“ + „Termine, Lernplan und Buchung an einem Ort“, rechts „Termin eintragen“ (primary).
+- [x] **Nächste Prüfung** (Card `hero`): Countdown-Kachel 132 px („23“ in 52 px, „Tage“), Overline „Nächste Prüfung“, Kursname, Pills mit Datum/Uhrzeit, Prüfungsart („Online mit Aufsicht“ / „Testcenter“) und Buchungsweg („Buchung über Linux Foundation“), Buttons „Zur Buchungsseite ↗“ (Link nach außen) und „In Kalender (.ics)“.
+- [x] **„Bist du bereit?“**: Empfehlung „drei Prüfungssimulationen in Folge mit mindestens 80 Punkten“, drei Kacheln mit den letzten Simulationsergebnissen (erreicht Mint, offen „–“), Hinweisleiste (Bernstein) „x von 3 erreicht …“, Link „Simulation starten →“. Schwelle und Anzahl als Konstante zentral, nicht pro Komponente.
+- [x] **Lernplan bis zur Prüfung:** Wochen-Kacheln (KW, Zustand „Erledigt“/„Diese Woche“/„Geplant“, Thema, Beschreibung, „x von y Std.“ + Balken), Wochenziel oben rechts. Aktuelle Woche mit Mint-Rahmen.
+- [x] **Weitere Prüfungen:** Liste je Kurs mit Kurzcode-Kachel, Titel, „Anbieter · Prüfungsarten“, Status-Pill („Nicht geplant“, „Voucher vorhanden“, „Geplant“), Button „Testcenter finden“ (Pearson VUE) bzw. „Termin buchen“.
+- [x] **Erinnerungen:** Voucher läuft ab, Wiederholungsversuch enthalten, neue Prüfungsversion angekündigt (vom Admin am Kurs gepflegt). Fußnote: „Freie Termine zeigen die Anbieter nur im eigenen Kandidatenkonto. Wir verlinken direkt dorthin.“
 
 ### Datenmodell
 
-- [ ] An `certifications` (gepflegt im Admin): `exam_provider` (`pearson_vue | psi | linux_foundation | other`), `delivery_modes` (`online`, `test_center`), `booking_url`, `test_center_url`, `validity_months` (nullable = unbegrenzt), `successor_note` (optional, Text zur angekündigten Nachfolgeversion).
-- [ ] `exam_plans` (gehört der Person): `user_id`, `certification_id`, `scheduled_at` (nullable = noch nicht gebucht), `delivery_mode`, `voucher_expires_at`, `retake_included` (bool), `share_with_company` (bool, Standard **aus**), `status` (`planned | passed | failed | cancelled`).
-- [ ] Ergebnis eintragen („bestanden am …“) legt automatisch einen Eintrag in `user_certificates` (U9) an.
+- [x] An `certifications` (gepflegt im Admin): `exam_provider` (`pearson_vue | psi | linux_foundation | other`), `delivery_modes` (`online`, `test_center`), `booking_url`, `test_center_url`, `validity_months` (nullable = unbegrenzt), `successor_note` (optional, Text zur angekündigten Nachfolgeversion).
+- [x] `exam_plans` (gehört der Person): `user_id`, `certification_id`, `scheduled_at` (nullable = noch nicht gebucht), `delivery_mode`, `voucher_expires_at`, `retake_included` (bool), `share_with_company` (bool, Standard **aus**), `status` (`planned | passed | failed | cancelled`).
+- [x] Ergebnis eintragen („bestanden am …“) legt automatisch einen Eintrag in `user_certificates` (U9) an.
 
 ### Logik
 
-- [ ] **Lernplan rückwärts:** verteilt offene Lektionen und schwache Objectives (aus Readiness) auf die Wochen bis zum Termin; vorletzte Woche = zwei Simulationen; letzte Woche = nur Wiederholung und Merkzettel, keine neuen Themen. Wochenziel einstellbar (Standard 5 Std.). Wöchentliche Neuberechnung, wenn Rückstand > 20 %. Algorithmus mit Unit-Tests (kurze Vorlaufzeit, kein Termin, alles erledigt).
-- [ ] **.ics-Export** (Prüfungstermin, optional wöchentliche Lernblöcke), Download als Datei, keine externe Kalender-API.
-- [ ] Erinnerungen per E-Mail über die bestehende Mail-Infrastruktur (Opt-out im Konto). Push siehe [Später](#später).
+- [x] **Lernplan rückwärts:** verteilt offene Lektionen und schwache Objectives (aus Readiness) auf die Wochen bis zum Termin; vorletzte Woche = zwei Simulationen; letzte Woche = nur Wiederholung und Merkzettel, keine neuen Themen. Wochenziel einstellbar (Standard 5 Std.). Wöchentliche Neuberechnung, wenn Rückstand > 20 %. Algorithmus mit Unit-Tests (kurze Vorlaufzeit, kein Termin, alles erledigt).
+- [x] **.ics-Export** (Prüfungstermin, optional wöchentliche Lernblöcke), Download als Datei, keine externe Kalender-API.
+- [x] Erinnerungen per E-Mail über die bestehende Mail-Infrastruktur (Opt-out im Konto). Push siehe [Später](#später).
 
-**Gate U8:** Screen 6 nachgebaut; Termin eintragen → Countdown, Lernplan und .ics stimmen; Termin ist ohne Freigabe für die Firma nicht sichtbar (Test).
+**Stand Gate U8: erfüllt (geprüft), mit Abweichungen.** Geprüft: Termin eintragen → Countdown „23 Tage“, Lernplan-Wochen (Wiederholung letzte, zwei Simulationen vorletzte Woche, davor Lernen) und heruntergeladene `.ics` stimmen (Browser + DB-Test); Dunkel/Hell/390 px ohne horizontales Scrollen; der Termin ist für die Firma nicht sichtbar (`planner.test.ts`: Statusansicht enthält nur `COMPANY_STATUS_FIELDS`, `share_with_company` bleibt aus; die Architektur-Tests erlauben der Firma die Tabelle `exam_plans` nicht); Algorithmus mit Unit-Tests (kurze Vorlaufzeit, kein Termin, alles erledigt, Rückstand); Erinnerungen einmal je Art und mit Opt-out (`npm run exams:remind`, Opt-out im Konto). **Abweichungen:** (1) „x von y Std.“ je Woche geht nicht, weil Lernzeit nicht erfasst wird: gezeigt werden „x von y Lektionen“ und die geplante Zeit. (2) Die Neuberechnung bei Rückstand > 20 % ist als Funktion (`backlogPercent`) vorhanden, die Wochenansicht rechnet bei jedem Aufruf neu; ein eigener Wochenjob fehlt. (3) „Ergebnis eintragen legt `user_certificates` an“ folgt mit U9 (Tabelle gibt es erst dort); bis dahin setzt „Bestanden“ nur den Status. (4) Der „Voucher läuft ab“-Zähler nutzt `voucher_expires_at` am Plan; Vouchers mit Code kommen mit U9. (5) Erinnerungen per E-Mail laufen nur mit konfiguriertem SMTP; es gibt keinen automatischen Cron-Eintrag. (6) Uhrzeit wird in UTC eingegeben. (7) Prüfungsdaten (Anbieter, Buchungslink, Gültigkeit, Nachfolgehinweis) pflegt der Betreiber im Admin am Kurs; die Startwerte sind leer.
+
+**Gate U8 (Vorgabe):** Screen 6 nachgebaut; Termin eintragen → Countdown, Lernplan und .ics stimmen; Termin ist ohne Freigabe für die Firma nicht sichtbar (Test).
 
 ---
 

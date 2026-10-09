@@ -19,6 +19,7 @@ import {
   reviewItems,
   sessionRecommendationFeedback,
   studyProfiles,
+  examPlans,
   studySessionItems,
   studySessions,
   syncEvents,
@@ -39,6 +40,7 @@ export const EXPORTED_USER_REFERENCES: readonly string[] = [
   "remediation_sessions.user_id",
   "review_items.user_id",
   "study_profiles.user_id",
+  "exam_plans.user_id",
   "study_sessions.user_id",
   "exam_attempts.user_id",
   "sync_events.user_id",
@@ -194,6 +196,7 @@ export async function exportAccountData(userId: string) {
       remediationSessions: await db.select().from(remediationSessions).where(eq(remediationSessions.userId, userId)),
       reviewItems: await db.select().from(reviewItems).where(eq(reviewItems.userId, userId)),
       studyProfiles: await db.select().from(studyProfiles).where(eq(studyProfiles.userId, userId)),
+      examPlans: await db.select().from(examPlans).where(eq(examPlans.userId, userId)),
       studySessions: studySessionRows.map((session) => ({
         ...session,
         items: studyItemRows.filter((i) => i.sessionId === session.id),

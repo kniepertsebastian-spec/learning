@@ -10,6 +10,7 @@ import { getServerLocale } from "@/lib/server/locale";
 import { ContentValidationService } from "@/lib/server/admin/validation";
 import { AnalyticsService } from "@/lib/server/analytics/service";
 import { ContentGenerationControl } from "@/components/ContentGenerationControl";
+import { ExamInfoForm } from "@/components/admin/ExamInfoForm";
 import { DeleteCertification } from "@/components/DeleteCertification";
 import { ContentReportQueue } from "@/components/ContentReportQueue";
 import {
@@ -125,6 +126,14 @@ export default async function AdminCertificationPage({
         initialEstimate={initialEstimate}
         initialBudget={initialBudget}
       />
+
+      <div className="mb-6">
+        <ExamInfoForm
+          certId={cert.id}
+          locale={locale}
+          initial={{ examProvider: cert.examProvider, deliveryModes: cert.deliveryModes, bookingUrl: cert.bookingUrl, testCenterUrl: cert.testCenterUrl, validityMonths: cert.validityMonths, successorNote: cert.successorNote }}
+        />
+      </div>
 
       <div className="grid gap-6">
         {/* Validation Summary */}

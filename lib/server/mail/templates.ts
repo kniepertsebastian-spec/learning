@@ -134,3 +134,16 @@ export function repeatDueMessage(to: string, input: { courseName: string; organi
       `Dein Stand wurde zurückgesetzt, die neue Frist ist der ${formatDate(input.dueAt)}.\n\nHier geht es los:\n\n${input.link}`,
   };
 }
+
+/** Erinnerung des Prüfungsplaners (UI U8); `kind` aus lib/exams/plan.ts. */
+export function examReminderMessage(to: string, input: { kind: "voucher_expiring" | "exam_soon" | "retake_included"; courseName: string; when: Date | null; link: string }): MailMessage {
+  const date = input.when ? input.when.toLocaleDateString("de-DE", { timeZone: "UTC" }) : "";
+  const subject = input.kind === "voucher_expiring" ? `Dein Voucher für ${input.courseName} läuft bald ab` : input.kind === "exam_soon" ? `Deine Prüfung ${input.courseName} steht bevor` : `Wiederholungsversuch für ${input.courseName}`;
+  const body =
+    input.kind === "voucher_expiring"
+      ? `Dein Voucher für „${input.courseName}“ ist bis ${date} gültig.`
+      : input.kind === "exam_soon"
+        ? `Deine Prüfung „${input.courseName}“ ist am ${date}. Letzte Woche: wiederholen, Merkzettel durchgehen, keine neuen Themen.`
+        : `In deinem Prüfungspaket für „${input.courseName}“ ist ein Wiederholungsversuch enthalten.`;
+  return { to, subject, text: `Hallo,\n\n${body}\n\nZum Prüfungsplaner:\n\n${input.link}\n\nDiese Erinnerungen kannst du in deinem Konto abstellen.` };
+}

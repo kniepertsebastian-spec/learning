@@ -30,6 +30,7 @@ export function isPublicPath(pathname: string): boolean {
 export type NavLabelKey =
   | "learn"
   | "catalog"
+  | "examPlanner"
   | "profile"
   | "account"
   | "companyResults"
@@ -68,6 +69,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
       return [
         { href: "/", label: "learn", icon: "home", exact: true },
         { href: "/catalog", label: "catalog", icon: "book" },
+        { href: "/exams", label: "examPlanner", icon: "calendar" },
         { href: "/profile", label: "profile", icon: "user" },
         { href: "/account", label: "account", icon: "shield" },
       ];
