@@ -41,7 +41,7 @@ function persistLocale(next: Locale) {
 
 export const uiStrings = {
   de: {
-    appTitle: "CertStudy AI",
+    appTitle: "ProofPath",
     statusBadge: "Beta",
     nav: {
       dashboard: "Dashboard",
@@ -130,7 +130,7 @@ export const uiStrings = {
     },
   },
   en: {
-    appTitle: "CertStudy AI",
+    appTitle: "ProofPath",
     statusBadge: "Beta",
     nav: {
       dashboard: "Dashboard",

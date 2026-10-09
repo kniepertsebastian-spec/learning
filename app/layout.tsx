@@ -33,14 +33,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CertStudy AI",
+  title: "ProofPath",
   description:
     "KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "CertStudy AI",
+    title: "ProofPath",
   },
   icons: {
     icon: [

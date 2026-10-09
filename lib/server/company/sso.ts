@@ -20,7 +20,7 @@ function logAuditFailure(err: unknown) {
   console.error("Audit-Log fehlgeschlagen:", err);
 }
 
-export const VERIFY_PREFIX = "_certstudy-verify";
+export const VERIFY_PREFIX = "_proofpath-verify";
 const FREE_MAIL = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "yahoo.com", "icloud.com", "gmx.de", "gmx.net", "web.de", "t-online.de", "proton.me", "protonmail.com", "aol.com"]);
 const DOMAIN_PATTERN = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 
@@ -61,7 +61,7 @@ export async function getSsoView(organizationId: string): Promise<SsoView> {
     enforceSso: row?.enforceSso ?? false,
     redirectUri: uri,
     encryptionConfigured: isEncryptionConfigured(),
-    domains: domains.map((d) => ({ id: d.id, domain: d.domain, verified: Boolean(d.verifiedAt), recordName: `${VERIFY_PREFIX}.${d.domain}`, recordValue: `certstudy-verify=${d.verificationToken}` })),
+    domains: domains.map((d) => ({ id: d.id, domain: d.domain, verified: Boolean(d.verifiedAt), recordName: `${VERIFY_PREFIX}.${d.domain}`, recordValue: `proofpath-verify=${d.verificationToken}` })),
   };
 }
 
@@ -142,7 +142,7 @@ export async function verifyDomain(organizationId: string, actorUserId: string, 
   } catch {
     return false;
   }
-  const expected = `certstudy-verify=${row.verificationToken}`;
+  const expected = `proofpath-verify=${row.verificationToken}`;
   if (!records.some((chunks) => chunks.join("") === expected)) return false;
   try {
     await getDb().update(organizationDomains).set({ verifiedAt: new Date() }).where(eq(organizationDomains.id, row.id));
