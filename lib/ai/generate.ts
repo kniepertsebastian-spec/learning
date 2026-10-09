@@ -290,7 +290,8 @@ export async function requestJson(
 
       const usage = response.usageMetadata;
       const promptTokens = usage?.promptTokenCount ?? 0;
-      const completionTokens = usage?.candidatesTokenCount ?? 0;
+      // Denk-Token werden wie Ausgabe-Token abgerechnet und stehen nicht in candidatesTokenCount.
+      const completionTokens = (usage?.candidatesTokenCount ?? 0) + (usage?.thoughtsTokenCount ?? 0);
       console.log(
         `USAGE model=${model} promptTokens=${promptTokens} completionTokens=${completionTokens} totalTokens=${promptTokens + completionTokens}`,
       );

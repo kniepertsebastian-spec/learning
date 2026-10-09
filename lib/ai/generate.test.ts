@@ -228,6 +228,15 @@ describe("generateStructured mit Antwortschema", () => {
     expect(calls[0].config.responseJsonSchema).toMatchObject({ type: "object", required: ["name", "count"] });
   });
 
+  it("Denk-Token werden wie Ausgabe-Token gezählt (sie werden so abgerechnet)", async () => {
+    const client = {
+      models: { generateContent: async () => ({ text: '{"name":"a","count":2}', usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 40, thoughtsTokenCount: 60 } }) },
+    } as unknown as GoogleGenAI;
+    const usages: { promptTokens: number; completionTokens: number }[] = [];
+    await generateStructured("sys", "user", small, "m", (u) => usages.push(u), client);
+    expect(usages).toEqual([expect.objectContaining({ promptTokens: 100, completionTokens: 100 })]);
+  });
+
   it("die Korrekturversuche behalten das Schema", async () => {
     const { client, calls } = fakeClient((_c, n) => (n === 1 ? '{"name":"a"}' : '{"name":"a","count":3}'));
     await expect(generateStructured("sys", "user", small, "m", undefined, client)).resolves.toEqual({ name: "a", count: 3 });

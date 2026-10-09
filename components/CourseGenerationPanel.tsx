@@ -70,6 +70,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
   const online = useOnlineStatus();
   const [job, setJob] = useState<Job | null>(null);
   const [objectives, setObjectives] = useState<Objective[]>([]);
+  const [pricingConfigured, setPricingConfigured] = useState(true);
   const [sourceUrlList, setSourceUrlList] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -82,8 +83,9 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
     try {
       const response = await fetch(`/api/admin/course-generation/${jobId}`, { cache: "no-store" });
       if (!response.ok) return;
-      const data = (await response.json()) as { job: Job; objectives: Objective[] };
+      const data = (await response.json()) as { job: Job; objectives: Objective[]; pricingConfigured?: boolean };
       setJob(data.job);
+      setPricingConfigured(data.pricingConfigured !== false);
       setObjectives(data.objectives);
       if (data.job.status === "published") router.refresh();
     } catch {
@@ -449,12 +451,20 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
             </div>
           )}
 
-          <p className="text-xs text-foreground/50">
-            {locale === "de" ? "Kosten" : "Cost"}: ~${Number(job.actualCostUsd).toFixed(4)}
-            {job.estimatedCostUsd && ` (${locale === "de" ? "geschätzt" : "estimated"} ~$${Number(job.estimatedCostUsd).toFixed(4)})`}
-            {" · "}
-            {locale === "de" ? "Limit" : "limit"} ${job.initialCostLimitUsd}/${job.absoluteCostLimitUsd}
-          </p>
+          {pricingConfigured ? (
+            <p className="text-xs text-foreground/50">
+              {locale === "de" ? "Kosten" : "Cost"}: ~${Number(job.actualCostUsd).toFixed(4)}
+              {job.estimatedCostUsd && ` (${locale === "de" ? "geschätzt" : "estimated"} ~$${Number(job.estimatedCostUsd).toFixed(4)})`}
+              {" · "}
+              {locale === "de" ? "Limit" : "limit"} ${job.initialCostLimitUsd}/${job.absoluteCostLimitUsd}
+            </p>
+          ) : (
+            <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-600" data-testid="pricing-missing">
+              {locale === "de"
+                ? "Kosten werden nicht berechnet: Für das KI-Modell sind keine Preise hinterlegt (GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD und GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD in der Server-.env). Solange greift auch das Kostenlimit nicht."
+                : "Costs are not calculated: no prices are set for the AI model (GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD and GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD in the server .env). The cost limit does not apply until then."}
+            </p>
+          )}
 
           {job.status === "package_ready" && (
             <p className="rounded-md bg-accent/10 p-2 text-xs text-accent">

@@ -129,6 +129,23 @@ describe("estimateCostUsd", () => {
     }
   });
 
+  it("nutzt das allgemeine Preispaar für jedes Gemini-Modell, modellspezifische Preise haben Vorrang", () => {
+    for (const key of ENV_KEYS) delete process.env[key];
+    process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "0.75";
+    process.env.GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "3.75";
+    try {
+      expect(estimateCostUsd(1_000_000, 1_000_000, CURRICULUM_MODEL)).toBeCloseTo(4.5, 6);
+      expect(estimateCostUsd(1_000_000, 0, "gemini-irgendein-modell")).toBeCloseTo(0.75, 6);
+      expect(estimateCostUsd(1_000_000, 1_000_000, "claude-opus-5")).toBeNull(); // nur Gemini-Modelle
+      process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "2";
+      process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD = "10";
+      expect(estimateCostUsd(1_000_000, 1_000_000, CURRICULUM_MODEL)).toBeCloseTo(12, 6);
+    } finally {
+      delete process.env.GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD;
+      delete process.env.GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD;
+    }
+  });
+
   it("returns null for a model it has no price slot for, rather than guessing", () => {
     process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "3";
     process.env.GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD = "1";

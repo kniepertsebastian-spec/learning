@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isPricingConfigured } from "@/lib/server/admin/content-generation";
 import { requireAdminApi } from "@/lib/server/auth-guards";
 import {
   getCourseGenerationJob,
@@ -28,5 +29,5 @@ export async function GET(
     return NextResponse.json({ error: "Auftrag nicht gefunden." }, { status: 404 });
   }
   const objectives = await listCourseGenerationObjectives(id);
-  return NextResponse.json({ job, objectives }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ job, objectives, pricingConfigured: isPricingConfigured() }, { headers: { "Cache-Control": "no-store" } });
 }

@@ -29,33 +29,42 @@ function truncate(value: string, maxLength = 4_000): string {
 const USAGE_LINE_PATTERN =
   /^USAGE model=(\S+) promptTokens=(\d+) completionTokens=(\d+) totalTokens=(\d+)$/;
 
+/**
+ * Preise je Million Token (USD). Zuerst die modellspezifischen Variablen (Lernplan- bzw. Lektionsmodell), sonst die
+ * allgemeinen `GEMINI_PRICE_PER_MILLION_*`, die für jedes Gemini-Modell gelten (der übliche Fall: ein Modell für alles).
+ * Ohne hinterlegte Preise gibt es bewusst keine Zahl (null) statt einer erfundenen.
+ */
+function pricesFor(model: string): { prompt: number; completion: number } | null {
+  const num = (key: string) => Number(process.env[key]) || 0;
+  let prompt = 0;
+  let completion = 0;
+  if (model === CURRICULUM_MODEL) {
+    prompt = num("GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD");
+    completion = num("GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD");
+  } else if (model === LESSONS_MODEL) {
+    prompt = num("GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD");
+    completion = num("GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD");
+  }
+  if (prompt === 0 && completion === 0 && model.startsWith("gemini-")) {
+    prompt = num("GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD");
+    completion = num("GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD");
+  }
+  return prompt === 0 && completion === 0 ? null : { prompt, completion };
+}
+
+/** Sind für die verwendeten Modelle Preise hinterlegt? Sonst bleiben Kosten und Kostenlimit wirkungslos (Anzeige „nicht berechnet“). */
+export function isPricingConfigured(): boolean {
+  return pricesFor(CURRICULUM_MODEL) !== null && pricesFor(LESSONS_MODEL) !== null;
+}
+
 export function estimateCostUsd(
   promptTokens: number,
   completionTokens: number,
   model: string,
 ): number | null {
-  let pricePerMillionPrompt = 0;
-  let pricePerMillionCompletion = 0;
-
-  if (model === CURRICULUM_MODEL) {
-    pricePerMillionPrompt =
-      Number(process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD) || 0;
-    pricePerMillionCompletion =
-      Number(process.env.GEMINI_CURRICULUM_PRICE_PER_MILLION_COMPLETION_TOKENS_USD) || 0;
-  } else if (model === LESSONS_MODEL) {
-    pricePerMillionPrompt =
-      Number(process.env.GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD) || 0;
-    pricePerMillionCompletion =
-      Number(process.env.GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD) || 0;
-  } else {
-    return null;
-  }
-
-  if (pricePerMillionPrompt === 0 && pricePerMillionCompletion === 0) return null;
-  return (
-    (promptTokens / 1_000_000) * pricePerMillionPrompt +
-    (completionTokens / 1_000_000) * pricePerMillionCompletion
-  );
+  const prices = pricesFor(model);
+  if (!prices) return null;
+  return (promptTokens / 1_000_000) * prices.prompt + (completionTokens / 1_000_000) * prices.completion;
 }
 
 export interface AiBudgetStatus {
