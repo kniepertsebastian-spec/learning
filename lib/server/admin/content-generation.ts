@@ -30,9 +30,18 @@ const USAGE_LINE_PATTERN =
   /^USAGE model=(\S+) promptTokens=(\d+) completionTokens=(\d+) totalTokens=(\d+)$/;
 
 /**
+ * Eingebaute Preise je Million Token (USD) für bekannte Modelle, damit die Kosten auch ohne Einträge in der .env laufen.
+ * gemini-3.8-flash: 0,75 / 3,75 (Standardpreis lt. Google-Auskunft, vom Betreiber im Oktober 2026 bestätigt; Einführungspreis,
+ * soll ab 1.1.2027 steigen). Die Variablen in der .env haben immer Vorrang. Zwischenspeicher-Preise werden nicht berücksichtigt.
+ */
+const BUILT_IN_PRICES: Record<string, { prompt: number; completion: number }> = {
+  "gemini-3.8-flash": { prompt: 0.75, completion: 3.75 },
+};
+
+/**
  * Preise je Million Token (USD). Zuerst die modellspezifischen Variablen (Lernplan- bzw. Lektionsmodell), sonst die
  * allgemeinen `GEMINI_PRICE_PER_MILLION_*`, die für jedes Gemini-Modell gelten (der übliche Fall: ein Modell für alles).
- * Ohne hinterlegte Preise gibt es bewusst keine Zahl (null) statt einer erfundenen.
+ * Danach die eingebauten Preise bekannter Modelle; für alles andere gibt es bewusst keine Zahl (null) statt einer erfundenen.
  */
 function pricesFor(model: string): { prompt: number; completion: number } | null {
   const num = (key: string) => Number(process.env[key]) || 0;
@@ -49,7 +58,8 @@ function pricesFor(model: string): { prompt: number; completion: number } | null
     prompt = num("GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD");
     completion = num("GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD");
   }
-  return prompt === 0 && completion === 0 ? null : { prompt, completion };
+  if (prompt === 0 && completion === 0) return BUILT_IN_PRICES[model] ?? null;
+  return { prompt, completion };
 }
 
 /** Sind für die verwendeten Modelle Preise hinterlegt? Sonst bleiben Kosten und Kostenlimit wirkungslos (Anzeige „nicht berechnet“). */
