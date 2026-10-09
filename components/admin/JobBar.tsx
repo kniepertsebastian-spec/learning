@@ -27,7 +27,7 @@ const DONE = new Set(["published", "package_ready", "cancelled", "failed", "pref
 /** Leiste über dem Katalog: laufende Generierungen mit Schritt, 5-teiligem Balken und Kosten (Werte aus dem bestehenden Auftrag). */
 export function JobBar() {
   const { t } = useLocale();
-  const [jobs, setJobs] = useState<Array<ListedJob & { fraction: number }>>([]);
+  const [jobs, setJobs] = useState<Array<ListedJob & { fraction: number; idleMinutes: number }>>([]);
   const [cancelling, setCancelling] = useState<Set<string>>(new Set());
 
   const cancelJob = useCallback(
@@ -72,7 +72,9 @@ export function JobBar() {
                 // Fortschritt bleibt geschätzt
               }
             }
-            return { ...j, fraction };
+            // Minuten ohne Lebenszeichen hier beim Abruf berechnen, nicht beim Rendern (Render bleibt rein).
+            const idleMinutes = j.lastActivityAt ? Math.max(1, Math.round((Date.now() - new Date(j.lastActivityAt).getTime()) / 60_000)) : 0;
+            return { ...j, fraction, idleMinutes };
           }),
         );
         if (!cancelled) setJobs(withProgress);
@@ -120,12 +122,10 @@ export function JobBar() {
               </Button>
             </div>
             {j.message && <p className="mt-1 text-xs text-muted">{j.message}</p>}
-            {j.stale && j.lastActivityAt && (
+            {j.stale && (
               <p className="mt-2 flex items-start gap-2 text-xs text-warning-text" role="status" data-testid="job-stale">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                {fmt(j.active ? t.admin_catalog.jobStaleHung : t.admin_catalog.jobStaleResuming, {
-                  n: Math.max(1, Math.round((Date.now() - new Date(j.lastActivityAt).getTime()) / 60_000)),
-                })}
+                {fmt(j.active ? t.admin_catalog.jobStaleHung : t.admin_catalog.jobStaleResuming, { n: j.idleMinutes })}
               </p>
             )}
             <div className="mt-2 flex gap-1" role="progressbar" aria-valuemin={0} aria-valuemax={5} aria-valuenow={step + 1} aria-label={names[step]}>
