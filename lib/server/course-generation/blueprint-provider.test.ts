@@ -53,3 +53,22 @@ describe("Blueprint-Provider: Quellen kommen aus der App, nicht aus der KI", () 
     });
   }
 });
+
+describe("Blueprint-Provider: individuelles Training", () => {
+  const capture = async (courseType?: "custom") => {
+    let seen = "";
+    const client = { models: { generateContent: async (args: unknown) => { seen = JSON.stringify(args); return { text: aiAnswer(undefined), usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1 } }; } } } as unknown as GoogleGenAI;
+    await createSonnetBlueprintProvider(client).generateBlueprint({ ...input, courseType } as never, () => undefined);
+    return seen;
+  };
+
+  it("custom: Prompt sagt „kein Zertifizierungskurs“ und nennt das Thema themenneutral", async () => {
+    const seen = await capture("custom");
+    expect(seen).toContain("KEIN Zertifizierungskurs");
+    expect(seen).toContain("individuelles Training");
+  });
+
+  it("Zertifikatskurs: Prompt unverändert (kein Hinweis auf individuelles Training)", async () => {
+    expect(await capture()).not.toContain("KEIN Zertifizierungskurs");
+  });
+});

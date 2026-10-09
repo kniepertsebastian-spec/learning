@@ -10,6 +10,7 @@ export interface CertificationStats {
   provider: string;
   examName: string;
   examVersion: string;
+  courseType: "certification" | "custom";
   categoryId: string | null;
   /** Alle Gruppen des Kurses, Hauptgruppe zuerst. */
   categoryIds: string[];
@@ -72,6 +73,7 @@ export async function getCertificationsWithStats(): Promise<CertificationStats[]
       provider: cert.provider,
       examName: cert.examName,
       examVersion: cert.examVersion,
+      courseType: cert.courseType,
       categoryId: cert.categoryId,
       categoryIds: groupIds.get(cert.id) ?? [],
       shortCode: cert.shortCode,

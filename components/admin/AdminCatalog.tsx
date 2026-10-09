@@ -25,6 +25,7 @@ export interface CatalogCert {
   name: string;
   provider: string;
   examVersion: string;
+  courseType: "certification" | "custom";
   categoryId: string | null;
   /** Alle Gruppen, Hauptgruppe zuerst. */
   categoryIds: string[];
@@ -229,6 +230,7 @@ function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: Catal
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold">{c.name}</p>
                   <Badge tone={ready ? "mint" : "warning"}>{ready ? ac.statusReady : ac.statusMissing}</Badge>
+                  {c.courseType === "custom" && <Badge tone="info">{ac.typeCustom}</Badge>}
                 </div>
                 <p className="mt-0.5 font-mono text-[11.5px] text-subtle">{c.provider} · {c.examVersion}</p>
                 <p className="mt-1 text-xs text-faint">{fmt(ac.stats, { d: c.stats.domains, l: c.stats.lessons, q: c.stats.questions })}</p>

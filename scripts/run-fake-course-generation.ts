@@ -132,6 +132,7 @@ async function main() {
     courseDescription: "E2E test course",
     language: "en",
     provider: "Fixture Provider",
+    courseType: process.env.E2E_COURSE_TYPE === "custom" ? "custom" : "certification",
     sourceUrls: ["https://example.org/fake-guide.pdf"],
     autoPublish: scenario !== "package-ready",
     initialCostLimitUsd: 2,
@@ -178,8 +179,8 @@ async function main() {
   console.log(`Kosten: $${finalJob?.actualCostUsd}, Fehler: ${finalJob?.errorCode ?? "-"} ${finalJob?.errorMessage ?? ""}`);
   if (finalJob?.resultCertificationId) {
     console.log(`Zertifizierung importiert: ${finalJob.resultCertificationId}`);
-    const [cert] = await db.select({ categoryId: certifications.categoryId, shortCode: certifications.shortCode }).from(certifications).where(eq(certifications.id, finalJob.resultCertificationId));
-    const ok = !category || (cert?.categoryId === category.id && cert?.shortCode === "E2E");
+    const [cert] = await db.select({ categoryId: certifications.categoryId, shortCode: certifications.shortCode, courseType: certifications.courseType }).from(certifications).where(eq(certifications.id, finalJob.resultCertificationId));
+    const ok = (!category || (cert?.categoryId === category.id && cert?.shortCode === "E2E")) && cert?.courseType === (process.env.E2E_COURSE_TYPE === "custom" ? "custom" : "certification");
     console.log(`Kursgruppe/Kurzcode übernommen: ${ok ? "ja" : "NEIN"}`);
     if (!ok) process.exitCode = 1;
   }

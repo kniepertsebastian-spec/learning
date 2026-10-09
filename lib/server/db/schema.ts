@@ -49,6 +49,8 @@ export type PracticeSubmissionStatus = "submitted" | "confirmed" | "rework";
 
 /** Phase 3: allgemeiner (von uns erstellter) oder interner (firmeneigener) Lernpfad. */
 export type CourseKind = "general" | "internal";
+/** Ausrichtung eines Kurses: auf eine Zertifizierung/Prüfung oder individuell (freies Thema, nur Quellen). */
+export type CourseType = "certification" | "custom";
 /** Menschliche Freigabe eines Lernpfads, bevor er an Kunden gehen darf. */
 export type CatalogStatus = "draft" | "in_review" | "approved";
 /**
@@ -238,6 +240,8 @@ export const certifications = pgTable("certifications", {
   /** Phase 3: "general" = allgemeiner Lernpfad (Security, Zertifikate), von uns erstellt und einer Firma erst
    * nach Freigabe zuweisbar; "internal" = firmeneigener Lernpfad, gehört genau einer Organisation. */
   kind: text("kind").$type<CourseKind>().notNull().default("general"),
+  /** "certification" = Zertifikatskurs, "custom" = individuelles Training ohne Prüfung (Thema + Quellen). */
+  courseType: text("course_type").$type<CourseType>().notNull().default("certification"),
   /** Nur bei kind = "internal": die Organisation, der der Lernpfad gehört. */
   ownerOrganizationId: uuid("owner_organization_id").references(() => organizations.id, { onDelete: "cascade" }),
   /** UI U8 (vom Betreiber gepflegt): Prüfungsanbieter, Formen, Buchungs-/Testcenter-Link, Gültigkeit, Hinweis auf eine Nachfolgeversion. */
@@ -1266,6 +1270,8 @@ export const courseGenerationJobs = pgTable(
     /** UI U7: Kursgruppe und Kurzcode, die der Kurs nach dem Import bekommt (nur allgemeine Kurse). */
     categoryId: uuid("category_id").references(() => courseCategories.id, { onDelete: "set null" }),
     shortCode: text("short_code"),
+    /** Zertifikatskurs oder individuelles Training (kein Anbieter, keine Prüfung). */
+    courseType: text("course_type").$type<CourseType>().notNull().default("certification"),
     courseTitle: text("course_title").notNull(),
     courseDescription: text("course_description").notNull(),
     language: text("language").notNull(),

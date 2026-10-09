@@ -16,7 +16,7 @@ export function CatalogView({
   certs,
   groups,
 }: {
-  certs: Array<{ id: string; slug: string; name: string; provider: string; version: string; shortCode: string; categoryId: string | null; categoryIds: string[] }>;
+  certs: Array<{ id: string; slug: string; name: string; provider: string; version: string; shortCode: string; categoryId: string | null; categoryIds: string[]; custom: boolean }>;
   groups: Array<{ id: string; name: { de: string; en: string }; color: CourseCategoryColor }>;
   signedIn: boolean;
 }) {
@@ -58,7 +58,7 @@ export function CatalogView({
                     <span className={cn("flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl font-mono text-[13px] font-semibold", g ? TILE[g.color] : "bg-surface-2 text-muted")} aria-hidden="true">{c.shortCode}</span>
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{c.name}</p>
-                      <p className="font-mono text-[11.5px] text-subtle">{c.provider} · {c.version}</p>
+                      <p className="font-mono text-[11.5px] text-subtle">{c.custom ? h.customTraining : `${c.provider} · ${c.version}`}</p>
                     </div>
                   </div>
                   <Button asChild size="sm" variant="secondary" className="mt-auto self-end"><Link href={`/cert/${c.slug}`}>{h.startLearning}</Link></Button>
