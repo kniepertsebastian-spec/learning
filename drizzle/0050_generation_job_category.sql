@@ -1,0 +1,3 @@
+ALTER TABLE "course_generation_jobs" ADD COLUMN "category_id" uuid;--> statement-breakpoint
+ALTER TABLE "course_generation_jobs" ADD COLUMN "short_code" text;--> statement-breakpoint
+ALTER TABLE "course_generation_jobs" ADD CONSTRAINT "course_generation_jobs_category_id_course_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."course_categories"("id") ON DELETE set null ON UPDATE no action;

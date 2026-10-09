@@ -107,6 +107,20 @@ export const users = pgTable(
   (table) => [check("users_role_check", sql`${table.role} in ('learner', 'admin')`)],
 );
 
+/** Feste Farbpalette der Kursgruppen (UI U7); die Farbe färbt Kurzcode-Kacheln in Dashboard und Prüfungsplaner. */
+export const COURSE_CATEGORY_COLORS = ["info", "mint", "warning", "danger", "violet"] as const;
+export type CourseCategoryColor = (typeof COURSE_CATEGORY_COLORS)[number];
+
+/** Katalog-Kursgruppen (UI U7): genau eine Gruppe je allgemeinem Kurs (n:1), vom Betreiber gepflegt. */
+export const courseCategories = pgTable("course_categories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  name: jsonb("name").$type<Localized<string>>().notNull(),
+  color: text("color").$type<CourseCategoryColor>().notNull().default("info"),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const certifications = pgTable("certifications", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: text("slug").notNull().unique(),
@@ -136,6 +150,10 @@ export const certifications = pgTable("certifications", {
   kind: text("kind").$type<CourseKind>().notNull().default("general"),
   /** Nur bei kind = "internal": die Organisation, der der Lernpfad gehört. */
   ownerOrganizationId: uuid("owner_organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  /** UI U7: Kursgruppe im Katalog; null = „Nicht zugeordnet“. */
+  categoryId: uuid("category_id").references(() => courseCategories.id, { onDelete: "set null" }),
+  /** Kurzcode für Kacheln, z. B. K8s, SEC+, PCA (höchstens 6 Zeichen). */
+  shortCode: text("short_code"),
   /** Menschliche Freigabe vor jeder Weitergabe an Kunden: draft -> in_review -> approved. Bestehende Lernpfade gelten als freigegeben. */
   catalogStatus: text("catalog_status").$type<CatalogStatus>().notNull().default("approved"),
   /**
@@ -1137,6 +1155,9 @@ export const courseGenerationJobs = pgTable(
     /** Nur interne Lernpfade: mit Lektionstests und/oder Abschlussprüfung erstellen (sonst keine Fragen, günstiger). */
     includeSectionQuizzes: boolean("include_section_quizzes").notNull().default(true),
     includeFinalExam: boolean("include_final_exam").notNull().default(true),
+    /** UI U7: Kursgruppe und Kurzcode, die der Kurs nach dem Import bekommt (nur allgemeine Kurse). */
+    categoryId: uuid("category_id").references(() => courseCategories.id, { onDelete: "set null" }),
+    shortCode: text("short_code"),
     courseTitle: text("course_title").notNull(),
     courseDescription: text("course_description").notNull(),
     language: text("language").notNull(),

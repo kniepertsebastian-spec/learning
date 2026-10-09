@@ -7,10 +7,6 @@
     "hex": 0,
     "palette": 43
   },
-  "app/admin/page.tsx": {
-    "hex": 0,
-    "palette": 10
-  },
   "app/cert/[id]/history/[attemptId]/page.tsx": {
     "hex": 0,
     "palette": 8

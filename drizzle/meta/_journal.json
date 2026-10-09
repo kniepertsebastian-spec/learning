@@ -344,6 +344,20 @@
       "when": 1791512103248,
       "tag": "0048_question_option_rationale",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791537028429,
+      "tag": "0049_course_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791537148515,
+      "tag": "0050_generation_job_category",
+      "breakpoints": true
     }
   ]
 }

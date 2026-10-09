@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { SourceUrlInput } from "@/components/SourceUrlInput";
+import { useLocale } from "@/lib/i18n";
+import { fmt } from "@/lib/quiz/keys";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
 
 interface Job {
@@ -65,7 +67,20 @@ const PHASE_LABEL: Record<string, { de: string; en: string }> = {
   content: { de: "Lernziele werden ausgearbeitet", en: "Objectives are being generated" },
 };
 
-export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
+export interface PanelCategory {
+  id: string;
+  name: { de: string; en: string };
+}
+
+const fieldClass = "w-full rounded-md border border-border-strong bg-control px-3 py-2";
+
+export function CourseGenerationPanel({ locale, categories = [], bare = false }: { locale: "de" | "en"; categories?: PanelCategory[]; /** ohne Kartenrahmen, z. B. im Sheet */ bare?: boolean }) {
+  const { t } = useLocale();
+  const ac = t.admin_catalog;
+  const steps = [ac.wizBasis, ac.wizSources, ac.wizBudget, ac.wizReview];
+  const formRef = useRef<HTMLFormElement>(null);
+  const [step, setStep] = useState(0);
+  const [summary, setSummary] = useState<{ title: string; provider: string; version: string; group: string; budget: string; limit: string; autoPublish: boolean } | null>(null);
   const router = useRouter();
   const online = useOnlineStatus();
   const [job, setJob] = useState<Job | null>(null);
@@ -78,6 +93,41 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
   const [showObjectiveCosts, setShowObjectiveCosts] = useState(false);
 
   const active = job ? !TERMINAL_STATUSES.has(job.status) : false;
+
+  /** Schritt wechseln; vorwärts nur, wenn die Pflichtangaben des aktuellen Schritts stimmen. */
+  function goTo(target: number) {
+    if (target < 0 || target > 3) return;
+    const form = formRef.current;
+    if (form && target > step) {
+      const data = new FormData(form);
+      const missingBasis = !String(data.get("courseTitle") ?? "").trim() || !String(data.get("courseDescription") ?? "").trim() || !String(data.get("provider") ?? "").trim();
+      if (target >= 1 && missingBasis) {
+        setStep(0);
+        setRequestError(ac.needBasis);
+        return;
+      }
+      if (target >= 2 && sourceUrlList.length === 0) {
+        setStep(1);
+        setRequestError(ac.needSource);
+        return;
+      }
+    }
+    setRequestError(null);
+    if (target === 3 && form) {
+      const data = new FormData(form);
+      const cat = categories.find((c) => c.id === data.get("categoryId"));
+      setSummary({
+        title: String(data.get("courseTitle") ?? ""),
+        provider: String(data.get("provider") ?? ""),
+        version: String(data.get("certificationVersion") ?? ""),
+        group: cat ? cat.name[locale] : ac.noGroup,
+        budget: String(data.get("initialCostLimitUsd") ?? ""),
+        limit: String(data.get("absoluteCostLimitUsd") ?? ""),
+        autoPublish: data.get("autoPublish") === "on",
+      });
+    }
+    setStep(target);
+  }
 
   const loadJob = useCallback(async (jobId: string) => {
     try {
@@ -158,6 +208,8 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
       language: form.get("language"),
       provider: form.get("provider"),
       certificationVersion: form.get("certificationVersion") || undefined,
+      shortCode: String(form.get("shortCode") ?? "").trim() || undefined,
+      categoryId: String(form.get("categoryId") ?? "") || undefined,
       sourceUrls,
       autoPublish: form.get("autoPublish") === "on",
       initialCostLimitUsd: Number(form.get("initialCostLimitUsd")),
@@ -242,7 +294,7 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
   const failedCount = objectives.filter((o) => o.status === "failed").length;
 
   return (
-    <section className="h-fit rounded-xl border border-border bg-surface p-5">
+    <section className={bare ? "h-fit" : "h-fit rounded-xl border border-border bg-surface p-5"}>
       <div className="mb-1 flex items-center gap-1.5">
         <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
         <h2 className="text-lg font-semibold">
@@ -264,95 +316,109 @@ export function CourseGenerationPanel({ locale }: { locale: "de" | "en" }) {
       )}
 
       {showForm && !job && (
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium">{locale === "de" ? "Titel" : "Title"}</span>
-            <input
-              name="courseTitle"
-              required
-              placeholder="AWS Solutions Architect Associate"
-              className="w-full rounded-md border border-border bg-background px-3 py-2"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium">{locale === "de" ? "Beschreibung" : "Description"}</span>
-            <textarea
-              name="courseDescription"
-              required
-              rows={2}
-              placeholder={locale === "de" ? "Kurze Beschreibung des Kurses" : "Short description of the course"}
-              className="w-full rounded-md border border-border bg-background px-3 py-2"
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" data-testid="course-wizard">
+          <ol className="flex gap-1.5" aria-label={ac.wizTitle}>
+            {steps.map((name, i) => (
+              <li key={name} className="flex-1">
+                <button type="button" onClick={() => goTo(i)} aria-current={i === step ? "step" : undefined} data-testid={`wizard-step-${i}`} className="w-full text-left">
+                  <span className={`block h-1 rounded-full ${i <= step ? "bg-accent" : "bg-track"}`} />
+                  <span className={`mt-1 block text-xs ${i === step ? "font-semibold text-foreground" : "text-subtle"}`}>{i + 1} · {name}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+
+          <div className={step === 0 ? "space-y-3" : "hidden"}>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium">{locale === "de" ? "Sprache" : "Language"}</span>
-              <select name="language" defaultValue={locale} className="w-full rounded-md border border-border bg-background px-3 py-2">
-                <option value="de">Deutsch</option>
-                <option value="en">English</option>
+              <span className="mb-1 block font-medium">{ac.fieldTitle}</span>
+              <input name="courseTitle" required placeholder="AWS Solutions Architect Associate" className={fieldClass} />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">{ac.fieldDescription}</span>
+              <textarea name="courseDescription" required rows={2} className={fieldClass} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">{ac.fieldLanguage}</span>
+                <select name="language" defaultValue={locale} className={fieldClass}>
+                  <option value="de">Deutsch</option>
+                  <option value="en">English</option>
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">{ac.fieldProvider}</span>
+                <input name="provider" required placeholder="AWS" className={fieldClass} />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">{ac.fieldVersion} <span className="font-normal text-faint">{ac.optional}</span></span>
+                <input name="certificationVersion" placeholder="SAA-C03" className={fieldClass} />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">{ac.fieldShortCode} <span className="font-normal text-faint">{ac.optional}</span></span>
+                <input name="shortCode" maxLength={6} placeholder="AWS" className={`${fieldClass} font-mono`} />
+              </label>
+            </div>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">{ac.fieldGroup}</span>
+              <select name="categoryId" defaultValue="" className={fieldClass}>
+                <option value="">{ac.noGroup}</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name[locale]}</option>
+                ))}
               </select>
             </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">Provider</span>
-              <input name="provider" required placeholder="AWS" className="w-full rounded-md border border-border bg-background px-3 py-2" />
-            </label>
           </div>
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium">
-              {locale === "de" ? "Zertifizierungsversion" : "Certification version"}
-              <span className="ml-1 font-normal text-foreground/40">{locale === "de" ? "optional" : "optional"}</span>
-            </span>
-            <input name="certificationVersion" placeholder="SAA-C03" className="w-full rounded-md border border-border bg-background px-3 py-2" />
-          </label>
-          <div className="block text-sm">
-            <span className="mb-1 block font-medium">
-              {locale === "de" ? "Quellen" : "Sources"}
-              <span className="ml-1.5 font-normal text-foreground/50">
-                {locale === "de" ? "- Adressen einfügen, PDF oder Webseite" : "- paste addresses, PDF or web page"}
-              </span>
-            </span>
+
+          <div className={step === 1 ? "space-y-2" : "hidden"}>
             <SourceUrlInput urls={sourceUrlList} onChange={setSourceUrlList} locale={locale} max={30} />
+            <p className="text-xs text-faint">{fmt(ac.sourcesCount, { n: sourceUrlList.length })}</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">{locale === "de" ? "Zielbudget (USD)" : "Target budget (USD)"}</span>
-              <input
-                type="number"
-                name="initialCostLimitUsd"
-                defaultValue={2}
-                min={0.1}
-                step={0.1}
-                className="w-full rounded-md border border-border bg-background px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">{locale === "de" ? "Sicherheitslimit (USD)" : "Safety limit (USD)"}</span>
-              <input
-                type="number"
-                name="absoluteCostLimitUsd"
-                defaultValue={5}
-                min={0.1}
-                step={0.1}
-                className="w-full rounded-md border border-border bg-background px-3 py-2"
-              />
+
+          <div className={step === 2 ? "space-y-3" : "hidden"}>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">{ac.fieldBudget}</span>
+                <input type="number" name="initialCostLimitUsd" defaultValue={2} min={0.1} step={0.1} className={fieldClass} />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">{ac.fieldLimit}</span>
+                <input type="number" name="absoluteCostLimitUsd" defaultValue={5} min={0.1} step={0.1} className={fieldClass} />
+              </label>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="autoPublish" className="h-4 w-4" />
+              <span>{ac.fieldAutoPublish}</span>
             </label>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="autoPublish" className="h-4 w-4" />
-            <span>
-              {locale === "de"
-                ? "Automatisch veröffentlichen nach erfolgreicher Validierung"
-                : "Auto-publish after successful validation"}
-            </span>
-          </label>
-          <button
-            type="submit"
-            disabled={loading || !online}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
-            {locale === "de" ? "Kurs generieren" : "Generate course"}
-          </button>
+
+          {step === 3 && summary && (
+            <dl className="space-y-2 rounded-xl border border-border bg-surface-inset p-4 text-sm" data-testid="wizard-summary">
+              <p className="text-xs font-semibold tracking-[0.07em] text-faint uppercase">{ac.reviewTitle}</p>
+              <div><dt className="text-xs text-subtle">{ac.fieldTitle}</dt><dd className="font-medium">{summary.title}</dd></div>
+              <div><dt className="text-xs text-subtle">{ac.fieldProvider}</dt><dd>{summary.provider}{summary.version ? ` · ${summary.version}` : ""}</dd></div>
+              <div><dt className="text-xs text-subtle">{ac.fieldGroup}</dt><dd>{summary.group}</dd></div>
+              <div><dt className="text-xs text-subtle">{ac.sources}</dt><dd>{fmt(ac.sourcesCount, { n: sourceUrlList.length })}</dd></div>
+              <div><dt className="text-xs text-subtle">{ac.budget}</dt><dd>$ {summary.budget} · {fmt(ac.jobLimit, { n: summary.limit })}{summary.autoPublish ? ` · ${ac.fieldAutoPublish}` : ""}</dd></div>
+            </dl>
+          )}
+
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <button type="button" onClick={() => goTo(step - 1)} disabled={step === 0} className="min-h-11 rounded-md border border-border-strong bg-control px-4 text-sm font-semibold hover:bg-surface-2 disabled:opacity-40">
+              {ac.wizBack}
+            </button>
+            {step < 3 ? (
+              <button type="button" onClick={() => goTo(step + 1)} data-testid="wizard-next" className="min-h-11 rounded-md bg-foreground px-4 text-sm font-semibold text-background hover:opacity-90">
+                {fmt(ac.wizNext, { name: steps[step + 1] })}
+              </button>
+            ) : (
+              <button type="submit" disabled={loading || !online} data-testid="wizard-submit" className="flex min-h-11 items-center gap-1.5 rounded-md bg-foreground px-4 text-sm font-semibold text-background hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+                {ac.generate}
+              </button>
+            )}
+          </div>
         </form>
       )}
 

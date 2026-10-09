@@ -9,7 +9,7 @@ config({ path: ".env.local", override: true });
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
-import { certifications, courseGenerationJobs, courseGenerationObjectives, users } from "../lib/server/db/schema";
+import { certifications, courseCategories, courseGenerationJobs, courseGenerationObjectives, users } from "../lib/server/db/schema";
 import { createCourseGenerationJob, getCourseGenerationJob } from "../lib/server/course-generation/job-service";
 import { executeCourseGenerationJob } from "../lib/server/course-generation/worker";
 import { createFakeBlueprintProvider, createFakeContentProvider } from "../lib/server/course-generation/fake-providers";
@@ -124,6 +124,8 @@ async function main() {
   }
 
   const objectiveCount = 4;
+  // Kursgruppe und Kurzcode wie im Assistenten (UI U7): der fertige Kurs muss sie tragen.
+  const [category] = await db.select().from(courseCategories).limit(1);
   const job = await createCourseGenerationJob({
     requestedByUserId: adminUser.id,
     courseTitle: `Fake E2E Course ${randomUUID().slice(0, 8)}`,
@@ -135,6 +137,8 @@ async function main() {
     initialCostLimitUsd: 2,
     absoluteCostLimitUsd: scenario === "budget-exceeded" ? 0.0001 : 5,
     blueprintProvider: "anthropic-sonnet",
+    categoryId: category?.id,
+    shortCode: "E2E",
   });
   console.log(`Job erstellt: ${job.id} (Szenario: ${scenario})`);
 
@@ -174,6 +178,10 @@ async function main() {
   console.log(`Kosten: $${finalJob?.actualCostUsd}, Fehler: ${finalJob?.errorCode ?? "-"} ${finalJob?.errorMessage ?? ""}`);
   if (finalJob?.resultCertificationId) {
     console.log(`Zertifizierung importiert: ${finalJob.resultCertificationId}`);
+    const [cert] = await db.select({ categoryId: certifications.categoryId, shortCode: certifications.shortCode }).from(certifications).where(eq(certifications.id, finalJob.resultCertificationId));
+    const ok = !category || (cert?.categoryId === category.id && cert?.shortCode === "E2E");
+    console.log(`Kursgruppe/Kurzcode übernommen: ${ok ? "ja" : "NEIN"}`);
+    if (!ok) process.exitCode = 1;
   }
 
   if (process.argv.includes("--keep")) {
@@ -182,7 +190,7 @@ async function main() {
     await cleanupJob(job.id);
     console.log("Aufgeräumt.");
   }
-  process.exit(0);
+  process.exit(process.exitCode ?? 0);
 }
 
 main().catch((err) => {

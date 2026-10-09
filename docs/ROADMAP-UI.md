@@ -403,27 +403,29 @@ Kurskatalog · Kursgruppen · Generierungen (Zähler laufender Jobs) · Quellen 
 
 ### Kurskatalog
 
-- [ ] Kopf: „Kurskatalog“ + Zeile „{n} Zertifizierungen in {g} Kursgruppen · {l} Lektionen · {q} Fragen“; rechts „Manuell anlegen“ (secondary) und „Kurs generieren“ (inverted, Funken-Icon).
-- [ ] **Laufender Job** als Leiste über dem Katalog (nur wenn ein Job läuft): Spinner-Icon, „Generierung läuft: {Kurs}“, „Schritt x / 5 · {Schrittname}“, 5-teiliger Balken (aktueller Schritt anteilig), rechts Kosten „$ist / $Zielbudget“ und „Limit $Sicherheitslimit“ (Werte aus dem bestehenden Job). Mehrere Jobs untereinander.
-- [ ] **Filter-Chips** je Kursgruppe mit Farbpunkt und Anzahl, „Alle“ zuerst, am Ende gestrichelter Chip „Gruppe anlegen“.
-- [ ] **Katalog gruppiert:** je Gruppe ein Abschnitt mit Kopf (Farbkachel, Name, „n Kurse · q Fragen“, Buttons „Umbenennen“ und „Reihenfolge“), darin je Kurs eine Zeile: Titel, „Anbieter · Version“ (Geist Mono 11.5), „d Domains · l Lektionen · q Fragen“, Status-Pill, **`Select` „Gruppe“** (ändert die Zuordnung sofort, mit Toast und Rückgängig), „Öffnen →“.
-- [ ] Abschnitt **„Nicht zugeordnet“** erscheint nur, solange dort Kurse liegen.
-- [ ] Unter dem Katalog drei Kacheln: Kundenanfragen (offen), Gemeldete Inhalte (offen), KI-Kosten diesen Monat (aus `objective_generation_costs`/Job-Kosten).
+- [x] Kopf: „Kurskatalog“ + Zeile „{n} Zertifizierungen in {g} Kursgruppen · {l} Lektionen · {q} Fragen“; rechts „Manuell anlegen“ (secondary) und „Kurs generieren“ (inverted, Funken-Icon).
+- [x] **Laufender Job** als Leiste über dem Katalog (nur wenn ein Job läuft): Spinner-Icon, „Generierung läuft: {Kurs}“, „Schritt x / 5 · {Schrittname}“, 5-teiliger Balken (aktueller Schritt anteilig), rechts Kosten „$ist / $Zielbudget“ und „Limit $Sicherheitslimit“ (Werte aus dem bestehenden Job). Mehrere Jobs untereinander.
+- [x] **Filter-Chips** je Kursgruppe mit Farbpunkt und Anzahl, „Alle“ zuerst, am Ende gestrichelter Chip „Gruppe anlegen“.
+- [x] **Katalog gruppiert:** je Gruppe ein Abschnitt mit Kopf (Farbkachel, Name, „n Kurse · q Fragen“, Buttons „Umbenennen“ und „Reihenfolge“), darin je Kurs eine Zeile: Titel, „Anbieter · Version“ (Geist Mono 11.5), „d Domains · l Lektionen · q Fragen“, Status-Pill, **`Select` „Gruppe“** (ändert die Zuordnung sofort, mit Toast und Rückgängig), „Öffnen →“.
+- [x] Abschnitt **„Nicht zugeordnet“** erscheint nur, solange dort Kurse liegen.
+- [x] Unter dem Katalog drei Kacheln: Kundenanfragen (offen), Gemeldete Inhalte (offen), KI-Kosten diesen Monat (aus `objective_generation_costs`/Job-Kosten).
 
 ### „Kurs generieren“ als Assistent
 
-- [ ] `Sheet` rechts (360–420 px) statt der heutigen dauerhaften Seitenspalte. Schritte als 4-teilige Leiste: **Basis** (Titel, Beschreibung, Sprache, Anbieter, Version, **Kursgruppe**) → **Quellen** (Drop-Zone „PDF ablegen oder URLs einfügen“, Liste mit Typ-Badge `PDF`/`URL` und Prüf-Häkchen, „max. 30“) → **Budget** (Zielbudget, Sicherheitslimit, „Automatisch veröffentlichen“) → **Prüfen** (Zusammenfassung, „Kurs generieren“). Footer: „Zurück“ / „Weiter zu …“.
-- [ ] „Kursstruktur manuell anlegen“ ebenfalls als `Sheet`.
+- [x] `Sheet` rechts (360–420 px) statt der heutigen dauerhaften Seitenspalte. Schritte als 4-teilige Leiste: **Basis** (Titel, Beschreibung, Sprache, Anbieter, Version, **Kursgruppe**) → **Quellen** (Drop-Zone „PDF ablegen oder URLs einfügen“, Liste mit Typ-Badge `PDF`/`URL` und Prüf-Häkchen, „max. 30“) → **Budget** (Zielbudget, Sicherheitslimit, „Automatisch veröffentlichen“) → **Prüfen** (Zusammenfassung, „Kurs generieren“). Footer: „Zurück“ / „Weiter zu …“.
+- [x] „Kursstruktur manuell anlegen“ ebenfalls als `Sheet`.
 
 ### Datenmodell Katalog-Kursgruppen
 
-- [ ] `course_categories` (`id`, `slug`, `name` (de/en), `color` aus fester Palette, `position`).
-- [ ] `certifications.category_id` (nullable, FK) – **genau eine** Gruppe je Kurs (n:1). Startwerte: Infrastruktur & Netzwerk (Info-Blau), Plattform & Kubernetes (Mint), Observability (Bernstein), Security (Koralle), Cloud (Violett).
-- [ ] Die Gruppenfarbe färbt die Kurzcode-Kachel im Lern-Dashboard (U3) und im Prüfungsplaner (U8). Der Kurzcode (`K8s`, `SEC+`, `PCA`, `AWS`, `CCNA`) wird als Feld `certifications.short_code` gepflegt.
-- [ ] Nutzer- und Firmenkatalog („Katalog durchsuchen“) zeigt dieselben Gruppen als Filter.
-- [ ] Audit-Event bei Anlegen/Umbenennen/Zuordnen.
+- [x] `course_categories` (`id`, `slug`, `name` (de/en), `color` aus fester Palette, `position`).
+- [x] `certifications.category_id` (nullable, FK) – **genau eine** Gruppe je Kurs (n:1). Startwerte: Infrastruktur & Netzwerk (Info-Blau), Plattform & Kubernetes (Mint), Observability (Bernstein), Security (Koralle), Cloud (Violett).
+- [x] Die Gruppenfarbe färbt die Kurzcode-Kachel im Lern-Dashboard (U3) und im Prüfungsplaner (U8). Der Kurzcode (`K8s`, `SEC+`, `PCA`, `AWS`, `CCNA`) wird als Feld `certifications.short_code` gepflegt.
+- [x] Nutzer- und Firmenkatalog („Katalog durchsuchen“) zeigt dieselben Gruppen als Filter.
+- [x] Audit-Event bei Anlegen/Umbenennen/Zuordnen.
 
-**Gate U7:** Screen 5 nachgebaut; Kurs per Dropdown verschieben funktioniert und ist auditiert; Generierung über den Assistenten läuft mit Fake-KI durch (`course:e2e`).
+**Stand Gate U7: erfüllt (geprüft), mit Abweichungen.** Geprüft: Katalog in Dunkel/Hell bei 1280 und 390 px ohne horizontales Scrollen; Kurs per Auswahlfeld verschieben → Toast mit „Rückgängig“; Gruppe anlegen/umbenennen/Reihenfolge; Assistent als Sheet mit 4 Schritten (Weiter ist gesperrt, solange Pflichtangaben/Quellen fehlen); Zuordnung ist auditiert (`course_category.*`), interne Firmenlernpfade sind für die Gruppen-API nicht auffindbar und erscheinen nicht mehr im Betreiberkatalog; `npm run course:e2e -- happy-path` läuft mit Fake-KI durch und übernimmt Kursgruppe + Kurzcode auf den fertigen Kurs; 671 Tests grün. **Abweichungen/Lücken:** (1) Das „Gruppe“-Feld nutzt ein natives `<select>` statt des Radix-`Select` (zugänglich, einfach testbar). (2) Die Admin-Navigation hat nur Kurskatalog, Kursanfragen und Komponenten, weil die Seiten Kursgruppen/Generierungen/Quellen/Gemeldete Inhalte/Firmen/KI-Einstellungen als eigene Routen noch nicht existieren (Gruppen und Generierungen liegen im Katalog; Zähler laufender Jobs fehlt in der Navigation). (3) Der „Nutzer- und Firmenkatalog“ zeigt die Gruppen als Filter erst mit U3/U6. (4) Die Drop-Zone „PDF ablegen“ im Quellen-Schritt ist die bestehende URL-/Bundle-Eingabe (`SourceUrlInput`); Typ-Badges PDF/URL und Prüf-Häkchen sind nicht neu gebaut. (5) Der „Schritt x / 5“-Balken schätzt den laufenden Schritt, nur bei den Lernzielen aus echten Zahlen.
+
+**Gate U7 (Vorgabe):** Screen 5 nachgebaut; Kurs per Dropdown verschieben funktioniert und ist auditiert; Generierung über den Assistenten läuft mit Fake-KI durch (`course:e2e`).
 
 ---
 
