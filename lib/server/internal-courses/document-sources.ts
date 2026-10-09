@@ -5,7 +5,7 @@ import { extractPdfPages } from "@/lib/server/documents/pdf-text";
 import { structuredKindOfMime, structuredPages, StructuredExportError } from "@/lib/server/documents/structured";
 import { scanForSecrets } from "@/lib/server/documents/secret-scanner";
 import type { ImageDescriber } from "./vision";
-import { capExcerpts, capTotalChars, type FetchedSource } from "@/lib/server/course-generation/sources";
+import { capExcerpts, capTotalChars, splitIntoSections, type FetchedSource } from "@/lib/server/course-generation/sources";
 
 /** Das Dokument darf (noch) nicht für die KI verwendet werden. Die Meldung ist für die Firma bestimmt. */
 export class DocumentSourceError extends Error {}
@@ -93,7 +93,15 @@ export async function loadDocumentSources(
     locator = () => "Abschnitt 1";
   }
 
+  // Bestätigte Fehlalarme sind nach Seite und Zeile vermerkt: erst schwärzen, dann zerlegen.
   pages = redactSuppressedLines(pages, row.suppressed);
+  if (row.mimeType !== "application/pdf" && !structuredKindOfMime(row.mimeType)) {
+    // Fließtext (Markdown, Text): in Abschnitte zerlegen, damit jedes Lernziel nur seinen Teil bekommt statt des ganzen
+    // Dokuments (siehe splitIntoSections).
+    const sectionsOfText = splitIntoSections(pages[0]?.text ?? "");
+    pages = sectionsOfText.map((section, index) => ({ pageNumber: index + 1, text: section.text }));
+    locator = (n) => sectionsOfText[n - 1]?.locator ?? `Abschnitt ${n}`;
+  }
   if (scanForSecrets(pages).length > 0) {
     throw new DocumentSourceError(
       "Im Dokument stehen noch Zugangsdaten oder Schlüssel, die nicht als Fehlalarm bestätigt sind. Es geht nicht an die KI.",

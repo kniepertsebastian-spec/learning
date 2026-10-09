@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ArrowRight, CircleCheck, CircleX } from "lucide-react";
 import { RichText } from "@/components/RichText";
 import { ReportProblem } from "@/components/quiz/ReportProblem";
@@ -41,8 +42,11 @@ export function FeedbackPanel({
   onNext: () => void;
   nextDisabled?: boolean;
 }) {
-  const { t } = useLocale();
-  const wrongWithReason = (rationales ?? []).flatMap((r, i) => (r && i !== correctIndex ? [[i, r] as const] : []));
+  const { t, locale } = useLocale();
+  const given = (rationales ?? []).some((r, i) => r && i !== correctIndex);
+  const fetched = useLazyRationales(questionId, options, locale, !correct && !given);
+  const shown = given ? rationales : fetched;
+  const wrongWithReason = (shown ?? []).flatMap((r, i) => (r && i !== correctIndex ? [[i, r] as const] : []));
   const confidenceLabel = confidence ? t.quiz[confidence] : null;
 
   return (
@@ -100,4 +104,34 @@ export function FeedbackPanel({
       </div>
     </div>
   );
+}
+
+/**
+ * Begründungen bei Bedarf (siehe /api/questions/:id/rationales): nur nach einer falschen Antwort und nur, wenn die Frage
+ * noch keine mitbringt. Die Antwort wird über den Optionstext (aktuelle Sprache) zugeordnet, weil die Oberfläche die
+ * Optionen in eigener Reihenfolge zeigen kann. Ein Fehler (offline, kein KI-Zugang) lässt den Abschnitt einfach weg.
+ */
+function useLazyRationales(questionId: string, options: string[], locale: "de" | "en", enabled: boolean): Array<string | null> | undefined {
+  const [result, setResult] = useState<Array<string | null> | undefined>(undefined);
+  const optionKey = options.join("\u0000");
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/questions/${questionId}/rationales`, { method: "POST" });
+        if (!response.ok) return;
+        const body = (await response.json()) as { options: Array<{ text: { de: string; en: string }; rationale: { de: string; en: string } | null }> | null };
+        if (cancelled || !body.options) return;
+        const byText = new Map(body.options.map((o) => [o.text[locale], o.rationale?.[locale] ?? null]));
+        setResult(optionKey.split("\u0000").map((text) => byText.get(text) ?? null));
+      } catch {
+        // offline oder Netzfehler: ohne Begründungen weiter
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [questionId, optionKey, locale, enabled]);
+  return enabled ? result : undefined;
 }

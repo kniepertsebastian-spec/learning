@@ -248,6 +248,8 @@ export interface AIUsage {
   model: string;
   promptTokens: number;
   completionTokens: number;
+  /** Davon aus dem (impliziten) Kontext-Cache gelesen: kostet nur einen Bruchteil des normalen Eingabepreises. */
+  cachedTokens?: number;
 }
 
 export async function requestJson(
@@ -263,15 +265,17 @@ export async function requestJson(
   const client = clientOverride ?? getGeminiClient();
   const maxAttempts = 2; // maxRetries = 1
 
-  const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
-
   let useSchema = Boolean(jsonSchema) && !rejectedSchemas.has(schemaKey(jsonSchema!));
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const response = await client.models.generateContent({
         model: model || "gemini-3.8-flash",
-        contents: fullPrompt,
+        // Systemprompt als systemInstruction statt vorn an den Text geklebt: er steht so immer am Anfang der Anfrage,
+        // und Geminis implizites Caching kann den gleichbleibenden Anfang (Systemprompt, ggf. gemeinsame Quelle)
+        // über alle Lernziele eines Kurses zum Cache-Preis abrechnen.
+        contents: userPrompt,
         config: {
+          systemInstruction: systemPrompt,
           temperature: 0.1,
           // gemini-2.5-flash erlaubt laut Google-Doku max. 65536 Output-Tokens
           // pro Antwort - das ist das tatsächliche Modell-Limit, keine
@@ -292,10 +296,11 @@ export async function requestJson(
       const promptTokens = usage?.promptTokenCount ?? 0;
       // Denk-Token werden wie Ausgabe-Token abgerechnet und stehen nicht in candidatesTokenCount.
       const completionTokens = (usage?.candidatesTokenCount ?? 0) + (usage?.thoughtsTokenCount ?? 0);
+      const cachedTokens = usage?.cachedContentTokenCount ?? 0;
       console.log(
-        `USAGE model=${model} promptTokens=${promptTokens} completionTokens=${completionTokens} totalTokens=${promptTokens + completionTokens}`,
+        `USAGE model=${model} promptTokens=${promptTokens} completionTokens=${completionTokens} totalTokens=${promptTokens + completionTokens} cachedTokens=${cachedTokens}`,
       );
-      onUsage?.({ model, promptTokens, completionTokens });
+      onUsage?.({ model, promptTokens, completionTokens, cachedTokens });
 
       if (!response.text) {
         throw new AIGenerationError("Gemini hat keine Textantwort zurückgegeben.");
@@ -331,11 +336,10 @@ export async function generateStructured<T>(
   const jsonSchema = toGeminiJsonSchema(schema);
   let rawText = await requestJson(systemPrompt, userPrompt, model, onUsage, clientOverride, jsonSchema);
 
-  // War 2 (= 1 Korrekturversuch) - bei gemini-3.6-flash traten in Produktion
-  // wiederholt ("Expected ',' or '}' after property value") JSON-Syntaxfehler
-  // auf, die auch den einen Korrekturversuch nicht immer behoben (siehe
-  // Git-Historie). 3 gibt der KI eine zweite Chance zur Selbstkorrektur.
-  const maxAttempts = 3;
+  // Seit Gemini das Antwortschema beim Erzeugen erzwingt (responseJsonSchema), sind JSON-Syntaxfehler selten. Ein
+  // Korrekturversuch reicht; jeder weitere schickt die komplette alte Antwort samt Anfrage erneut (teuer). Inhaltliche
+  // Fehler repariert der Aufrufer ohnehin gezielter (siehe course-generation/worker.ts).
+  const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let parsed: unknown;
     try {

@@ -1014,3 +1014,35 @@ Der Lerntext (`sections.content`, `lessons.content`) darf neben Markdown folgend
 - `:::tabs` mit `::tab[Name]`, `:::steps` mit `Beschriftung | Befehl`, `:::practice` mit `### Szenario/Aufgabe/Lösung/Warum`
 
 Die Validierung (`validateLearningBlocks`, aufgerufen von `validateObjectiveContent`) lehnt nicht geschlossene Blöcke, unvollständige Praxisbeispiele und unbekannte Marker ab; fehlende Blöcke sind kein Fehler. Bestehende Lektionen ergänzt `npm run lessons:blocks -- <slug>` (nur allgemeine Lernpfade, Text bleibt erhalten, Kostenanzeige).
+
+## Anhang: Token-Sparmaßnahmen (Oktober 2026)
+
+Preise gemini-3.8-flash je 1 Mio. Token: Eingabe 0,75 $, Ausgabe 3,75 $, Cache-Lesen 0,075 $. Die Ausgabe ist der
+teure Teil, deshalb setzen die Maßnahmen vor allem dort an.
+
+- **Einsprachig erzeugen.** Lektionen, Fragen und Merkzettel entstehen nur in der Kurssprache (`job.language`), nicht
+  mehr in Deutsch und Englisch. Die KI antwortet mit einfachen Strings (`objectiveContentAiResponseSchema`), der Provider
+  legt den Text danach in beide Sprachfelder (`toBilingualObjectiveContent`). Paketformat, Import und Oberfläche bleiben
+  gleich; ein Kurs erscheint damit in jeder Oberflächensprache in seiner Kurssprache. Eine Übersetzung bei Bedarf ist
+  noch nicht gebaut.
+- **Reparaturen ohne KI.** Unbekannte Quellenverweise werden auf `null` gesetzt, doppelte Fragen entfernt
+  (`autoFixObjectiveContent`). Fehlen danach nur Fragen (Anzahl, Szenario-Frage), liefert `generateQuestions` genau
+  diese nach, statt Lektionen und alte Antwort erneut zu schicken und alles neu schreiben zu lassen
+  (`missingQuestionsOnly`). Komplett-Reparaturen schicken die alte Antwort nur noch in einer Sprache mit.
+- **Keine Eskalation auf dasselbe Modell.** Der letzte Reparaturversuch mit dem Reparatur-Provider entfällt, wenn
+  CURRICULUM_MODEL und LESSONS_MODEL gleich sind (Standard). `generateStructured` korrigiert JSON nur noch einmal
+  (vorher zweimal), weil Gemini das Schema beim Erzeugen erzwingt.
+- **Quellen in Abschnitte.** Text-, HTML- und Markdown-Quellen werden an Überschriften bzw. Absätzen in Abschnitte von
+  höchstens etwa 6.000 Zeichen zerlegt (`splitIntoSections`), damit die Locator-Auswahl je Lernziel greift. Vorher war
+  jede solche Quelle ein einziger „Abschnitt 1“ und jedes Lernziel bekam sie ganz. Höchstmenge je Lernziel 30.000
+  statt 80.000 Zeichen (`COURSE_GEN_MAX_EXCERPT_CHARS`).
+- **Merkzettel einmal je Lernziel** (in der ersten Section) statt je Section.
+- **Begründungen bei Bedarf.** „Warum die anderen nicht passen“ wird nicht mehr vorab erzeugt, sondern beim ersten
+  falschen Beantworten einer Frage (`POST /api/questions/:id/rationales`, `ensureQuestionRationales`) und gespeichert.
+  Interne Lernpfade nutzen dafür den KI-Zugang der Firma. Vorab erzeugen: `COURSE_GEN_INLINE_RATIONALES=1`.
+- **Implizites Caching.** Der Systemprompt geht als `systemInstruction` an Gemini und hängt nur vom Kurs ab, die
+  Quellenausschnitte stehen vor den lernzielspezifischen Angaben. Gleiche Anfänge rechnet Gemini zum Cache-Preis ab;
+  die Kostenschätzung berücksichtigt `cachedContentTokenCount` (Faktor `GEMINI_CACHED_PROMPT_PRICE_FACTOR`, Standard 0,1).
+- **Batch-Modus: noch nicht umgesetzt.** Die Gemini Batch API rechnet laut Google etwa den halben Preis ab, liefert aber
+  asynchron (bis 24 h). Sinnvoll für die Massengenerierung nach dem Canary; dafür muss der Worker Aufträge einreichen,
+  den Lauf über Neustarts hinweg abfragen und Canary/Circuit Breaker darauf umstellen. Eigenes Arbeitspaket.

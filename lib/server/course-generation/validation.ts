@@ -94,7 +94,7 @@ export function validateObjectiveContent(
 
   const seenQuestions = new Map<string, number>();
   content.questions.forEach((question, index) => {
-    const normalized = question.question.en.trim().toLowerCase().replace(/\s+/g, " ");
+    const normalized = normalizeQuestionText(question.question.en);
     const priorIndex = seenQuestions.get(normalized);
     if (priorIndex !== undefined) {
       errors.push(`Frage ${index + 1} ist (nahezu) identisch mit Frage ${priorIndex + 1}.`);
@@ -105,6 +105,8 @@ export function validateObjectiveContent(
 
   content.sections.forEach((section, index) => {
     for (const lang of ["de", "en"] as const) {
+      // Einsprachig erzeugte Kurse tragen denselben Text in beiden Feldern: nur einmal prüfen, sonst doppelte Meldungen.
+      if (lang === "en" && section.content.en === section.content.de) continue;
       for (const problem of validateLearningBlocks(section.content[lang])) {
         errors.push(`Lektion ${index + 1} (${lang}): ${problem}`);
       }
@@ -130,16 +132,72 @@ export function validateObjectiveContent(
   // Ein ungenauer Quellenverweis einer Frage (Schreibweise, Dateiname-Zusatz) ist kein Grund, den ganzen Lernbaustein zu verwerfen:
   // der Verweis wird nirgends weiterverwendet. Fehlerhaft ist nur ein Verweis, der gar nichts mit den Quellen zu tun hat,
   // und auch das nur, wenn überhaupt Quellen bekannt sind und der Verweis weder ein bekannter noch ein Teilstring ist.
-  const normalize = (value: string) => value.trim().toLowerCase();
-  const known = sourceExcerpts.map((excerpt) => normalize(excerpt.locator));
+  // Der Worker setzt solche Verweise vorher per autoFixObjectiveContent() auf null; die Regel bleibt als Absicherung.
   content.questions.forEach((question, index) => {
-    if (question.sourceLocator === null || known.length === 0) return;
-    const cited = normalize(question.sourceLocator);
-    if (!cited || known.some((k) => k === cited || k.includes(cited) || cited.includes(k))) return;
-    errors.push(`Frage ${index + 1} zitiert unbekannten Locator "${question.sourceLocator}".`);
+    if (!locatorKnown(question.sourceLocator, sourceExcerpts)) {
+      errors.push(`Frage ${index + 1} zitiert unbekannten Locator "${question.sourceLocator}".`);
+    }
   });
 
   return errors;
+}
+
+function normalizeQuestionText(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** Passt der Quellenverweis zu einem mitgelieferten Ausschnitt (exakt oder als Teilstring)? `null` gilt als passend. */
+function locatorKnown(locator: string | null, sourceExcerpts: SourceExcerpt[]): boolean {
+  if (locator === null) return true;
+  const known = sourceExcerpts.map((excerpt) => excerpt.locator.trim().toLowerCase());
+  if (known.length === 0) return true;
+  const cited = locator.trim().toLowerCase();
+  return !cited || known.some((k) => k === cited || k.includes(cited) || cited.includes(k));
+}
+
+/**
+ * Behebt, was sich ohne KI beheben lässt, statt dafür ein komplettes Lernziel neu erzeugen zu lassen (jede Reparatur
+ * schickt Quellen und alte Antwort erneut und lässt alles neu schreiben):
+ * - unbekannter Quellenverweis einer Frage → `null` (der Verweis wird nirgends weiterverwendet),
+ * - (nahezu) doppelte Fragen → die spätere fällt weg; fehlen danach Fragen, liefert der Worker nur diese nach.
+ */
+export function autoFixObjectiveContent(
+  content: ObjectiveContentResponse,
+  sourceExcerpts: SourceExcerpt[],
+): { content: ObjectiveContentResponse; fixes: string[] } {
+  const fixes: string[] = [];
+  const seen = new Set<string>();
+  const questions = content.questions.flatMap((question, index) => {
+    const key = normalizeQuestionText(question.question.en);
+    if (seen.has(key)) {
+      fixes.push(`Frage ${index + 1} war doppelt und wurde entfernt.`);
+      return [];
+    }
+    seen.add(key);
+    if (!locatorKnown(question.sourceLocator, sourceExcerpts)) {
+      fixes.push(`Unbekannter Quellenverweis "${question.sourceLocator}" bei Frage ${index + 1} wurde entfernt.`);
+      return [{ ...question, sourceLocator: null }];
+    }
+    return [question];
+  });
+  return { content: { ...content, questions }, fixes };
+}
+
+/**
+ * Betreffen die verbleibenden Fehler nur fehlende Fragen (Anzahl, Szenario-Frage)? Dann reicht es, genau diese Fragen
+ * nachzuliefern; die Lektionen bleiben unangetastet. Liefert, wie viele Fragen fehlen und ob eine Szenario-Frage nötig ist.
+ */
+export function missingQuestionsOnly(
+  objective: CourseBlueprintObjective,
+  content: ObjectiveContentResponse,
+  errors: string[],
+): { count: number; requireScenario: boolean } | null {
+  const questionOnly = errors.every((e) => e.startsWith("Nur ") || e.startsWith("Komplexes Objective ohne"));
+  if (!questionOnly || errors.length === 0) return null;
+  const requireScenario = errors.some((e) => e.startsWith("Komplexes Objective ohne"));
+  const shortfall = Math.max(0, objective.recommendedQuestions - content.questions.length);
+  const count = Math.max(shortfall, requireScenario ? 1 : 0);
+  return count > 0 ? { count, requireScenario } : null;
 }
 
 /**
