@@ -41,7 +41,9 @@ describe("navItems / isNavActive", () => {
   });
 
   it("Dashboard nur auf /, Profil auch auf Unterseiten", () => {
-    const [home, , profile] = navItems("personal");
+    const items = navItems("personal");
+    const home = items.find((i) => i.label === "learn")!;
+    const profile = items.find((i) => i.label === "profile")!;
     expect(isNavActive(home, "/", null)).toBe(true);
     expect(isNavActive(home, "/profile", null)).toBe(false);
     expect(isNavActive(profile, "/profile", null)).toBe(true);
