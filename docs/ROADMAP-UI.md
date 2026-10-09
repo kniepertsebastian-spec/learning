@@ -248,11 +248,11 @@ Basis: **shadcn/ui** (MIT, Code liegt im Repo, Radix-Primitives darunter) – nu
 
 Route `/` (eingeloggt). Ersetzt die heutige Kurskachel-Liste.
 
-- [ ] **Begrüßung:** „Guten Morgen/Tag/Abend, {Name}“ (34 px) + Zeile „Heute fällig: {n} Wiederholungen · ca. {m} Minuten. Deine {Kurs}-Prüfung ist in {t} Tagen.“ (zweiter Satz nur mit geplanter Prüfung aus U8).
-- [ ] **Hero „Weitermachen“** (Card `hero`, 2/3 Breite): Overline „Weitermachen“ + „zuletzt vor …“; Kurs · Domain; Titel der Sektion (26 px); „Sektion x von y“ mit Prozent und Balken 8 px (max. 520 px breit); Buttons „Weiterlernen →“ (primary) und „{n} Wiederholungen“ (secondary). Daten: zuletzt bearbeitete Sektion des Nutzers. Ohne Historie: „Ersten Kurs starten“ mit Katalog-Link.
-- [ ] **Karte „Prüfungsbereitschaft“** (1/3): `ProgressRing` mit Readiness des Hauptkurses (Wert aus `ReadinessCard`/`lib/server/readiness`), daneben bis zu 3 Domains mit Ampelpunkt (stark/üben/schwach, Schwellen wie im Readiness-Service), unten Zeile „Prüfung in {t} Tagen · Simulieren“ (nur mit Prüfungstermin, sonst „Prüfung planen“ → U8).
-- [ ] **Vier Stat-Kacheln:** Fragen beantwortet (+Woche), Trefferquote (Δ Punkte), Fällige Karten (Minuten), Lernzeit gesamt (diese Woche). Nur Werte, die es serverseitig schon gibt oder in diesem Schritt ergänzt werden; keine erfundenen Kennzahlen.
-- [ ] **„Meine Zertifizierungen“** als Raster (min. 280 px pro Karte): Kurzcode-Kachel 42 px (Geist Mono, Farbe der Katalog-Kursgruppe aus U7), Titel, Version, „x von y Lektionen“ + Prozent + Balken, Status-Pill und Button je Zustand:
+- [x] **Begrüßung:** „Guten Morgen/Tag/Abend, {Name}“ (34 px) + Zeile „Heute fällig: {n} Wiederholungen · ca. {m} Minuten. Deine {Kurs}-Prüfung ist in {t} Tagen.“ (zweiter Satz nur mit geplanter Prüfung aus U8).
+- [x] **Hero „Weitermachen“** (Card `hero`, 2/3 Breite): Overline „Weitermachen“ + „zuletzt vor …“; Kurs · Domain; Titel der Sektion (26 px); „Sektion x von y“ mit Prozent und Balken 8 px (max. 520 px breit); Buttons „Weiterlernen →“ (primary) und „{n} Wiederholungen“ (secondary). Daten: zuletzt bearbeitete Sektion des Nutzers. Ohne Historie: „Ersten Kurs starten“ mit Katalog-Link.
+- [x] **Karte „Prüfungsbereitschaft“** (1/3): `ProgressRing` mit Readiness des Hauptkurses (Wert aus `ReadinessCard`/`lib/server/readiness`), daneben bis zu 3 Domains mit Ampelpunkt (stark/üben/schwach, Schwellen wie im Readiness-Service), unten Zeile „Prüfung in {t} Tagen · Simulieren“ (nur mit Prüfungstermin, sonst „Prüfung planen“ → U8).
+- [x] **Vier Stat-Kacheln:** Fragen beantwortet (+Woche), Trefferquote (Δ Punkte), Fällige Karten (Minuten), Lernzeit gesamt (diese Woche). Nur Werte, die es serverseitig schon gibt oder in diesem Schritt ergänzt werden; keine erfundenen Kennzahlen.
+- [x] **„Meine Zertifizierungen“** als Raster (min. 280 px pro Karte): Kurzcode-Kachel 42 px (Geist Mono, Farbe der Katalog-Kursgruppe aus U7), Titel, Version, „x von y Lektionen“ + Prozent + Balken, Status-Pill und Button je Zustand:
 
   | Zustand | Pill | Button |
   |---|---|---|
@@ -262,10 +262,12 @@ Route `/` (eingeloggt). Ersetzt die heutige Kurskachel-Liste.
   | Abgeschlossen | Mint „Abgeschlossen“ | „Wiederholen“ |
 
   Link „Katalog durchsuchen“ rechts über dem Raster.
-- [ ] **Seitenkarte „Diese Woche“:** 7 Balken Mo–So (Minuten pro Tag, heute in Mint, Tage ohne Lernen als Track-Farbe), Wochenziel mit Balken, darunter **Empfehlung** zur schwächsten Domain/Objective mit Link „Lücke schließen →“ (startet eine gezielte Sitzung).
-- [ ] Bestehende `TodayDashboard`/`ActivityTrends` in diese Bausteine überführen statt doppelt anzeigen.
+- [x] **Seitenkarte „Diese Woche“:** 7 Balken Mo–So (Minuten pro Tag, heute in Mint, Tage ohne Lernen als Track-Farbe), Wochenziel mit Balken, darunter **Empfehlung** zur schwächsten Domain/Objective mit Link „Lücke schließen →“ (startet eine gezielte Sitzung).
+- [x] Bestehende `TodayDashboard`/`ActivityTrends` in diese Bausteine überführen statt doppelt anzeigen.
 
-**Gate U3:** Screen 1 in hell/dunkel nachgebaut; alle Zahlen aus echten Daten; leere Zustände (neuer Nutzer, kein Termin, keine Kurse) gestaltet.
+**Stand Gate U3: erfüllt (geprüft), mit Abweichungen.** Geprüft (Browser, Fixture-Nutzer): Dashboard in Dunkel/Hell bei 1440 und 390 px ohne horizontales Scrollen, leerer Zustand (Nutzer ohne Kurse: „Ersten Kurs starten“ → `/catalog`), Zahlen kommen aus Quiz-/Prüfungsantworten, Lektionsabschlüssen, Wiederholungen und Readiness; Logik (Begrüßung, Zustände, Ampel, Wochenbalken) in `lib/dashboard/logic.test.ts`; neue Seite `/catalog` mit denselben Kursgruppen als Filter. **Abweichungen:** (1) **Keine Lernzeit-Kachel und keine Minuten-Balken:** Lernzeit wird nicht erfasst. Stattdessen „Lektionen erledigt“ und Balken mit beantworteten Fragen je Tag; das Wochenziel zählt aktive Tage (Wunschtage aus dem Lernprofil). (2) „ca. m Minuten“ für fällige Karten ist ein Richtwert (0,6 Min je Karte), kein Messwert. (3) Die Prüfungsfrist stammt noch aus dem Lernprofil (`study_profiles.exam_date`), bis U8 den Planer liefert. (4) Beantwortete Fragen zählen Quiz- und Prüfungsantworten; Tagessitzungs-Antworten stehen nur in der Wiederholungsplanung (keine Historie). (5) `TodayDashboard`/`ActivityTrends` bleiben auf der Kursseite `/cert/[id]` (pro Kurs), sie wurden nicht auf die Startseite verdoppelt. (6) „Meine Zertifizierungen“ zeigt Kurse mit Aktivität, Lernprofil oder Zuweisung. (7) Die Begrüßungszeit richtet sich nach der Uhr im Browser (zuerst neutral „Hallo“).
+
+**Gate U3 (Vorgabe):** Screen 1 in hell/dunkel nachgebaut; alle Zahlen aus echten Daten; leere Zustände (neuer Nutzer, kein Termin, keine Kurse) gestaltet.
 
 ---
 
