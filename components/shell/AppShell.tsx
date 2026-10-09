@@ -53,7 +53,7 @@ export function AppShell({ shell, streak, children }: { shell: ShellData | null;
   const sidebarWidth = ctx === "admin" ? "md:w-[232px]" : "md:w-[248px]";
 
   return (
-    <div data-context={ctx} className="flex min-h-screen flex-col bg-background text-foreground">
+    <div data-app-shell data-context={ctx} className="flex min-h-screen flex-col bg-background text-foreground">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-on-accent">{t.shell.skipToContent}</a>
 
       {ctx === "admin" && (

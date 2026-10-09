@@ -119,18 +119,6 @@
     "hex": 0,
     "palette": 8
   },
-  "components/ExamNavigator.tsx": {
-    "hex": 0,
-    "palette": 3
-  },
-  "components/ExamSession.tsx": {
-    "hex": 0,
-    "palette": 6
-  },
-  "components/ExamTimer.tsx": {
-    "hex": 0,
-    "palette": 1
-  },
   "components/FileDropZone.tsx": {
     "hex": 0,
     "palette": 1
@@ -167,15 +155,7 @@
     "hex": 0,
     "palette": 4
   },
-  "components/QuizQuestionCard.tsx": {
-    "hex": 0,
-    "palette": 6
-  },
   "components/ReadinessCard.tsx": {
-    "hex": 0,
-    "palette": 4
-  },
-  "components/RemediationSession.tsx": {
     "hex": 0,
     "palette": 4
   },
@@ -208,10 +188,6 @@
     "palette": 1
   },
   "components/StudyGoalPanel.tsx": {
-    "hex": 0,
-    "palette": 2
-  },
-  "components/StudySession.tsx": {
     "hex": 0,
     "palette": 2
   },

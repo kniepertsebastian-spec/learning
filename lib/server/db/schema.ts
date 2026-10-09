@@ -274,6 +274,8 @@ export const questionOptions = pgTable("question_options", {
   orderNum: integer("order_num").notNull(),
   text: jsonb("text").$type<Localized<string>>().notNull(),
   isCorrect: boolean("is_correct").notNull().default(false),
+  /** UI U4: warum diese (falsche) Option nicht passt, zweisprachig; null bei älteren Fragen und bei der richtigen Option. */
+  rationale: jsonb("rationale").$type<Localized<string>>(),
 });
 
 /**

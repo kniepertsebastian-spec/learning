@@ -1,12 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { ExamTimer } from "@/components/ExamTimer";
-import { ExamNavigator } from "@/components/ExamNavigator";
+import { FocusFrame } from "@/components/quiz/FocusFrame";
+import type { OptionState } from "@/components/quiz/OptionTile";
+import { QuestionBody } from "@/components/quiz/QuestionBody";
+import { QuestionNavigator, type NavState } from "@/components/quiz/QuestionNavigator";
+import { ResultSummary } from "@/components/quiz/ResultSummary";
+import { useQuizHotkeys } from "@/components/quiz/useQuizHotkeys";
+import { Button } from "@/components/ui/button";
+import type { SegmentState } from "@/components/ui/progress";
+import { useLocale } from "@/lib/i18n";
+import { fmt } from "@/lib/quiz/keys";
 import type { Locale } from "@/lib/types";
-import { RichText } from "@/components/RichText";
 
 interface ExamQuestion {
   questionId: string;
@@ -22,12 +29,14 @@ interface DomainScore {
 }
 
 interface WeakObjective {
+  objectiveId: string;
   objectiveCode: string;
   objectiveTitle: string;
   examScore: number;
 }
 
 interface ExamResult {
+  attemptId: string;
   score: number;
   readiness: string;
   readinessLabel: string;
@@ -57,6 +66,10 @@ interface ExamSessionProps {
    * das Zeitlimit wird dann proportional skaliert statt die volle Zeit für
    * eine kürzere Prüfung zu geben. */
   targetQuestionCount: number | null;
+  /** Bestehensgrenze in Prozent, nur wenn die Prüfung in Prozent bewertet wird (sonst keine Markierung im Ring). */
+  passingPercent?: number | null;
+  /** Kontext für die Fokusleiste, z. B. der Kursname. */
+  contextLabel?: string;
 }
 
 export function ExamSession({
@@ -66,7 +79,10 @@ export function ExamSession({
   locale,
   durationMinutes,
   targetQuestionCount,
+  passingPercent = null,
+  contextLabel,
 }: ExamSessionProps) {
+  const { t } = useLocale();
   const [secondsLeft, setSecondsLeft] = useState(() => {
     if (durationMinutes) {
       const ratio = targetQuestionCount ? questions.length / targetQuestionCount : 1;
@@ -126,165 +142,103 @@ export function ExamSession({
     });
   }
 
+  const exitHref = `/cert/${certSlug}`;
+  const question = questions[currentIndex];
+  const sortedOptions = [...question.options].sort((a, b) => a.orderNum - b.orderNum);
+  const isLast = currentIndex + 1 >= questions.length;
+  const answeredCount = answers.filter(Boolean).length;
+
+  function pickOption(index: number) {
+    const option = sortedOptions[index];
+    if (!option) return;
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[currentIndex] = option.id;
+      return next;
+    });
+  }
+
+  useQuizHotkeys(
+    sortedOptions.length,
+    (action) => {
+      if (action.type === "pick") pickOption(action.index);
+      else if (action.type === "flag") toggleFlag(currentIndex);
+      else if (action.type === "enter" && !isLast) setCurrentIndex((i) => i + 1);
+    },
+    !result,
+  );
+
   if (result) {
+    const weak = result.analysis.weakObjectives;
     return (
-      <div className="mx-auto flex max-w-2xl flex-1 flex-col py-8">
-        <div className="mb-6 rounded-lg border border-border bg-surface p-6 text-center">
-          <p className="mb-1 text-4xl font-bold">{result.score}%</p>
-          <p className="mb-1 text-lg font-medium">{result.readinessLabel}</p>
-          <p className="text-xs text-foreground/50">
-            {locale === "de" ? "Konfidenz" : "Confidence"}: {Math.round(result.readinessConfidence * 100)}%
-          </p>
-        </div>
-
-        {result.analysis.domainPerformance.length > 0 && (
-          <div className="mb-6 rounded-lg border border-border bg-surface p-4">
-            <h3 className="mb-3 font-medium">{locale === "de" ? "Nach Domain" : "By domain"}</h3>
-            <div className="flex flex-col gap-2">
-              {result.analysis.domainPerformance.map((d) => (
-                <div key={d.domainId} className="flex items-center justify-between text-sm">
-                  <span>{d.domainName}</span>
-                  <span className="font-medium">{d.score}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {result.analysis.weakObjectives.length > 0 && (
-          <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-            <h3 className="mb-3 font-medium text-yellow-800">
-              {locale === "de" ? "Schwache Bereiche" : "Weak areas"}
-            </h3>
-            <ul className="space-y-1 text-sm text-yellow-700">
-              {result.analysis.weakObjectives.map((w) => (
-                <li key={w.objectiveCode}>
-                  <span className="font-mono text-xs">{w.objectiveCode}</span> {w.objectiveTitle} (
-                  {w.examScore}%)
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {result.analysis.recommendations.length > 0 && (
-          <div className="mb-6 rounded-lg border border-border bg-surface p-4">
-            <h3 className="mb-2 font-medium">{locale === "de" ? "Empfehlungen" : "Recommendations"}</h3>
-            <ul className="list-disc space-y-1 pl-5 text-sm text-foreground/70">
-              {result.analysis.recommendations.map((r, i) => (
-                <li key={i}>{r}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <Link
-          href={`/cert/${certSlug}`}
-          className="mx-auto rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
-        >
-          {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
-        </Link>
-      </div>
+      <FocusFrame
+        exitHref={exitHref}
+        confirmLeave={false}
+        contextLabel={contextLabel}
+        mode="exam"
+        segments={questions.map((): SegmentState => "current")}
+        counterText={fmt(t.quiz.answeredXofY, { x: answeredCount, y: questions.length })}
+      >
+        <ResultSummary
+          score={result.score}
+          passPercent={passingPercent}
+          headline={result.readinessLabel}
+          subline={`${t.quiz.confidenceLabel}: ${Math.round(result.readinessConfidence * 100)} %`}
+          domains={result.analysis.domainPerformance.map((d) => ({ id: d.domainId, name: d.domainName, score: d.score }))}
+          weakAreas={weak.map((w) => `${w.objectiveCode} ${w.objectiveTitle} (${w.examScore} %)`)}
+          recommendations={result.analysis.recommendations}
+          actions={[
+            { href: `/cert/${certSlug}/history/${result.attemptId}`, label: t.quiz.reviewWrong, primary: true },
+            ...(weak[0] ? [{ href: `/cert/${certSlug}/remediation/${weak[0].objectiveId}`, label: t.quiz.practiceTargeted }] : []),
+            { href: exitHref, label: t.quiz.backToCourse },
+          ]}
+        />
+      </FocusFrame>
     );
   }
 
-  const question = questions[currentIndex];
-  const answerIndices = answers.map((a, i) =>
-    a === null ? null : questions[i].options.findIndex((o) => o.id === a),
-  );
+  // Prüfungsmodus: Zustände nur „gewählt“ – nie richtig/falsch (der Client kennt die Lösung nicht einmal).
+  const states: OptionState[] = sortedOptions.map((o) => (answers[currentIndex] === o.id ? "selected" : "neutral"));
+  const segments: SegmentState[] = questions.map((_, i) => (answers[i] ? "current" : "open"));
+  const navStates: NavState[] = questions.map((_, i) => (answers[i] ? "answered" : "open"));
 
   return (
-    <div className="grid flex-1 grid-cols-1 gap-6 py-6 lg:grid-cols-[1fr_280px]">
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm text-foreground/60">
-            {locale === "de" ? "Frage" : "Question"} {currentIndex + 1} / {questions.length}
-          </p>
-          <ExamTimer
-            secondsLeft={secondsLeft}
-            onTick={setSecondsLeft}
-            onExpire={handleSubmit}
-          />
-        </div>
+    <FocusFrame
+      exitHref={exitHref}
+      confirmLeave={answeredCount > 0}
+      contextLabel={contextLabel}
+      mode="exam"
+      segments={segments}
+      counterText={fmt(t.quiz.questionXofY, { x: currentIndex + 1, y: questions.length })}
+      scoreText={fmt(t.quiz.answeredXofY, { x: answeredCount, y: questions.length })}
+      right={<ExamTimer secondsLeft={secondsLeft} onTick={setSecondsLeft} onExpire={handleSubmit} />}
+      navigator={<QuestionNavigator mode="exam" states={navStates} currentIndex={currentIndex} flagged={flagged} onJump={setCurrentIndex} />}
+    >
+      <QuestionBody
+        question={question.question[locale]}
+        options={sortedOptions.map((o) => o.text[locale])}
+        states={states}
+        onPick={pickOption}
+        flagged={flagged.has(currentIndex)}
+        onToggleFlag={() => toggleFlag(currentIndex)}
+      />
 
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div className="font-medium"><RichText text={question.question[locale]} /></div>
-            <button
-              type="button"
-              onClick={() => toggleFlag(currentIndex)}
-              className={`shrink-0 text-xs ${flagged.has(currentIndex) ? "text-amber-500" : "text-foreground/40"}`}
-            >
-              {locale === "de" ? "Markieren" : "Flag"}
-            </button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {[...question.options]
-              .sort((a, b) => a.orderNum - b.orderNum)
-              .map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() =>
-                    setAnswers((prev) => {
-                      const next = [...prev];
-                      next[currentIndex] = option.id;
-                      return next;
-                    })
-                  }
-                  className={`rounded-md border px-3 py-2.5 text-left text-sm transition-colors ${
-                    answers[currentIndex] === option.id
-                      ? "border-accent bg-accent/10"
-                      : "border-border hover:bg-background"
-                  }`}
-                >
-                  <RichText text={option.text[locale]} inline />
-                </button>
-              ))}
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-            disabled={currentIndex === 0}
-            className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {locale === "de" ? "Zurück" : "Previous"}
-          </button>
-
-          {currentIndex + 1 >= questions.length ? (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-60"
-            >
-              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {locale === "de" ? "Prüfung einreichen" : "Submit exam"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
-            >
-              {locale === "de" ? "Weiter" : "Next"}
-            </button>
-          )}
-        </div>
-
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <Button variant="secondary" onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))} disabled={currentIndex === 0}>
+          {t.quiz.previous}
+        </Button>
+        {isLast ? (
+          <Button onClick={handleSubmit} disabled={submitting} iconLeft={submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : undefined} data-testid="submit-exam">
+            {t.quiz.submitExam}
+          </Button>
+        ) : (
+          <Button onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))} iconRight={<ArrowRight className="h-4 w-4" aria-hidden="true" />}>
+            {t.quiz.nextShort}
+          </Button>
+        )}
       </div>
 
-      <ExamNavigator
-        total={questions.length}
-        currentIndex={currentIndex}
-        answers={answerIndices}
-        flagged={flagged}
-        onJump={setCurrentIndex}
-      />
-    </div>
+      {error && <p role="alert" className="mt-3 text-sm text-danger-text">{error}</p>}
+    </FocusFrame>
   );
 }

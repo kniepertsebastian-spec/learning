@@ -102,7 +102,9 @@ export default async function SectionPage({
         text: o.text,
         orderNum: o.orderNum,
         isCorrect: o.isCorrect,
+        rationale: o.rationale,
       })),
+    difficulty: q.difficulty,
     sourceReference: q.sourceReference,
   }));
 

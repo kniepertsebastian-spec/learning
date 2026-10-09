@@ -49,6 +49,8 @@ export const draftLessonSchema = z.object({
 export const draftQuestionOptionSchema = z.object({
   text: localizedStringSchema,
   isCorrect: z.boolean(),
+  /** Warum diese FALSCHE Option nicht passt (UI U4). */
+  rationale: localizedStringSchema.optional(),
 });
 
 const exactlyOneCorrectOption = (q: { options: { isCorrect: boolean }[] }) =>

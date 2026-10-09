@@ -194,6 +194,7 @@ export async function importCoursePackage(
               orderNum: index + 1,
               text: option.text,
               isCorrect: option.isCorrect,
+              rationale: option.isCorrect ? null : (option.rationale ?? null),
             })),
           );
         }

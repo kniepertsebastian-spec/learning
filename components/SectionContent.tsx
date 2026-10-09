@@ -191,6 +191,8 @@ export function SectionContent({
             questions={questions}
             certSlug={certSlug}
             locale={locale}
+            contextLabel={`${domainName} · ${objectiveCode} ${objectiveTitle}`}
+            objectiveLabel={objectiveCode}
             offline={offline}
           />
         </section>

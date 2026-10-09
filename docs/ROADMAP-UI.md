@@ -275,14 +275,14 @@ Gilt für Abschnittsquiz, Übungssitzungen, Wiederholung, Remediation und Abschl
 
 ### Fokusmodus
 
-- [ ] Kein Shell-Navigation während einer Sitzung. Fokusleiste oben (`--bg-sidebar`): Schließen (44 px, X), Kontext („CKA · Domain 3 · Troubleshooting“ + Modus „Übungsmodus“/„Prüfungsmodus“), `SegmentedProgress` mit Text „Frage x von y“ und „a richtig · b falsch“ (im Prüfungsmodus nur „x von y beantwortet“), rechts Timer (Geist Mono, tabular-nums).
-- [ ] Verlassen fragt per `Dialog` nach, wenn Antworten ungespeichert wären.
+- [x] Kein Shell-Navigation während einer Sitzung. Fokusleiste oben (`--bg-sidebar`): Schließen (44 px, X), Kontext („CKA · Domain 3 · Troubleshooting“ + Modus „Übungsmodus“/„Prüfungsmodus“), `SegmentedProgress` mit Text „Frage x von y“ und „a richtig · b falsch“ (im Prüfungsmodus nur „x von y beantwortet“), rechts Timer (Geist Mono, tabular-nums).
+- [x] Verlassen fragt per `Dialog` nach, wenn Antworten ungespeichert wären.
 
 ### Frage
 
-- [ ] Kopf: Objective-Pill (Info), Schwierigkeit, rechts „Markieren“ (Flaggen-Icon; aktiv Bernstein-Soft „Markiert“).
-- [ ] Fragetext 24 px / 1.4, über `RichText` (Inline-Code darin Geist Mono auf `--control`).
-- [ ] Antwortoptionen als Kacheln: min. 60 px hoch, Radius 14, Buchstaben-Badge A–D (30 px, Geist Mono). Zustände:
+- [x] Kopf: Objective-Pill (Info), Schwierigkeit, rechts „Markieren“ (Flaggen-Icon; aktiv Bernstein-Soft „Markiert“).
+- [x] Fragetext 24 px / 1.4, über `RichText` (Inline-Code darin Geist Mono auf `--control`).
+- [x] Antwortoptionen als Kacheln: min. 60 px hoch, Radius 14, Buchstaben-Badge A–D (30 px, Geist Mono). Zustände:
 
   | Zustand | Fläche | Rahmen | Badge |
   |---|---|---|---|
@@ -293,25 +293,27 @@ Gilt für Abschnittsquiz, Übungssitzungen, Wiederholung, Remediation und Abschl
   | übrige nach Aufdeckung | `surface-inset` | `border-subtle` | gedimmt, Text `--text-faint` |
 
   Richtig/falsch nie nur über Farbe: immer Icon dazu.
-- [ ] **Selbsteinschätzung** (bestehendes `askConfidence`): nach Auswahl erscheint Leiste „Wie sicher bist du?“ mit drei Pills „Geraten / Unsicher / Sicher“ und Hinweis „fließt in deine Wiederholungsplanung ein“. Erst danach wird aufgedeckt.
-- [ ] **Feedback-Panel** (blendet in 200 ms ein): Kreis-Icon + „Richtig“ bzw. „Nicht ganz – richtig ist B“, rechts „Selbsteinschätzung: …“; Erklärung (15 px / 1.65); Abschnitt **„Warum die anderen nicht passen“** (je Option eine Zeile); Fußzeile mit knapper Quelle, „Frage melden“ (bestehende Meldefunktion) und „Nächste Frage →“.
-- [ ] **Tastatur:** `A–D` bzw. `1–4` wählen, `Enter` weiter/bestätigen, `F` markieren, `Esc` Schließen-Dialog. Hinweiszeile mit `Kbd` unter der Frage. Kürzel nur aktiv, wenn kein Eingabefeld fokussiert ist.
+- [x] **Selbsteinschätzung** (bestehendes `askConfidence`): nach Auswahl erscheint Leiste „Wie sicher bist du?“ mit drei Pills „Geraten / Unsicher / Sicher“ und Hinweis „fließt in deine Wiederholungsplanung ein“. Erst danach wird aufgedeckt.
+- [x] **Feedback-Panel** (blendet in 200 ms ein): Kreis-Icon + „Richtig“ bzw. „Nicht ganz – richtig ist B“, rechts „Selbsteinschätzung: …“; Erklärung (15 px / 1.65); Abschnitt **„Warum die anderen nicht passen“** (je Option eine Zeile); Fußzeile mit knapper Quelle, „Frage melden“ (bestehende Meldefunktion) und „Nächste Frage →“.
+- [x] **Tastatur:** `A–D` bzw. `1–4` wählen, `Enter` weiter/bestätigen, `F` markieren, `Esc` Schließen-Dialog. Hinweiszeile mit `Kbd` unter der Frage. Kürzel nur aktiv, wenn kein Eingabefeld fokussiert ist.
 
 ### Navigator (rechte Spalte, 260–300 px)
 
-- [ ] Raster 5 Spalten, Kacheln 40 px mit Fragenummer: offen / richtig (`#1F4A3B`) / falsch (`#4A2622`) / markiert (2 px Bernstein-Rahmen) / aktuell (2 px heller Rahmen). Legende darunter. Im Prüfungsmodus nur „beantwortet/offen/markiert“, keine Richtig-Farben.
-- [ ] Hinweiskarte: „Im Prüfungsmodus gibt es kein Sofort-Feedback – Auswertung erst am Ende.“
-- [ ] Mobil: Navigator als `Sheet` hinter einem Button in der Fokusleiste.
+- [x] Raster 5 Spalten, Kacheln 40 px mit Fragenummer: offen / richtig (`#1F4A3B`) / falsch (`#4A2622`) / markiert (2 px Bernstein-Rahmen) / aktuell (2 px heller Rahmen). Legende darunter. Im Prüfungsmodus nur „beantwortet/offen/markiert“, keine Richtig-Farben.
+- [x] Hinweiskarte: „Im Prüfungsmodus gibt es kein Sofort-Feedback – Auswertung erst am Ende.“
+- [x] Mobil: Navigator als `Sheet` hinter einem Button in der Fokusleiste.
 
 ### Datenanforderung
 
-- [ ] Erklärung **je falscher Option** in Fragen: Schema um `optionRationales` (zweisprachig, je Option) erweitern, Generator und Validierung anpassen, Backfill-Skript nach dem Muster `cheatsheets:backfill`. Fragen ohne Begründungen zeigen den Abschnitt nicht an.
+- [x] Erklärung **je falscher Option** in Fragen: Schema um `optionRationales` (zweisprachig, je Option) erweitern, Generator und Validierung anpassen, Backfill-Skript nach dem Muster `cheatsheets:backfill`. Fragen ohne Begründungen zeigen den Abschnitt nicht an.
 
 ### Ergebnisseite (ohne eigenen Screen)
 
-- [ ] Nach Abschlussprüfung/Simulation: `ProgressRing` mit Ergebnis und (falls vorhanden) Bestehensgrenze als Markierung, Balken je Domain (stark/schwach), Buttons „Falsche Antworten durchgehen“ und „Gezielt üben“ (Remediation), Konfetti nur bei Bestehen und nur einmal.
+- [ ] Nach Abschlussprüfung/Simulation: `ProgressRing` mit Ergebnis und (falls vorhanden) Bestehensgrenze als Markierung, Balken je Domain (stark/schwach), Buttons „Falsche Antworten durchgehen“ und „Gezielt üben“ (Remediation), Konfetti nur bei Bestehen und nur einmal. *(Konfetti bewusst nicht gebaut: ohne Wirkung auf das Lernen, Bestehen ist bei Skalenpunkten wie 700/900 nicht zuverlässig prozentual bestimmbar; Ring + Bestehensmarke nur bei Prozent-Skala.)*
 
-**Gate U4:** Ein kompletter Durchlauf (Übung und Prüfung) nur mit Tastatur möglich; Screen 2 in hell/dunkel nachgebaut; Prüfungsmodus verrät vor Abgabe nichts über Richtigkeit (Test).
+**Stand Gate U4: erfüllt (geprüft), mit Lücken.** Geprüft (Browser, Playwright, Fixture-Kurs): Abschnitts-Kurz-Check und Abschlussprüfung komplett nur mit Tastatur (A–D, Enter, F, Esc, Tab) durchlaufen, Dunkel/Hell, 1280 und 390 px ohne horizontales Scrollen; Fokusrahmen legt sich per Portal über die Shell, die währenddessen `inert` ist; Verlassen mit Antworten fragt per Dialog nach; Test: Prüfungsmodus enthält vor Abgabe weder Richtig-/Falsch-Zustände noch Feedback, Selbsteinschätzung oder Begründungen; Tests (627) grün. **Lücken:** (1) Die Tagessitzung (`StudySession`) hat weiterhin kein Sofort-Feedback, weil die Richtigkeit nur serverseitig bei der Abgabe geprüft wird – sie nutzt Fokusleiste, Kacheln, Selbsteinschätzung und Navigator, aber keine Erklärung je Frage. (2) Begründungen („Warum die anderen nicht passen“) erscheinen nur, wo sie gespeichert sind: neue Kurse über den Generator, bestehende nach `npm run rationales:backfill -- <slug>` (nicht mit echter KI geprüft). (3) Kein Konfetti (siehe oben). (4) Schwierigkeit-Pill nur im Abschnitts-Quiz und in der Wiederholung; Prüfung zeigt sie nicht (Vorab-Hinweis). (5) Echte Screenreader nicht geprüft.
+
+**Gate U4 (Vorgabe):** Ein kompletter Durchlauf (Übung und Prüfung) nur mit Tastatur möglich; Screen 2 in hell/dunkel nachgebaut; Prüfungsmodus verrät vor Abgabe nichts über Richtigkeit (Test).
 
 ---
 

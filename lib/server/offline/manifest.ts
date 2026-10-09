@@ -18,6 +18,7 @@ export interface OfflineQuestionOption {
   text: Localized<string>;
   orderNum: number;
   isCorrect: boolean;
+  rationale?: Localized<string> | null;
 }
 
 export interface OfflineQuestion {
@@ -299,6 +300,7 @@ export async function getOfflinePackage(
         text: o.text,
         orderNum: o.orderNum,
         isCorrect: o.isCorrect,
+        rationale: o.rationale,
       })),
     });
     questionsByObjectiveId.set(q.objectiveId, list);

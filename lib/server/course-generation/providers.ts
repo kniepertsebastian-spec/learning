@@ -12,6 +12,7 @@ import {
   type CourseBlueprintV1,
   type ObjectiveContentResponse,
 } from "./schemas";
+import { OPTION_RATIONALE_PROMPT } from "@/lib/server/ai/option-rationale";
 import type { FetchedSource, SourceExcerpt } from "./sources";
 
 /**
@@ -231,6 +232,7 @@ const CONTENT_SYSTEM_PROMPT_TEMPLATE = (input: Pick<ObjectiveGenerationInput, "c
           "",
           "Fragen: genau die im Objective angegebene `recommendedQuestions`-Anzahl, Mischung aus knowledge/comprehension/application/scenario/troubleshooting,",
           "genau 4 Antwortoptionen pro Frage, genau EINE davon korrekt, bilinguale Frage/Antworten/Erklärung.",
+          OPTION_RATIONALE_PROMPT,
           "Jede Frage MUSS `sourceLocator` setzen (Locator eines mitgelieferten Auszugs) oder `null`, wenn kein Auszug sie belegt.",
         ]
       : ["", "Erzeuge KEINE Fragen: `questions` ist ein leeres Array. Die Lektion allein muss zum Verständnis reichen."]),

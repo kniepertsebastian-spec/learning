@@ -175,7 +175,7 @@ async function main() {
       difficulty: string;
       type: string;
       question: Localized<string>;
-      options: { text: Localized<string>; isCorrect: boolean }[];
+      options: { text: Localized<string>; isCorrect: boolean; rationale?: Localized<string> }[];
       explanation: Localized<string>;
       sourceLocator: string | null;
       /** R1.4: "Aussagen ohne ausreichende Grundlage verwerfen" - eine Frage
@@ -384,6 +384,7 @@ async function main() {
           orderNum: index + 1,
           text: option.text,
           isCorrect: option.isCorrect,
+          rationale: option.isCorrect ? null : (option.rationale ?? null),
         })),
       );
       questionsSaved++;

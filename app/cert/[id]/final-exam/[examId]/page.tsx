@@ -57,6 +57,7 @@ export default async function FinalExamTakePage({
         locale={locale}
         durationMinutes={blueprint.durationMinutes ?? null}
         targetQuestionCount={blueprint.totalQuestions ?? null}
+        passingPercent={blueprint.passingScore !== null && blueprint.passingScore <= 100 ? blueprint.passingScore : null}
       />
     </div>
   );

@@ -19,6 +19,7 @@
     "gate3": "tsx scripts/gate3.ts",
     "mandatory:run": "tsx scripts/mandatory-run.ts",
     "cheatsheets:backfill": "tsx scripts/backfill-cheat-sheets.ts",
+    "rationales:backfill": "tsx scripts/backfill-option-rationales.ts",
     "company:set-member": "tsx scripts/manage-company.ts set-member",
     "company:remove-member": "tsx scripts/manage-company.ts remove-member",
     "user:reset-password": "tsx scripts/reset-user-password.ts",
