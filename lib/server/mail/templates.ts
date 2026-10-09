@@ -134,3 +134,25 @@ export function repeatDueMessage(to: string, input: { courseName: string; organi
       `Dein Stand wurde zurückgesetzt, die neue Frist ist der ${formatDate(input.dueAt)}.\n\nHier geht es los:\n\n${input.link}`,
   };
 }
+
+/** Erinnerung des Prüfungsplaners (UI U8); `kind` aus lib/exams/plan.ts. */
+export function examReminderMessage(to: string, input: { kind: "voucher_expiring" | "exam_soon" | "retake_included"; courseName: string; when: Date | null; link: string }): MailMessage {
+  const date = input.when ? input.when.toLocaleDateString("de-DE", { timeZone: "UTC" }) : "";
+  const subject = input.kind === "voucher_expiring" ? `Dein Voucher für ${input.courseName} läuft bald ab` : input.kind === "exam_soon" ? `Deine Prüfung ${input.courseName} steht bevor` : `Wiederholungsversuch für ${input.courseName}`;
+  const body =
+    input.kind === "voucher_expiring"
+      ? `Dein Voucher für „${input.courseName}“ ist bis ${date} gültig.`
+      : input.kind === "exam_soon"
+        ? `Deine Prüfung „${input.courseName}“ ist am ${date}. Letzte Woche: wiederholen, Merkzettel durchgehen, keine neuen Themen.`
+        : `In deinem Prüfungspaket für „${input.courseName}“ ist ein Wiederholungsversuch enthalten.`;
+  return { to, subject, text: `Hallo,\n\n${body}\n\nZum Prüfungsplaner:\n\n${input.link}\n\nDiese Erinnerungen kannst du in deinem Konto abstellen.` };
+}
+
+/** Erinnerung vor Ablauf eines eigenen Zertifikats (UI U9), 90 oder 30 Tage vorher. */
+export function certificateExpiryMessage(to: string, input: { title: string; expiresAt: Date; link: string; days: 90 | 30 }): MailMessage {
+  return {
+    to,
+    subject: `Dein Zertifikat „${input.title}“ läuft in ${input.days} Tagen ab`,
+    text: `Hallo,\n\ndein Zertifikat „${input.title}“ ist bis ${input.expiresAt.toLocaleDateString("de-DE", { timeZone: "UTC" })} gültig.\n\nZu deinen Zertifikaten:\n\n${input.link}\n\nDiese Erinnerungen kannst du in deinem Konto abstellen.`,
+  };
+}

@@ -47,7 +47,7 @@ export function AcceptInvitationButton({
         type="button"
         onClick={accept}
         disabled={pending}
-        className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+        className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
       >
         {pending ? (de ? "Wird angenommen…" : "Accepting…") : de ? "Einladung annehmen" : "Accept invitation"}
       </button>

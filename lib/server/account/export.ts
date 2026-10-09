@@ -19,6 +19,9 @@ import {
   reviewItems,
   sessionRecommendationFeedback,
   studyProfiles,
+  examPlans,
+  userCertificates,
+  examVouchers,
   studySessionItems,
   studySessions,
   syncEvents,
@@ -39,6 +42,9 @@ export const EXPORTED_USER_REFERENCES: readonly string[] = [
   "remediation_sessions.user_id",
   "review_items.user_id",
   "study_profiles.user_id",
+  "exam_plans.user_id",
+  "user_certificates.user_id",
+  "exam_vouchers.assigned_user_id",
   "study_sessions.user_id",
   "exam_attempts.user_id",
   "sync_events.user_id",
@@ -63,6 +69,8 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "blueprint_drafts.edited_by_user_id": OPERATIONAL_REASON,
   "certification_sources.approved_by": OPERATIONAL_REASON,
   "company_modules.responsible_user_id": "Zuordnung der Firma (wer ein Modul betreut), nicht persönliche Lerndaten; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "exam_vouchers.created_by_user_id": "Der Gutschein gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "company_course_groups.created_by_user_id": "Die Kursgruppe gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "company_modules.created_by_user_id": "Das Modul gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "cheat_sheet_runs.started_by_user_id": "Der Lauf gehört der Firma (nur Zahlen und Meldungen); der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "mandatory_rules.created_by_user_id": "Die Regel gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
@@ -193,6 +201,13 @@ export async function exportAccountData(userId: string) {
       remediationSessions: await db.select().from(remediationSessions).where(eq(remediationSessions.userId, userId)),
       reviewItems: await db.select().from(reviewItems).where(eq(reviewItems.userId, userId)),
       studyProfiles: await db.select().from(studyProfiles).where(eq(studyProfiles.userId, userId)),
+      examPlans: await db.select().from(examPlans).where(eq(examPlans.userId, userId)),
+      userCertificates: await db.select().from(userCertificates).where(eq(userCertificates.userId, userId)),
+      // Zugewiesene Gutscheine ohne Code (der Code bleibt verschlüsselt, ihn zeigt nur der Prüfungsplaner)
+      examVouchers: await db
+        .select({ id: examVouchers.id, certificationId: examVouchers.certificationId, expiresAt: examVouchers.expiresAt, redeemedAt: examVouchers.redeemedAt, note: examVouchers.note })
+        .from(examVouchers)
+        .where(eq(examVouchers.assignedUserId, userId)),
       studySessions: studySessionRows.map((session) => ({
         ...session,
         items: studyItemRows.filter((i) => i.sessionId === session.id),

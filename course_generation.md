@@ -1003,3 +1003,14 @@ Für das private Hobbyprojekt ist die folgende Kombination der beste Ausgangspun
 - Auto-Publish erst nach erfolgreichen Testkursen.
 
 Damit bleibt der Bedienablauf vollständig automatisch, die Rechenlast auf dem Mini-PC gering und der variable Preis eines typischen Kurses voraussichtlich deutlich unter zwei US-Dollar.
+
+## Anhang: Lernblöcke im Lerntext (UI U5)
+
+Der Lerntext (`sections.content`, `lessons.content`) darf neben Markdown folgende Blöcke enthalten; die Syntax steht in `lib/markdown/blocks.ts`, der Prompt in `LEARNING_BLOCKS_PROMPT` (`lib/server/course-generation/providers.ts`):
+
+- `> [!EXAM]`, `> [!MISTAKE]`, `> [!MEMO]`, `> [!NOTE]` – Hinweise (mindestens ein `[!EXAM]` je Sektion; `[!MISTAKE]` nur, wenn die Quelle einen typischen Fehler nennt)
+- ` ```console ` – Terminal: Befehle mit `$ `, Ausgabe ohne Prompt; Kopieren übernimmt nur die Befehle
+- ` ```yaml title="datei.yaml" {2-3} ` – Codeblock mit Dateiname und markierten Zeilen
+- `:::tabs` mit `::tab[Name]`, `:::steps` mit `Beschriftung | Befehl`, `:::practice` mit `### Szenario/Aufgabe/Lösung/Warum`
+
+Die Validierung (`validateLearningBlocks`, aufgerufen von `validateObjectiveContent`) lehnt nicht geschlossene Blöcke, unvollständige Praxisbeispiele und unbekannte Marker ab; fehlende Blöcke sind kein Fehler. Bestehende Lektionen ergänzt `npm run lessons:blocks -- <slug>` (nur allgemeine Lernpfade, Text bleibt erhalten, Kostenanzeige).

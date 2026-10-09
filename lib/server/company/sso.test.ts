@@ -70,18 +70,18 @@ run("SSO einrichten (echte DB)", () => {
     const [row] = await getDb().select().from(organizationDomains).where(eq(organizationDomains.organizationId, orgA));
     expect(row.domain).toBe(domain);
     const view = await getSsoView(orgA);
-    expect(view.domains[0]).toMatchObject({ verified: false, recordName: `_certstudy-verify.${domain}`, recordValue: `certstudy-verify=${row.verificationToken}` });
-    expect(await verifyDomain(orgA, ids.adminA, row.id, async () => [["certstudy-verify=falsch"]])).toBe(false);
+    expect(view.domains[0]).toMatchObject({ verified: false, recordName: `_proofpath-verify.${domain}`, recordValue: `proofpath-verify=${row.verificationToken}` });
+    expect(await verifyDomain(orgA, ids.adminA, row.id, async () => [["proofpath-verify=falsch"]])).toBe(false);
     expect(await verifyDomain(orgA, ids.adminA, row.id, async () => { throw new Error("ENOTFOUND"); })).toBe(false);
-    expect(await verifyDomain(orgA, ids.adminA, row.id, async () => [["x"], ["certstudy-verify=", row.verificationToken]])).toBe(true); // in Teilen geliefertes TXT
+    expect(await verifyDomain(orgA, ids.adminA, row.id, async () => [["x"], ["proofpath-verify=", row.verificationToken]])).toBe(true); // in Teilen geliefertes TXT
     // Firma B darf die Domain von A nicht per Verifikation von A bestätigen oder fremde Domain-IDs ansprechen
-    await expect(verifyDomain(orgB, ids.adminB, row.id, async () => [[`certstudy-verify=${row.verificationToken}`]])).rejects.toBeInstanceOf(SsoConfigError);
+    await expect(verifyDomain(orgB, ids.adminB, row.id, async () => [[`proofpath-verify=${row.verificationToken}`]])).rejects.toBeInstanceOf(SsoConfigError);
   });
 
   it("eine bestätigte Domain gehört genau einer Firma", async () => {
     await addDomain(orgB, ids.adminB, domain);
     const [rowB] = await getDb().select().from(organizationDomains).where(eq(organizationDomains.organizationId, orgB));
-    await expect(verifyDomain(orgB, ids.adminB, rowB.id, async () => [[`certstudy-verify=${rowB.verificationToken}`]])).rejects.toThrow(/anderen Firma/);
+    await expect(verifyDomain(orgB, ids.adminB, rowB.id, async () => [[`proofpath-verify=${rowB.verificationToken}`]])).rejects.toThrow(/anderen Firma/);
     await removeDomain(orgB, ids.adminB, rowB.id);
   });
 

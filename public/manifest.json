@@ -1,6 +1,6 @@
 {
-  "name": "CertStudy AI",
-  "short_name": "CertStudy AI",
+  "name": "ProofPath",
+  "short_name": "ProofPath",
   "description": "KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
   "start_url": "/",
   "scope": "/",

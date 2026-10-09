@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Timer } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
+import { cn } from "@/lib/cn";
 
 interface ExamTimerProps {
   secondsLeft: number;
@@ -33,13 +34,9 @@ export function ExamTimer({ secondsLeft, onTick, onExpire }: ExamTimerProps) {
   const isLow = secondsLeft <= 300;
 
   return (
-    <div
-      className={`flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium tabular-nums ${
-        isLow ? "text-red-500" : ""
-      }`}
-    >
+    <div className={cn("flex h-11 items-center gap-2 rounded-md border border-border-strong bg-control px-3 font-mono text-base font-semibold tabular-nums", isLow && "border-danger text-danger-text")} data-testid="exam-timer">
       <Timer className="h-4 w-4" aria-hidden="true" />
-      <span title={t.exam.timeLeft}>
+      <span title={t.quiz.timeLeft} aria-label={`${t.quiz.timeLeft}: ${minutes}:${String(seconds).padStart(2, "0")}`}>
         {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
       </span>
     </div>

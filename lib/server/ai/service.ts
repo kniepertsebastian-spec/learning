@@ -12,6 +12,7 @@ import {
   type groundedDraftLessonSchema,
   type groundedDraftQuestionSchema,
 } from "./schemas";
+import { OPTION_RATIONALE_PROMPT } from "./option-rationale";
 import type { z } from "zod";
 
 export type DraftObjective = z.infer<typeof draftObjectiveSchema>;
@@ -103,6 +104,7 @@ export async function generateLessonsAndQuestionsForObjective(
     '(z. B. statt "Wofür steht CIA?" eher eine Situationsbeschreibung, die CIA anwendet).',
     "Genau 4 Antwortoptionen pro Frage, genau EINE davon korrekt. Schwierigkeitsgrade realistisch mischen.",
     "Das Feld `difficulty` MUSS bei jeder Frage exakt `beginner`, `intermediate` oder `advanced` sein.",
+    OPTION_RATIONALE_PROMPT,
     "",
     "WICHTIG - jedes bilinguale Feld ist ein OBJEKT mit genau den Keys `de` und `en`,",
     "NIEMALS ein einzelner String oder ein Array direkt. Exaktes Ausgabeformat:",
@@ -165,6 +167,7 @@ export async function generateRemediationForObjective(
     "",
     "Dann: 3-5 einfache Multiple-Choice-Fragen (beginner/intermediate, NICHT advanced),",
     "um zu testen, ob der Lernende es jetzt besser versteht.",
+    OPTION_RATIONALE_PROMPT,
     "",
     "Exaktes Ausgabeformat:",
     "```json",

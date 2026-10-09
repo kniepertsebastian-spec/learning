@@ -66,7 +66,7 @@ export function StartSessionPicker({
   return (
     <div className="mb-6 rounded-lg border border-accent/30 bg-accent/5 p-4">
       <h2 className="mb-3 flex items-center gap-1.5 text-sm font-medium">
-        <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
+        <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
         {locale === "de" ? "Wie viel Zeit hast du gerade?" : "How much time do you have?"}
       </h2>
       <div className="flex flex-wrap gap-2">
@@ -94,7 +94,7 @@ export function StartSessionPicker({
           {starting === "single" ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           ) : (
-            <Zap className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+            <Zap className="h-3.5 w-3.5 text-link" aria-hidden="true" />
           )}
           {locale === "de" ? "Nur eine Aufgabe" : "Just one task"}
         </button>
@@ -114,7 +114,7 @@ export function StartSessionPicker({
             title={label[locale]}
             className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60 ${
               energy === level
-                ? "border-accent bg-accent/10 text-accent"
+                ? "border-accent bg-accent/10 text-link"
                 : "border-border bg-surface text-foreground/60 hover:border-accent/50"
             }`}
           >

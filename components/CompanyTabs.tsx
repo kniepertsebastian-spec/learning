@@ -20,13 +20,13 @@ export function CompanyTabs({ tabs, active, ariaLabel }: { tabs: CompanyTab[]; a
                 aria-current={current ? "page" : undefined}
                 data-testid={`company-tab-${tab.id}`}
                 className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium -mb-px ${
-                  current ? "border-accent text-accent" : "border-transparent text-foreground/70 hover:border-border hover:text-foreground"
+                  current ? "border-accent text-link" : "border-transparent text-foreground/70 hover:border-border hover:text-foreground"
                 }`}
               >
                 {tab.label}
                 {tab.badge !== undefined && tab.badge > 0 && (
                   <span
-                    className="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold leading-none text-white"
+                    className="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold leading-none text-on-accent"
                     title={tab.badgeTitle}
                     data-testid={`company-tab-badge-${tab.id}`}
                   >

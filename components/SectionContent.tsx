@@ -3,16 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
-import { ArrowLeft, BookOpen, Check, ClipboardList, Target } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Check, ClipboardList, ListTree, Target } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import { RichText } from "@/components/RichText";
 import { SectionQuiz } from "@/components/SectionQuiz";
 import type { SectionQuizQuestion } from "@/components/SectionQuiz";
+import { OutlineList } from "@/components/lesson/OutlineList";
+import { ReadingProgress } from "@/components/lesson/ReadingProgress";
+import { TocList } from "@/components/lesson/TocList";
+import { ReportProblem } from "@/components/quiz/ReportProblem";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { extractToc, isHandsOn, readingMinutes } from "@/lib/markdown/toc";
+import { fmt } from "@/lib/quiz/keys";
+import type { SectionOutline } from "@/lib/server/sections/outline";
 import type { Localized } from "@/lib/types";
-import "highlight.js/styles/github-dark.min.css";
 
 interface SectionContentProps {
   certSlug: string;
@@ -21,6 +28,9 @@ interface SectionContentProps {
   objectiveCode: string;
   objectiveTitle: string;
   domainName: string;
+  /** Kursname für den Breadcrumb. */
+  courseName?: string;
+  lessonId?: string;
   lesson: {
     content: Localized<string>;
     keyTakeaways: Localized<string[]> | null;
@@ -29,6 +39,9 @@ interface SectionContentProps {
     cheatSheet?: Localized<string> | null;
   };
   questions: SectionQuizQuestion[];
+  /** Gliederung der Domain; fehlt im Offline-Reader. */
+  outline?: SectionOutline | null;
+  estimatedMinutes?: number | null;
   /** R4.1/4.2/4.3: siehe SectionQuiz - wird im Offline-Reader gesetzt. */
   offline?: { userId: string };
   /** false: Lernpfad ohne Lektionstests; statt des Quiz gibt es „Lektion abschließen“. Standard true. */
@@ -44,19 +57,30 @@ export function SectionContent({
   objectiveCode,
   objectiveTitle,
   domainName,
+  courseName,
+  lessonId,
   lesson,
   questions,
+  outline = null,
+  estimatedMinutes = null,
   offline,
   quizEnabled = true,
   signedIn = true,
   initialCompleted = false,
 }: SectionContentProps) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const router = useRouter();
   const [showQuiz, setShowQuiz] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(false);
   const [completed, setCompleted] = useState(initialCompleted);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
+
+  const content = lesson.content[locale];
+  const toc = extractToc(content);
+  const minutes = estimatedMinutes ?? readingMinutes(content);
+  const hasQuiz = quizEnabled && questions.length > 0;
+  const lp = t.lesson_page;
 
   async function completeLesson() {
     setCompleting(true);
@@ -67,134 +91,194 @@ export function SectionContent({
       setCompleted(true);
       router.refresh();
     } catch {
-      setCompleteError(locale === "de" ? "Das hat nicht geklappt. Bitte erneut versuchen." : "That did not work. Please try again.");
+      setCompleteError(lp.completeFailed);
     } finally {
       setCompleting(false);
     }
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="sticky top-16 z-10 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
-        <Link
-          href={`/cert/${certSlug}`}
-          className="mb-1 flex w-fit items-center gap-1.5 text-xs text-foreground/70 hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          {locale === "de" ? "Zurück zum Zertifikat" : "Back to certification"}
-        </Link>
-        <p className="text-xs text-foreground/50">
-          {domainName} · {objectiveCode}
-        </p>
-        <h1 className="font-semibold">{sectionTitle[locale]}</h1>
+    <div className="flex flex-1 flex-col" data-testid="lesson-page">
+      <ReadingProgress />
+
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 flex-wrap items-center gap-1.5 text-[13px] text-subtle">
+          <Link href={offline ? `/cert/${certSlug}/offline` : "/"} className="hover:text-foreground">{lp.overview}</Link>
+          <span aria-hidden="true">/</span>
+          <Link href={`/cert/${certSlug}`} className="hover:text-foreground">{courseName ?? certSlug}</Link>
+          <span aria-hidden="true">/</span>
+          <span className="truncate">{domainName}</span>
+          <span aria-hidden="true">/</span>
+          <span className="truncate text-foreground" aria-current="page">{sectionTitle[locale]}</span>
+        </nav>
+        <div className="flex flex-wrap items-center gap-2">
+          {outline && (
+            <Button variant="secondary" size="sm" className="lg:hidden" onClick={() => setOutlineOpen(true)} iconLeft={<ListTree className="h-4 w-4" aria-hidden="true" />} data-testid="open-outline">
+              {lp.outline}
+            </Button>
+          )}
+          {lesson.cheatSheet?.[locale] && (
+            <Button asChild variant="secondary" size="sm">
+              <Link href={`/cert/${certSlug}/cheatsheets`}><ClipboardList className="h-4 w-4" aria-hidden="true" />{lp.cheatSheet}</Link>
+            </Button>
+          )}
+          {hasQuiz && !showQuiz && (
+            <Button size="sm" onClick={() => setShowQuiz(true)} data-testid="start-quiz-top">{lp.startQuiz}</Button>
+          )}
+        </div>
       </div>
 
-      <article className="prose dark:prose-invert mb-8 max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-          {lesson.content[locale]}
-        </ReactMarkdown>
-      </article>
+      {outline && (
+        <Sheet open={outlineOpen} onOpenChange={setOutlineOpen}>
+          <SheetContent side="left" className="w-[min(320px,88vw)]">
+            <SheetTitle>{lp.outline}</SheetTitle>
+            <SheetDescription className="sr-only">{lp.openOutline}</SheetDescription>
+            <div className="mt-4"><OutlineList outline={outline} certSlug={certSlug} onNavigate={() => setOutlineOpen(false)} /></div>
+          </SheetContent>
+        </Sheet>
+      )}
 
-      {lesson.keyTakeaways?.[locale] && lesson.keyTakeaways[locale].length > 0 && (
-        <div className="mb-6 rounded-lg border border-border bg-surface p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-            <BookOpen className="h-4 w-4 text-accent" aria-hidden="true" />
-            {locale === "de" ? "Wichtige Erkenntnisse" : "Key takeaways"}
-          </div>
-          <ul className="flex flex-col gap-1">
-            {lesson.keyTakeaways[locale].map((point, i) => (
-              <li key={i} className="flex gap-2 text-sm text-foreground/80">
-                <span className="mt-0.5 shrink-0 text-accent">✓</span>
-                <span>{point}</span>
-              </li>
-            ))}
-          </ul>
+      <div className="grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_200px]">
+        {outline && (
+          <aside className="hidden lg:block">
+            <div className="sticky top-6"><OutlineList outline={outline} certSlug={certSlug} /></div>
+          </aside>
+        )}
+
+        <div className={outline ? "min-w-0" : "min-w-0 lg:col-span-2 xl:col-span-3"}>
+          <article className="mx-auto w-full max-w-[740px]" data-testid="lesson-article">
+            <header className="mb-6">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {outline && <Badge tone="neutral">{fmt(lp.sectionXofY, { x: outline.position, y: outline.total })}</Badge>}
+                <Badge tone="neutral">{fmt(lp.about, { n: minutes })}</Badge>
+                {isHandsOn(content) && <Badge tone="mint">{lp.handsOn}</Badge>}
+                <Badge tone="info">{objectiveCode}</Badge>
+              </div>
+              <h1 className="text-[28px] leading-[1.15] font-semibold tracking-tight sm:text-[38px]">{sectionTitle[locale]}</h1>
+              <p className="mt-2 text-sm text-subtle">{objectiveCode} · {objectiveTitle}</p>
+            </header>
+
+            <div className="text-base leading-[1.7] text-text-2 [&_p:first-child]:text-[17px] [&_p]:my-3 [&_p]:whitespace-normal">
+              <RichText text={content} headingIds />
+            </div>
+
+            {lesson.keyTakeaways?.[locale] && lesson.keyTakeaways[locale].length > 0 && (
+              <Card className="mt-8">
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                  <BookOpen className="h-4 w-4 text-link" aria-hidden="true" />
+                  {lp.keyTakeaways}
+                </div>
+                <ul className="flex flex-col gap-1">
+                  {lesson.keyTakeaways[locale].map((point, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-muted">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-mint-text" aria-hidden="true" />
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+
+            {lesson.examFocusPoints?.[locale] && lesson.examFocusPoints[locale].length > 0 && (
+              <Card className="mt-4 border-warning/40 bg-warning-soft">
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-warning-text">
+                  <Target className="h-4 w-4" aria-hidden="true" />
+                  {lp.examFocus}
+                </div>
+                <ul className="flex flex-col gap-1">
+                  {lesson.examFocusPoints[locale].map((point, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-muted">
+                      <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-warning-text" aria-hidden="true" />
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+
+            {lesson.cheatSheet?.[locale] && (
+              <section className="mt-4 rounded-2xl border border-accent-border bg-accent-soft p-5" data-testid="cheat-sheet" aria-label={lp.cheatSheet}>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">
+                  <span className="flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-link" aria-hidden="true" />
+                    {lp.cheatSheet}
+                  </span>
+                  <Link href={`/cert/${certSlug}/cheatsheets`} className="text-xs font-normal text-link hover:underline">
+                    {lp.allCheatSheets}
+                  </Link>
+                </div>
+                <div className="text-sm text-text-2">
+                  <RichText text={lesson.cheatSheet[locale]} />
+                </div>
+              </section>
+            )}
+
+            <div className="mt-8">
+              {!quizEnabled ? (
+                <div className="flex flex-col gap-3" data-testid="lesson-complete">
+                  {!signedIn ? (
+                    <p className="text-sm text-subtle">{lp.signInToComplete}</p>
+                  ) : completed ? (
+                    <p className="flex items-center gap-2 text-sm font-semibold text-mint-text" role="status">
+                      <Check className="h-4 w-4" aria-hidden="true" />
+                      {lp.lessonCompleted}
+                    </p>
+                  ) : (
+                    <Button onClick={() => void completeLesson()} disabled={completing} className="w-fit" data-testid="lesson-complete-button">
+                      {lp.completeLesson}
+                    </Button>
+                  )}
+                  {completeError && <p role="alert" className="text-sm text-danger-text">{completeError}</p>}
+                  <Link href={`/cert/${certSlug}`} className="w-fit text-sm text-link hover:underline">{lp.backToPath}</Link>
+                </div>
+              ) : hasQuiz ? (
+                <Card variant="hero" data-testid="quiz-hero">
+                  <h2 className="text-xl font-semibold">{lp.fits}</h2>
+                  <p className="mt-1 text-sm text-muted">{fmt(lp.fitsBody, { n: questions.length, m: Math.max(1, Math.round(questions.length * 0.7)) })}</p>
+                  <Button className="mt-4" onClick={() => setShowQuiz(true)} iconRight={<ArrowRight className="h-4 w-4" aria-hidden="true" />} data-testid="start-quiz">
+                    {lp.startQuiz}
+                  </Button>
+                </Card>
+              ) : null}
+              {showQuiz && hasQuiz && (
+                <SectionQuiz
+                  sectionId={sectionId}
+                  questions={questions}
+                  certSlug={certSlug}
+                  locale={locale}
+                  contextLabel={`${domainName} · ${objectiveCode} ${objectiveTitle}`}
+                  objectiveLabel={objectiveCode}
+                  offline={offline}
+                />
+              )}
+            </div>
+
+            {outline && (outline.prevId || outline.nextId) && (
+              <nav className="mt-8 flex flex-wrap justify-between gap-3 border-t border-border pt-4" aria-label={lp.outline}>
+                {outline.prevId ? (
+                  <Button asChild variant="secondary"><Link href={`/cert/${certSlug}/section/${outline.prevId}`}><ArrowLeft className="h-4 w-4" aria-hidden="true" />{lp.prev}</Link></Button>
+                ) : <span />}
+                {outline.nextId && (
+                  <Button asChild variant="secondary"><Link href={`/cert/${certSlug}/section/${outline.nextId}`}>{lp.next}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></Button>
+                )}
+              </nav>
+            )}
+          </article>
         </div>
-      )}
 
-      {lesson.examFocusPoints?.[locale] && lesson.examFocusPoints[locale].length > 0 && (
-        <div className="mb-8 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400">
-            <Target className="h-4 w-4" aria-hidden="true" />
-            {locale === "de" ? "Prüfungsrelevant" : "Exam focus"}
+        <aside className="hidden xl:block">
+          <div className="sticky top-6 flex flex-col gap-5">
+            <TocList entries={toc} />
+            {lessonId && !offline && (
+              <Card variant="inset">
+                <p className="text-xs font-semibold">{lp.source}</p>
+                <p className="mt-1 text-xs text-subtle">{lp.sourceNote}</p>
+                <div className="mt-2"><ReportProblem lessonId={lessonId} label={lp.reportContent} /></div>
+              </Card>
+            )}
           </div>
-          <ul className="flex flex-col gap-1">
-            {lesson.examFocusPoints[locale].map((point, i) => (
-              <li key={i} className="flex gap-2 text-sm text-foreground/80">
-                <span className="mt-0.5 shrink-0 text-amber-500">→</span>
-                <span>{point}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {lesson.cheatSheet?.[locale] && (
-        <section className="mb-8 rounded-lg border border-accent/40 bg-accent/5 p-4" data-testid="cheat-sheet" aria-label={locale === "de" ? "Merkzettel" : "Cheat sheet"}>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-medium">
-            <span className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-accent" aria-hidden="true" />
-              {locale === "de" ? "Merkzettel" : "Cheat sheet"}
-            </span>
-            <Link href={`/cert/${certSlug}/cheatsheets`} className="text-xs font-normal text-accent hover:underline">
-              {locale === "de" ? "Alle Merkzettel dieses Kurses" : "All cheat sheets of this course"}
-            </Link>
-          </div>
-          <div className="text-sm text-foreground/90">
-            <RichText text={lesson.cheatSheet[locale]} />
-          </div>
-        </section>
-      )}
-
-      {!quizEnabled ? (
-        <div className="mb-8 flex flex-col gap-3" data-testid="lesson-complete">
-          {!signedIn ? (
-            <p className="text-sm text-foreground/70">
-              {locale === "de" ? "Melde dich an, um diese Lektion als durchgearbeitet zu markieren." : "Sign in to mark this lesson as completed."}
-            </p>
-          ) : completed ? (
-            <p className="flex items-center gap-2 text-sm font-medium text-emerald-600" role="status">
-              <Check className="h-4 w-4" aria-hidden="true" />
-              {locale === "de" ? "Lektion durchgearbeitet" : "Lesson completed"}
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void completeLesson()}
-              disabled={completing}
-              data-testid="lesson-complete-button"
-              className="w-fit rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-            >
-              {locale === "de" ? "Lektion abschließen" : "Complete lesson"}
-            </button>
-          )}
-          {completeError && <p role="alert" className="text-sm text-red-500">{completeError}</p>}
-          <Link href={`/cert/${certSlug}`} className="w-fit text-sm text-accent hover:underline">
-            {locale === "de" ? "Zurück zum Lernpfad" : "Back to learning path"}
-          </Link>
-        </div>
-      ) : !showQuiz ? (
-        <button
-          type="button"
-          onClick={() => setShowQuiz(true)}
-          className="mb-8 w-fit rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
-        >
-          {locale === "de" ? "Quiz starten" : "Start quiz"}
-        </button>
-      ) : (
-        <section className="mb-8">
-          <h2 className="mb-3 text-lg font-semibold">
-            {locale === "de" ? "Abschnittsquiz" : "Section quiz"}
-          </h2>
-          <SectionQuiz
-            sectionId={sectionId}
-            questions={questions}
-            certSlug={certSlug}
-            locale={locale}
-            offline={offline}
-          />
-        </section>
-      )}
+        </aside>
+      </div>
     </div>
   );
 }

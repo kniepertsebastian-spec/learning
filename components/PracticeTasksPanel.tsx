@@ -64,7 +64,7 @@ function PendingItem({ p, locale }: { p: PendingRowView; locale: "de" | "en" }) 
           aria-label={de ? "Hinweis" : "Note"}
           className="flex-1 rounded-md border border-border bg-surface px-2 py-1 text-sm"
         />
-        <button type="button" disabled={busy} onClick={() => void decide("confirm")} data-testid="practice-confirm" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+        <button type="button" disabled={busy} onClick={() => void decide("confirm")} data-testid="practice-confirm" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
           {de ? "Bestätigen" : "Confirm"}
         </button>
         <button type="button" disabled={busy} onClick={() => void decide("rework")} data-testid="practice-rework" className={btn}>
@@ -155,7 +155,7 @@ export function PracticeTasksPanel({
             aria-label={de ? "Beschreibung" : "Description"}
             className="rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
-          <button type="submit" disabled={busy || !title.trim()} data-testid="practice-create" className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+          <button type="submit" disabled={busy || !title.trim()} data-testid="practice-create" className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
             {de ? "Aufgabe anlegen" : "Create task"}
           </button>
         </form>

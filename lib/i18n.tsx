@@ -39,194 +39,10 @@ function persistLocale(next: Locale) {
   for (const listener of listeners) listener();
 }
 
-export const uiStrings = {
-  de: {
-    appTitle: "CertStudy AI",
-    statusBadge: "Beta",
-    nav: {
-      dashboard: "Dashboard",
-    },
-    dashboard: {
-      heading: "Deine Zertifikate",
-      addCertificate: "+ Neues Zertifikat hinzufügen",
-      emptyTitle: "Noch kein Zertifikat angelegt",
-      emptyBody:
-        "Lege dein erstes Zertifikat an und lass dir von der KI einen individuellen Lehrplan erstellen.",
-      progress: "Fortschritt",
-      nextLesson: "Nächste Lektion",
-      day: "Tag",
-      of: "von",
-      continue: "Fortsetzen",
-      allDone: "Alle Module abgeschlossen",
-    },
-    addCertModal: {
-      title: "Zertifikat anlegen",
-      certNameLabel: "Zertifikatsname",
-      certNamePlaceholder: "z. B. CompTIA Security+ SY0-701",
-      totalDaysLabel: "Zieldauer in Tagen",
-      cancel: "Abbrechen",
-      submit: "Lehrplan generieren",
-      loading: "Claude erstellt deinen Lehrplan …",
-      error: "Der Lehrplan konnte nicht erstellt werden.",
-    },
-    generation: {
-      signInRequired: "Bitte melde dich an, um KI-Inhalte zu generieren.",
-      signInLink: "Anmelden",
-    },
-    certDetail: {
-      back: "Zurück zum Dashboard",
-      roadmap: "Roadmap",
-      dayLabel: "Tag",
-      statusCompleted: "Abgeschlossen",
-      statusActive: "Aktiv",
-      statusLocked: "Gesperrt",
-      continueToday: "Heutige Lektion fortsetzen",
-      startExam: "Simulierte Probeprüfung starten",
-      notFound: "Zertifikat nicht gefunden.",
-    },
-    lesson: {
-      markRead: "Lektion als gelesen markieren",
-      quizTitle: "Tagesquiz",
-      submitAnswer: "Antwort prüfen",
-      nextQuestion: "Nächste Frage",
-      finishQuiz: "Quiz abschließen",
-      correct: "Richtig!",
-      incorrect: "Leider falsch.",
-      quizComplete: "Quiz abgeschlossen",
-      score: "Ergebnis",
-      backToCert: "Zurück zum Zertifikat",
-      generating: "Claude erstellt den Lerninhalt …",
-      loadError: "Der Lerninhalt konnte nicht erstellt werden.",
-    },
-    exam: {
-      title: "Probeprüfung",
-      start: "Prüfung starten",
-      questionCountLabel: "Anzahl Fragen",
-      timeLeft: "Verbleibende Zeit",
-      question: "Frage",
-      flagged: "Markiert",
-      unanswered: "Unbeantwortet",
-      answered: "Beantwortet",
-      flag: "Markieren",
-      unflag: "Markierung entfernen",
-      previous: "Zurück",
-      next: "Weiter",
-      submitExam: "Prüfung abgeben",
-      results: "Auswertung",
-      passed: "Bestanden",
-      failed: "Nicht bestanden",
-      yourScore: "Deine Punktzahl",
-      passingScore: "Bestehensquote",
-      weakAreas: "Schwachstellenanalyse",
-      generating: "Claude erstellt die Probeprüfung …",
-      loadError: "Die Probeprüfung konnte nicht erstellt werden.",
-      confirmSubmit: "Prüfung wirklich abgeben?",
-    },
-    common: {
-      loading: "Lädt …",
-      error: "Ein Fehler ist aufgetreten.",
-      retry: "Erneut versuchen",
-      close: "Schließen",
-    },
-  },
-  en: {
-    appTitle: "CertStudy AI",
-    statusBadge: "Beta",
-    nav: {
-      dashboard: "Dashboard",
-    },
-    dashboard: {
-      heading: "Your certificates",
-      addCertificate: "+ Add new certificate",
-      emptyTitle: "No certificate yet",
-      emptyBody:
-        "Add your first certificate and let the AI build you a personalized study plan.",
-      progress: "Progress",
-      nextLesson: "Next lesson",
-      day: "Day",
-      of: "of",
-      continue: "Continue",
-      allDone: "All modules completed",
-    },
-    addCertModal: {
-      title: "Add certificate",
-      certNameLabel: "Certificate name",
-      certNamePlaceholder: "e.g. CompTIA Security+ SY0-701",
-      totalDaysLabel: "Target duration in days",
-      cancel: "Cancel",
-      submit: "Generate study plan",
-      loading: "Claude is generating your study plan …",
-      error: "The study plan could not be created.",
-    },
-    generation: {
-      signInRequired: "Please sign in to generate AI content.",
-      signInLink: "Sign in",
-    },
-    certDetail: {
-      back: "Back to dashboard",
-      roadmap: "Roadmap",
-      dayLabel: "Day",
-      statusCompleted: "Completed",
-      statusActive: "Active",
-      statusLocked: "Locked",
-      continueToday: "Continue today's lesson",
-      startExam: "Start simulated mock exam",
-      notFound: "Certificate not found.",
-    },
-    lesson: {
-      markRead: "Mark lesson as read",
-      quizTitle: "Daily quiz",
-      submitAnswer: "Check answer",
-      nextQuestion: "Next question",
-      finishQuiz: "Finish quiz",
-      correct: "Correct!",
-      incorrect: "Not quite.",
-      quizComplete: "Quiz complete",
-      score: "Score",
-      backToCert: "Back to certificate",
-      generating: "Claude is generating the lesson content …",
-      loadError: "The lesson content could not be created.",
-    },
-    exam: {
-      title: "Mock exam",
-      start: "Start exam",
-      questionCountLabel: "Number of questions",
-      timeLeft: "Time left",
-      question: "Question",
-      flagged: "Flagged",
-      unanswered: "Unanswered",
-      answered: "Answered",
-      flag: "Flag",
-      unflag: "Remove flag",
-      previous: "Previous",
-      next: "Next",
-      submitExam: "Submit exam",
-      results: "Results",
-      passed: "Passed",
-      failed: "Failed",
-      yourScore: "Your score",
-      passingScore: "Passing score",
-      weakAreas: "Weak area analysis",
-      generating: "Claude is generating the mock exam …",
-      loadError: "The mock exam could not be created.",
-      confirmSubmit: "Really submit the exam?",
-    },
-    common: {
-      loading: "Loading …",
-      error: "Something went wrong.",
-      retry: "Retry",
-      close: "Close",
-    },
-  },
-} as const;
+import { uiStrings, type UiStrings } from "./i18n-strings";
 
-type Widen<T> = T extends string
-  ? string
-  : T extends readonly (infer U)[]
-    ? readonly Widen<U>[]
-    : { [K in keyof T]: Widen<T[K]> };
-
-export type UiStrings = Widen<(typeof uiStrings)["de"]>;
+export { uiStrings };
+export type { UiStrings };
 
 interface LocaleContextValue {
   locale: Locale;
@@ -259,4 +75,10 @@ export function useLocale(): LocaleContextValue {
   const ctx = useContext(LocaleContext);
   if (!ctx) throw new Error("useLocale must be used within a LocaleProvider");
   return ctx;
+}
+
+/** Wie useLocale, aber ohne Provider (z. B. in Tests oder beim Server-Rendern außerhalb der App): Deutsch als Standard. */
+export function useLocaleOptional(): LocaleContextValue {
+  const ctx = useContext(LocaleContext);
+  return ctx ?? { locale: "de", setLocale: () => {}, t: uiStrings.de };
 }

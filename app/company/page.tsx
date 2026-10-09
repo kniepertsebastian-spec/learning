@@ -1,8 +1,10 @@
 export const dynamic = "force-dynamic";
 
-import { CompanyTabs, type CompanyTab } from "@/components/CompanyTabs";
+import { type CompanyTab } from "@/components/CompanyTabs";
 import { AiSettingsPanel } from "@/components/AiSettingsPanel";
-import { AssignmentsPanel } from "@/components/AssignmentsPanel";
+import { CompanyOverview } from "@/components/company/CompanyOverview";
+import { daysSince, overviewTotals as computeOverviewTotals } from "@/lib/company/overview";
+import { listCourseGroups } from "@/lib/server/company/course-groups";
 import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { CompanyModulesPanel } from "@/components/CompanyModulesPanel";
@@ -52,7 +54,8 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   const de = locale === "de";
   const isAdmin = membership.role === "company_admin";
   const canAssign = ASSIGN_ROLES.includes(membership.role);
-  const [entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates, onboardingPlans, mandatoryRules, departmentList, departmentMembers, cheatSheetStatus, ruleCatalog] = await Promise.all([
+  const [courseGroups, entries, members, paths, documents, courseRequests, catalog, internalJobs, internalCourses, aiAccess, practice, modules, responsibleCandidates, onboardingPlans, mandatoryRules, departmentList, departmentMembers, cheatSheetStatus, ruleCatalog] = await Promise.all([
+    canAssign ? listCourseGroups(membership.organizationId) : [],
     listCompanyStatus(membership.organizationId),
     canAssign ? listAssignableMembers(membership.organizationId) : [],
     canAssign ? listAssignableLearningPaths(membership.organizationId) : [],
@@ -117,8 +120,12 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
           email: i.email,
           role: i.role,
           expiresAt: i.expiresAt.toISOString(),
+          createdAt: i.createdAt.toISOString(),
         }))
       : null;
+
+  // Kennzahlen der Übersicht: nur aus Status-Feldern (Leitplanke „Arbeitgeber sieht nur Status“).
+  const overviewTotals = computeOverviewTotals(rows, members.length);
 
   // Reiter: was Aufmerksamkeit braucht, steht als Zahl am Reiter.
   const overdue = rows.filter((r) => r.overdue).length;
@@ -139,17 +146,30 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{membership.organizationName}</h1>
-        <p className="mt-1 text-sm text-foreground/70">
-          {de ? "Deine Rolle: " : "Your role: "}
-          <span data-testid="company-role">{ROLE_LABELS[membership.role][locale]}</span>
-        </p>
-      </div>
+      <p className="text-sm text-subtle">
+        {membership.organizationName} · {de ? "Deine Rolle: " : "Your role: "}
+        <span data-testid="company-role">{ROLE_LABELS[membership.role][locale]}</span>
+      </p>
 
-      <CompanyTabs tabs={tabs} active={active} ariaLabel={de ? "Bereiche des Firmenbereichs" : "Company area sections"} />
-
-      {active === "status" && <AssignmentsPanel rows={rows} members={members} paths={paths} locale={locale} />}
+      {active === "status" && (
+        <CompanyOverview
+          rows={rows}
+          members={members.map((m) => ({ userId: m.userId, name: m.name, email: m.email }))}
+          paths={paths}
+          groups={courseGroups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            color: g.color,
+            items: g.items,
+            people: g.people.map((p) => { const m = members.find((x) => x.userId === p.userId); return m?.name ?? m?.email ?? "?"; }),
+          }))}
+          rules={mandatoryRules.map((r) => ({ id: r.id, learningPath: r.learningPath, assigned: r.assigned, completed: r.completed, overdue: r.overdue, dueInDays: r.dueInDays }))}
+          invites={invitations ? invitations.map((i) => ({ id: i.id, email: i.email, daysAgo: daysSince(i.createdAt) })) : null}
+          canAssign={canAssign}
+          isAdmin={isAdmin}
+          totals={overviewTotals}
+        />
+      )}
 
       {active === "mandatory" && canAssign && (
         <MandatoryRulesPanel rules={mandatoryRules} paths={paths.map((p) => ({ id: p.id, name: p.name }))} catalog={ruleCatalog} departments={departmentList.map((d) => ({ id: d.id, name: d.name }))} canEdit={isAdmin} locale={locale} />

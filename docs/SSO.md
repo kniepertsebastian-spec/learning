@@ -14,7 +14,7 @@ Firmen-Domain anmeldet, wird automatisch Mitglied; die Rolle ergibt sich bei **j
 ## Einrichtung durch den Firmen-Admin (Firmenbereich → Anmeldung)
 
 1. **E-Mail-Domain eintragen und bestätigen.** Es erscheint ein DNS-TXT-Eintrag
-   (`_certstudy-verify.<domain>` = `certstudy-verify=<Token>`); nach dem Setzen „Prüfen“ klicken. Eine bestätigte Domain gehört
+   (`_proofpath-verify.<domain>` = `proofpath-verify=<Token>`); nach dem Setzen „Prüfen“ klicken. Eine bestätigte Domain gehört
    genau einer Firma. Öffentliche Mail-Anbieter (gmail.com …) sind ausgeschlossen.
 2. **Im IdP eine Anwendung anlegen** (Typ „Web“, Authorization Code): Redirect-URI wie angezeigt, Scopes `openid email profile`,
    Gruppen als Anspruch (Claim) mitliefern.

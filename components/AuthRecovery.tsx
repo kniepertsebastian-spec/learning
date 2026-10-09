@@ -8,7 +8,7 @@ import { useLocale } from "@/lib/i18n";
 const inputClass =
   "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
 const buttonClass =
-  "rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50";
+  "rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50";
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -86,7 +86,7 @@ export function EmailRequestForm({
         </form>
       )}
       <p className="mt-4 text-center text-sm text-foreground/60">
-        <Link href="/login" className="text-accent hover:underline">
+        <Link href="/login" className="text-link hover:underline">
           {locale === "de" ? "Zurück zur Anmeldung" : "Back to sign in"}
         </Link>
       </p>

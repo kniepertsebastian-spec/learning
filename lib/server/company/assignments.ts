@@ -49,7 +49,7 @@ export type AssignableLearningPath = { id: string; name: string; kind: CourseKin
  * für die Firma (company_course_entitlements) und die eigenen internen. Alles andere ist für die Firma nicht
  * auffindbar, auch nicht per ID.
  */
-function assignableCondition(organizationId: string): SQL {
+export function assignableCondition(organizationId: string): SQL {
   return and(
     eq(certifications.catalogStatus, "approved"),
     or(
@@ -102,6 +102,8 @@ export async function assignLearningPath(input: {
   userIds: string[];
   certificationId: string;
   dueAt: Date | null;
+  /** UI U6: Herkunft aus einer Kursgruppe (nur Vermerk). */
+  groupId?: string;
 }): Promise<AssignResult> {
   const userIds = [...new Set(input.userIds)];
   if (userIds.length === 0 || userIds.length > MAX_ASSIGNEES) throw new NotAMemberError();
@@ -142,6 +144,7 @@ export async function assignLearningPath(input: {
           certificationId: input.certificationId,
           dueAt: input.dueAt,
           assignedByUserId: input.assignedByUserId,
+          groupId: input.groupId ?? null,
         })),
       )
       .onConflictDoNothing()

@@ -3,34 +3,310 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+/*
+ * Designsprache (docs/ROADMAP-UI.md): alle Farben, Radien und Schriften als Tokens. Im JSX keine Hex-Werte und keine
+ * Tailwind-Standardpaletten (scripts/check-ui-tokens.mjs hält den Bestand nach unten).
+ * Hell: `:root` und `.light`; Dunkel (Standard): `.dark`. Die Klasse `.light` erlaubt helle Inseln in dunkler Umgebung
+ * (z. B. die Komponentenübersicht).
+ */
+:root,
+.light {
+  --bg: #f6f7f9;
+  --bg-sidebar: #ffffff;
   --surface: #ffffff;
-  --border: #e2e8f0;
-  --accent: #0f172a;
+  --surface-2: #f1f3f6;
+  --surface-inset: #eceff3;
+  --control: #f1f3f6;
+  --track: #e3e7ee;
+  --border: #e3e7ee;
+  --border-strong: #d3d9e2;
+  --border-subtle: #eceff3;
+  --text: #0e1218;
+  --text-2: #2a3140;
+  --text-muted: #4a5466;
+  --text-subtle: #5b6577;
+  --text-faint: #626c7e;
+
+  --accent: #1fcb8f;
+  --accent-text: #0a7a55;
+  --accent-hover: #0a6a49;
+  --on-accent: #04140d;
+  --accent-soft: rgba(31, 203, 143, 0.14);
+  --accent-border: #9fe3c8;
+
+  --info: #3b82f6;
+  --info-text: #1d5fd1;
+  --info-soft: rgba(59, 130, 246, 0.12);
+  --warning: #e3a21a;
+  --warning-text: #8a5d06;
+  --warning-soft: rgba(227, 162, 26, 0.16);
+  --danger: #e85a45;
+  --danger-text: #b83e2b;
+  --danger-soft: rgba(232, 90, 69, 0.12);
+  --violet: #8b5cf6;
+
+  --hero-from: #e6f7ef;
+  --hero-to: #ffffff;
+  --hero-border: #bfe8d6;
+
+  --code-key: #1d5fd1;
+  --code-value: #8a5d06;
+  --code-muted: #6b7588;
+
+  --sheet-shadow: -24px 0 48px rgba(14, 18, 24, 0.12);
+}
+
+.dark {
+  --bg: #0a0c10;
+  --bg-sidebar: #0e1117;
+  --surface: #12161e;
+  --surface-2: #171d28;
+  --surface-inset: #0f1219;
+  --control: #1a212d;
+  --track: #1e2633;
+  --border: #222938;
+  --border-strong: #2a3242;
+  --border-subtle: #1c2230;
+  --text: #e8ecf3;
+  --text-2: #c9d0dc;
+  --text-muted: #aeb7c6;
+  --text-subtle: #9aa4b5;
+  --text-faint: #8c96a8;
+
+  --accent: #34e3a4;
+  --accent-text: #34e3a4;
+  --accent-hover: #7bf0c6;
+  --on-accent: #04140d;
+  --accent-soft: rgba(52, 227, 164, 0.12);
+  --accent-border: #1f4a3b;
+
+  --info: #6ea8ff;
+  --info-text: #8dbbff;
+  --info-soft: rgba(110, 168, 255, 0.12);
+  --warning: #f4b740;
+  --warning-text: #f4b740;
+  --warning-soft: rgba(244, 183, 64, 0.12);
+  --danger: #ff7a66;
+  --danger-text: #ff9a8a;
+  --danger-soft: rgba(255, 122, 102, 0.12);
+  --violet: #c9a2ff;
+
+  --hero-from: #12201b;
+  --hero-to: #12161e;
+  --hero-border: #1f3a30;
+
+  --code-key: #8dbbff;
+  --code-value: #f4b740;
+  --code-muted: #7c8699;
+
+  --sheet-shadow: -24px 0 48px rgba(0, 0, 0, 0.35);
+}
+
+/*
+ * Kontext: persönlich (Standard), Firma, Plattform-Admin. Komponenten nutzen nur --ctx-*, nie die Kontextfarbe direkt.
+ * Werte hell/dunkel getrennt, weil Flächen und Text im Hellmodus unterschiedliche Töne brauchen.
+ */
+:root,
+.light {
+  --ctx-accent: var(--accent);
+  --ctx-link: var(--accent-text);
+  --ctx-link-hover: var(--accent-hover);
+  --ctx-on-accent: var(--on-accent);
+  --ctx-sidebar: #ffffff;
+  --ctx-sidebar-border: #e3e7ee;
+  --ctx-switcher: #f6f7f9;
+  --ctx-switcher-border: #e3e7ee;
+  --ctx-active: #f1f3f6;
+  --ctx-label: #6b7588;
+}
+.dark {
+  --ctx-accent: var(--accent);
+  --ctx-link: var(--accent-text);
+  --ctx-link-hover: var(--accent-hover);
+  --ctx-on-accent: var(--on-accent);
+  --ctx-sidebar: #0e1117;
+  --ctx-sidebar-border: #1c2230;
+  --ctx-switcher: #151a23;
+  --ctx-switcher-border: #252c3b;
+  --ctx-active: #171d28;
+  --ctx-label: #8c96a8;
+}
+
+:root[data-context="company"],
+[data-context="company"],
+.light[data-context="company"],
+[data-context="company"] .light {
+  --ctx-accent: #e3a21a;
+  --ctx-link: #8a5d06;
+  --ctx-link-hover: #6b4704;
+  --ctx-on-accent: #1a1204;
+  --ctx-sidebar: #fffbf0;
+  --ctx-sidebar-border: #f0e6cc;
+  --ctx-switcher: #fbf4e0;
+  --ctx-switcher-border: #ebddb5;
+  --ctx-active: #f6ecd0;
+  --ctx-label: #7a6532;
+}
+.dark[data-context="company"],
+.dark [data-context="company"],
+[data-context="company"] .dark {
+  --ctx-accent: #f4b740;
+  --ctx-link: #f4b740;
+  --ctx-link-hover: #f8cd7a;
+  --ctx-on-accent: #1a1204;
+  --ctx-sidebar: #100f0b;
+  --ctx-sidebar-border: #2a2414;
+  --ctx-switcher: #1a1710;
+  --ctx-switcher-border: #3a3018;
+  --ctx-active: #1f1b10;
+  --ctx-label: #b8a47a;
+}
+
+:root[data-context="admin"],
+[data-context="admin"],
+.light[data-context="admin"],
+[data-context="admin"] .light {
+  --ctx-accent: #e85a45;
+  --ctx-link: #b83e2b;
+  --ctx-link-hover: #8f2e1f;
+  --ctx-on-accent: #1a0805;
+  --ctx-sidebar: #ffffff;
+  --ctx-sidebar-border: #e3e7ee;
+  --ctx-switcher: #fdf1ef;
+  --ctx-switcher-border: #f3cfc8;
+  --ctx-active: #fbeae7;
+  --ctx-label: #8f4f45;
+}
+.dark[data-context="admin"],
+.dark [data-context="admin"],
+[data-context="admin"] .dark {
+  --ctx-accent: #ff7a66;
+  --ctx-link: #ff9a8a;
+  --ctx-link-hover: #ffb8ac;
+  --ctx-on-accent: #1a0805;
+  --ctx-sidebar: #0e1117;
+  --ctx-sidebar-border: #1c2230;
+  --ctx-switcher: #1a1312;
+  --ctx-switcher-border: #3a2420;
+  --ctx-active: #1a1d26;
+  --ctx-label: #c0928a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-bg: var(--bg);
+  --color-sidebar: var(--ctx-sidebar);
+  --color-sidebar-border: var(--ctx-sidebar-border);
+  --color-switcher: var(--ctx-switcher);
+  --color-switcher-border: var(--ctx-switcher-border);
+  --color-nav-active: var(--ctx-active);
+  --color-ctx-label: var(--ctx-label);
+  --color-code-key: var(--code-key);
+  --color-code-value: var(--code-value);
+  --color-code-muted: var(--code-muted);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-inset: var(--surface-inset);
+  --color-control: var(--control);
+  --color-track: var(--track);
   --color-border: var(--border);
-  --color-accent: var(--accent);
+  --color-border-strong: var(--border-strong);
+  --color-border-subtle: var(--border-subtle);
+  --color-text-2: var(--text-2);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-faint: var(--text-faint);
+  /* Kontextakzent: Flächen (bg-accent) und Text auf Flächen (text-on-accent), Links (text-link) */
+  --color-accent: var(--ctx-accent);
+  --color-on-accent: var(--ctx-on-accent);
+  --color-link: var(--ctx-link);
+  --color-link-hover: var(--ctx-link-hover);
+  --color-accent-soft: color-mix(in srgb, var(--ctx-accent) 13%, transparent);
+  --color-accent-border: color-mix(in srgb, var(--ctx-accent) 35%, var(--border));
+  --color-mint: var(--accent);
+  --color-mint-text: var(--accent-text);
+  --color-mint-soft: var(--accent-soft);
+  --color-mint-border: var(--accent-border);
+  --color-info: var(--info);
+  --color-info-text: var(--info-text);
+  --color-info-soft: var(--info-soft);
+  --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
+  --color-danger-soft: var(--danger-soft);
+  --color-violet: var(--violet);
+  --color-hero-border: var(--hero-border);
+
+  --shadow-sheet: var(--sheet-shadow);
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-2xl: 16px;
+  --radius-3xl: 18px;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-.dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --surface: #1e293b;
-  --border: #334155;
-  --accent: #38bdf8;
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+:focus-visible {
+  outline: 2px solid var(--ctx-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hero-Fläche (Weitermachen, Nächste Prüfung, Kurz-Check): der einzige Verlauf der Oberfläche */
+.hero-surface {
+  background: linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 55%);
+  border-color: var(--hero-border);
+}
+
+/* Einblenden (Dialoge, Sheets, Feedback-Panel): 200–250 ms */
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ui-sheet-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes ui-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+.anim-fade-in {
+  animation: ui-fade-in 200ms ease-out;
+}
+.anim-sheet-in {
+  animation: ui-sheet-in 250ms ease-out;
+}
+.anim-pop-in {
+  animation: ui-pop-in 150ms ease-out;
+}
+
+/* Syntax-Farben (highlight.js) aus den Tokens: Schlüssel/Schlüsselwörter, Werte/Strings, Kommentare/Ausgabe. */
+.hljs-keyword, .hljs-attr, .hljs-name, .hljs-selector-tag, .hljs-built_in, .hljs-type, .hljs-title, .hljs-section, .hljs-variable { color: var(--code-key); }
+.hljs-string, .hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet, .hljs-meta, .hljs-regexp, .hljs-template-variable { color: var(--code-value); }
+.hljs-comment, .hljs-quote, .hljs-doctag { color: var(--code-muted); font-style: italic; }

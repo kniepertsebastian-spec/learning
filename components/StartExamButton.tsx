@@ -40,7 +40,7 @@ export function StartExamButton({ certId, certSlug, locale }: StartExamButtonPro
         type="button"
         onClick={handleStart}
         disabled={loading}
-        className="flex items-center gap-2 rounded-md bg-accent px-6 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex items-center gap-2 rounded-md bg-accent px-6 py-3 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         {loading

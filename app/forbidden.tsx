@@ -13,7 +13,7 @@ export default async function Forbidden() {
           ? "Auf diesen Bereich hast du keinen Zugriff."
           : "You don't have access to this area."}
       </p>
-      <Link href="/" className="mt-4 text-accent hover:underline">
+      <Link href="/" className="mt-4 text-link hover:underline">
         {locale === "de" ? "Zur Startseite" : "Back to home"}
       </Link>
     </div>

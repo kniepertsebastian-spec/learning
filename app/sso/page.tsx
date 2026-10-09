@@ -53,12 +53,12 @@ function SsoForm() {
             <label htmlFor="sso-email" className="mb-1 block text-sm font-medium">E-Mail</label>
             <input id="sso-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} data-testid="sso-email" className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent" />
           </div>
-          <button type="submit" disabled={busy} data-testid="sso-submit" className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+          <button type="submit" disabled={busy} data-testid="sso-submit" className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
             {busy ? "Weiter …" : "Weiter zum Firmenkonto"}
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-foreground/60">
-          <Link href="/login" className="text-accent hover:underline">Zurück zur Anmeldung mit Passwort</Link>
+          <Link href="/login" className="text-link hover:underline">Zurück zur Anmeldung mit Passwort</Link>
         </p>
       </div>
     </div>

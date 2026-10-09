@@ -21,4 +21,6 @@ export interface QuizQuestion {
   options: Localized<string[]>;
   correctIndex: number;
   explanation: Localized<string>;
+  /** UI U4: Begründung je Option (Index wie `options`), `null` bei der richtigen und bei fehlenden; ganz ohne Eintrag zeigt das Feedback den Abschnitt nicht. */
+  optionRationales?: Localized<Array<string | null>> | null;
 }

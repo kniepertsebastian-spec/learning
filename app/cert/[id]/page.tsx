@@ -263,7 +263,7 @@ export default async function CertDetailPage({
             {hasExam && (
               <Link
                 href={`/cert/${slug}/final-exam`}
-                className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent/10"
+                className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-link hover:bg-accent/10"
               >
                 {locale === "de" ? "Abschlussprüfung" : "Final practice exam"}
               </Link>
@@ -285,7 +285,7 @@ export default async function CertDetailPage({
           </p>
           <Link
             href="/login"
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90"
           >
             {locale === "de" ? "Anmelden" : "Sign in"}
           </Link>
@@ -336,7 +336,7 @@ export default async function CertDetailPage({
               : "Admin shows the content status. The curriculum and lessons then need to be generated once in the app container."}
           </p>
           {session && (
-            <Link href={`/admin/certifications/${slug}`} className="mt-3 inline-block text-sm font-medium text-accent hover:underline">
+            <Link href={`/admin/certifications/${slug}`} className="mt-3 inline-block text-sm font-medium text-link hover:underline">
               {locale === "de" ? "Zum Adminbereich" : "Open admin"}
             </Link>
           )}

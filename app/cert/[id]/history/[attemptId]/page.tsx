@@ -139,7 +139,7 @@ export default async function ExamAttemptDetailPage({
                   </div>
                   <Link
                     href={`/cert/${slug}/remediation/${w.objectiveId}`}
-                    className="mt-1 inline-block text-xs font-medium text-accent hover:underline"
+                    className="mt-1 inline-block text-xs font-medium text-link hover:underline"
                   >
                     {locale === "de" ? "Gezielt üben →" : "Practice this now →"}
                   </Link>
@@ -164,7 +164,7 @@ export default async function ExamAttemptDetailPage({
       <div className="flex flex-wrap justify-center gap-3">
         <Link
           href={`/cert/${slug}/session`}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
         >
           {locale === "de" ? "Heute lernen" : "Study today"}
         </Link>

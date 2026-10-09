@@ -161,7 +161,7 @@ export function TodayDashboard({
     <div className="mb-6 rounded-lg border border-accent/30 bg-accent/5 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-1.5 text-sm font-medium">
-          <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
+          <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
           {locale === "de" ? "Heute lernen" : "Today's session"}
         </h2>
         {data.streak > 0 && (
@@ -209,7 +209,7 @@ export function TodayDashboard({
                 onClick={() => void handleFeedback(true)}
                 aria-pressed={feedback === true}
                 aria-label={locale === "de" ? "Empfehlung hilfreich" : "Recommendation helpful"}
-                className={`rounded-md p-1 hover:bg-background ${feedback === true ? "text-accent" : "text-foreground/40"}`}
+                className={`rounded-md p-1 hover:bg-background ${feedback === true ? "text-link" : "text-foreground/40"}`}
               >
                 <ThumbsUp className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
@@ -218,7 +218,7 @@ export function TodayDashboard({
                 onClick={() => void handleFeedback(false)}
                 aria-pressed={feedback === false}
                 aria-label={locale === "de" ? "Empfehlung nicht hilfreich" : "Recommendation not helpful"}
-                className={`rounded-md p-1 hover:bg-background ${feedback === false ? "text-accent" : "text-foreground/40"}`}
+                className={`rounded-md p-1 hover:bg-background ${feedback === false ? "text-link" : "text-foreground/40"}`}
               >
                 <ThumbsDown className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
@@ -250,7 +250,7 @@ export function TodayDashboard({
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href={`/cert/${certSlug}/session`}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
         >
           {locale === "de"
             ? `Jetzt lernen (~${data.estimatedMinutes} Min.)`
@@ -272,7 +272,7 @@ export function TodayDashboard({
           {skipping && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
           {locale === "de" ? "Heute aussetzen" : "Skip today"}
         </button>
-        <a href="#study-goal" className="text-xs text-accent hover:underline">
+        <a href="#study-goal" className="text-xs text-link hover:underline">
           {locale === "de" ? "Ziel anpassen" : "Adjust goal"}
         </a>
       </div>

@@ -9,6 +9,9 @@ export interface CertificationStats {
   provider: string;
   examName: string;
   examVersion: string;
+  categoryId: string | null;
+  shortCode: string | null;
+  catalogStatus: string;
   stats: {
     domains: number;
     objectives: number;
@@ -28,7 +31,8 @@ export interface CertificationStats {
 export async function getCertificationsWithStats(): Promise<CertificationStats[]> {
   const db = getDb();
 
-  const allCerts = await db.select().from(certifications).orderBy(certifications.createdAt);
+  // Interne Lernpfade einer Firma sind für den Betreiber nicht sichtbar (Leitplanke Mandantentrennung).
+  const allCerts = await db.select().from(certifications).where(eq(certifications.kind, "general")).orderBy(certifications.createdAt);
 
   const statsPromises = allCerts.map(async (cert) => {
     const certDomains = await db.select().from(domains).where(eq(domains.certificationId, cert.id));
@@ -63,6 +67,9 @@ export async function getCertificationsWithStats(): Promise<CertificationStats[]
       provider: cert.provider,
       examName: cert.examName,
       examVersion: cert.examVersion,
+      categoryId: cert.categoryId,
+      shortCode: cert.shortCode,
+      catalogStatus: cert.catalogStatus,
       stats: {
         domains: certDomains.length,
         objectives: certObjectives.length,

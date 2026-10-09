@@ -569,7 +569,7 @@ export function BlueprintReview({
             type="button"
             onClick={() => void handleApprove()}
             disabled={saving || approving || errors.length > 0}
-            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             title={
               errors.length > 0
                 ? locale === "de" ? "Erst Fehler beheben" : "Fix errors first"

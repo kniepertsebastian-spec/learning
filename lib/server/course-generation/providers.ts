@@ -12,6 +12,7 @@ import {
   type CourseBlueprintV1,
   type ObjectiveContentResponse,
 } from "./schemas";
+import { OPTION_RATIONALE_PROMPT } from "@/lib/server/ai/option-rationale";
 import type { FetchedSource, SourceExcerpt } from "./sources";
 
 /**
@@ -205,6 +206,17 @@ const OUTLINE_CONTENT_PROMPT = [
   "Wo du über die Quelle hinausgehst, formuliere vorsichtig und allgemeingültig. Erfinde keine firmenspezifischen Details (Namen, Adressen, Werte, Abläufe), die nicht in der Quelle stehen.",
 ];
 
+/** Lernblöcke (UI U5, Syntax siehe lib/markdown/blocks.ts). Nur aus den Quellen, nichts erfinden. */
+export const LEARNING_BLOCKS_PROMPT = [
+  "Gliedere den Lerntext mit Überschriften der Ebene `##` und nutze diese Markdown-Blöcke, wo die Quelle sie hergibt:",
+  "- Je Section mindestens ein Hinweis `> [!EXAM]` (Zeile darunter mit `> `): was in der Prüfung typischerweise abgefragt wird. `> [!MEMO]` für einen Merksatz, `> [!NOTE]` für einen Hinweis.",
+  "- `> [!MISTAKE]` NUR, wenn die Quelle einen typischen Fehler nennt.",
+  "- Befehle mit Ausgabe als Codeblock mit Sprache `console`: Befehlszeilen beginnen mit `$ `, Ausgabe steht ohne Prompt darunter, mit realistischer Ausgabe nach der Quelle. Dateien als Codeblock mit Titel, z. B. ```yaml title=\"deployment.yaml\".",
+  "- Bei Hands-on-Themen mindestens ein Praxisbeispiel: `:::practice` mit den vier Überschriften `### Szenario`, `### Aufgabe`, `### Lösung`, `### Warum`, geschlossen mit `:::`.",
+  "- Varianten: `:::tabs` mit mindestens zwei `::tab[Name]`; Abläufe: `:::steps` mit Listenpunkten `Beschriftung | Befehl`. Jeder Block wird mit einer Zeile `:::` geschlossen.",
+  "Erfinde keine Befehle, Optionen, Ausgaben oder Fehler, die nicht aus den Quellen oder anerkanntem Fachwissen zum Thema stammen.",
+];
+
 export const CHEAT_SHEET_PROMPT = [
   "Der Merkzettel ist ein Nachschlagezettel für später, kein zweiter Lektionstext: die wichtigsten Befehle (in einem Codeblock mit Sprachangabe),",
   "Optionen, Pfade, Werte und Reihenfolgen als Stichpunkte oder kleine Tabelle. Bei Quellen aus einer Firma gehören auch firmeneigene Dinge hinein,",
@@ -226,11 +238,13 @@ const CONTENT_SYSTEM_PROMPT_TEMPLATE = (input: Pick<ObjectiveGenerationInput, "c
     "mindestens 2 Key Takeaways und mindestens 2 Exam Focus Points (jeweils bilingual)",
     "und einen Merkzettel `cheatSheet` (bilingual, Markdown, höchstens etwa 12 Zeilen).",
     ...CHEAT_SHEET_PROMPT,
+    ...LEARNING_BLOCKS_PROMPT,
     ...(withQuestions
       ? [
           "",
           "Fragen: genau die im Objective angegebene `recommendedQuestions`-Anzahl, Mischung aus knowledge/comprehension/application/scenario/troubleshooting,",
           "genau 4 Antwortoptionen pro Frage, genau EINE davon korrekt, bilinguale Frage/Antworten/Erklärung.",
+          OPTION_RATIONALE_PROMPT,
           "Jede Frage MUSS `sourceLocator` setzen (Locator eines mitgelieferten Auszugs) oder `null`, wenn kein Auszug sie belegt.",
         ]
       : ["", "Erzeuge KEINE Fragen: `questions` ist ein leeres Array. Die Lektion allein muss zum Verständnis reichen."]),

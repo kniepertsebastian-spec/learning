@@ -162,7 +162,7 @@ export function SourcesManager({
                 type="button"
                 onClick={() => setSourceKind("pdf")}
                 className={`flex-1 rounded px-2 py-1 text-xs font-medium ${
-                  sourceKind === "pdf" ? "bg-accent text-white" : "hover:bg-background"
+                  sourceKind === "pdf" ? "bg-accent text-on-accent" : "hover:bg-background"
                 }`}
               >
                 PDF
@@ -171,7 +171,7 @@ export function SourcesManager({
                 type="button"
                 onClick={() => setSourceKind("url")}
                 className={`flex-1 rounded px-2 py-1 text-xs font-medium ${
-                  sourceKind === "url" ? "bg-accent text-white" : "hover:bg-background"
+                  sourceKind === "url" ? "bg-accent text-on-accent" : "hover:bg-background"
                 }`}
               >
                 URL
@@ -222,7 +222,7 @@ export function SourcesManager({
           <button
             type="submit"
             disabled={uploading || !online}
-            className="flex items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
+            className="flex items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
           >
             {uploading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -282,7 +282,7 @@ export function SourcesManager({
                             href={source.sourceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-accent hover:underline"
+                            className="text-xs text-link hover:underline"
                           >
                             {source.sourceUrl}
                           </a>

@@ -70,7 +70,7 @@ function DocumentImages({ documentId, count, de }: { documentId: string; count: 
 
   return (
     <details className="basis-full text-xs" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) void load(); }} data-testid="document-images">
-      <summary className="cursor-pointer text-accent">
+      <summary className="cursor-pointer text-link">
         {de ? `Screenshots (${count})` : `Screenshots (${count})`}
       </summary>
       <div className="mt-2 flex flex-col gap-2 rounded-md border border-border p-3">
@@ -208,7 +208,7 @@ export function DocumentsPanel({
           <button
             type="submit"
             disabled={pending || files.length === 0}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
             data-testid="documents-upload"
           >
             {pending ? (de ? "Wird geprüft …" : "Checking …") : de ? "Hochladen" : "Upload"}
@@ -282,7 +282,7 @@ export function DocumentsPanel({
                 </span>
               </span>
               <span className="flex gap-3">
-                <a href={`/api/company/documents/${d.id}/download`} className="text-xs text-accent hover:underline">
+                <a href={`/api/company/documents/${d.id}/download`} className="text-xs text-link hover:underline">
                   {de ? "Herunterladen" : "Download"}
                 </a>
                 <button type="button" onClick={() => void remove(d.id)} className="text-xs text-red-500 hover:underline">

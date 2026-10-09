@@ -11,6 +11,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -102,10 +103,113 @@ export const users = pgTable(
     /** Zeitpunkt der E-Mail-Bestätigung (lib/server/account/tokens.ts). Null = noch nicht bestätigt.
      * Bestandskonten wurden bei der Einführung als bestätigt markiert. */
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    /** UI U8: Opt-out für E-Mail-Erinnerungen des Prüfungsplaners. */
+    examRemindersOptOut: boolean("exam_reminders_opt_out").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [check("users_role_check", sql`${table.role} in ('learner', 'admin')`)],
 );
+
+export const EXAM_PROVIDERS = ["pearson_vue", "psi", "linux_foundation", "other"] as const;
+export type ExamProvider = (typeof EXAM_PROVIDERS)[number];
+export const EXAM_DELIVERY_MODES = ["online", "test_center"] as const;
+export type ExamDeliveryMode = (typeof EXAM_DELIVERY_MODES)[number];
+export type ExamPlanStatus = "planned" | "passed" | "failed" | "cancelled";
+
+/**
+ * Prüfungsplan einer Person (UI U8): gehört der Person; die Firma sieht davon nichts (`share_with_company` ist standardmäßig aus und
+ * wird erst mit der Freigabe je Zertifikat in U9 ausgewertet – der Firmenbereich liest diese Tabelle nicht, siehe Architektur-Test).
+ */
+export const examPlans = pgTable(
+  "exam_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    /** null = noch nicht gebucht */
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    deliveryMode: text("delivery_mode").$type<ExamDeliveryMode>(),
+    voucherExpiresAt: timestamp("voucher_expires_at", { withTimezone: true }),
+    retakeIncluded: boolean("retake_included").notNull().default(false),
+    shareWithCompany: boolean("share_with_company").notNull().default(false),
+    weeklyGoalHours: integer("weekly_goal_hours").notNull().default(5),
+    status: text("status").$type<ExamPlanStatus>().notNull().default("planned"),
+    /** Wann die letzte Erinnerung dieser Art verschickt wurde (verhindert doppelte Mails). */
+    remindersSent: jsonb("reminders_sent").$type<Record<string, string>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("exam_plans_user_idx").on(table.userId),
+    check("exam_plans_status_check", sql`${table.status} in ('planned', 'passed', 'failed', 'cancelled')`),
+  ],
+);
+
+/**
+ * Zertifikate einer Person (UI U9). Gehören der Person; die Firma sieht ein Zertifikat nur, wenn die Person es einzeln freigibt
+ * (`shared_with_company`, Standard aus), und nur die festgeschriebenen Felder `COMPANY_CERTIFICATE_FIELDS` – nie Punkte oder Lernstand.
+ */
+export const userCertificates = pgTable(
+  "user_certificates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    vendor: text("vendor").notNull().default(""),
+    earnedAt: timestamp("earned_at", { withTimezone: true }).notNull(),
+    /** null = unbegrenzt gültig */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    evidenceUrl: text("evidence_url"),
+    sharedWithCompany: boolean("shared_with_company").notNull().default(false),
+    /** Wann die Erinnerungen (90/30 Tage vor Ablauf) verschickt wurden. */
+    remindersSent: jsonb("reminders_sent").$type<Record<string, string>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("user_certificates_user_idx").on(table.userId)],
+);
+
+/** Prüfungsgutscheine einer Firma (UI U9). Der Code liegt verschlüsselt und wird nur der zugewiesenen Person angezeigt. */
+export const examVouchers = pgTable(
+  "exam_vouchers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    assignedUserId: uuid("assigned_user_id").references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    note: text("note").notNull().default(""),
+    codeEncrypted: text("code_encrypted"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [index("exam_vouchers_org_idx").on(table.organizationId)],
+);
+
+/** Feste Farbpalette der Kursgruppen (UI U7); die Farbe färbt Kurzcode-Kacheln in Dashboard und Prüfungsplaner. */
+export const COURSE_CATEGORY_COLORS = ["info", "mint", "warning", "danger", "violet"] as const;
+export type CourseCategoryColor = (typeof COURSE_CATEGORY_COLORS)[number];
+
+/** Katalog-Kursgruppen (UI U7): genau eine Gruppe je allgemeinem Kurs (n:1), vom Betreiber gepflegt. */
+export const courseCategories = pgTable("course_categories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  name: jsonb("name").$type<Localized<string>>().notNull(),
+  color: text("color").$type<CourseCategoryColor>().notNull().default("info"),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const certifications = pgTable("certifications", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -136,6 +240,17 @@ export const certifications = pgTable("certifications", {
   kind: text("kind").$type<CourseKind>().notNull().default("general"),
   /** Nur bei kind = "internal": die Organisation, der der Lernpfad gehört. */
   ownerOrganizationId: uuid("owner_organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  /** UI U8 (vom Betreiber gepflegt): Prüfungsanbieter, Formen, Buchungs-/Testcenter-Link, Gültigkeit, Hinweis auf eine Nachfolgeversion. */
+  examProvider: text("exam_provider").$type<ExamProvider>(),
+  deliveryModes: text("delivery_modes").array().$type<ExamDeliveryMode[]>().notNull().default(sql`'{}'::text[]`),
+  bookingUrl: text("booking_url"),
+  testCenterUrl: text("test_center_url"),
+  validityMonths: integer("validity_months"),
+  successorNote: text("successor_note"),
+  /** UI U7: Kursgruppe im Katalog; null = „Nicht zugeordnet“. */
+  categoryId: uuid("category_id").references(() => courseCategories.id, { onDelete: "set null" }),
+  /** Kurzcode für Kacheln, z. B. K8s, SEC+, PCA (höchstens 6 Zeichen). */
+  shortCode: text("short_code"),
   /** Menschliche Freigabe vor jeder Weitergabe an Kunden: draft -> in_review -> approved. Bestehende Lernpfade gelten als freigegeben. */
   catalogStatus: text("catalog_status").$type<CatalogStatus>().notNull().default("approved"),
   /**
@@ -274,6 +389,8 @@ export const questionOptions = pgTable("question_options", {
   orderNum: integer("order_num").notNull(),
   text: jsonb("text").$type<Localized<string>>().notNull(),
   isCorrect: boolean("is_correct").notNull().default(false),
+  /** UI U4: warum diese (falsche) Option nicht passt, zweisprachig; null bei älteren Fragen und bei der richtigen Option. */
+  rationale: jsonb("rationale").$type<Localized<string>>(),
 });
 
 /**
@@ -1135,6 +1252,9 @@ export const courseGenerationJobs = pgTable(
     /** Nur interne Lernpfade: mit Lektionstests und/oder Abschlussprüfung erstellen (sonst keine Fragen, günstiger). */
     includeSectionQuizzes: boolean("include_section_quizzes").notNull().default(true),
     includeFinalExam: boolean("include_final_exam").notNull().default(true),
+    /** UI U7: Kursgruppe und Kurzcode, die der Kurs nach dem Import bekommt (nur allgemeine Kurse). */
+    categoryId: uuid("category_id").references(() => courseCategories.id, { onDelete: "set null" }),
+    shortCode: text("short_code"),
     courseTitle: text("course_title").notNull(),
     courseDescription: text("course_description").notNull(),
     language: text("language").notNull(),
@@ -1274,6 +1394,37 @@ export const organizationMemberships = pgTable(
  * Der zusammengesetzte Fremdschlüssel stellt auf Datenbankebene sicher, dass
  * userId wirklich Mitglied von organizationId ist.
  */
+/** Kursgruppen einer Firma (UI U6): eigene Zusammenstellungen aus freigegebenen Katalogkursen, internen Lernpfaden und Pflichtschulungen. */
+export const companyCourseGroups = pgTable(
+  "company_course_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: jsonb("name").$type<Localized<string>>().notNull(),
+    color: text("color").$type<CourseCategoryColor>().notNull().default("info"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [index("company_course_groups_org_idx").on(table.organizationId)],
+);
+
+export const companyCourseGroupItems = pgTable(
+  "company_course_group_items",
+  {
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => companyCourseGroups.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.groupId, table.certificationId] })],
+);
+
 export const companyAssignments = pgTable(
   "company_assignments",
   {
@@ -1302,6 +1453,8 @@ export const companyAssignments = pgTable(
     lastCompletedAt: timestamp("last_completed_at", { withTimezone: true }),
     /** Gesetzt, wenn die Zuweisung aus einer Pflichtregel stammt (Pflichtschulung). */
     mandatoryRuleId: uuid("mandatory_rule_id").references((): AnyPgColumn => mandatoryRules.id, { onDelete: "set null" }),
+    /** UI U6: gesetzt, wenn die Zuweisung über eine Kursgruppe entstand (nur Herkunft; spätere Änderungen an der Gruppe ändern sie nicht). */
+    groupId: uuid("group_id").references((): AnyPgColumn => companyCourseGroups.id, { onDelete: "set null" }),
   },
   (table) => [
     check(

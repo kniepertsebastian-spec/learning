@@ -42,7 +42,7 @@ export default async function ProfilePage() {
 
   const item = (a: MyAssignment) => (
     <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm" data-testid="profile-course">
-      <Link href={`/cert/${a.slug}`} className="font-medium hover:text-accent">{a.learningPath}</Link>
+      <Link href={`/cert/${a.slug}`} className="font-medium hover:text-link">{a.learningPath}</Link>
       <span className="text-foreground/70" data-testid="profile-course-status">
         {STATUS_LABEL[a.status][locale]}
         {a.status === "completed" && a.completedAt ? ` · ${fmt(a.completedAt)}` : ""}

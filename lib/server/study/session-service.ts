@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   domains,
@@ -613,6 +613,17 @@ export async function getStudyStreak(
         eq(studySessions.status, "completed"),
       ),
     );
+  const dates = rows.map((r) => r.completedAt).filter((d): d is Date => d !== null);
+  return computeStreak(dates, now);
+}
+
+/** Lernserie über alle Zertifizierungen (Kopfzeile der App-Shell): Tage mit mindestens einer abgeschlossenen Session. */
+export async function getUserStudyStreak(userId: string, now: Date = new Date()): Promise<number> {
+  const since = new Date(now.getTime() - 400 * 24 * 60 * 60 * 1000);
+  const rows = await getDb()
+    .select({ completedAt: studySessions.completedAt })
+    .from(studySessions)
+    .where(and(eq(studySessions.userId, userId), eq(studySessions.status, "completed"), gte(studySessions.completedAt, since)));
   const dates = rows.map((r) => r.completedAt).filter((d): d is Date => d !== null);
   return computeStreak(dates, now);
 }

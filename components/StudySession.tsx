@@ -2,24 +2,22 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Flag, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import type { AnswerConfidence, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
-import { RichText } from "@/components/RichText";
-
-const CONFIDENCE_LABEL: Record<AnswerConfidence, { de: string; en: string }> = {
-  guessed: { de: "Geraten", en: "Guessed" },
-  unsure: { de: "Unsicher", en: "Unsure" },
-  sure: { de: "Sicher", en: "Sure" },
-};
-
-type ReportReason = "incorrect" | "unclear" | "outdated";
-
-const REPORT_REASON_LABEL: Record<ReportReason, { de: string; en: string }> = {
-  incorrect: { de: "Falsch", en: "Incorrect" },
-  unclear: { de: "Unklar", en: "Unclear" },
-  outdated: { de: "Veraltet", en: "Outdated" },
-};
+import { ConfidenceBar } from "@/components/quiz/ConfidenceBar";
+import { FocusFrame } from "@/components/quiz/FocusFrame";
+import type { OptionState } from "@/components/quiz/OptionTile";
+import { QuestionBody } from "@/components/quiz/QuestionBody";
+import { QuestionNavigator, type NavState } from "@/components/quiz/QuestionNavigator";
+import { ReportProblem } from "@/components/quiz/ReportProblem";
+import { ResultSummary } from "@/components/quiz/ResultSummary";
+import { useQuizHotkeys } from "@/components/quiz/useQuizHotkeys";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import type { SegmentState } from "@/components/ui/progress";
+import { useLocale } from "@/lib/i18n";
+import { fmt } from "@/lib/quiz/keys";
 
 interface SessionQuestionItem {
   itemId: string;
@@ -54,11 +52,6 @@ interface StudySessionProps {
   offline?: { userId: string };
 }
 
-const CATEGORY_LABEL: Record<SessionQuestionItem["category"], { de: string; en: string }> = {
-  review: { de: "Wiederholung", en: "Review" },
-  weak: { de: "Schwacher Bereich", en: "Weak area" },
-  new: { de: "Neu", en: "New" },
-};
 
 /**
  * R2.3/R2.4 (roadmap.md): nimmt eine vom Session Builder zusammengestellte
@@ -82,24 +75,7 @@ export function StudySession({
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<StudySessionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [reportOpenForItem, setReportOpenForItem] = useState<string | null>(null);
-  const [reportedItems, setReportedItems] = useState<Set<string>>(() => new Set());
-
-  async function handleReport(questionId: string, itemId: string, reason: ReportReason) {
-    if (reportedItems.has(itemId)) return;
-    setReportedItems((prev) => new Set(prev).add(itemId));
-    setReportOpenForItem(null);
-    try {
-      await fetch("/api/content-reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetType: "question", targetId: questionId, reason }),
-      });
-    } catch {
-      // R6 (roadmap.md): eine fehlgeschlagene Meldung darf den Lernfluss
-      // nicht unterbrechen, siehe QuizQuestionCard für dasselbe Muster.
-    }
-  }
+  const { t } = useLocale();
 
   async function handleSubmit() {
     if (submitting || result) return;
@@ -153,23 +129,40 @@ export function StudySession({
     }
   }
 
+  const exitHref = `/cert/${certSlug}`;
+  const pickOption = (index: number) => {
+    const item = questionItems[currentIndex];
+    if (!item) return;
+    const sorted = [...item.options].sort((a, b) => a.orderNum - b.orderNum);
+    const option = sorted[index];
+    if (!option) return;
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[currentIndex] = option.id;
+      return next;
+    });
+  };
+  const isLast = currentIndex + 1 >= questionItems.length;
+  useQuizHotkeys(
+    4,
+    (action) => {
+      if (action.type === "pick") pickOption(action.index);
+      else if (action.type === "enter" && answers[currentIndex] && !isLast) setCurrentIndex((i) => i + 1);
+    },
+    questionItems.length > 0 && !result,
+  );
+
   if (questionItems.length === 0) {
     return (
       <div className="mx-auto flex max-w-2xl flex-1 flex-col py-8">
-        <h1 className="mb-4 text-xl font-semibold">
-          {locale === "de" ? "Empfohlene Lektionen" : "Recommended lessons"}
-        </h1>
+        <h1 className="mb-4 text-xl font-semibold">{t.quiz.lessonsRecommended}</h1>
         {lessonItems.length > 0 ? (
           <LessonList certSlug={certSlug} lessonItems={lessonItems} locale={locale} />
         ) : (
-          <p className="text-sm text-foreground/70">
-            {locale === "de"
-              ? "Für heute gibt es nichts zu lernen - schau später wieder vorbei."
-              : "Nothing to study right now - check back later."}
-          </p>
+          <p className="text-sm text-subtle">{t.quiz.nothingToday}</p>
         )}
-        <Link href={`/cert/${certSlug}`} className="mt-6 text-sm text-accent hover:underline">
-          {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
+        <Link href={exitHref} className="mt-6 text-sm text-link hover:underline">
+          {t.quiz.backToCourse}
         </Link>
       </div>
     );
@@ -178,183 +171,89 @@ export function StudySession({
   if (result) {
     const correctCount = result.results.filter((r) => r.isCorrect).length;
     return (
-      <div className="mx-auto flex max-w-2xl flex-1 flex-col py-8">
-        <div className="mb-6 rounded-lg border border-border bg-surface p-6 text-center">
-          <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-green-600" aria-hidden="true" />
-          <p className="mb-1 text-3xl font-bold">{result.score}%</p>
-          <p className="text-sm text-foreground/70">
-            {locale === "de"
-              ? `${correctCount} von ${result.results.length} richtig`
-              : `${correctCount} of ${result.results.length} correct`}
-          </p>
-          <p className="mt-3 text-sm font-medium text-accent">
-            {locale === "de" ? "Gut gemacht - weiter so!" : "Well done - keep it up!"}
-          </p>
-          {offline && (
-            <p className="mt-3 text-xs text-foreground/50">
-              {locale === "de"
-                ? "Offline-Modus: Dieses Ergebnis wird synchronisiert, sobald du wieder online bist."
-                : "Offline mode: this result will sync once you're back online."}
-            </p>
-          )}
-        </div>
-
-        {lessonItems.length > 0 && (
-          <div className="mb-6">
-            <h2 className="mb-2 text-sm font-medium">
-              {locale === "de" ? "Empfohlene Lektionen" : "Recommended lessons"}
-            </h2>
-            <LessonList certSlug={certSlug} lessonItems={lessonItems} locale={locale} />
-          </div>
-        )}
-
-        <Link
-          href={`/cert/${certSlug}`}
-          className="mx-auto rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+      <FocusFrame
+        exitHref={exitHref}
+        confirmLeave={false}
+        contextLabel={t.quiz.session}
+        mode="practice"
+        segments={result.results.map((r): SegmentState => (r.isCorrect ? "correct" : "wrong"))}
+        counterText={fmt(t.quiz.correctCount, { a: correctCount, b: result.results.length })}
+      >
+        <ResultSummary
+          score={result.score}
+          headline={fmt(t.quiz.correctCount, { a: correctCount, b: result.results.length })}
+          offlineNote={Boolean(offline)}
+          actions={[{ href: exitHref, label: t.quiz.backToCourse, primary: true }]}
         >
-          {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
-        </Link>
-      </div>
+          {lessonItems.length > 0 && (
+            <div>
+              <h2 className="mb-2 text-sm font-semibold">{t.quiz.lessonsRecommended}</h2>
+              <LessonList certSlug={certSlug} lessonItems={lessonItems} locale={locale} />
+            </div>
+          )}
+        </ResultSummary>
+      </FocusFrame>
     );
   }
 
   const item = questionItems[currentIndex];
+  const sortedOptions = [...item.options].sort((a, b) => a.orderNum - b.orderNum);
+  const states: OptionState[] = sortedOptions.map((o) => (answers[currentIndex] === o.id ? "selected" : "neutral"));
+  const segments: SegmentState[] = questionItems.map((_, i) => (answers[i] ? "current" : "open"));
+  const navStates: NavState[] = questionItems.map((_, i) => (answers[i] ? "answered" : "open"));
+  const answeredCount = answers.filter(Boolean).length;
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-1 flex-col py-6">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-foreground/60">
-          {locale === "de" ? "Frage" : "Question"} {currentIndex + 1} / {questionItems.length}
-        </p>
-        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-          {CATEGORY_LABEL[item.category][locale]}
-        </span>
+    <FocusFrame
+      exitHref={exitHref}
+      confirmLeave={answeredCount > 0}
+      contextLabel={t.quiz.session}
+      mode="practice"
+      segments={segments}
+      counterText={fmt(t.quiz.questionXofY, { x: currentIndex + 1, y: questionItems.length })}
+      scoreText={fmt(t.quiz.answeredXofY, { x: answeredCount, y: questionItems.length })}
+      navigator={<QuestionNavigator mode="exam" hideNote states={navStates} currentIndex={currentIndex} flagged={new Set()} onJump={setCurrentIndex} />}
+    >
+      <div className="mb-3">
+        <Badge tone={item.category === "weak" ? "warning" : item.category === "review" ? "info" : "accent"}>
+          {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : t.quiz.categoryNew}
+        </Badge>
+      </div>
+      <QuestionBody
+        question={item.question[locale]}
+        options={sortedOptions.map((o) => o.text[locale])}
+        states={states}
+        onPick={pickOption}
+      />
+
+      {answers[currentIndex] && (
+        <div className="mt-4">
+          <ConfidenceBar onPick={(level) => setConfidences((prev) => { const next = [...prev]; next[currentIndex] = level; return next; })} />
+          {confidences[currentIndex] && <p className="mt-2 text-xs text-subtle">{t.quiz[confidences[currentIndex] as AnswerConfidence]}</p>}
+        </div>
+      )}
+
+      <div className="mt-4">
+        <ReportProblem questionId={item.questionId} />
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-5">
-        <div className="mb-4 font-medium"><RichText text={item.question[locale]} /></div>
-        <div className="flex flex-col gap-2">
-          {[...item.options]
-            .sort((a, b) => a.orderNum - b.orderNum)
-            .map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() =>
-                  setAnswers((prev) => {
-                    const next = [...prev];
-                    next[currentIndex] = option.id;
-                    return next;
-                  })
-                }
-                className={`rounded-md border px-3 py-2.5 text-left text-sm transition-colors ${
-                  answers[currentIndex] === option.id
-                    ? "border-accent bg-accent/10"
-                    : "border-border hover:bg-background"
-                }`}
-              >
-                <RichText text={option.text[locale]} inline />
-              </button>
-            ))}
-        </div>
-
-        {answers[currentIndex] && (
-          <div className="mt-4">
-            <p className="mb-2 text-xs text-foreground/60">
-              {locale === "de" ? "Wie sicher warst du dir?" : "How sure were you?"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(CONFIDENCE_LABEL) as AnswerConfidence[]).map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() =>
-                    setConfidences((prev) => {
-                      const next = [...prev];
-                      next[currentIndex] = level;
-                      return next;
-                    })
-                  }
-                  className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
-                    confidences[currentIndex] === level
-                      ? "border-accent bg-accent/10"
-                      : "border-border hover:bg-background"
-                  }`}
-                >
-                  {CONFIDENCE_LABEL[level][locale]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-3 border-t border-border pt-2">
-          {reportedItems.has(item.itemId) ? (
-            <p className="text-xs text-foreground/50">
-              {locale === "de" ? "Danke, diese Frage wurde gemeldet." : "Thanks, this question was reported."}
-            </p>
-          ) : reportOpenForItem === item.itemId ? (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-foreground/50">
-                {locale === "de" ? "Was stimmt nicht?" : "What's wrong?"}
-              </span>
-              {(Object.keys(REPORT_REASON_LABEL) as ReportReason[]).map((reason) => (
-                <button
-                  key={reason}
-                  type="button"
-                  onClick={() => void handleReport(item.questionId, item.itemId, reason)}
-                  className="rounded-md border border-border px-2 py-0.5 text-xs hover:border-accent hover:bg-background"
-                >
-                  {REPORT_REASON_LABEL[reason][locale]}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setReportOpenForItem(item.itemId)}
-              className="flex items-center gap-1 text-xs text-foreground/40 hover:text-foreground/70"
-            >
-              <Flag className="h-3 w-3" aria-hidden="true" />
-              {locale === "de" ? "Problem melden" : "Report a problem"}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-          disabled={currentIndex === 0}
-          className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {locale === "de" ? "Zurück" : "Previous"}
-        </button>
-
-        {currentIndex + 1 >= questionItems.length ? (
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={submitting}
-            className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
-          >
-            {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-            {locale === "de" ? "Session abschließen" : "Finish session"}
-          </button>
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <Button variant="secondary" onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))} disabled={currentIndex === 0}>
+          {t.quiz.previous}
+        </Button>
+        {isLast ? (
+          <Button onClick={() => void handleSubmit()} disabled={submitting} iconLeft={submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : undefined} data-testid="submit-session">
+            {t.quiz.finish}
+          </Button>
         ) : (
-          <button
-            type="button"
-            onClick={() => setCurrentIndex((i) => Math.min(questionItems.length - 1, i + 1))}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            {locale === "de" ? "Weiter" : "Next"}
-          </button>
+          <Button onClick={() => setCurrentIndex((i) => Math.min(questionItems.length - 1, i + 1))} iconRight={<ArrowRight className="h-4 w-4" aria-hidden="true" />}>
+            {t.quiz.nextShort}
+          </Button>
         )}
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-    </div>
+      {error && <p role="alert" className="mt-3 text-sm text-danger-text">{error}</p>}
+    </FocusFrame>
   );
 }
 

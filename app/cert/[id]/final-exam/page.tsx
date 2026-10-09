@@ -35,7 +35,7 @@ export default async function FinalExamStartPage({
         <p className="text-foreground/70">
           {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
         </p>
-        <Link href="/login" className="mt-4 text-accent hover:underline">
+        <Link href="/login" className="mt-4 text-link hover:underline">
           {locale === "de" ? "Anmelden" : "Sign in"}
         </Link>
       </div>

@@ -1,3 +1,4 @@
+import { validateLearningBlocks } from "@/lib/markdown/validate";
 import type {
   CourseBlueprintDomain,
   CourseBlueprintObjective,
@@ -99,6 +100,14 @@ export function validateObjectiveContent(
       errors.push(`Frage ${index + 1} ist (nahezu) identisch mit Frage ${priorIndex + 1}.`);
     } else {
       seenQuestions.set(normalized, index);
+    }
+  });
+
+  content.sections.forEach((section, index) => {
+    for (const lang of ["de", "en"] as const) {
+      for (const problem of validateLearningBlocks(section.content[lang])) {
+        errors.push(`Lektion ${index + 1} (${lang}): ${problem}`);
+      }
     }
   });
 

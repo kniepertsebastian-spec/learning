@@ -9,7 +9,7 @@ describe("RichText (Fragen, Antworten, Erklärungen)", () => {
     const out = html("Was zeigt das Log?\n\n```text\nOct  7 03:12:01 sw1 %LINK-3-UPDOWN: Interface Gi0/1, changed state to down\n  Oct  7 03:12:05 sw1 %SPANTREE-2-BLOCK_PVID_LOCAL: Blocking Gi0/2\n```");
     expect(out).toContain("<pre");
     expect(out).toContain("%LINK-3-UPDOWN");
-    expect(out).toMatch(/\n {2}(<span[^>]*>)?Oct/); // Einrückung bleibt erhalten
+    expect(out).toMatch(/>\s{2}Oct/); // Einrückung bleibt erhalten
   });
   it("Tabellen (Merkzettel: System, Server) werden als Tabelle mit Rahmen gezeigt, nicht als Textbrei", () => {
     const out = html("| System | Server |\n|---|---|\n| Web | web01 |\n| Backup | backup01 |");

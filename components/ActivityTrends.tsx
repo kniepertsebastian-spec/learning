@@ -56,7 +56,7 @@ export function ActivityTrends({
           )}
           <a
             href={`/api/exams/${certId}/export`}
-            className="flex items-center gap-1 text-xs text-accent hover:underline"
+            className="flex items-center gap-1 text-xs text-link hover:underline"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
             {locale === "de" ? "Export (JSON)" : "Export (JSON)"}

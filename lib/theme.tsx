@@ -12,11 +12,13 @@ let currentTheme: Theme | null = null;
 function computeInitialTheme(): Theme {
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === "dark" || stored === "light") return stored;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  // Dunkel ist der Standard der Oberfläche (docs/ROADMAP-UI.md); wer Hell gewählt hat, behält es.
+  return "dark";
 }
 
 function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0A0C10" : "#F6F7F9");
 }
 
 function getSnapshot(): Theme {
@@ -28,7 +30,7 @@ function getSnapshot(): Theme {
 }
 
 function getServerSnapshot(): Theme {
-  return "light";
+  return "dark";
 }
 
 function subscribe(callback: () => void): () => void {

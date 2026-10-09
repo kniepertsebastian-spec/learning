@@ -42,6 +42,7 @@ import { pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./
 import { getDb } from "@/lib/server/db/client";
 import { certifications, courseGenerationJobDocuments } from "@/lib/server/db/schema";
 import { eq } from "drizzle-orm";
+import { recordAuditEvent } from "@/lib/server/audit/service";
 
 export class PreflightError extends Error {}
 export class BlueprintValidationError extends Error {}
@@ -361,6 +362,7 @@ export async function publishPreparedCourseGenerationPackage(jobId: string): Pro
   try {
     await updateCourseGenerationJob(jobId, { status: "importing", message: "Kurs wird importiert …" });
     const imported = await importCoursePackage(pkgValidation.data, job.organizationId ? plannedSlugFor(job) : undefined, importOwner(job));
+    await applyCourseGroup(job, imported.certificationId);
     await updateCourseGenerationJob(jobId, {
       status: "published",
       resultCertificationId: imported.certificationId,
@@ -369,6 +371,17 @@ export async function publishPreparedCourseGenerationPackage(jobId: string): Pro
     });
   } catch (error) {
     await handleJobFailure(jobId, error);
+  }
+}
+
+/** UI U7: Kursgruppe und Kurzcode aus dem Auftrag auf den fertigen allgemeinen Kurs übertragen (auditiert). Ein Fehler hier stoppt den Import nicht. */
+async function applyCourseGroup(job: { organizationId: string | null; categoryId: string | null; shortCode: string | null; requestedByUserId: string | null }, certificationId: string): Promise<void> {
+  if (job.organizationId || (!job.categoryId && !job.shortCode)) return;
+  try {
+    await getDb().update(certifications).set({ categoryId: job.categoryId, shortCode: job.shortCode }).where(eq(certifications.id, certificationId));
+    await recordAuditEvent({ actorUserId: job.requestedByUserId, action: "course_category.assign", targetType: "certification", targetId: certificationId, metadata: { from: null, to: job.categoryId, via: "generation" } });
+  } catch (error) {
+    console.error("Kursgruppe konnte nicht gesetzt werden:", error);
   }
 }
 
@@ -662,6 +675,7 @@ export async function executeCourseGenerationJob(
 
     await updateCourseGenerationJob(jobId, { status: "importing", message: "Kurs wird importiert …" });
     const imported = await importCoursePackage(pkgValidation.data, job.organizationId ? plannedSlugFor(job) : undefined, importOwner(job));
+    await applyCourseGroup(job, imported.certificationId);
     await updateCourseGenerationJob(jobId, {
       status: "published",
       resultCertificationId: imported.certificationId,

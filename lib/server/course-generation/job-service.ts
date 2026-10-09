@@ -34,6 +34,9 @@ export interface CreateCourseGenerationJobInput {
   /** Nur interne Lernpfade: Lektionstests und/oder Abschlussprüfung erzeugen (Standard ja). */
   includeSectionQuizzes?: boolean;
   includeFinalExam?: boolean;
+  /** Nur allgemeine Kurse: Kursgruppe und Kurzcode für den fertigen Kurs. */
+  categoryId?: string;
+  shortCode?: string;
 }
 
 /**
@@ -81,6 +84,8 @@ export async function createCourseGenerationJob(
       sourceUrls: input.sourceUrls,
       organizationId: input.organizationId,
       documentId: input.documentId,
+      categoryId: input.organizationId ? undefined : input.categoryId,
+      shortCode: input.organizationId ? undefined : input.shortCode,
       includeSectionQuizzes: input.includeSectionQuizzes ?? true,
       includeFinalExam: input.includeFinalExam ?? true,
       autoPublish: input.autoPublish,

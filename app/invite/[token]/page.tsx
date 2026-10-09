@@ -37,7 +37,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
         <p className="text-foreground/70">
           {de ? "Bitte lass dir einen neuen Link schicken." : "Please ask for a new link."}
         </p>
-        <Link href="/" className="mt-4 text-accent hover:underline">
+        <Link href="/" className="mt-4 text-link hover:underline">
           {de ? "Zur Startseite" : "Back to home"}
         </Link>
       </div>
@@ -73,7 +73,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
               </p>
               <Link
                 href={`/register?${query}&email=${encodeURIComponent(preview.email)}`}
-                className="rounded-md bg-accent px-4 py-2.5 text-center text-sm font-medium text-white hover:opacity-90"
+                className="rounded-md bg-accent px-4 py-2.5 text-center text-sm font-medium text-on-accent hover:opacity-90"
               >
                 {de ? "Registrieren" : "Register"}
               </Link>

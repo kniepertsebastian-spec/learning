@@ -112,6 +112,8 @@ export type CoursePackageSection = z.infer<typeof coursePackageSectionSchema>;
 export const coursePackageQuestionOptionSchema = z.object({
   text: localizedStringSchema,
   isCorrect: z.boolean(),
+  /** Warum diese FALSCHE Option nicht passt (UI U4); fehlt bei der richtigen Option und bei älteren Paketen. */
+  rationale: localizedStringSchema.optional(),
 });
 
 const exactlyOneCorrectOption = (q: { options: { isCorrect: boolean }[] }) =>

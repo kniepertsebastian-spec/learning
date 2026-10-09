@@ -96,12 +96,12 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
         {!online ? (
           <WifiOff className="h-4 w-4 text-foreground/60" aria-hidden="true" />
         ) : syncing ? (
-          <RefreshCw className="h-4 w-4 animate-spin text-accent" aria-hidden="true" />
+          <RefreshCw className="h-4 w-4 animate-spin text-link" aria-hidden="true" />
         ) : (
           <CloudOff className="h-4 w-4 text-amber-500" aria-hidden="true" />
         )}
         {pendingTotal > 0 && (
-          <span className="rounded-full bg-accent/10 px-1.5 text-xs font-medium text-accent">
+          <span className="rounded-full bg-accent/10 px-1.5 text-xs font-medium text-link">
             {pendingTotal}
           </span>
         )}
@@ -139,7 +139,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
             type="button"
             onClick={handleManualSync}
             disabled={!online || syncing}
-            className="w-full rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {locale === "de" ? "Jetzt synchronisieren" : "Sync now"}
           </button>

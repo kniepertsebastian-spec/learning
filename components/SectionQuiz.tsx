@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
+import { FocusFrame } from "@/components/quiz/FocusFrame";
+import { ResultSummary } from "@/components/quiz/ResultSummary";
+import { useLocale } from "@/lib/i18n";
+import { fmt } from "@/lib/quiz/keys";
+import type { SegmentState } from "@/components/ui/progress";
 import type { AnswerConfidence, QuizQuestion, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 
@@ -15,7 +19,10 @@ export interface SectionQuizQuestion {
     text: { de: string; en: string };
     orderNum: number;
     isCorrect: boolean;
+    /** UI U4: warum diese (falsche) Option nicht passt; fehlt bei älteren Fragen. */
+    rationale?: { de: string; en: string } | null;
   }>;
+  difficulty?: string | null;
   /** R1.4: knappe Quellenangabe (z. B. "S. 4"), falls die Frage
    * quellengebunden generiert wurde - sonst null. */
   sourceReference: string | null;
@@ -26,6 +33,9 @@ interface SectionQuizProps {
   questions: SectionQuizQuestion[];
   certSlug: string;
   locale: Locale;
+  /** Kontext für die Fokusleiste, z. B. „Domain 3 · 3.2 Troubleshooting“. */
+  contextLabel?: string;
+  objectiveLabel?: string;
   /** R4.1/4.2/4.3 (roadmap.md): im Offline-Reader gesetzt - statt des
    * direkten POST an den Server wird das Ergebnis in die lokale Sync-
    * Warteschlange (lib/client/sync-queue.ts) eingereiht und beim nächsten
@@ -33,12 +43,12 @@ interface SectionQuizProps {
   offline?: { userId: string };
 }
 
-export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }: SectionQuizProps) {
+export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLabel, objectiveLabel, offline }: SectionQuizProps) {
+  const { t } = useLocale();
   const [quizIndex, setQuizIndex] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
+  const [results, setResults] = useState<boolean[]>([]);
   const [hasAnsweredCurrent, setHasAnsweredCurrent] = useState(false);
   const [quizFinished, setQuizFinished] = useState(false);
-  const [finalScore, setFinalScore] = useState<number | null>(null);
   const [pendingAnswer, setPendingAnswer] = useState<{
     questionId: string;
     selectedOptionId: string;
@@ -50,6 +60,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
 
   function mapQuestion(q: SectionQuizQuestion): QuizQuestion {
     const sorted = [...q.options].sort((a, b) => a.orderNum - b.orderNum);
+    const hasRationales = sorted.some((o) => !o.isCorrect && o.rationale);
     return {
       id: q.id,
       question: q.question,
@@ -59,11 +70,14 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
         en: sorted.map((o) => o.text.en),
       },
       correctIndex: sorted.findIndex((o) => o.isCorrect),
+      optionRationales: hasRationales
+        ? { de: sorted.map((o) => o.rationale?.de ?? null), en: sorted.map((o) => o.rationale?.en ?? null) }
+        : null,
     };
   }
 
   function handleAnswered(isCorrect: boolean, selectedIndex: number, confidence?: AnswerConfidence) {
-    if (isCorrect) setCorrectCount((c) => c + 1);
+    setResults((r) => [...r, isCorrect]);
     setHasAnsweredCurrent(true);
     const q = questions[quizIndex];
     const sorted = [...q.options].sort((a, b) => a.orderNum - b.orderNum);
@@ -74,13 +88,12 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
     });
   }
 
-  async function handleNext() {
+  function handleNext() {
+    if (!hasAnsweredCurrent) return;
     const nextAnswers = pendingAnswer ? [...answers, pendingAnswer] : answers;
 
     if (quizIndex + 1 >= questions.length) {
       setQuizFinished(true);
-      const score = Math.round(((correctCount + (pendingAnswer ? 0 : 0)) / questions.length) * 100);
-      setFinalScore(score);
       if (offline) {
         enqueueSyncEvent(
           offline.userId,
@@ -105,58 +118,54 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, offline }:
 
   if (questions.length === 0) return null;
 
+  const correctCount = results.filter(Boolean).length;
+  const wrongCount = results.length - correctCount;
+
   if (quizFinished) {
+    const score = Math.round((correctCount / questions.length) * 100);
     return (
-      <div className="rounded-lg border border-border bg-surface p-6 text-center">
-        <p className="mb-1 text-3xl font-bold">{finalScore}%</p>
-        <p className="mb-6 text-foreground/70">
-          {correctCount} / {questions.length} correct
-        </p>
-        {offline && (
-          <p className="mb-6 text-xs text-foreground/50">
-            {locale === "de"
-              ? "Offline-Modus: Dieses Ergebnis wird synchronisiert, sobald du wieder online bist."
-              : "Offline mode: this result will sync once you're back online."}
-          </p>
-        )}
-        <Link
-          href={`/cert/${certSlug}`}
-          className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Back to certification
-        </Link>
-      </div>
+      <FocusFrame
+        exitHref={`/cert/${certSlug}`}
+        confirmLeave={false}
+        contextLabel={contextLabel ?? t.quiz.sectionQuiz}
+        mode="practice"
+        segments={results.map((r): SegmentState => (r ? "correct" : "wrong"))}
+        counterText={fmt(t.quiz.correctCount, { a: correctCount, b: questions.length })}
+      >
+        <ResultSummary
+          score={score}
+          headline={fmt(t.quiz.correctCount, { a: correctCount, b: questions.length })}
+          offlineNote={Boolean(offline)}
+          actions={[{ href: `/cert/${certSlug}`, label: t.quiz.backToCourse, primary: true }]}
+        />
+      </FocusFrame>
     );
   }
 
-  const mapped = mapQuestion(questions[quizIndex]);
+  const current = questions[quizIndex];
+  const segments: SegmentState[] = questions.map((_, i) => (i < results.length ? (results[i] ? "correct" : "wrong") : i === quizIndex ? "current" : "open"));
 
   return (
-    <div>
-      <p className="mb-3 text-sm text-foreground/60">
-        {locale === "de" ? "Frage" : "Question"} {quizIndex + 1} / {questions.length}
-      </p>
+    <FocusFrame
+      exitHref={`/cert/${certSlug}`}
+      confirmLeave={results.length > 0}
+      contextLabel={contextLabel ?? t.quiz.sectionQuiz}
+      mode="practice"
+      segments={segments}
+      counterText={fmt(t.quiz.questionXofY, { x: quizIndex + 1, y: questions.length })}
+      scoreText={fmt(t.quiz.correctWrong, { a: correctCount, b: wrongCount })}
+    >
       <QuizQuestionCard
-        key={questions[quizIndex].id}
-        question={mapped}
+        key={current.id}
+        question={mapQuestion(current)}
         onAnswered={handleAnswered}
-        sourceReference={questions[quizIndex].sourceReference}
+        sourceReference={current.sourceReference}
         askConfidence
+        onNext={handleNext}
+        nextLabel={quizIndex + 1 >= questions.length ? t.quiz.finish : t.quiz.next}
+        objectiveLabel={objectiveLabel}
+        difficulty={current.difficulty}
       />
-      <button
-        type="button"
-        onClick={handleNext}
-        disabled={!hasAnsweredCurrent}
-        className="mt-4 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {quizIndex + 1 >= questions.length
-          ? locale === "de"
-            ? "Quiz abschließen"
-            : "Finish quiz"
-          : locale === "de"
-            ? "Nächste Frage"
-            : "Next question"}
-      </button>
-    </div>
+    </FocusFrame>
   );
 }
