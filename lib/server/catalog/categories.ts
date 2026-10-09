@@ -1,6 +1,6 @@
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, courseCategories, COURSE_CATEGORY_COLORS, type CourseCategoryColor } from "@/lib/server/db/schema";
+import { certificationCategories, certifications, courseCategories, COURSE_CATEGORY_COLORS, type CourseCategoryColor } from "@/lib/server/db/schema";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import type { Localized } from "@/lib/types";
 
@@ -74,28 +74,51 @@ export async function reorderCategories(input: { ids: string[]; actorUserId: str
   await recordAuditEvent({ actorUserId: input.actorUserId, action: "course_category.reorder", targetType: "course_category", metadata: { ids: input.ids } });
 }
 
-/** Kurs einer Gruppe zuordnen (`null` = Nicht zugeordnet). Interne Firmenlernpfade sind nicht auffindbar. */
-export async function assignCategory(input: { certificationId: string; categoryId: string | null; actorUserId: string }): Promise<{ previous: string | null }> {
+/** Gruppen je Kurs (Hauptgruppe zuerst). Kurse ohne Gruppe fehlen in der Karte. */
+export async function categoryIdsByCertification(certificationIds?: string[]): Promise<Map<string, string[]>> {
   const db = getDb();
+  if (certificationIds && certificationIds.length === 0) return new Map();
+  const rows = await db
+    .select({ certificationId: certificationCategories.certificationId, categoryId: certificationCategories.categoryId, primary: certifications.categoryId })
+    .from(certificationCategories)
+    .innerJoin(certifications, eq(certifications.id, certificationCategories.certificationId))
+    .where(certificationIds ? inArray(certificationCategories.certificationId, certificationIds) : undefined);
+  const map = new Map<string, string[]>();
+  for (const r of rows) {
+    const list = map.get(r.certificationId) ?? [];
+    if (r.categoryId === r.primary) list.unshift(r.categoryId);
+    else list.push(r.categoryId);
+    map.set(r.certificationId, list);
+  }
+  return map;
+}
+
+/**
+ * Kurs den Gruppen zuordnen. Die erste Gruppe der Liste ist die Hauptgruppe (Farbe und Kurzcode der Kachel);
+ * eine leere Liste bedeutet „Nicht zugeordnet“. Interne Firmenlernpfade sind nicht auffindbar.
+ */
+export async function setCategories(input: { certificationId: string; categoryIds: string[]; actorUserId: string }): Promise<{ previous: string[] }> {
+  const db = getDb();
+  const ids = [...new Set(input.categoryIds)];
+  if (ids.length > 12) throw new CategoryError("Höchstens 12 Gruppen je Kurs.");
   const [cert] = await db
-    .select({ id: certifications.id, categoryId: certifications.categoryId })
+    .select({ id: certifications.id })
     .from(certifications)
     .where(and(eq(certifications.id, input.certificationId), eq(certifications.kind, "general")))
     .limit(1);
   if (!cert) throw new CategoryNotFoundError();
-  if (input.categoryId) {
-    const [cat] = await db.select({ id: courseCategories.id }).from(courseCategories).where(eq(courseCategories.id, input.categoryId)).limit(1);
-    if (!cat) throw new CategoryNotFoundError();
+  if (ids.length > 0) {
+    const found = await db.select({ id: courseCategories.id }).from(courseCategories).where(inArray(courseCategories.id, ids));
+    if (found.length !== ids.length) throw new CategoryNotFoundError();
   }
-  await db.update(certifications).set({ categoryId: input.categoryId }).where(eq(certifications.id, cert.id));
-  await recordAuditEvent({
-    actorUserId: input.actorUserId,
-    action: "course_category.assign",
-    targetType: "certification",
-    targetId: cert.id,
-    metadata: { from: cert.categoryId, to: input.categoryId },
+  const previous = (await categoryIdsByCertification([cert.id])).get(cert.id) ?? [];
+  await db.transaction(async (tx) => {
+    await tx.delete(certificationCategories).where(eq(certificationCategories.certificationId, cert.id));
+    if (ids.length > 0) await tx.insert(certificationCategories).values(ids.map((categoryId) => ({ certificationId: cert.id, categoryId })));
+    await tx.update(certifications).set({ categoryId: ids[0] ?? null }).where(eq(certifications.id, cert.id));
   });
-  return { previous: cert.categoryId };
+  await recordAuditEvent({ actorUserId: input.actorUserId, action: "course_category.assign", targetType: "certification", targetId: cert.id, metadata: { from: previous, to: ids } });
+  return { previous };
 }
 
 export async function countUnassigned(): Promise<number> {

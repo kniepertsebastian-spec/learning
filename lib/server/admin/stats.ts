@@ -1,4 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
+import { categoryIdsByCertification } from "@/lib/server/catalog/categories";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, objectives, sections, lessons, questions } from "@/lib/server/db/schema";
 
@@ -10,6 +11,8 @@ export interface CertificationStats {
   examName: string;
   examVersion: string;
   categoryId: string | null;
+  /** Alle Gruppen des Kurses, Hauptgruppe zuerst. */
+  categoryIds: string[];
   shortCode: string | null;
   catalogStatus: string;
   stats: {
@@ -33,6 +36,8 @@ export async function getCertificationsWithStats(): Promise<CertificationStats[]
 
   // Interne Lernpfade einer Firma sind für den Betreiber nicht sichtbar (Leitplanke Mandantentrennung).
   const allCerts = await db.select().from(certifications).where(eq(certifications.kind, "general")).orderBy(certifications.createdAt);
+
+  const groupIds = await categoryIdsByCertification();
 
   const statsPromises = allCerts.map(async (cert) => {
     const certDomains = await db.select().from(domains).where(eq(domains.certificationId, cert.id));
@@ -68,6 +73,7 @@ export async function getCertificationsWithStats(): Promise<CertificationStats[]
       examName: cert.examName,
       examVersion: cert.examVersion,
       categoryId: cert.categoryId,
+      categoryIds: groupIds.get(cert.id) ?? [],
       shortCode: cert.shortCode,
       catalogStatus: cert.catalogStatus,
       stats: {

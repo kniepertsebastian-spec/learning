@@ -40,7 +40,7 @@ import { looksLikeOutline } from "./outline";
 import { fetchSources, type FetchedSource } from "./sources";
 import { pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, courseGenerationJobDocuments } from "@/lib/server/db/schema";
+import { certificationCategories, certifications, courseGenerationJobDocuments } from "@/lib/server/db/schema";
 import { eq } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 
@@ -379,6 +379,7 @@ async function applyCourseGroup(job: { organizationId: string | null; categoryId
   if (job.organizationId || (!job.categoryId && !job.shortCode)) return;
   try {
     await getDb().update(certifications).set({ categoryId: job.categoryId, shortCode: job.shortCode }).where(eq(certifications.id, certificationId));
+    if (job.categoryId) await getDb().insert(certificationCategories).values({ certificationId, categoryId: job.categoryId }).onConflictDoNothing();
     await recordAuditEvent({ actorUserId: job.requestedByUserId, action: "course_category.assign", targetType: "certification", targetId: certificationId, metadata: { from: null, to: job.categoryId, via: "generation" } });
   } catch (error) {
     console.error("Kursgruppe konnte nicht gesetzt werden:", error);

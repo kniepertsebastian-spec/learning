@@ -274,6 +274,17 @@ export const certifications = pgTable("certifications", {
   ),
 ]);
 
+/** Zuordnung Kurs ↔ Kursgruppen (n:m). `certifications.category_id` bleibt die Hauptgruppe (Farbe, Kurzcode) und ist immer auch hier enthalten. */
+export const certificationCategories = pgTable(
+  "certification_categories",
+  {
+    certificationId: uuid("certification_id").notNull().references(() => certifications.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id").notNull().references(() => courseCategories.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.certificationId, t.categoryId] })],
+);
+
 export const domains = pgTable("domains", {
   id: uuid("id").primaryKey().defaultRandom(),
   certificationId: uuid("certification_id")
