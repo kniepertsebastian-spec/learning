@@ -48,7 +48,7 @@ export function startCourseGenerationPublish(jobId: string): void {
   activeJobs.set(jobId, processPromise);
 }
 
-const globalForRecovery = globalThis as unknown as { courseGenerationWatchdog?: ReturnType<typeof setInterval>; courseGenerationLastRecovery?: number };
+const globalForRecovery = globalThis as unknown as { courseGenerationWatchdog?: unknown; courseGenerationLastRecovery?: number };
 
 /**
  * Setzt verwaiste Aufträge fort (siehe recoverStaleCourseGenerationJobs): nach einem Neustart des Servers
@@ -74,6 +74,8 @@ export async function recoverStaleCourseGenerationJobsNow(minIntervalMs = 60_000
 export function startCourseGenerationWatchdog(): void {
   if (globalForRecovery.courseGenerationWatchdog) return;
   setTimeout(() => void recoverStaleCourseGenerationJobsNow(0), 30_000);
-  globalForRecovery.courseGenerationWatchdog = setInterval(() => void recoverStaleCourseGenerationJobsNow(0), 5 * 60_000);
-  globalForRecovery.courseGenerationWatchdog.unref?.();
+  const timer: unknown = setInterval(() => void recoverStaleCourseGenerationJobsNow(0), 5 * 60_000);
+  // Der Zeitgeber soll den Prozess nicht am Beenden hindern.
+  (timer as { unref?: () => void }).unref?.();
+  globalForRecovery.courseGenerationWatchdog = timer;
 }

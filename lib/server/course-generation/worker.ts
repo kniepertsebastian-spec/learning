@@ -391,7 +391,6 @@ export async function publishPreparedCourseGenerationPackage(jobId: string): Pro
   }
 
   try {
-    await checkNotCancelled();
     await updateCourseGenerationJob(jobId, { status: "importing", message: "Kurs wird importiert …" });
     const imported = await importCoursePackage(pkgValidation.data, job.organizationId ? plannedSlugFor(job) : undefined, importOwner(job));
     await applyCourseGroup(job, imported.certificationId);
@@ -759,6 +758,7 @@ export async function executeCourseGenerationJob(
       return;
     }
 
+    await checkNotCancelled();
     await updateCourseGenerationJob(jobId, { status: "importing", message: "Kurs wird importiert …" });
     const imported = await importCoursePackage(pkgValidation.data, job.organizationId ? plannedSlugFor(job) : undefined, importOwner(job));
     await applyCourseGroup(job, imported.certificationId);
