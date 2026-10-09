@@ -476,27 +476,30 @@ Neue Route `/company/certificates` (Firmenkontext, Nav „Zertifikate“) und im
 
 ### Ansicht Firma
 
-- [ ] Kopf: „Zertifikats-Register“, rechts „Voucher hinzufügen“ (secondary) und „Audit-Export“ (primary Bernstein, Download-Icon).
-- [ ] Datenschutz-Zeile: „Zertifikate und Prüfungstermine erscheinen hier nur, wenn die Person sie **selbst für die Firma freigibt**. Keine Punktzahlen, kein Lernstand.“
-- [ ] Vier Stat-Kacheln: Gültige Zertifikate (bei n Personen), Laufen in 90 Tagen ab (Bernstein), Abgelaufen (Koralle), Offene Voucher (davon verfallen bald).
-- [ ] **Abläufe in den nächsten 12 Monaten:** Balken pro Monat (Anzahl), nächste 3 Monate in Bernstein, spätere gedämpft, Monate ohne Ablauf als Track.
-- [ ] **Tabelle Zertifikate:** Filter „Alle / Läuft bald ab / Abgelaufen“; Spalten Person, Zertifikat (+ Anbieter), Erworben, Gültig bis (farbig nach Status), Status-Pill (Gültig / Läuft bald ab / Abgelaufen). „Läuft bald ab“ = ≤ 90 Tage. „unbegrenzt“ bei Zertifikaten ohne Ablauf.
-- [ ] **Prüfungsvoucher:** Liste mit Kurzcode, Person oder „nicht zugewiesen“, Zustand („eingelöst · Termin …“ Mint, „zugewiesen · nicht eingelöst“, „verfällt am …“ Bernstein bei ≤ 30 Tagen).
-- [ ] **Geplante Prüfungen:** nur freigegebene Termine aus `exam_plans`, „In Teamkalender exportieren“ (.ics).
-- [ ] **Audit-Export:** CSV und PDF mit Zertifikaten (freigegeben), Pflichtschulungs-Status und Stichtag; Kopf mit Firma, Erstellungsdatum, erstellender Person; Audit-Event beim Export.
+- [x] Kopf: „Zertifikats-Register“, rechts „Voucher hinzufügen“ (secondary) und „Audit-Export“ (primary Bernstein, Download-Icon).
+- [x] Datenschutz-Zeile: „Zertifikate und Prüfungstermine erscheinen hier nur, wenn die Person sie **selbst für die Firma freigibt**. Keine Punktzahlen, kein Lernstand.“
+- [x] Vier Stat-Kacheln: Gültige Zertifikate (bei n Personen), Laufen in 90 Tagen ab (Bernstein), Abgelaufen (Koralle), Offene Voucher (davon verfallen bald).
+- [x] **Abläufe in den nächsten 12 Monaten:** Balken pro Monat (Anzahl), nächste 3 Monate in Bernstein, spätere gedämpft, Monate ohne Ablauf als Track.
+- [x] **Tabelle Zertifikate:** Filter „Alle / Läuft bald ab / Abgelaufen“; Spalten Person, Zertifikat (+ Anbieter), Erworben, Gültig bis (farbig nach Status), Status-Pill (Gültig / Läuft bald ab / Abgelaufen). „Läuft bald ab“ = ≤ 90 Tage. „unbegrenzt“ bei Zertifikaten ohne Ablauf.
+- [x] **Prüfungsvoucher:** Liste mit Kurzcode, Person oder „nicht zugewiesen“, Zustand („eingelöst · Termin …“ Mint, „zugewiesen · nicht eingelöst“, „verfällt am …“ Bernstein bei ≤ 30 Tagen).
+- [x] **Geplante Prüfungen:** nur freigegebene Termine aus `exam_plans`, „In Teamkalender exportieren“ (.ics).
+- [x] **Audit-Export:** CSV und PDF mit Zertifikaten (freigegeben), Pflichtschulungs-Status und Stichtag; Kopf mit Firma, Erstellungsdatum, erstellender Person; Audit-Event beim Export.
 
 ### Ansicht Person
 
-- [ ] Eigene Zertifikate eintragen (Name aus Katalog oder frei, Anbieter, erworben am, gültig bis – vorbelegt über `validity_months`, optional Credly-/Nachweis-Link als Text), je Eintrag Schalter „Für {Firma} freigeben“.
-- [ ] Erinnerung vor Ablauf (E-Mail, 90 und 30 Tage).
+- [x] Eigene Zertifikate eintragen (Name aus Katalog oder frei, Anbieter, erworben am, gültig bis – vorbelegt über `validity_months`, optional Credly-/Nachweis-Link als Text), je Eintrag Schalter „Für {Firma} freigeben“.
+- [x] Erinnerung vor Ablauf (E-Mail, 90 und 30 Tage).
 
 ### Datenmodell
 
-- [ ] `user_certificates` (`user_id`, `certification_id` nullable, `title`, `vendor`, `earned_at`, `expires_at` nullable, `evidence_url` nullable, `shared_with_company` bool, Standard aus).
-- [ ] `exam_vouchers` (`organization_id`, `certification_id`, `assigned_user_id` nullable, `expires_at`, `redeemed_at` nullable, `note`). Der Gutscheincode selbst wird **verschlüsselt** gespeichert (bestehende `APP_ENCRYPTION_KEY`-Logik) und nur der zugewiesenen Person angezeigt.
-- [ ] Die Person sieht ihren zugewiesenen Voucher im Prüfungsplaner (U8, Status „Voucher vorhanden“).
+- [x] `user_certificates` (`user_id`, `certification_id` nullable, `title`, `vendor`, `earned_at`, `expires_at` nullable, `evidence_url` nullable, `shared_with_company` bool, Standard aus).
+- [x] `exam_vouchers` (`organization_id`, `certification_id`, `assigned_user_id` nullable, `expires_at`, `redeemed_at` nullable, `note`). Der Gutscheincode selbst wird **verschlüsselt** gespeichert (bestehende `APP_ENCRYPTION_KEY`-Logik) und nur der zugewiesenen Person angezeigt.
+- [x] Die Person sieht ihren zugewiesenen Voucher im Prüfungsplaner (U8, Status „Voucher vorhanden“).
 
 **Gate U9:** Screen 7 nachgebaut; Datenschutztest: ohne Freigabe sieht die Firma weder Zertifikat noch Termin, mit Freigabe nur die festgeschriebenen Felder; Mutationsprobe (Freigabeprüfung entfernt) fällt durch; Audit-Export enthält nur freigegebene Daten.
+
+
+**Stand Gate U9: erfüllt (geprüft), mit Abweichungen.** Geprüft: Person trägt im Browser ein Zertifikat ein und gibt es frei; Firmen-Admin sieht es in `/company/certificates` (Dunkel/Hell bei 1440, 390 px ohne horizontales Scrollen), legt einen Voucher mit Code an, lädt das CSV – der Code steht weder im CSV noch im HTML. `certificates-privacy.test.ts` (7 Tests, echte DB): ohne Freigabe weder Zertifikat noch Termin, mit Freigabe nur `COMPANY_CERTIFICATE_FIELDS` / `COMPANY_PLANNED_EXAM_FIELDS`, Mutationsprobe (Freigabefilter entfernt) fällt durch, Voucher-Code nur für die zugewiesene Person, Audit-Export nur freigegebene Daten; `company-architecture.test.ts` erlaubt die drei Tabellen nur in `lib/server/company/certificates.ts`; Konto-Export deckt die neuen Tabellen ab (Code ausgenommen); 718 Tests grün, `tsc`, `eslint` (0 Fehler), `lint:ui` ohne Zuwachs. **Abweichungen:** (1) PDF-Export mit `pdf-lib` (jetzt reguläre Abhängigkeit), schlichte Tabellen ohne Firmenlogo. (2) Ablauf-Erinnerungen (90/30 Tage) laufen im bestehenden Lauf `npm run exams:remind`, es gibt keinen eigenen Cron-Eintrag und nur mit konfiguriertem SMTP. (3) Der Voucher-Code der Person erscheint auf `/certificates` (auf Klick entschlüsselt); im Planer nur als Pille „Voucher vorhanden“. (4) Der Credly-/Nachweis-Link ist reiner Text, kein Abruf. (5) Echte Screenreader nicht geprüft.
 
 ---
 

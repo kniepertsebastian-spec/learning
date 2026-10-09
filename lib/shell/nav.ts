@@ -31,6 +31,7 @@ export type NavLabelKey =
   | "learn"
   | "catalog"
   | "examPlanner"
+  | "certificates"
   | "profile"
   | "account"
   | "companyResults"
@@ -70,6 +71,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
         { href: "/", label: "learn", icon: "home", exact: true },
         { href: "/catalog", label: "catalog", icon: "book" },
         { href: "/exams", label: "examPlanner", icon: "calendar" },
+        { href: "/certificates", label: "certificates", icon: "shield" },
         { href: "/profile", label: "profile", icon: "user" },
         { href: "/account", label: "account", icon: "shield" },
       ];
@@ -80,6 +82,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
         { href: "/company?tab=paths", label: "companyPaths", icon: "book" },
         { href: "/company?tab=work", label: "companyWork", icon: "tasks" },
         ...(opts.canAssign ? [{ href: "/company?tab=onboarding", label: "companyOnboarding" as const, icon: "users" as const }] : []),
+        { href: "/company/certificates", label: "certificates", icon: "shield" },
         { href: "/company?tab=documents", label: "companyDocuments", icon: "file" },
         ...(opts.isCompanyAdmin ? [{ href: "/company?tab=team", label: "companyTeam" as const, icon: "users" as const }] : []),
         ...(opts.isCompanyAdmin ? [{ href: "/company?tab=sso", label: "companySignIn" as const, icon: "key" as const }] : []),

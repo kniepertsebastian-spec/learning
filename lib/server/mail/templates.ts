@@ -147,3 +147,12 @@ export function examReminderMessage(to: string, input: { kind: "voucher_expiring
         : `In deinem Prüfungspaket für „${input.courseName}“ ist ein Wiederholungsversuch enthalten.`;
   return { to, subject, text: `Hallo,\n\n${body}\n\nZum Prüfungsplaner:\n\n${input.link}\n\nDiese Erinnerungen kannst du in deinem Konto abstellen.` };
 }
+
+/** Erinnerung vor Ablauf eines eigenen Zertifikats (UI U9), 90 oder 30 Tage vorher. */
+export function certificateExpiryMessage(to: string, input: { title: string; expiresAt: Date; link: string; days: 90 | 30 }): MailMessage {
+  return {
+    to,
+    subject: `Dein Zertifikat „${input.title}“ läuft in ${input.days} Tagen ab`,
+    text: `Hallo,\n\ndein Zertifikat „${input.title}“ ist bis ${input.expiresAt.toLocaleDateString("de-DE", { timeZone: "UTC" })} gültig.\n\nZu deinen Zertifikaten:\n\n${input.link}\n\nDiese Erinnerungen kannst du in deinem Konto abstellen.`,
+  };
+}

@@ -149,6 +149,54 @@ export const examPlans = pgTable(
   ],
 );
 
+/**
+ * Zertifikate einer Person (UI U9). Gehören der Person; die Firma sieht ein Zertifikat nur, wenn die Person es einzeln freigibt
+ * (`shared_with_company`, Standard aus), und nur die festgeschriebenen Felder `COMPANY_CERTIFICATE_FIELDS` – nie Punkte oder Lernstand.
+ */
+export const userCertificates = pgTable(
+  "user_certificates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    vendor: text("vendor").notNull().default(""),
+    earnedAt: timestamp("earned_at", { withTimezone: true }).notNull(),
+    /** null = unbegrenzt gültig */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    evidenceUrl: text("evidence_url"),
+    sharedWithCompany: boolean("shared_with_company").notNull().default(false),
+    /** Wann die Erinnerungen (90/30 Tage vor Ablauf) verschickt wurden. */
+    remindersSent: jsonb("reminders_sent").$type<Record<string, string>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("user_certificates_user_idx").on(table.userId)],
+);
+
+/** Prüfungsgutscheine einer Firma (UI U9). Der Code liegt verschlüsselt und wird nur der zugewiesenen Person angezeigt. */
+export const examVouchers = pgTable(
+  "exam_vouchers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    assignedUserId: uuid("assigned_user_id").references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    note: text("note").notNull().default(""),
+    codeEncrypted: text("code_encrypted"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [index("exam_vouchers_org_idx").on(table.organizationId)],
+);
+
 /** Feste Farbpalette der Kursgruppen (UI U7); die Farbe färbt Kurzcode-Kacheln in Dashboard und Prüfungsplaner. */
 export const COURSE_CATEGORY_COLORS = ["info", "mint", "warning", "danger", "violet"] as const;
 export type CourseCategoryColor = (typeof COURSE_CATEGORY_COLORS)[number];

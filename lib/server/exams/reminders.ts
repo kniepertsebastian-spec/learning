@@ -1,10 +1,11 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, examPlans, users } from "@/lib/server/db/schema";
+import { certifications, examPlans, userCertificates, users } from "@/lib/server/db/schema";
+import { certReminderStages } from "@/lib/certificates/logic";
 import { planReminders, type PlanReminder } from "@/lib/exams/plan";
 import { appUrl, isMailConfigured } from "@/lib/server/mail/config";
 import { sendMail, type MailMessage } from "@/lib/server/mail/mailer";
-import { examReminderMessage } from "@/lib/server/mail/templates";
+import { certificateExpiryMessage, examReminderMessage } from "@/lib/server/mail/templates";
 
 /** Erinnerungen des Prüfungsplaners per E-Mail. Je Plan und Art höchstens eine Mail; wer sich abgemeldet hat, bekommt keine. */
 export async function runExamReminders(now: Date = new Date(), send: (m: MailMessage) => Promise<boolean> = sendMail): Promise<{ sent: number; skipped: number }> {
@@ -29,6 +30,22 @@ export async function runExamReminders(now: Date = new Date(), send: (m: MailMes
       if (!ok) continue;
       await db.update(examPlans).set({ remindersSent: { ...r.plan.remindersSent, [kind]: now.toISOString() } }).where(and(eq(examPlans.id, r.plan.id)));
       r.plan.remindersSent[kind] = now.toISOString();
+      sent++;
+    }
+  }
+
+  // Eigene Zertifikate: 90 und 30 Tage vor Ablauf (einmal je Stufe)
+  const certRows = await db
+    .select({ cert: userCertificates, email: users.email, optOut: users.examRemindersOptOut })
+    .from(userCertificates)
+    .innerJoin(users, eq(users.id, userCertificates.userId));
+  for (const r of certRows) {
+    if (r.optOut || !r.cert.expiresAt) continue;
+    for (const stage of certReminderStages(r.cert.expiresAt, r.cert.remindersSent, now)) {
+      const ok = await send(certificateExpiryMessage(r.email, { title: r.cert.title, expiresAt: r.cert.expiresAt, days: stage === "d30" ? 30 : 90, link: isMailConfigured() ? appUrl("/certificates") : "/certificates" }));
+      if (!ok) continue;
+      await db.update(userCertificates).set({ remindersSent: { ...r.cert.remindersSent, [stage]: now.toISOString() } }).where(eq(userCertificates.id, r.cert.id));
+      r.cert.remindersSent[stage] = now.toISOString();
       sent++;
     }
   }

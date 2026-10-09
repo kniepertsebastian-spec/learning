@@ -4,6 +4,8 @@ import {
   certifications, courseCategories, domains, examAttempts, exams, examPlans, lessonCompletions, lessons, objectives, quizAttempts, quizzes, sections,
   EXAM_DELIVERY_MODES, type CourseCategoryColor, type ExamDeliveryMode, type ExamPlanStatus, type ExamProvider,
 } from "@/lib/server/db/schema";
+import { createFromPassedExam, listMyVouchers } from "@/lib/server/certificates/person";
+import { getCompanyMembership } from "@/lib/server/company/access";
 import { canViewCertification, type Viewer } from "@/lib/server/catalog/visibility";
 import { getTopWeakObjectives } from "@/lib/server/study/session-service";
 import { shortCodeOf } from "@/lib/dashboard/logic";
@@ -44,7 +46,15 @@ export async function savePlan(viewer: NonNullable<Viewer>, input: PlanInput): P
 }
 
 export async function setPlanStatus(userId: string, planId: string, status: ExamPlanStatus): Promise<void> {
-  const [row] = await getDb().update(examPlans).set({ status, updatedAt: new Date() }).where(and(eq(examPlans.id, planId), eq(examPlans.userId, userId))).returning({ id: examPlans.id });
+  const [row] = await getDb().update(examPlans).set({ status, updatedAt: new Date() }).where(and(eq(examPlans.id, planId), eq(examPlans.userId, userId))).returning({ id: examPlans.id, certificationId: examPlans.certificationId });
+  if (!row) throw new PlanNotFoundError();
+  // „Bestanden“ legt das Zertifikat der Person an (UI U9); freigegeben ist es erst, wenn sie es selbst freigibt.
+  if (status === "passed") await createFromPassedExam(userId, row.certificationId);
+}
+
+/** Termin für die Firma freigeben oder zurücknehmen (Standard: nicht freigegeben). */
+export async function setPlanShared(userId: string, planId: string, shared: boolean): Promise<void> {
+  const [row] = await getDb().update(examPlans).set({ shareWithCompany: shared, updatedAt: new Date() }).where(and(eq(examPlans.id, planId), eq(examPlans.userId, userId))).returning({ id: examPlans.id });
   if (!row) throw new PlanNotFoundError();
 }
 
@@ -67,11 +77,14 @@ export async function getOwnPlan(userId: string, planId: string) {
 export type PlannerCert = {
   id: string; slug: string; name: string; provider: string; version: string; shortCode: string; color: CourseCategoryColor;
   examProvider: ExamProvider | null; deliveryModes: ExamDeliveryMode[]; bookingUrl: string | null; testCenterUrl: string | null; successorNote: string | null;
-  plan: null | { id: string; scheduledAt: string | null; deliveryMode: ExamDeliveryMode | null; voucherExpiresAt: string | null; retakeIncluded: boolean; weeklyGoalHours: number; status: ExamPlanStatus };
+  hasVoucher: boolean;
+  plan: null | { id: string; shareWithCompany: boolean; scheduledAt: string | null; deliveryMode: ExamDeliveryMode | null; voucherExpiresAt: string | null; retakeIncluded: boolean; weeklyGoalHours: number; status: ExamPlanStatus };
 };
 
 export interface PlannerOverview {
   certs: PlannerCert[];
+  /** Name der eigenen Firma (für „Termin für die Firma freigeben“); null ohne Firma. */
+  companyName: string | null;
   next: null | { cert: PlannerCert; daysLeft: number };
   readiness: { scores: Array<number | null>; reached: number; ready: boolean };
   weeks: Array<PlanWeek & { doneLessons: number; current: boolean; past: boolean }>;
@@ -114,18 +127,22 @@ export async function studyWeeksFor(userId: string, certificationId: string, exa
 /** Alles für `/exams`. */
 export async function getPlannerOverview(viewer: NonNullable<Viewer>, visibleCondition: import("drizzle-orm").SQL | undefined, now: Date = new Date()): Promise<PlannerOverview> {
   const db = getDb();
-  const [certRows, categories, plans] = await Promise.all([
+  const [certRows, categories, plans, vouchers, membership] = await Promise.all([
     db.select().from(certifications).where(visibleCondition).orderBy(asc(certifications.name)),
     db.select({ id: courseCategories.id, color: courseCategories.color }).from(courseCategories),
     db.select().from(examPlans).where(and(eq(examPlans.userId, viewer.id), inArray(examPlans.status, ["planned", "failed"]))).orderBy(desc(examPlans.updatedAt)),
+    listMyVouchers(viewer.id),
+    getCompanyMembership(viewer.id),
   ]);
+  const voucherCerts = new Set(vouchers.filter((v) => !v.redeemedAt && v.expiresAt.getTime() >= now.getTime()).map((v) => v.certificationId));
   const colorOf = new Map(categories.map((c) => [c.id, c.color]));
   const certs: PlannerCert[] = certRows.map((c) => {
     const p = plans.find((x) => x.certificationId === c.id);
     return {
       id: c.id, slug: c.slug, name: c.name, provider: c.provider, version: c.examVersion, shortCode: shortCodeOf(c.name, c.shortCode), color: (c.categoryId && colorOf.get(c.categoryId)) || "info",
       examProvider: c.examProvider, deliveryModes: c.deliveryModes, bookingUrl: c.bookingUrl, testCenterUrl: c.testCenterUrl, successorNote: c.successorNote,
-      plan: p ? { id: p.id, scheduledAt: p.scheduledAt?.toISOString() ?? null, deliveryMode: p.deliveryMode, voucherExpiresAt: p.voucherExpiresAt?.toISOString() ?? null, retakeIncluded: p.retakeIncluded, weeklyGoalHours: p.weeklyGoalHours, status: p.status } : null,
+      hasVoucher: voucherCerts.has(c.id),
+      plan: p ? { id: p.id, shareWithCompany: p.shareWithCompany, scheduledAt: p.scheduledAt?.toISOString() ?? null, deliveryMode: p.deliveryMode, voucherExpiresAt: p.voucherExpiresAt?.toISOString() ?? null, retakeIncluded: p.retakeIncluded, weeklyGoalHours: p.weeklyGoalHours, status: p.status } : null,
     };
   });
 
@@ -155,5 +172,5 @@ export async function getPlannerOverview(viewer: NonNullable<Viewer>, visibleCon
     if (p?.status === "failed" && p.retakeIncluded) reminders.push({ kind: "retake", certName: c.name, detail: null });
     if (p && c.successorNote) reminders.push({ kind: "successor", certName: c.name, detail: c.successorNote });
   }
-  return { certs, next, readiness: { scores: readiness(scores).last, reached: readiness(scores).reached, ready: readiness(scores).ready }, weeks, overflowMinutes, reminders };
+  return { certs, companyName: membership?.organizationName ?? null, next, readiness: { scores: readiness(scores).last, reached: readiness(scores).reached, ready: readiness(scores).ready }, weeks, overflowMinutes, reminders };
 }

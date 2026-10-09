@@ -43,6 +43,11 @@ export function ExamPlanner({ data }: { data: PlannerOverview }) {
     }
   }
 
+  async function share(id: string, shared: boolean) {
+    await fetch(`/api/exam-plans/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shareWithCompany: shared }) });
+    router.refresh();
+  }
+
   const modeText = (m: string | null) => (m === "online" ? p.modeOnline : m === "test_center" ? p.modeCenter : null);
   const weeklyHours = next?.cert.plan?.weeklyGoalHours ?? 5;
 
@@ -87,6 +92,12 @@ export function ExamPlanner({ data }: { data: PlannerOverview }) {
                   <Button asChild size="sm" variant="secondary"><a href={`/api/exam-plans/${next.cert.plan!.id}/ics?study=1`}>{p.toCalendarStudy}</a></Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditFor({ cert: next.cert })}>{p.editDate}</Button>
                 </div>
+                {data.companyName && (
+                  <label className="mt-3 flex items-center gap-2 text-sm">
+                    <input type="checkbox" className="h-4 w-4" checked={next.cert.plan!.shareWithCompany} onChange={(e) => void share(next.cert.plan!.id, e.target.checked)} data-testid="share-plan" />
+                    {fmt(p.shareFor, { name: data.companyName })}
+                  </label>
+                )}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button size="sm" variant="ghost" disabled={busy} onClick={() => void patch(next.cert.plan!.id, "passed")}>{p.markPassed}</Button>
                   <Button size="sm" variant="ghost" disabled={busy} onClick={() => void patch(next.cert.plan!.id, "failed")}>{p.markFailed}</Button>
@@ -163,7 +174,7 @@ export function ExamPlanner({ data }: { data: PlannerOverview }) {
           <ul className="flex flex-col gap-2">
             {data.certs.map((c) => {
               const planned = c.plan?.scheduledAt;
-              const pill = planned ? <Badge tone="mint">{p.stPlannedPill}</Badge> : c.plan?.voucherExpiresAt ? <Badge tone="info">{p.stVoucher}</Badge> : <Badge tone="neutral">{p.stNotPlanned}</Badge>;
+              const pill = planned ? <Badge tone="mint">{p.stPlannedPill}</Badge> : c.hasVoucher || c.plan?.voucherExpiresAt ? <Badge tone="info">{p.stVoucher}</Badge> : <Badge tone="neutral">{p.stNotPlanned}</Badge>;
               const link = c.testCenterUrl ?? c.bookingUrl;
               return (
                 <li key={c.id}>

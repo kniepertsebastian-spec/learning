@@ -48,6 +48,10 @@ const ALLOWED_TABLES = new Set([
   // Kursgruppen der Firma (UI U6): Zusammenstellungen von Kursen, keine Lerndaten
   "companyCourseGroups",
   "companyCourseGroupItems",
+  // Zertifikats-Register (UI U9): nur über lib/server/company/certificates.ts (siehe Test unten) und nur freigegebene Daten
+  "userCertificates",
+  "examPlans",
+  "examVouchers",
 ]);
 // Erlaubte Imports aus lib/server/* (alles andere, z. B. progress, quiz, remediation, exam, study, sync, analytics, review, sections, offline, ai, admin, wäre ein Zugriff auf Lerndetails).
 // "audit/service" schreibt nur Audit-Ereignisse, "email" normalisiert Adressen, "auth-rate-limit"
@@ -141,5 +145,27 @@ describe("Firmenbereich liest keine Lerndetails", () => {
       "practiceConfirmed",
       "practiceTotal",
     ]);
+  });
+});
+
+describe("Zertifikatsdaten der Personen (UI U9)", () => {
+  it("die festgeschriebenen Felder: Zertifikate, geplante Prüfungen, Gutscheine (neue Felder = bewusste Entscheidung)", async () => {
+    const { COMPANY_CERTIFICATE_FIELDS, COMPANY_PLANNED_EXAM_FIELDS, COMPANY_VOUCHER_FIELDS } = await import("./certificates");
+    expect([...COMPANY_CERTIFICATE_FIELDS]).toEqual(["id", "memberName", "memberEmail", "title", "vendor", "earnedAt", "expiresAt", "status"]);
+    expect([...COMPANY_PLANNED_EXAM_FIELDS]).toEqual(["id", "memberName", "memberEmail", "certification", "scheduledAt"]);
+    expect([...COMPANY_VOUCHER_FIELDS]).toEqual(["id", "certification", "assignedTo", "expiresAt", "redeemedAt", "note", "state", "hasCode"]);
+  });
+
+  it("nur lib/server/company/certificates.ts liest user_certificates, exam_plans und exam_vouchers", () => {
+    const guarded = ["userCertificates", "examPlans", "examVouchers"];
+    const offenders: string[] = [];
+    for (const scope of SCOPES) {
+      for (const file of sourceFiles(scope)) {
+        if (file.endsWith("lib/server/company/certificates.ts")) continue;
+        const source = readFileSync(file, "utf8");
+        for (const table of guarded) if (new RegExp(`\\b${table}\\b`).test(source)) offenders.push(`${path.relative(ROOT, file)}: ${table}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });
