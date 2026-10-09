@@ -2,7 +2,7 @@
 
 import { ArrowRight, Flame } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, Overline } from "@/components/ui/card";
@@ -39,10 +39,10 @@ const LIGHT_DOT: Record<DomainLight, string> = { strong: "bg-mint", practice: "b
 /** Geschätzte Minuten je fälliger Karte (Richtwert, kein gemessener Wert). */
 const MINUTES_PER_CARD = 0.6;
 
-function useGreetingPart() {
-  const [part, setPart] = useState<ReturnType<typeof greetingPart> | null>(null);
-  useEffect(() => setPart(greetingPart(new Date().getHours())), []);
-  return part;
+const noopSubscribe = () => () => {};
+/** Tageszeit aus der Browseruhr; auf dem Server `null` (neutrale Begrüßung), danach ohne Zwischenzustand. */
+function useGreetingPart(): ReturnType<typeof greetingPart> | null {
+  return useSyncExternalStore(noopSubscribe, () => greetingPart(new Date().getHours()), () => null);
 }
 
 function ago(iso: string | null, t: ReturnType<typeof useLocale>["t"]): string | null {
