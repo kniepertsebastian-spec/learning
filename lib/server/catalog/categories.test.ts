@@ -14,7 +14,7 @@ import { auditEvents, certifications, courseCategories, organizations, users } f
 import { PUT as assignPut } from "@/app/api/admin/certifications/[certId]/category/route";
 import { GET as listGet, POST as createPost } from "@/app/api/admin/course-categories/route";
 import { PATCH as renamePatch } from "@/app/api/admin/course-categories/[id]/route";
-import { assignCategory, CategoryError, CategoryNotFoundError, createCategory, listCategories, renameCategory, reorderCategories, slugifyName } from "./categories";
+import { setCategories, categoryIdsByCertification, CategoryError, CategoryNotFoundError, createCategory, listCategories, renameCategory, reorderCategories, slugifyName } from "./categories";
 
 const run = TEST_DB ? describe : describe.skip;
 const tag = randomUUID().slice(0, 8);
@@ -66,19 +66,40 @@ run("Kursgruppen (echte DB)", () => {
     const cat = await createCategory({ name: { de: `Neu ${tag}`, en: `New ${tag}` }, color: "mint", actorUserId: ids.admin });
     catIds.push(cat.id);
     await renameCategory({ id: cat.id, name: { de: `Neu2 ${tag}`, en: `New2 ${tag}` }, actorUserId: ids.admin });
-    const { previous } = await assignCategory({ certificationId: ids.gen, categoryId: cat.id, actorUserId: ids.admin });
-    expect(previous).toBeNull();
+    const { previous } = await setCategories({ certificationId: ids.gen, categoryIds: [cat.id], actorUserId: ids.admin });
+    expect(previous).toEqual([]);
     const [c] = await getDb().select({ categoryId: certifications.categoryId }).from(certifications).where(eq(certifications.id, ids.gen));
     expect(c.categoryId).toBe(cat.id);
-    const back = await assignCategory({ certificationId: ids.gen, categoryId: previous, actorUserId: ids.admin });
-    expect(back.previous).toBe(cat.id);
+    const back = await setCategories({ certificationId: ids.gen, categoryIds: previous, actorUserId: ids.admin });
+    expect(back.previous).toEqual([cat.id]);
     const actions = (await getDb().select({ a: auditEvents.action }).from(auditEvents).where(and(eq(auditEvents.actorUserId, ids.admin)))).map((r) => r.a);
     expect(actions).toEqual(expect.arrayContaining(["course_category.create", "course_category.rename", "course_category.assign"]));
   });
 
+  it("mehrere Gruppen je Kurs: erste ist Hauptgruppe, Rest bleibt erhalten, Entfernen funktioniert", async () => {
+    const a = await createCategory({ name: { de: `A ${tag}`, en: `A ${tag}` }, color: "info", actorUserId: ids.admin });
+    const b = await createCategory({ name: { de: `B ${tag}`, en: `B ${tag}` }, color: "mint", actorUserId: ids.admin });
+    catIds.push(a.id, b.id);
+    await setCategories({ certificationId: ids.gen, categoryIds: [b.id, a.id, a.id], actorUserId: ids.admin });
+    const [row] = await getDb().select({ categoryId: certifications.categoryId }).from(certifications).where(eq(certifications.id, ids.gen));
+    expect(row.categoryId).toBe(b.id);
+    expect((await categoryIdsByCertification([ids.gen])).get(ids.gen)).toEqual([b.id, a.id]);
+    await setCategories({ certificationId: ids.gen, categoryIds: [a.id], actorUserId: ids.admin });
+    expect((await categoryIdsByCertification([ids.gen])).get(ids.gen)).toEqual([a.id]);
+    await setCategories({ certificationId: ids.gen, categoryIds: [], actorUserId: ids.admin });
+    expect((await categoryIdsByCertification([ids.gen])).get(ids.gen)).toBeUndefined();
+    const [after] = await getDb().select({ categoryId: certifications.categoryId }).from(certifications).where(eq(certifications.id, ids.gen));
+    expect(after.categoryId).toBeNull();
+  });
+
+  it("die üblichen IT-Gruppen (inkl. AI) sind durch die Migration angelegt", async () => {
+    const slugs = (await listCategories()).map((c) => c.slug);
+    for (const s of ["cloud", "security", "networking", "kubernetes-und-containers", "devops-und-automation", "databases-und-data", "development", "ai-und-machine-learning", "ai-und-generative-ai", "it-service-und-governance", "project-und-agile", "vendor-ecosystems"]) expect(slugs).toContain(s);
+  });
+
   it("interne Firmenlernpfade lassen sich nicht zuordnen, unbekannte Gruppen auch nicht", async () => {
-    await expect(assignCategory({ certificationId: ids.internal, categoryId: null, actorUserId: ids.admin })).rejects.toBeInstanceOf(CategoryNotFoundError);
-    await expect(assignCategory({ certificationId: ids.gen, categoryId: randomUUID(), actorUserId: ids.admin })).rejects.toBeInstanceOf(CategoryNotFoundError);
+    await expect(setCategories({ certificationId: ids.internal, categoryIds: [], actorUserId: ids.admin })).rejects.toBeInstanceOf(CategoryNotFoundError);
+    await expect(setCategories({ certificationId: ids.gen, categoryIds: [randomUUID()], actorUserId: ids.admin })).rejects.toBeInstanceOf(CategoryNotFoundError);
   });
 
   it("Reihenfolge muss alle Gruppen genau einmal enthalten", async () => {
@@ -109,6 +130,8 @@ run("Kursgruppen (echte DB)", () => {
     expect((await createPost(json({ name: { de: "a", en: "a" }, color: "pink" }))).status).toBe(400);
     const res = await assignPut(json({ categoryId: cat.id }), ctx({ certId: ids.gen }));
     expect(res.status).toBe(200);
+    expect((await assignPut(json({ categoryIds: [cat.id, "nicht-uuid"] }), ctx({ certId: ids.gen }))).status).toBe(400);
+    expect((await assignPut(json({ categoryIds: [cat.id] }), ctx({ certId: ids.gen }))).status).toBe(200);
     expect((await assignPut(json({ categoryId: null }), ctx({ certId: ids.internal }))).status).toBe(404);
   });
 });

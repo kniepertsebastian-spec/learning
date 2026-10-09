@@ -16,7 +16,9 @@ export default async function AdminDashboard() {
         name: c.name,
         provider: c.provider,
         examVersion: c.examVersion,
+        courseType: c.courseType,
         categoryId: c.categoryId,
+        categoryIds: c.categoryIds,
         shortCode: c.shortCode,
         stats: { domains: c.stats.domains, lessons: c.stats.lessons, questions: c.stats.questions },
       }))}

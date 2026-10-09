@@ -25,7 +25,10 @@ export interface CatalogCert {
   name: string;
   provider: string;
   examVersion: string;
+  courseType: "certification" | "custom";
   categoryId: string | null;
+  /** Alle Gruppen, Hauptgruppe zuerst. */
+  categoryIds: string[];
   shortCode: string | null;
   stats: { domains: number; lessons: number; questions: number };
 }
@@ -65,26 +68,27 @@ export function AdminCatalog({
   const [filter, setFilter] = useState<string>("all");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [pick, setPick] = useState<CatalogCert | null>(null);
   const [dialog, setDialog] = useState<null | { kind: "new" } | { kind: "rename"; group: CatalogGroup } | { kind: "order" }>(null);
 
   const colorLabel: Record<CourseCategoryColor, string> = { info: ac.colorInfo, mint: ac.colorMint, warning: ac.colorWarning, danger: ac.colorDanger, violet: ac.colorViolet };
-  const byGroup = (id: string | null) => certs.filter((c) => c.categoryId === id);
+  const byGroup = (id: string | null) => certs.filter((c) => (id === null ? c.categoryIds.length === 0 : c.categoryIds.includes(id)));
   const unassigned = byGroup(null);
   const visibleGroups = filter === "all" ? groups : groups.filter((g) => g.id === filter);
   const showUnassigned = unassigned.length > 0 && (filter === "all" || filter === "none");
 
-  async function move(cert: CatalogCert, categoryId: string | null, silent = false) {
-    const before = cert.categoryId;
-    const res = await api(`/api/admin/certifications/${cert.id}/category`, "PUT", { categoryId });
+  async function move(cert: CatalogCert, categoryIds: string[], silent = false) {
+    const before = cert.categoryIds;
+    const res = await api(`/api/admin/certifications/${cert.id}/category`, "PUT", { categoryIds });
     if (!res.ok) {
       toast.error(ac.moveFailed);
       return;
     }
     router.refresh();
     if (silent) return;
-    const target = groups.find((g) => g.id === categoryId);
-    toast(fmt(ac.moved, { name: cert.name, group: target ? target.name[locale] : ac.unassigned }), {
-      action: { label: ac.undo, onClick: () => void move({ ...cert, categoryId }, before, true) },
+    const names = categoryIds.map((id) => groups.find((g) => g.id === id)?.name[locale]).filter(Boolean).join(", ");
+    toast(fmt(ac.moved, { name: cert.name, group: names || ac.unassigned }), {
+      action: { label: ac.undo, onClick: () => void move({ ...cert, categoryIds }, before, true) },
     });
   }
 
@@ -138,14 +142,14 @@ export function AdminCatalog({
                   <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: "rename", group: g })}>{ac.rename}</Button>
                   <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: "order" })}>{ac.reorder}</Button>
                 </div>
-                <CertRows list={list} groups={groups} onMove={move} />
+                <CertRows list={list} groups={groups} onEdit={setPick} />
               </section>
             );
           })}
           {showUnassigned && (
             <section aria-label={ac.unassigned} data-testid="group-none">
               <h2 className="mb-2 text-base font-semibold">{ac.unassigned}</h2>
-              <CertRows list={unassigned} groups={groups} onMove={move} />
+              <CertRows list={unassigned} groups={groups} onEdit={setPick} />
             </section>
           )}
         </div>
@@ -197,6 +201,7 @@ export function AdminCatalog({
         </SheetContent>
       </Sheet>
 
+      <GroupPicker cert={pick} groups={groups} onClose={() => setPick(null)} onSave={(c, ids) => { setPick(null); void move(c, ids); }} />
       <GroupDialogs dialog={dialog} onClose={() => setDialog(null)} groups={groups} colorLabel={colorLabel} />
     </div>
   );
@@ -210,7 +215,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-function CertRows({ list, groups, onMove }: { list: CatalogCert[]; groups: CatalogGroup[]; onMove: (c: CatalogCert, categoryId: string | null) => void }) {
+function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: CatalogGroup[]; onEdit: (c: CatalogCert) => void }) {
   const { locale, t } = useLocale();
   const ac = t.admin_catalog;
   if (list.length === 0) return <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-faint">—</p>;
@@ -225,25 +230,18 @@ function CertRows({ list, groups, onMove }: { list: CatalogCert[]; groups: Catal
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold">{c.name}</p>
                   <Badge tone={ready ? "mint" : "warning"}>{ready ? ac.statusReady : ac.statusMissing}</Badge>
+                  {c.courseType === "custom" && <Badge tone="info">{ac.typeCustom}</Badge>}
                 </div>
                 <p className="mt-0.5 font-mono text-[11.5px] text-subtle">{c.provider} · {c.examVersion}</p>
                 <p className="mt-1 text-xs text-faint">{fmt(ac.stats, { d: c.stats.domains, l: c.stats.lessons, q: c.stats.questions })}</p>
               </div>
-              <label className="flex items-center gap-2 text-xs text-subtle">
-                <span>{ac.group}</span>
-                <select
-                  value={c.categoryId ?? ""}
-                  onChange={(e) => onMove(c, e.target.value || null)}
-                  aria-label={`${ac.group}: ${c.name}`}
-                  data-testid={`group-select-${c.slug}`}
-                  className="min-h-9 rounded-md border border-border-strong bg-control px-2 text-sm text-foreground"
-                >
-                  <option value="">{ac.unassigned}</option>
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name[locale]}</option>
-                  ))}
-                </select>
-              </label>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-subtle" data-testid={`groups-${c.slug}`}>
+                {c.categoryIds.length === 0 ? <span>{ac.unassigned}</span> : c.categoryIds.map((id, i) => {
+                  const g = groups.find((x) => x.id === id);
+                  return g ? <span key={id} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5", TILE[g.color])} title={i === 0 ? ac.mainGroup : undefined}>{g.name[locale]}{i === 0 && c.categoryIds.length > 1 ? " ★" : ""}</span> : null;
+                })}
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => onEdit(c)} aria-label={fmt(ac.editGroupsFor, { name: c.name })} data-testid={`group-edit-${c.slug}`}>{ac.editGroups}</Button>
               <Button asChild variant="secondary" size="sm">
                 <Link href={`/admin/certifications/${c.slug}`}>{ac.open}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
               </Button>
@@ -252,6 +250,47 @@ function CertRows({ list, groups, onMove }: { list: CatalogCert[]; groups: Catal
         );
       })}
     </ul>
+  );
+}
+
+function GroupPicker({ cert, groups, onClose, onSave }: { cert: CatalogCert | null; groups: CatalogGroup[]; onClose: () => void; onSave: (c: CatalogCert, ids: string[]) => void }) {
+  const { locale, t } = useLocale();
+  const ac = t.admin_catalog;
+  const [ids, setIds] = useState<string[]>([]);
+  const [lastKey, setLastKey] = useState("");
+  const key = cert?.id ?? "";
+  if (key !== lastKey) {
+    setLastKey(key);
+    setIds(cert?.categoryIds ?? []);
+  }
+  const toggle = (id: string) => setIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  return (
+    <Dialog open={cert !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent closeLabel={t.quiz.close}>
+        <DialogTitle>{cert ? fmt(ac.editGroupsFor, { name: cert.name }) : ac.editGroups}</DialogTitle>
+        <DialogDescription>{ac.groupsHelp}</DialogDescription>
+        <ul className="mt-4 flex max-h-[50vh] flex-col gap-1.5 overflow-y-auto" data-testid="group-picker">
+          {groups.map((g) => {
+            const on = ids.includes(g.id);
+            const main = ids[0] === g.id;
+            return (
+              <li key={g.id} className="flex items-center gap-2 rounded-lg border border-border bg-surface-inset px-3 py-2 text-sm">
+                <label className="flex min-h-9 flex-1 items-center gap-2">
+                  <input type="checkbox" checked={on} onChange={() => toggle(g.id)} data-testid={`pick-${g.id}`} className="h-4 w-4" />
+                  <span className={cn("h-2 w-2 rounded-full", DOT[g.color])} aria-hidden="true" />
+                  {g.name[locale]}
+                </label>
+                {main ? <Badge tone="mint">{ac.mainGroup}</Badge> : on ? <Button variant="ghost" size="sm" onClick={() => setIds((cur) => [g.id, ...cur.filter((x) => x !== g.id)])}>{ac.makeMain}</Button> : null}
+              </li>
+            );
+          })}
+        </ul>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>{ac.cancel}</Button>
+          <Button onClick={() => cert && onSave(cert, ids)} data-testid="group-pick-save">{ac.save}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

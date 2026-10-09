@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/cn";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
@@ -80,6 +81,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
   const steps = [ac.wizBasis, ac.wizSources, ac.wizBudget, ac.wizReview];
   const formRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState(0);
+  const [courseType, setCourseType] = useState<"certification" | "custom">("certification");
   const [summary, setSummary] = useState<{ title: string; provider: string; version: string; group: string; budget: string; limit: string; autoPublish: boolean } | null>(null);
   const router = useRouter();
   const online = useOnlineStatus();
@@ -100,7 +102,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     const form = formRef.current;
     if (form && target > step) {
       const data = new FormData(form);
-      const missingBasis = !String(data.get("courseTitle") ?? "").trim() || !String(data.get("courseDescription") ?? "").trim() || !String(data.get("provider") ?? "").trim();
+      const missingBasis = !String(data.get("courseTitle") ?? "").trim() || !String(data.get("courseDescription") ?? "").trim() || (courseType === "certification" && !String(data.get("provider") ?? "").trim());
       if (target >= 1 && missingBasis) {
         setStep(0);
         setRequestError(ac.needBasis);
@@ -118,7 +120,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       const cat = categories.find((c) => c.id === data.get("categoryId"));
       setSummary({
         title: String(data.get("courseTitle") ?? ""),
-        provider: String(data.get("provider") ?? ""),
+        provider: courseType === "custom" ? ac.typeCustom : String(data.get("provider") ?? ""),
         version: String(data.get("certificationVersion") ?? ""),
         group: cat ? cat.name[locale] : ac.noGroup,
         budget: String(data.get("initialCostLimitUsd") ?? ""),
@@ -206,8 +208,9 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       courseTitle: form.get("courseTitle"),
       courseDescription: form.get("courseDescription"),
       language: form.get("language"),
-      provider: form.get("provider"),
-      certificationVersion: form.get("certificationVersion") || undefined,
+      courseType,
+      provider: courseType === "custom" ? "" : form.get("provider"),
+      certificationVersion: courseType === "custom" ? undefined : form.get("certificationVersion") || undefined,
       shortCode: String(form.get("shortCode") ?? "").trim() || undefined,
       categoryId: String(form.get("categoryId") ?? "") || undefined,
       sourceUrls,
@@ -329,9 +332,21 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           </ol>
 
           <div className={step === 0 ? "space-y-3" : "hidden"}>
+            <fieldset>
+              <legend className="mb-1 text-sm font-medium">{ac.trainingFor}</legend>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={ac.trainingFor}>
+                {(["certification", "custom"] as const).map((type) => (
+                  <button key={type} type="button" role="radio" aria-checked={courseType === type} onClick={() => setCourseType(type)} data-testid={`course-type-${type}`}
+                    className={cn("rounded-lg border px-3 py-2 text-left text-sm", courseType === type ? "border-foreground bg-surface-2" : "border-border-strong text-muted hover:text-foreground")}>
+                    <span className="block font-medium">{type === "certification" ? ac.typeCertification : ac.typeCustom}</span>
+                    <span className="block text-xs text-subtle">{type === "certification" ? ac.typeCertificationHint : ac.typeCustomHint}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <label className="block text-sm">
               <span className="mb-1 block font-medium">{ac.fieldTitle}</span>
-              <input name="courseTitle" required placeholder="AWS Solutions Architect Associate" className={fieldClass} />
+              <input name="courseTitle" required placeholder={courseType === "custom" ? ac.titleCustomPlaceholder : "AWS Solutions Architect Associate"} className={fieldClass} />
             </label>
             <label className="block text-sm">
               <span className="mb-1 block font-medium">{ac.fieldDescription}</span>
@@ -345,16 +360,20 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                   <option value="en">English</option>
                 </select>
               </label>
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium">{ac.fieldProvider}</span>
-                <input name="provider" required placeholder="AWS" className={fieldClass} />
-              </label>
+              {courseType === "certification" && (
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium">{ac.fieldProvider}</span>
+                  <input name="provider" required placeholder="AWS" className={fieldClass} />
+                </label>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium">{ac.fieldVersion} <span className="font-normal text-faint">{ac.optional}</span></span>
-                <input name="certificationVersion" placeholder="SAA-C03" className={fieldClass} />
-              </label>
+              {courseType === "certification" && (
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium">{ac.fieldVersion} <span className="font-normal text-faint">{ac.optional}</span></span>
+                  <input name="certificationVersion" placeholder="SAA-C03" className={fieldClass} />
+                </label>
+              )}
               <label className="block text-sm">
                 <span className="mb-1 block font-medium">{ac.fieldShortCode} <span className="font-normal text-faint">{ac.optional}</span></span>
                 <input name="shortCode" maxLength={6} placeholder="AWS" className={`${fieldClass} font-mono`} />

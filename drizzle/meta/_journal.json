@@ -379,6 +379,20 @@
       "when": 1791539734961,
       "tag": "0053_certificates_vouchers",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791572055054,
+      "tag": "0054_certification_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1791572312821,
+      "tag": "0055_course_type",
+      "breakpoints": true
     }
   ]
 }

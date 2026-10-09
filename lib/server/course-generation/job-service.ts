@@ -23,6 +23,8 @@ export interface CreateCourseGenerationJobInput {
   language: "de" | "en";
   provider: string;
   certificationVersion?: string;
+  /** Standard: Zertifikatskurs. "custom" = individuelles Training (freies Thema, keine Prüfung). */
+  courseType?: "certification" | "custom";
   sourceUrls: string[];
   autoPublish: boolean;
   initialCostLimitUsd: number;
@@ -80,7 +82,8 @@ export async function createCourseGenerationJob(
       courseDescription: input.courseDescription,
       language: input.language,
       provider: input.provider,
-      certificationVersion: input.certificationVersion,
+      certificationVersion: input.courseType === "custom" ? undefined : input.certificationVersion,
+      courseType: input.courseType ?? "certification",
       sourceUrls: input.sourceUrls,
       organizationId: input.organizationId,
       documentId: input.documentId,

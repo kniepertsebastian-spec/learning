@@ -19,7 +19,9 @@ const createJobSchema = z.object({
   courseTitle: z.string().min(1).max(200),
   courseDescription: z.string().min(1).max(2000),
   language: z.enum(["de", "en"]),
-  provider: z.string().min(1).max(100),
+  courseType: z.enum(["certification", "custom"]).default("certification"),
+  /** Pflicht beim Zertifikatskurs; beim individuellen Training optional (Standard: „Individuell“). */
+  provider: z.string().trim().max(100).default(""),
   certificationVersion: z.string().min(1).max(50).optional(),
   sourceUrls: z.array(z.string().url()).min(1).max(MAX_SOURCE_URLS),
   autoPublish: z.boolean().default(false),
@@ -28,7 +30,7 @@ const createJobSchema = z.object({
   categoryId: z.string().uuid().optional(),
   shortCode: z.string().trim().min(1).max(6).optional(),
   blueprintProvider: z.enum(["anthropic-sonnet", "claude-routine-sonnet"]).default("anthropic-sonnet"),
-});
+}).refine((v) => v.courseType === "custom" || v.provider.length > 0, { message: "Anbieter ist beim Zertifikatskurs Pflicht.", path: ["provider"] });
 
 /**
  * course_generation.md Abschnitt 7: Admin-API.
@@ -93,8 +95,9 @@ export async function POST(request: Request) {
       courseTitle: input.courseTitle,
       courseDescription: input.courseDescription,
       language: input.language,
-      provider: input.provider,
+      provider: input.provider || (input.language === "de" ? "Individuell" : "Custom"),
       certificationVersion: input.certificationVersion,
+      courseType: input.courseType,
       sourceUrls: input.sourceUrls,
       autoPublish: input.autoPublish,
       initialCostLimitUsd: input.initialCostLimitUsd,

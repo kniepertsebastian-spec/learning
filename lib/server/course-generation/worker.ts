@@ -40,7 +40,7 @@ import { looksLikeOutline } from "./outline";
 import { fetchSources, type FetchedSource } from "./sources";
 import { pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, courseGenerationJobDocuments } from "@/lib/server/db/schema";
+import { certificationCategories, certifications, courseGenerationJobDocuments } from "@/lib/server/db/schema";
 import { eq } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 
@@ -375,10 +375,13 @@ export async function publishPreparedCourseGenerationPackage(jobId: string): Pro
 }
 
 /** UI U7: Kursgruppe und Kurzcode aus dem Auftrag auf den fertigen allgemeinen Kurs übertragen (auditiert). Ein Fehler hier stoppt den Import nicht. */
-async function applyCourseGroup(job: { organizationId: string | null; categoryId: string | null; shortCode: string | null; requestedByUserId: string | null }, certificationId: string): Promise<void> {
-  if (job.organizationId || (!job.categoryId && !job.shortCode)) return;
+async function applyCourseGroup(job: { organizationId: string | null; courseType: "certification" | "custom"; categoryId: string | null; shortCode: string | null; requestedByUserId: string | null }, certificationId: string): Promise<void> {
+  if (job.organizationId) return;
   try {
+    if (job.courseType === "custom") await getDb().update(certifications).set({ courseType: "custom" }).where(eq(certifications.id, certificationId));
+    if (!job.categoryId && !job.shortCode) return;
     await getDb().update(certifications).set({ categoryId: job.categoryId, shortCode: job.shortCode }).where(eq(certifications.id, certificationId));
+    if (job.categoryId) await getDb().insert(certificationCategories).values({ certificationId, categoryId: job.categoryId }).onConflictDoNothing();
     await recordAuditEvent({ actorUserId: job.requestedByUserId, action: "course_category.assign", targetType: "certification", targetId: certificationId, metadata: { from: null, to: job.categoryId, via: "generation" } });
   } catch (error) {
     console.error("Kursgruppe konnte nicht gesetzt werden:", error);
@@ -501,6 +504,7 @@ export async function executeCourseGenerationJob(
         outline,
         provider: job.provider,
         certificationVersion: job.certificationVersion ?? undefined,
+        courseType: job.courseType,
         sources,
       },
       (usage) => {

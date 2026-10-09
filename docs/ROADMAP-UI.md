@@ -560,3 +560,10 @@ Ein UI-Punkt ist erst erledigt, wenn alles davon stimmt:
 - [ ] Leere Zustände, Ladezustände (`Skeleton`) und Fehlerzustände gestaltet.
 - [ ] Bestehende Tests grün, neue Logik mit Tests; Datenschutz- und Architektur-Tests bei Firmenfunktionen erweitert.
 - [ ] CSP ohne neue Verletzungen; Offline-Paket und Service Worker funktionieren weiter.
+
+---
+
+## Nachtrag: Kursgruppen und individuelle Trainings
+
+- **Mehrere Gruppen je Kurs** (Migration `0054`, Tabelle `certification_categories`): `certifications.category_id` bleibt die Hauptgruppe (Farbe, Kurzcode), die erste Gruppe der Liste. Admin-Katalog: Dialog „Gruppen ändern“; `/catalog` filtert nach allen Gruppen. Standardgruppen der IT inkl. „AI & Generative KI“ legt die Migration an.
+- **Training für: Zertifikat / Individuell** (Migration `0055`, `course_type` an `certifications` und `course_generation_jobs`): Im Assistenten entfallen bei „Individuell“ Anbieter und Version; der Blueprint-Prompt sagt „kein Zertifizierungskurs, keine Prüfung“ und ist themenneutral (nicht auf IT beschränkt, z. B. Videoschnitt). Quellenpflicht und Prüfregeln bleiben unverändert. Der Katalog zeigt „Individuelles Training“ statt Anbieter · Version; Gruppen „Kreativ & Medien“, „Büro & Produktivität“, „Weitere Themen“ kommen mit `0055`. **Nicht geprüft:** echte KI-Generierung eines individuellen Kurses (nur Fake-Lauf `npm run course:e2e` mit `E2E_COURSE_TYPE=custom`) und der Assistent im Browser.

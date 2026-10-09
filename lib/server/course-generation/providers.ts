@@ -30,6 +30,8 @@ export interface BlueprintGenerationInput {
   outline?: boolean;
   provider: string;
   certificationVersion?: string;
+  /** "custom" = individuelles Training ohne Zertifizierung/Prüfung. */
+  courseType?: "certification" | "custom";
   sources: FetchedSource[];
 }
 
@@ -102,8 +104,16 @@ const BLUEPRINT_OUTLINE_PROMPT = [
   "Erfinde keine Themen, die in der Stichwortliste nicht vorkommen.",
 ];
 
-function blueprintSystemPrompt(outline: boolean | undefined): string {
-  return [...BLUEPRINT_BASE_PROMPT, ...(outline ? BLUEPRINT_OUTLINE_PROMPT : [])].join("\n");
+const BLUEPRINT_CUSTOM_PROMPT = [
+  "",
+  "WICHTIG: Dies ist ein individuelles Training zu einem Thema, KEIN Zertifizierungskurs. Es gibt keine Prüfung und keinen Prüfungsplan.",
+  "Gliedere das Thema in sinnvolle Lernbereiche (Domains) und Lernziele (Objectives). Gewichte bedeuten hier die relative Wichtigkeit/der Umfang, nicht Prüfungsanteile.",
+  "Nutze für `code` eine einfache Nummerierung (\"1.1\", \"1.2\", ...), falls die Quellen keine Notation vorgeben.",
+  "Setze `provider` auf den Herausgeber der Quellen oder, falls unklar, auf \"Individuell\". Setze `examQuestionCount`/`examDurationMinutes`/`passingScore`/`scoreScale` exakt auf `null`.",
+];
+
+function blueprintSystemPrompt(outline: boolean | undefined, custom?: boolean): string {
+  return [...BLUEPRINT_BASE_PROMPT, ...(custom ? BLUEPRINT_CUSTOM_PROMPT : []), ...(outline ? BLUEPRINT_OUTLINE_PROMPT : [])].join("\n");
 }
 
 /**
@@ -124,6 +134,7 @@ export function createSonnetBlueprintProvider(client?: GoogleGenAI): BlueprintPr
       const userPrompt = [
         `Erstelle den Blueprint für den Kurs "${input.courseTitle}" (${input.courseDescription}).`,
         `Sprache der Lerninhalte: ${input.language}.`,
+        input.courseType === "custom" ? "Art: individuelles Training (kein Zertifikat)." : "",
         input.certificationVersion ? `Zertifizierungsversion: ${input.certificationVersion}.` : "",
         "",
         "Quellenausschnitte:",
@@ -133,7 +144,7 @@ export function createSonnetBlueprintProvider(client?: GoogleGenAI): BlueprintPr
         .join("\n");
 
       const result = await generateStructured(
-        blueprintSystemPrompt(input.outline),
+        blueprintSystemPrompt(input.outline, input.courseType === "custom"),
         userPrompt,
         courseBlueprintAiResponseSchema,
         CURRICULUM_MODEL,
