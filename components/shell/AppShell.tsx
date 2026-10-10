@@ -11,12 +11,14 @@ import { SearchField } from "@/components/ui/search-field";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/cn";
 import { useLocale } from "@/lib/i18n";
+import { useSwitchLocale } from "@/lib/client/use-switch-locale";
 import { contextForPath, isPublicPath } from "@/lib/shell/nav";
 import { useTheme } from "@/lib/theme";
 
 /** Seiten ohne Anmeldung (Login, Einladung, …): schlanke Leiste mit Sprache und Theme, keine Navigation. */
 function PublicFrame({ children }: { children: React.ReactNode }) {
-  const { locale, setLocale, t } = useLocale();
+  const { locale, t } = useLocale();
+  const switchLocale = useSwitchLocale();
   const { theme, toggleTheme } = useTheme();
   const btn = "flex h-10 items-center gap-1.5 rounded-md border border-border-strong bg-control px-2.5 text-sm font-medium hover:bg-surface-2";
   return (
@@ -27,7 +29,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
           {t.appTitle}
         </Link>
         <div className="flex items-center gap-2">
-          <button type="button" className={btn} onClick={() => setLocale(locale === "de" ? "en" : "de")} aria-label={`${locale.toUpperCase()} – ${t.shell.language}`}>
+          <button type="button" className={btn} onClick={() => switchLocale(locale === "de" ? "en" : "de")} aria-label={`${locale.toUpperCase()} – ${t.shell.language}`}>
             <Languages className="h-4 w-4" aria-hidden="true" />{locale.toUpperCase()}
           </button>
           <button type="button" className={cn(btn, "w-10 justify-center px-0")} onClick={toggleTheme} aria-label={t.shell.theme}>

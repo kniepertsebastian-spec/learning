@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowRight, ChevronDown, ChevronUp, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Languages, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createCertificationAction } from "@/app/admin/actions";
 import { JobBar } from "@/components/admin/JobBar";
 import { CourseGenerationPanel } from "@/components/CourseGenerationPanel";
@@ -30,6 +30,8 @@ export interface CatalogCert {
   /** Alle Gruppen, Hauptgruppe zuerst. */
   categoryIds: string[];
   shortCode: string | null;
+  /** Kurssprache und Stand der Übersetzung in die zweite Sprache; "interrupted" = Lauf durch Neustart verloren. */
+  translation: { contentLocale: "de" | "en"; status: "none" | "running" | "done" | "failed" | "interrupted"; message: string | null };
   stats: { domains: number; lessons: number; questions: number };
 }
 export interface CatalogGroup {
@@ -76,6 +78,14 @@ export function AdminCatalog({
   const unassigned = byGroup(null);
   const visibleGroups = filter === "all" ? groups : groups.filter((g) => g.id === filter);
   const showUnassigned = unassigned.length > 0 && (filter === "all" || filter === "none");
+  const translating = certs.some((c) => c.translation.status === "running");
+
+  // Fortschritt laufender Übersetzungen nachladen, solange eine läuft.
+  useEffect(() => {
+    if (!translating) return;
+    const timer = setInterval(() => router.refresh(), 5000);
+    return () => clearInterval(timer);
+  }, [translating, router]);
 
   async function move(cert: CatalogCert, categoryIds: string[], silent = false) {
     const before = cert.categoryIds;
@@ -218,6 +228,22 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: CatalogGroup[]; onEdit: (c: CatalogCert) => void }) {
   const { locale, t } = useLocale();
   const ac = t.admin_catalog;
+  const router = useRouter();
+  const [starting, setStarting] = useState<string | null>(null);
+
+  async function translate(c: CatalogCert) {
+    setStarting(c.id);
+    try {
+      const res = await api(`/api/admin/certifications/${c.id}/translate`, "POST");
+      if (!res.ok) throw new Error();
+      toast.success(fmt(ac.translateStarted, { name: c.name }));
+      router.refresh();
+    } catch {
+      toast.error(ac.translateFailed);
+    } finally {
+      setStarting(null);
+    }
+  }
   if (list.length === 0) return <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-faint">—</p>;
   return (
     <ul className="flex flex-col gap-2">
@@ -231,6 +257,7 @@ function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: Catal
                   <p className="font-semibold">{c.name}</p>
                   <Badge tone={ready ? "mint" : "warning"}>{ready ? ac.statusReady : ac.statusMissing}</Badge>
                   {c.courseType === "custom" && <Badge tone="info">{ac.typeCustom}</Badge>}
+                  <TranslationBadge cert={c} />
                 </div>
                 <p className="mt-0.5 font-mono text-[11.5px] text-subtle">{c.provider} · {c.examVersion}</p>
                 <p className="mt-1 text-xs text-faint">{fmt(ac.stats, { d: c.stats.domains, l: c.stats.lessons, q: c.stats.questions })}</p>
@@ -241,6 +268,21 @@ function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: Catal
                   return g ? <span key={id} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5", TILE[g.color])} title={i === 0 ? ac.mainGroup : undefined}>{g.name[locale]}{i === 0 && c.categoryIds.length > 1 ? " ★" : ""}</span> : null;
                 })}
               </div>
+              {ready && c.translation.status !== "done" && c.translation.status !== "running" && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void translate(c)}
+                  disabled={starting === c.id}
+                  iconLeft={<Languages className="h-4 w-4" aria-hidden="true" />}
+                  title={c.translation.message ?? undefined}
+                  data-testid={`translate-${c.slug}`}
+                >
+                  {c.translation.status === "none"
+                    ? fmt(ac.translateTo, { lang: c.translation.contentLocale === "en" ? ac.langDe : ac.langEn })
+                    : ac.translateRetry}
+                </Button>
+              )}
               <Button variant="secondary" size="sm" onClick={() => onEdit(c)} aria-label={fmt(ac.editGroupsFor, { name: c.name })} data-testid={`group-edit-${c.slug}`}>{ac.editGroups}</Button>
               <Button asChild variant="secondary" size="sm">
                 <Link href={`/admin/certifications/${c.slug}`}>{ac.open}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
@@ -250,6 +292,20 @@ function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: Catal
         );
       })}
     </ul>
+  );
+}
+
+/** Stand der Übersetzung: zweisprachig, läuft (mit Fortschritt) oder unvollständig. Ohne Lauf nichts. */
+function TranslationBadge({ cert }: { cert: CatalogCert }) {
+  const ac = useLocale().t.admin_catalog;
+  const { status, message } = cert.translation;
+  if (status === "none") return null;
+  const label = { done: ac.translationDone, running: ac.translationRunning, failed: ac.translationFailed, interrupted: ac.translationInterrupted }[status];
+  const tone = status === "done" ? "mint" : status === "running" ? "info" : "warning";
+  return (
+    <Badge tone={tone} title={message ?? undefined} data-testid={`translation-${cert.slug}`}>
+      {label}{status === "running" && message ? ` · ${message.replace(/ …$/, "")}` : ""}
+    </Badge>
   );
 }
 
