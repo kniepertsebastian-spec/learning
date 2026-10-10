@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   certifications,
@@ -50,6 +50,27 @@ function humanIdPrefix(slug: string): string {
   return slug.split("-")[0].substring(0, 3).toUpperCase();
 }
 
+/**
+ * Präfix der Frage-IDs, das noch kein anderer Lernpfad benutzt. Das bisherige Präfix (erste drei Buchstaben des Slugs)
+ * kollidiert bei Kursen desselben Herstellers: „comptia-security-plus“ und „comptia-cybersecurity-analyst“ ergeben beide
+ * „COM“, und schon die erste Frage („COM-1.1-Q001“) verletzt die Eindeutigkeit von `questions.human_id` - der Import
+ * des fertigen Kurses scheiterte ganz am Ende. Reihenfolge: das bisherige Präfix (bestehende Kurse behalten ihr Schema),
+ * dann die Anfangsbuchstaben aller Slug-Teile („comptia-cybersecurity-analyst-cysa-cs0-003“ → „CCACC0“), dann mit Zähler.
+ */
+async function uniqueHumanIdPrefix(slug: string): Promise<string> {
+  const db = getDb();
+  const parts = slug.split("-").filter(Boolean);
+  const base = humanIdPrefix(slug) || "CRS";
+  const initials = parts.map((p) => p[0]).join("").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  const candidates = [base, ...(initials.length >= 2 && initials !== base ? [initials] : [])];
+  for (let n = 2; n <= 99; n++) candidates.push(`${initials.length >= 2 ? initials : base}${n}`);
+  for (const candidate of candidates) {
+    const [taken] = await db.select({ id: questions.id }).from(questions).where(like(questions.humanId, `${candidate}-%`)).limit(1);
+    if (!taken) return candidate;
+  }
+  throw new CoursePackageImportError(`Kein freies Präfix für die Frage-IDs von "${slug}" gefunden.`);
+}
+
 export interface ImportedCourse {
   certificationId: string;
   slug: string;
@@ -79,7 +100,8 @@ export async function importCoursePackage(
 ): Promise<ImportedCourse> {
   const db = getDb();
   const slug = slugOverride ?? suggestCourseSlug(pkg.title, pkg.certificationVersion);
-  const prefix = humanIdPrefix(slug);
+  // Interne Lernpfade nutzen ein Kürzel aus ihrer eigenen ID (siehe unten) und brauchen das Präfix nicht.
+  const prefix = owner ? "" : await uniqueHumanIdPrefix(slug);
 
   const existing = await db
     .select({ id: certifications.id })
