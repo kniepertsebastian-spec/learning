@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateLearningBlocks } from "./validate";
+import { repairLearningBlocks, validateLearningBlocks } from "./validate";
 
 const ok = ":::practice\n### Szenario\na\n### Aufgabe\nb\n### Lösung\nc\n### Warum\nd\n:::";
 
@@ -27,5 +27,46 @@ describe("validateLearningBlocks", () => {
   });
   it("überzähliges Schließen", () => {
     expect(validateLearningBlocks(":::")[0]).toMatch(/ohne öffnenden/);
+  });
+});
+
+describe("nummerierte Schritte", () => {
+  it("`:::steps` mit nummerierter Liste ist gültig (der Renderer nimmt beide Listenarten)", () => {
+    expect(validateLearningBlocks(":::steps\n1. a | b\n2. c | d\n:::")).toEqual([]);
+  });
+});
+
+describe("repairLearningBlocks", () => {
+  const repaired = (md: string) => {
+    const out = repairLearningBlocks(md);
+    expect(validateLearningBlocks(out)).toEqual([]);
+    return out;
+  };
+  it("gültiger Text bleibt unverändert", () => {
+    const md = "Text\n\n" + ok + "\n\n:::steps\n- a | b\n- c | d\n:::";
+    expect(repaired(md)).toBe(md);
+  });
+  it("`:::steps` mit nur einem Schritt wird aufgelöst, der Inhalt bleibt", () => {
+    expect(repaired("Vorher\n:::steps\n- a | b\n:::\nNachher")).toBe("Vorher\n- a | b\nNachher");
+  });
+  it("Schritte ohne Listenpunkt: Block aufgelöst, Text bleibt", () => {
+    expect(repaired(":::steps\nErst a, dann b\n:::")).toBe("Erst a, dann b");
+  });
+  it("unvollständiges practice, ein-Tab-tabs und unbekannter Block werden aufgelöst", () => {
+    expect(repaired(":::practice\n### Szenario\na\n:::")).toBe("### Szenario\na");
+    expect(repaired(":::tabs\n::tab[A]\nx\n:::")).toBe("::tab[A]\nx");
+    expect(repaired(":::foo\nx\n:::")).toBe("x");
+  });
+  it("offener gültiger Block wird geschlossen, offener ungültiger aufgelöst, überzähliges ::: entfernt", () => {
+    expect(repaired(":::steps\n- a | b\n- c | d")).toBe(":::steps\n- a | b\n- c | d\n:::");
+    expect(repaired("x\n:::steps\n- a | b")).toBe("x\n- a | b");
+    expect(repaired("x\n:::")).toBe("x");
+  });
+  it("verschachtelt: nur der ungültige innere Block wird aufgelöst", () => {
+    expect(repaired("::::tabs\n::tab[A]\n:::steps\n- a | b\n:::\n::tab[B]\ny\n::::")).toBe("::::tabs\n::tab[A]\n- a | b\n::tab[B]\ny\n::::");
+  });
+  it("offener Codeblock wird geschlossen, unbekannter Hinweis wird NOTE", () => {
+    expect(repaired("```bash\nls")).toBe("```bash\nls\n```");
+    expect(repaired("> [!TIP]\n> x")).toBe("> [!NOTE]\n> x");
   });
 });
