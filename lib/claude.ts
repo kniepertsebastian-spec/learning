@@ -8,6 +8,9 @@ export const CURRICULUM_MODEL = process.env.GEMINI_CURRICULUM_MODEL || process.e
 export const LESSONS_MODEL =
   process.env.GEMINI_LESSONS_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
+/** Übersetzung fertiger Kurse in die zweite Sprache: reine Textarbeit ohne Quellen, dafür reicht ein schlankes Modell. */
+export const TRANSLATION_MODEL = process.env.GEMINI_TRANSLATION_MODEL || "gemini-flash-lite-latest";
+
 export class GeminiConfigError extends Error {}
 export const ClaudeConfigError = GeminiConfigError;
 

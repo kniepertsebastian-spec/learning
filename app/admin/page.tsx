@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getCatalogOverview } from "@/lib/server/admin/catalog-overview";
 import { AdminCatalog } from "@/components/admin/AdminCatalog";
+import { isCourseTranslationActive } from "@/lib/server/course-translation/runner";
 
 export default async function AdminDashboard() {
   await requireAdminPage("/admin");
@@ -20,6 +21,12 @@ export default async function AdminDashboard() {
         categoryId: c.categoryId,
         categoryIds: c.categoryIds,
         shortCode: c.shortCode,
+        translation: {
+          contentLocale: c.translation.contentLocale ?? "de",
+          // Ein „laufender“ Lauf ohne aktiven Prozess ging durch einen Neustart verloren.
+          status: c.translation.status === "running" && !isCourseTranslationActive(c.id) ? "interrupted" : c.translation.status,
+          message: c.translation.message,
+        },
         stats: { domains: c.stats.domains, lessons: c.stats.lessons, questions: c.stats.questions },
       }))}
       groups={overview.categories.map((c) => ({ id: c.id, name: c.name, color: c.color }))}

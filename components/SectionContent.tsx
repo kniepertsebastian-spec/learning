@@ -8,6 +8,7 @@ import { useLocale } from "@/lib/i18n";
 import { RichText } from "@/components/RichText";
 import { SectionQuiz } from "@/components/SectionQuiz";
 import type { SectionQuizQuestion } from "@/components/SectionQuiz";
+import { ContentLanguageSwitch } from "@/components/lesson/ContentLanguageSwitch";
 import { OutlineList } from "@/components/lesson/OutlineList";
 import { ReadingProgress } from "@/components/lesson/ReadingProgress";
 import { TocList } from "@/components/lesson/TocList";
@@ -19,7 +20,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 import { extractToc, isHandsOn, readingMinutes } from "@/lib/markdown/toc";
 import { fmt } from "@/lib/quiz/keys";
 import type { SectionOutline } from "@/lib/server/sections/outline";
-import type { Localized } from "@/lib/types";
+import type { Locale, Localized } from "@/lib/types";
 
 interface SectionContentProps {
   certSlug: string;
@@ -48,6 +49,10 @@ interface SectionContentProps {
   quizEnabled?: boolean;
   signedIn?: boolean;
   initialCompleted?: boolean;
+  /** Sprache, in der der Kurs erzeugt wurde; ohne Angabe (Offline-Reader) kein Hinweis auf eine fehlende Übersetzung. */
+  contentLocale?: Locale | null;
+  /** Übersetzung in die zweite Sprache läuft gerade. */
+  translationPending?: boolean;
 }
 
 export function SectionContent({
@@ -67,6 +72,8 @@ export function SectionContent({
   quizEnabled = true,
   signedIn = true,
   initialCompleted = false,
+  contentLocale = null,
+  translationPending = false,
 }: SectionContentProps) {
   const { locale, t } = useLocale();
   const router = useRouter();
@@ -77,6 +84,8 @@ export function SectionContent({
   const [completeError, setCompleteError] = useState<string | null>(null);
 
   const content = lesson.content[locale];
+  // Einsprachig erzeugte Lektionen tragen denselben Text in beiden Feldern, bis der Übersetzungslauf sie füllt.
+  const availableLocales: Locale[] = lesson.content.de !== lesson.content.en ? ["de", "en"] : contentLocale ? [contentLocale] : [];
   const toc = extractToc(content);
   const minutes = estimatedMinutes ?? readingMinutes(content);
   const hasQuiz = quizEnabled && questions.length > 0;
@@ -111,7 +120,8 @@ export function SectionContent({
           <span aria-hidden="true">/</span>
           <span className="truncate text-foreground" aria-current="page">{sectionTitle[locale]}</span>
         </nav>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-start gap-2">
+          <ContentLanguageSwitch available={availableLocales} translationPending={translationPending} />
           {outline && (
             <Button variant="secondary" size="sm" className="lg:hidden" onClick={() => setOutlineOpen(true)} iconLeft={<ListTree className="h-4 w-4" aria-hidden="true" />} data-testid="open-outline">
               {lp.outline}

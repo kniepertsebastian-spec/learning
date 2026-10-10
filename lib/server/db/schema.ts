@@ -53,6 +53,8 @@ export type CourseKind = "general" | "internal";
 export type CourseType = "certification" | "custom";
 /** Menschliche Freigabe eines Lernpfads, bevor er an Kunden gehen darf. */
 export type CatalogStatus = "draft" | "in_review" | "approved";
+/** Übersetzungslauf eines Kurses in die zweite Sprache (siehe lib/server/course-translation). */
+export type CourseTranslationStatus = "none" | "running" | "done" | "failed";
 /**
  * Lebenslauf einer Kundenanfrage nach einem allgemeinen Lernpfad: eingegangen -> (wartet | in Erstellung |
  * in externer Prüfung) -> freigegeben oder abgelehnt.
@@ -267,11 +269,25 @@ export const certifications = pgTable("certifications", {
   /** Wer den Lernpfad fachlich geprüft hat (Name des externen Prüfers, auch ohne Konto) und wann. */
   approvedByName: text("approved_by_name"),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
+  /**
+   * Sprache, in der die Inhalte erzeugt wurden (Auftragssprache der Kursgenerierung). Die Generierung schreibt
+   * denselben Text in beide Sprachfelder; erst der Übersetzungslauf füllt die zweite Sprache. `null` = älterer Kurs
+   * ohne Angabe (gilt als Deutsch).
+   */
+  contentLocale: text("content_locale").$type<Locale>(),
+  translationStatus: text("translation_status").$type<CourseTranslationStatus>().notNull().default("none"),
+  /** Fortschritt oder Fehler des letzten Übersetzungslaufs, für die Admin-Übersicht. */
+  translationMessage: text("translation_message"),
+  /** Summe der geschätzten KI-Kosten aller Übersetzungsläufe (USD); null = kein Preis hinterlegt. */
+  translationCostUsd: numeric("translation_cost_usd", { precision: 10, scale: 4 }),
+  translatedAt: timestamp("translated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   check("certifications_kind_check", sql`${table.kind} in ('general', 'internal')`),
   check("certifications_catalog_status_check", sql`${table.catalogStatus} in ('draft', 'in_review', 'approved')`),
+  check("certifications_content_locale_check", sql`${table.contentLocale} is null or ${table.contentLocale} in ('de', 'en')`),
+  check("certifications_translation_status_check", sql`${table.translationStatus} in ('none', 'running', 'done', 'failed')`),
   check(
     "certifications_owner_check",
     sql`(${table.kind} = 'internal' and ${table.ownerOrganizationId} is not null) or (${table.kind} = 'general' and ${table.ownerOrganizationId} is null)`,

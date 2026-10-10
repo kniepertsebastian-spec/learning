@@ -393,6 +393,13 @@
       "when": 1791572312821,
       "tag": "0055_course_type",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791601493231,
+      "tag": "0056_course_translation",
+      "breakpoints": true
     }
   ]
 }

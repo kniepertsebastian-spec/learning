@@ -16,6 +16,8 @@ export interface CertificationStats {
   categoryIds: string[];
   shortCode: string | null;
   catalogStatus: string;
+  /** Kurssprache und Stand der Übersetzung in die zweite Sprache (siehe lib/server/course-translation). */
+  translation: { contentLocale: "de" | "en" | null; status: "none" | "running" | "done" | "failed"; message: string | null };
   stats: {
     domains: number;
     objectives: number;
@@ -78,6 +80,7 @@ export async function getCertificationsWithStats(): Promise<CertificationStats[]
       categoryIds: groupIds.get(cert.id) ?? [],
       shortCode: cert.shortCode,
       catalogStatus: cert.catalogStatus,
+      translation: { contentLocale: cert.contentLocale, status: cert.translationStatus, message: cert.translationMessage },
       stats: {
         domains: certDomains.length,
         objectives: certObjectives.length,
