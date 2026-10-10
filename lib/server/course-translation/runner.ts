@@ -26,7 +26,7 @@ export async function startCourseTranslation(certificationId: string): Promise<S
   if (active.has(certificationId)) return "already_running";
   await getDb()
     .update(certifications)
-    .set({ translationStatus: "running", translationMessage: "Übersetzung gestartet …" })
+    .set({ translationStatus: "running", translationMessage: "Übersetzung gestartet …", translationProcessed: 0, translationTotal: 0 })
     .where(eq(certifications.id, certificationId));
   const run = translateCourse(certificationId)
     .then(() => undefined)

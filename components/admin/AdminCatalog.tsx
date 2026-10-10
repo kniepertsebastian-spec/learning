@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createCertificationAction } from "@/app/admin/actions";
 import { JobBar } from "@/components/admin/JobBar";
+import { TranslationProgress } from "@/components/admin/TranslationProgress";
 import { CourseGenerationPanel } from "@/components/CourseGenerationPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,14 @@ export interface CatalogCert {
   categoryIds: string[];
   shortCode: string | null;
   /** Kurssprache und Stand der Übersetzung in die zweite Sprache; "interrupted" = Lauf durch Neustart verloren. */
-  translation: { contentLocale: "de" | "en"; status: "none" | "running" | "done" | "failed" | "interrupted"; message: string | null };
+  translation: {
+    contentLocale: "de" | "en";
+    status: "none" | "running" | "done" | "failed" | "interrupted";
+    message: string | null;
+    /** Bearbeitete Teile (übersetzt oder fehlgeschlagen) von allen; total 0 = noch nicht gezählt. */
+    processed: number;
+    total: number;
+  };
   stats: { domains: number; lessons: number; questions: number };
 }
 export interface CatalogGroup {
@@ -261,6 +269,7 @@ function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: Catal
                 </div>
                 <p className="mt-0.5 font-mono text-[11.5px] text-subtle">{c.provider} · {c.examVersion}</p>
                 <p className="mt-1 text-xs text-faint">{fmt(ac.stats, { d: c.stats.domains, l: c.stats.lessons, q: c.stats.questions })}</p>
+                {c.translation.status === "running" && <TranslationProgress cert={c} />}
               </div>
               <div className="flex flex-wrap items-center gap-1.5 text-xs text-subtle" data-testid={`groups-${c.slug}`}>
                 {c.categoryIds.length === 0 ? <span>{ac.unassigned}</span> : c.categoryIds.map((id, i) => {
@@ -304,7 +313,7 @@ function TranslationBadge({ cert }: { cert: CatalogCert }) {
   const tone = status === "done" ? "mint" : status === "running" ? "info" : "warning";
   return (
     <Badge tone={tone} title={message ?? undefined} data-testid={`translation-${cert.slug}`}>
-      {label}{status === "running" && message ? ` · ${message.replace(/ …$/, "")}` : ""}
+      {label}
     </Badge>
   );
 }
