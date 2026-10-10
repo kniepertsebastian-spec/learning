@@ -205,7 +205,7 @@ describe("Antwortschema für Gemini (strukturierte Ausgabe)", () => {
   });
 });
 
-type Call = { config: { responseJsonSchema?: unknown; responseMimeType?: string } };
+type Call = { config: { responseJsonSchema?: unknown; responseMimeType?: string; thinkingConfig?: unknown; maxOutputTokens?: number } };
 function fakeClient(handler: (call: Call, n: number) => string | Error) {
   const calls: Call[] = [];
   const client = {
@@ -257,6 +257,34 @@ describe("generateStructured mit Antwortschema", () => {
     await expect(generateStructured("sys", "user", schemaA, "m", undefined, second.client)).resolves.toEqual({ a: "y" });
     expect(second.calls).toHaveLength(1);
     expect(second.calls[0].config.responseJsonSchema).toBeUndefined();
+  });
+
+  it("lehnt ein Modell die Anfrage allgemein ab (z. B. Denkbudget 0 bei Flash-Lite), geht es ohne Denkbudget und Ausgabe-Limit weiter, das Schema bleibt", async () => {
+    const invalid = new Error('{"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}');
+    const first = fakeClient((c) => (c.config.thinkingConfig ? invalid : '{"name":"a","count":1}'));
+    await expect(generateStructured("sys", "user", small, "lite-a", undefined, first.client)).resolves.toEqual({ name: "a", count: 1 });
+    expect(first.calls.map((c) => [Boolean(c.config.thinkingConfig), c.config.maxOutputTokens ?? null, Boolean(c.config.responseJsonSchema)])).toEqual([
+      [true, 65536, true],
+      [false, null, true],
+    ]);
+    // Für dieses Modell künftig gleich ohne; andere Modelle sind nicht betroffen.
+    const again = fakeClient(() => '{"name":"b","count":2}');
+    await generateStructured("sys", "user", small, "lite-a", undefined, again.client);
+    expect(again.calls[0].config.thinkingConfig).toBeUndefined();
+    const other = fakeClient(() => '{"name":"c","count":3}');
+    await generateStructured("sys", "user", small, "flash-b", undefined, other.client);
+    expect(other.calls[0].config.thinkingConfig).toEqual({ thinkingBudget: 0 });
+  });
+
+  it("hilft auch das nicht, geht es zusätzlich ohne Schema weiter; danach kommt der Fehler, statt endlos zu wiederholen", async () => {
+    const invalid = new Error('{"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}');
+    const stillBad = fakeClient(() => invalid);
+    await expect(generateStructured("sys", "user", z.object({ x: z.string() }), "lite-c", undefined, stillBad.client)).rejects.toThrow(/invalid argument/);
+    expect(stillBad.calls.map((c) => [Boolean(c.config.thinkingConfig), Boolean(c.config.responseJsonSchema)])).toEqual([
+      [true, true],
+      [false, true],
+      [false, false],
+    ]);
   });
 
   it("ein ungültiger API-Schlüssel ist keine Schema-Ablehnung: kein Umweg ohne Schema, der Fehler kommt sofort", async () => {

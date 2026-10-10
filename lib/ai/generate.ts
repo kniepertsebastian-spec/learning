@@ -70,6 +70,12 @@ export function toGeminiJsonSchema(schema: ZodType): Record<string, unknown> | u
 
 /** Schemas (nach Fingerabdruck), die Gemini abgelehnt hat (zu komplex o. ä.): für sie läuft die Anfrage ohne Schema weiter. */
 const rejectedSchemas = new Set<string>();
+/**
+ * Modelle, die `thinkingBudget: 0` oder das Ausgabe-Limit von 65536 Token ablehnen (z. B. Flash-Lite-Modelle mit
+ * Mindest-Denkbudget oder kleinerem Ausgabe-Limit): für sie gehen beide Angaben nicht mehr mit, es gelten die
+ * Standardwerte des Modells.
+ */
+const modelsWithoutLimits = new Set<string>();
 const schemaKey = (schema: Record<string, unknown>) => JSON.stringify(schema);
 
 /**
@@ -290,6 +296,7 @@ export async function requestJson(
   const maxAttempts = transientAttempts();
 
   let useSchema = Boolean(jsonSchema) && !rejectedSchemas.has(schemaKey(jsonSchema!));
+  const modelKey = model || "gemini-3.8-flash";
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const response = await client.models.generateContent({
@@ -309,8 +316,7 @@ export async function requestJson(
           // günstig ist, lohnt sich hier kein Sparen am Limit - volles
           // Modell-Maximum ausschöpfen, um dasselbe Trunkierungsproblem
           // sicher zu vermeiden.
-          maxOutputTokens: 65536,
-          thinkingConfig: { thinkingBudget: 0 },
+          ...(modelsWithoutLimits.has(modelKey) ? {} : { maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: 0 } }),
           responseMimeType: "application/json",
           ...(useSchema ? { responseJsonSchema: jsonSchema } : {}),
           // Ohne Zeitlimit kann eine hängende Verbindung den ganzen Kurslauf für Stunden blockieren.
@@ -339,13 +345,24 @@ export async function requestJson(
       return response.text;
     } catch (error) {
       if (error instanceof AIGenerationError) throw error;
-      if (useSchema && isSchemaRejection(error)) {
-        // Gemini nimmt dieses Schema nicht an: einmal ohne Schema weitermachen (wie früher) und es nicht erneut versuchen.
-        console.warn("Gemini hat das Antwortschema abgelehnt, weiter ohne Schema:", errorMessage(error).slice(0, 300));
-        rejectedSchemas.add(schemaKey(jsonSchema!));
-        useSchema = false;
-        attempt--;
-        continue;
+      if (isSchemaRejection(error)) {
+        // Nennt die Ablehnung das Schema, liegt es daran. Sonst (allgemeines „invalid argument“) zuerst ohne Denkbudget
+        // und Ausgabe-Limit, die nicht jedes Modell annimmt, danach erst ohne Schema.
+        const namesSchema = /schema|constraint/i.test(errorMessage(error));
+        if (useSchema && (namesSchema || modelsWithoutLimits.has(modelKey))) {
+          // Gemini nimmt dieses Schema nicht an: einmal ohne Schema weitermachen (wie früher) und es nicht erneut versuchen.
+          console.warn("Gemini hat das Antwortschema abgelehnt, weiter ohne Schema:", errorMessage(error).slice(0, 300));
+          rejectedSchemas.add(schemaKey(jsonSchema!));
+          useSchema = false;
+          attempt--;
+          continue;
+        }
+        if (!modelsWithoutLimits.has(modelKey)) {
+          console.warn(`Gemini (${modelKey}) hat die Anfrage abgelehnt, weiter ohne Denkbudget und Ausgabe-Limit:`, errorMessage(error).slice(0, 300));
+          modelsWithoutLimits.add(modelKey);
+          attempt--;
+          continue;
+        }
       }
       if (attempt === maxAttempts || !isRetryableError(error)) {
         throw error;
