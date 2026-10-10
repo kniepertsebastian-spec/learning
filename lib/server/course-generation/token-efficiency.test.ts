@@ -99,6 +99,15 @@ describe("Reparaturen ohne KI", () => {
     expect(missingQuestionsOnly(objective, c, errors)).toBeNull();
   });
 
+  it("kaputte Lernblöcke (`:::steps` mit einem Schritt) werden ohne KI repariert statt das Lernziel zu verwerfen", () => {
+    const c = content([monoQuestion("Frage 1")]);
+    c.sections[0].content = { de: "Ein VLAN trennt Broadcast-Domänen.\n:::steps\n- a | b\n:::", en: "Ein VLAN trennt Broadcast-Domänen.\n:::steps\n- a | b\n:::" };
+    expect(validateObjectiveContent({ ...objective, recommendedQuestions: 1 }, c, []).join()).toMatch(/mindestens zwei Schritte/);
+    const fixed = autoFixObjectiveContent(c, []);
+    expect(fixed.content.sections[0].content.de).toBe("Ein VLAN trennt Broadcast-Domänen.\n- a | b");
+    expect(validateObjectiveContent({ ...objective, recommendedQuestions: 1 }, fixed.content, [])).toEqual([]);
+  });
+
   it("einsprachige Lektionen werden nur einmal geprüft (keine doppelten Meldungen je Sprache)", () => {
     const c = content([monoQuestion("Frage 1")]);
     c.sections[0].content = { de: ":::steps\n- a | b", en: ":::steps\n- a | b" };

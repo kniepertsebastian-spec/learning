@@ -1,4 +1,4 @@
-import { validateLearningBlocks } from "@/lib/markdown/validate";
+import { repairLearningBlocks, validateLearningBlocks } from "@/lib/markdown/validate";
 import type {
   CourseBlueprintDomain,
   CourseBlueprintObjective,
@@ -159,7 +159,8 @@ function locatorKnown(locator: string | null, sourceExcerpts: SourceExcerpt[]): 
  * Behebt, was sich ohne KI beheben lässt, statt dafür ein komplettes Lernziel neu erzeugen zu lassen (jede Reparatur
  * schickt Quellen und alte Antwort erneut und lässt alles neu schreiben):
  * - unbekannter Quellenverweis einer Frage → `null` (der Verweis wird nirgends weiterverwendet),
- * - (nahezu) doppelte Fragen → die spätere fällt weg; fehlen danach Fragen, liefert der Worker nur diese nach.
+ * - (nahezu) doppelte Fragen → die spätere fällt weg; fehlen danach Fragen, liefert der Worker nur diese nach,
+ * - ungültige Lernblöcke → aufgelöst bzw. geschlossen (repairLearningBlocks).
  */
 export function autoFixObjectiveContent(
   content: ObjectiveContentResponse,
@@ -180,7 +181,16 @@ export function autoFixObjectiveContent(
     }
     return [question];
   });
-  return { content: { ...content, questions }, fixes };
+  // Fehlerhafte Lernblöcke (z. B. `:::steps` mit nur einem Schritt) auflösen bzw. schließen, statt das Lernziel deshalb
+  // komplett neu erzeugen zu lassen. Das war die häufigste Ursache für Reparaturrunden und gestoppte Läufe.
+  const sections = content.sections.map((section, index) => {
+    const de = repairLearningBlocks(section.content.de);
+    const en = section.content.en === section.content.de ? de : repairLearningBlocks(section.content.en);
+    if (de === section.content.de && en === section.content.en) return section;
+    fixes.push(`Lernblöcke in Lektion ${index + 1} repariert.`);
+    return { ...section, content: { de, en } };
+  });
+  return { content: { ...content, sections, questions }, fixes };
 }
 
 /**
