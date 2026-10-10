@@ -226,15 +226,15 @@ export default async function CertDetailPage({
         {locale === "de" ? "Zurück zum Dashboard" : "Back to dashboard"}
       </Link>
 
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
+      <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
+        <div className="min-w-0">
           <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
           <p className="text-sm text-foreground/70">
             {cert.examName} {cert.examVersion}
           </p>
         </div>
         {session && (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
             {withCheatSheet && (
               <Link
                 href={`/cert/${slug}/cheatsheets`}
