@@ -278,6 +278,9 @@ export const certifications = pgTable("certifications", {
   translationStatus: text("translation_status").$type<CourseTranslationStatus>().notNull().default("none"),
   /** Fortschritt oder Fehler des letzten Übersetzungslaufs, für die Admin-Übersicht. */
   translationMessage: text("translation_message"),
+  /** Fortschritt des laufenden bzw. letzten Laufs: bearbeitete Teile (übersetzt oder fehlgeschlagen) von allen. */
+  translationProcessed: integer("translation_processed").notNull().default(0),
+  translationTotal: integer("translation_total").notNull().default(0),
   /** Summe der geschätzten KI-Kosten aller Übersetzungsläufe (USD); null = kein Preis hinterlegt. */
   translationCostUsd: numeric("translation_cost_usd", { precision: 10, scale: 4 }),
   translatedAt: timestamp("translated_at", { withTimezone: true }),

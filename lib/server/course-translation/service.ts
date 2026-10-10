@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, sql, type AnyColumn } from "drizzle-orm";
+import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import type { GoogleGenAI } from "@google/genai";
 import type { AIUsage } from "@/lib/ai/generate";
 import { getDb } from "@/lib/server/db/client";
@@ -153,7 +154,7 @@ async function clientFor(cert: { kind: string; ownerOrganizationId: string | nul
   return undefined;
 }
 
-async function updateStatus(certificationId: string, values: Partial<typeof certifications.$inferInsert>) {
+async function updateStatus(certificationId: string, values: PgUpdateSetSource<typeof certifications>) {
   await getDb().update(certifications).set(values).where(eq(certifications.id, certificationId));
 }
 
@@ -182,11 +183,18 @@ export async function translateCourse(certificationId: string, translator?: Chun
     const chunks = await loadChunks(certificationId, source);
     counts.total = chunks.length;
     if (chunks.length === 0) {
-      await updateStatus(certificationId, { translationStatus: "done", translationMessage: "Alle Inhalte liegen in beiden Sprachen vor.", translatedAt: new Date() });
+      await updateStatus(certificationId, { translationStatus: "done", translationMessage: "Alle Inhalte liegen in beiden Sprachen vor.", translatedAt: new Date(), translationProcessed: 0, translationTotal: 0 });
       return counts;
     }
     const translate = translator ?? createChunkTranslator(await clientFor(cert), onUsage);
-    await updateStatus(certificationId, { translationStatus: "running", translationMessage: `0/${counts.total} Teile übersetzt …` });
+    await updateStatus(certificationId, { translationStatus: "running", translationMessage: `0/${counts.total} Teile übersetzt …`, translationProcessed: 0, translationTotal: counts.total });
+    // Fortschritt nach jedem Teil, damit der Balken in der Admin-Übersicht gleichmäßig wächst.
+    const reportProgress = () =>
+      updateStatus(certificationId, {
+        // Parallele Teile können ihre Meldung in anderer Reihenfolge schreiben: der Balken läuft nie zurück.
+        translationProcessed: sql`greatest(${certifications.translationProcessed}, ${counts.done + counts.failed})`,
+        translationMessage: `${counts.done}/${counts.total} Teile übersetzt …`,
+      });
 
     let consecutiveFailures = 0;
     let firstError: string | null = null;
@@ -197,16 +205,17 @@ export async function translateCourse(certificationId: string, translator?: Chun
             await saveChunk(chunk, await translate(chunk, source, target), target);
             counts.done++;
             consecutiveFailures = 0;
+            await reportProgress();
           } catch (error) {
             counts.failed++;
             consecutiveFailures++;
             firstError ??= error instanceof Error ? error.message : String(error);
             console.error(`Übersetzung (${certificationId}) eines Teils fehlgeschlagen:`, error);
+            await reportProgress();
           }
         }),
       );
       if (consecutiveFailures >= ABORT_AFTER_FAILURES && counts.done === 0) counts.aborted = true;
-      await updateStatus(certificationId, { translationMessage: `${counts.done}/${counts.total} Teile übersetzt …` });
     }
 
     const ok = counts.failed === 0 && !counts.aborted;

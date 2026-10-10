@@ -1,0 +1,2 @@
+ALTER TABLE "certifications" ADD COLUMN "translation_processed" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "certifications" ADD COLUMN "translation_total" integer DEFAULT 0 NOT NULL;

@@ -26,6 +26,8 @@ export default async function AdminDashboard() {
           // Ein „laufender“ Lauf ohne aktiven Prozess ging durch einen Neustart verloren.
           status: c.translation.status === "running" && !isCourseTranslationActive(c.id) ? "interrupted" : c.translation.status,
           message: c.translation.message,
+          processed: c.translation.processed,
+          total: c.translation.total,
         },
         stats: { domains: c.stats.domains, lessons: c.stats.lessons, questions: c.stats.questions },
       }))}
