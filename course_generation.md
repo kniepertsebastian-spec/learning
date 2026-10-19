@@ -1012,8 +1012,9 @@ Der Lerntext (`sections.content`, `lessons.content`) darf neben Markdown folgend
 - ` ```console ` – Terminal: Befehle mit `$ `, Ausgabe ohne Prompt; Kopieren übernimmt nur die Befehle
 - ` ```yaml title="datei.yaml" {2-3} ` – Codeblock mit Dateiname und markierten Zeilen
 - `:::tabs` mit `::tab[Name]`, `:::steps` mit `Beschriftung | Befehl`, `:::practice` mit `### Szenario/Aufgabe/Lösung/Warum`
+- ```` ```simulation ```` mit JSON: interaktive Simulation zum Selbstlösen (`terminal`: Befehle Schritt für Schritt eintippen; `decision`: Entscheidungsszenario mit Sackgassen; `config`: Konfiguration mit Lücken `{{id}}` ausfüllen und anwenden). Schema und Querverweis-Prüfung in `lib/markdown/simulation.ts`, höchstens eine je Section und nur, wo das Thema sich eignet
 
-Die Validierung (`validateLearningBlocks`, aufgerufen von `validateObjectiveContent`) lehnt nicht geschlossene Blöcke, unvollständige Praxisbeispiele und unbekannte Marker ab; fehlende Blöcke sind kein Fehler. Bestehende Lektionen ergänzt `npm run lessons:blocks -- <slug>` (nur allgemeine Lernpfade, Text bleibt erhalten, Kostenanzeige).
+Die Validierung (`validateLearningBlocks`, aufgerufen von `validateObjectiveContent`) lehnt nicht geschlossene Blöcke, unvollständige Praxisbeispiele und unbekannte Marker ab; fehlende Blöcke sind kein Fehler. Bestehende Lektionen ergänzt `npm run lessons:blocks -- <slug>` (nur allgemeine Lernpfade, Text bleibt erhalten, Kostenanzeige). Ungültige Simulationen entfernt `repairLearningBlocks` ganz (ein ungültiger Block wird beim Anzeigen als normaler Codeblock gezeigt); die Übersetzung muss IDs, Befehle, Ausgaben und Werte jeder Simulation unverändert lassen (`validateTranslation`). Simulationen in bestehenden Lektionen ergänzt `npm run lessons:simulations -- <slug> [max]`: die KI entscheidet je Lektion, ob das Thema passt, und fügt höchstens eine Simulation hinter dem passenden `##`-Abschnitt ein.
 
 ## Anhang: Token-Sparmaßnahmen (Oktober 2026)
 

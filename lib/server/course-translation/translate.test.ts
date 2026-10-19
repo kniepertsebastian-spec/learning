@@ -188,3 +188,19 @@ describe("createChunkTranslator", () => {
     await expect(createChunkTranslator()(chunk, "de", "en")).rejects.toBeInstanceOf(TranslationValidationError);
   });
 });
+
+describe("validateTranslation: Simulationen", () => {
+  const sim = (goal: string, accept: string) =>
+    "```simulation\n" + JSON.stringify({ type: "terminal", title: "T", scenario: "S", steps: [{ goal, accept: [accept], output: "x", hint: "h" }], success: "ok" }) + "\n```";
+  const withSim = (content: string): TranslationChunk => ({ ...chunk, sections: [{ ...section, content }] });
+  const response = (content: string): TranslationResponse => {
+    const r = goodResponse();
+    return { ...r, sections: [{ ...r.sections[0], content }] };
+  };
+  it("übersetzte Texte sind in Ordnung, geänderte Befehle oder kaputtes JSON nicht", () => {
+    const c = withSim(sim("Zeige Dateien", "ls -la"));
+    expect(validateTranslation(c, response(sim("List files", "ls -la")))).toEqual([]);
+    expect(validateTranslation(c, response(sim("List files", "ls -l"))).join()).toMatch(/Simulation 1 wurde verändert/);
+    expect(validateTranslation(c, response("```simulation\n{\"type\":\n```")).join()).toMatch(/Simulation 1 ist nach der Übersetzung ungültig/);
+  });
+});

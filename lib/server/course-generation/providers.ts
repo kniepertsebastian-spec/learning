@@ -232,6 +232,19 @@ const OUTLINE_CONTENT_PROMPT = [
   "Wo du über die Quelle hinausgehst, formuliere vorsichtig und allgemeingültig. Erfinde keine firmenspezifischen Details (Namen, Adressen, Werte, Abläufe), die nicht in der Quelle stehen.",
 ];
 
+/**
+ * Interaktive Simulationen (lib/markdown/simulation.ts): nur wo ein Thema sich zum Selbstlösen eignet, höchstens eine je
+ * Section. Das Schema steht knapp im Prompt, weil die KI es sonst nicht treffen kann; ungültige Simulationen entfernt
+ * repairLearningBlocks, statt das Lernziel neu erzeugen zu lassen.
+ */
+export const SIMULATION_PROMPT = [
+  "- Wenn sich ein Thema zum aktiven Ausprobieren eignet (Befehlsfolge, Fehlersuche, Konfiguration, Entscheidung in einer Lage), höchstens EINE interaktive Simulation je Section, die der Lerner selbst lösen muss; sonst keine.",
+  "  Format: Codeblock mit Sprache `simulation`, Inhalt ist ein JSON-Objekt (kein Kommentar, kein Text daneben). Gemeinsame Felder: `type`, `title`, `scenario` (Markdown: Ausgangslage und Auftrag).",
+  '  `"type":"terminal"`: `prompt` (z. B. "admin@web01:~$"), `steps`: 1-6 Schritte mit `goal` (was erreicht werden soll, ohne den Befehl zu verraten), `accept` (alle gleichwertig richtigen Befehle als vollständige Zeilen), `output` (realistische Ausgabe danach), `hint`; dazu `success` (was der Lerner erreicht hat und warum es so funktioniert).',
+  '  `"type":"decision"`: `start` (ID) und `nodes` (2-12) mit `id`, `text` (Situation), optional `status` [{`label`,`value`,`tone`: ok|warn|bad}], dann ENTWEDER `choices` (2-4, je `label`, `next` = ID, `feedback` mit Begründung) ODER `outcome` ("success" oder "failure") für ein Ende. Plausible Fehlentscheidungen führen in eine Sackgasse oder einen Umweg; mindestens ein Weg endet mit "success".',
+  '  `"type":"config"`: `file` (Dateiname), `template` (Konfiguration mit Lücken `{{id}}`), `blanks` (1-6, je `id`, `options` mit 2-4 plausiblen Werten, `answer` = einer der Werte, `explanation`), `successOutput` und `failureOutput` (Ausgabe beim Anwenden), `success`.',
+];
+
 /** Lernblöcke (UI U5, Syntax siehe lib/markdown/blocks.ts). Nur aus den Quellen, nichts erfinden. */
 export const LEARNING_BLOCKS_PROMPT = [
   "Gliedere den Lerntext mit Überschriften der Ebene `##` und nutze diese Markdown-Blöcke, wo die Quelle sie hergibt:",
@@ -240,6 +253,7 @@ export const LEARNING_BLOCKS_PROMPT = [
   "- Befehle mit Ausgabe als Codeblock mit Sprache `console`: Befehlszeilen beginnen mit `$ `, Ausgabe steht ohne Prompt darunter, mit realistischer Ausgabe nach der Quelle. Dateien als Codeblock mit Titel, z. B. ```yaml title=\"deployment.yaml\".",
   "- Bei Hands-on-Themen mindestens ein Praxisbeispiel: `:::practice` mit den vier Überschriften `### Szenario`, `### Aufgabe`, `### Lösung`, `### Warum`, geschlossen mit `:::`.",
   "- Varianten: `:::tabs` mit mindestens zwei `::tab[Name]`; Abläufe: `:::steps` mit Listenpunkten `Beschriftung | Befehl`. Jeder Block wird mit einer Zeile `:::` geschlossen.",
+  ...SIMULATION_PROMPT,
   "Erfinde keine Befehle, Optionen, Ausgaben oder Fehler, die nicht aus den Quellen oder anerkanntem Fachwissen zum Thema stammen.",
 ];
 

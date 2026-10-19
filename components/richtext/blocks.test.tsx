@@ -117,3 +117,48 @@ describe("Sicherheit und Fallbacks", () => {
     expect(out).not.toContain("<img");
   });
 });
+
+describe("Simulation", () => {
+  const terminal = { type: "terminal", title: "Pod neu starten", scenario: "Der Pod hängt.", steps: [{ goal: "Zeige alle Pods.", accept: ["kubectl get pods"], output: "NAME", hint: "get" }], success: "Gut." };
+  const decision = {
+    type: "decision",
+    title: "Shop down",
+    scenario: "Shop weg.",
+    start: "a",
+    nodes: [
+      { id: "a", text: "Was zuerst?", status: [{ label: "HTTP", value: "503", tone: "bad" }], choices: [{ label: "Logs lesen", next: "b", feedback: "f" }, { label: "Neu aufsetzen", next: "c", feedback: "f" }] },
+      { id: "b", text: "Gefunden.", outcome: "success" },
+      { id: "c", text: "Weg.", outcome: "failure" },
+    ],
+  };
+  const config = { type: "config", title: "Service", scenario: "Freigeben.", file: "svc.yaml", template: "type: {{t}}", blanks: [{ id: "t", options: ["ClusterIP", "NodePort"], answer: "ClusterIP", explanation: "intern" }], success: "ok" };
+  const block = (o: unknown) => html("Vorher\n\n```simulation\n" + JSON.stringify(o) + "\n```\n\nNachher");
+
+  it("Terminal: Ziel des ersten Schritts und Eingabe, Befehl und Lösung nicht sichtbar", () => {
+    const out = block(terminal);
+    expect(out).toContain('data-sim-type="terminal"');
+    expect(out).toContain("Zeige alle Pods.");
+    expect(out).toContain('data-testid="simulation-input"');
+    expect(out).not.toContain("kubectl get pods");
+    expect(out).toContain("Nachher");
+  });
+  it("Entscheidung: Lage, Situation des Starts und Auswahl", () => {
+    const out = block(decision);
+    expect(out).toContain('data-testid="simulation-status"');
+    expect(out).toContain("Was zuerst?");
+    expect((out.match(/data-testid="simulation-choice"/g) ?? []).length).toBe(2);
+    expect(out).not.toContain("Gefunden.");
+  });
+  it("Konfiguration: Lücken als Auswahl, Erklärung erst nach dem Lösen", () => {
+    const out = block(config);
+    expect(out).toContain("svc.yaml");
+    expect(out).toContain('data-testid="simulation-select"');
+    expect(out).toContain("NodePort");
+    expect(out).not.toContain("intern");
+  });
+  it("ungültige Simulation bleibt ein gewöhnlicher Codeblock", () => {
+    const out = html('```simulation\n{"type":"terminal"}\n```');
+    expect(out).not.toContain("simulation-block");
+    expect(out).toContain('data-testid="code-block"');
+  });
+});

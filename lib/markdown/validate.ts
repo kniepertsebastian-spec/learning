@@ -1,7 +1,9 @@
+import { parseSimulation, SIMULATION_LANG } from "./simulation";
+
 /**
  * Qualitätsprüfung der Lernblöcke in generiertem Lernstoff (docs/ROADMAP-UI.md U5): Direktiven müssen geschlossen sein,
  * `:::practice` braucht alle vier Teile, `:::tabs` mindestens zwei `::tab[…]`, Hinweise nur mit bekannten Markern, Codeblöcke
- * geschlossen. Fehlende Blöcke sind kein Fehler (der Prompt verlangt sie, die Quelle entscheidet). Liefert Fehlertexte.
+ * geschlossen, ```simulation enthält eine gültige Simulation (lib/markdown/simulation.ts). Fehlende Blöcke sind kein Fehler (der Prompt verlangt sie, die Quelle entscheidet). Liefert Fehlertexte.
  */
 const KNOWN_DIRECTIVES = new Set(["tabs", "steps", "practice"]);
 const KNOWN_CALLOUTS = new Set(["EXAM", "MISTAKE", "MEMO", "NOTE"]);
@@ -10,24 +12,36 @@ const PRACTICE_HEADINGS: Record<string, string> = { szenario: "scenario", scenar
 /** Ein Schritt in `:::steps`: Aufzählungs- oder nummerierter Listenpunkt (der Renderer nimmt beide Listenarten an). */
 const STEP_ITEM = /^\s*(?:[-*+]|\d+[.)])\s+\S/;
 
+type Fence = { char: string; len: number; line: number; sim: boolean; body: string[] };
+const FENCE_OPEN = /^\s*(`{3,}|~{3,})\s*([\w-]*)/;
+const isSimLang = (lang: string | undefined) => (lang ?? "").toLowerCase() === SIMULATION_LANG;
+
 type Open = { name: string; colons: number; line: number; headings: Set<string>; tabs: number; items: number };
 
 export function validateLearningBlocks(markdown: string): string[] {
   const errors: string[] = [];
   const stack: Open[] = [];
-  let fence: { char: string; len: number; line: number } | null = null;
+  let fence: Fence | null = null;
   const lines = markdown.split("\n");
 
   lines.forEach((raw, i) => {
     const line = raw;
     const n = i + 1;
-    const f = /^\s*(`{3,}|~{3,})/.exec(line);
-    if (f) {
-      if (!fence) fence = { char: f[1][0], len: f[1].length, line: n };
-      else if (f[1][0] === fence.char && f[1].length >= fence.len && /^\s*(`{3,}|~{3,})\s*$/.test(line)) fence = null;
+    const f = FENCE_OPEN.exec(line);
+    if (f && !fence) {
+      fence = { char: f[1][0], len: f[1].length, line: n, sim: isSimLang(f[2]), body: [] };
       return;
     }
-    if (fence) return;
+    if (fence) {
+      if (f && f[1][0] === fence.char && f[1].length >= fence.len && /^\s*(`{3,}|~{3,})\s*$/.test(line)) {
+        if (fence.sim) {
+          const r = parseSimulation(fence.body.join("\n"));
+          if (!r.ok) errors.push(`Simulation ab Zeile ${fence.line} ungültig: ${r.errors.join("; ")}.`);
+        }
+        fence = null;
+      } else fence.body.push(line);
+      return;
+    }
 
     const d = /^(:{3,})\s*([A-Za-z][\w-]*)?/.exec(line);
     if (d && !/^::[^:]/.test(line)) {
@@ -76,14 +90,15 @@ function finish(block: Open, errors: string[]) {
  *   als normaler Text stehen;
  * - ein nicht geschlossener Block wird am Ende geschlossen (bzw. aufgelöst, wenn er auch sonst ungültig ist), ein
  *   überzähliges `:::` entfernt, ein nicht geschlossener Codeblock am Ende geschlossen;
- * - ein unbekannter Hinweis-Marker wird zu `[!NOTE]`.
+ * - ein unbekannter Hinweis-Marker wird zu `[!NOTE]`;
+ * - eine ungültige oder nicht geschlossene Simulation (```simulation) fällt ganz weg: halbes JSON hilft niemandem.
  * Danach meldet validateLearningBlocks() für den Text keine Fehler mehr.
  */
 export function repairLearningBlocks(markdown: string): string {
   const lines = markdown.split("\n");
   const drop = new Set<number>();
   const stack: Array<Open & { index: number }> = [];
-  let fence: { char: string; len: number } | null = null;
+  let fence: (Fence & { index: number }) | null = null;
 
   const invalid = (b: Open) =>
     !KNOWN_DIRECTIVES.has(b.name) ||
@@ -91,14 +106,23 @@ export function repairLearningBlocks(markdown: string): string {
     (b.name === "tabs" && b.tabs < 2) ||
     (b.name === "practice" && ["scenario", "task", "solution", "why"].some((p) => !b.headings.has(p)));
 
+  const dropRange = (from: number, to: number) => {
+    for (let k = from; k <= to; k++) drop.add(k);
+  };
+
   lines.forEach((line, i) => {
-    const f = /^\s*(`{3,}|~{3,})/.exec(line);
-    if (f) {
-      if (!fence) fence = { char: f[1][0], len: f[1].length };
-      else if (f[1][0] === fence.char && f[1].length >= fence.len && /^\s*(`{3,}|~{3,})\s*$/.test(line)) fence = null;
+    const f = FENCE_OPEN.exec(line);
+    if (f && !fence) {
+      fence = { char: f[1][0], len: f[1].length, line: i + 1, sim: isSimLang(f[2]), body: [], index: i };
       return;
     }
-    if (fence) return;
+    if (fence) {
+      if (f && f[1][0] === fence.char && f[1].length >= fence.len && /^\s*(`{3,}|~{3,})\s*$/.test(line)) {
+        if (fence.sim && !parseSimulation(fence.body.join("\n")).ok) dropRange(fence.index, i);
+        fence = null;
+      } else fence.body.push(line);
+      return;
+    }
     const d = /^(:{3,})\s*([A-Za-z][\w-]*)?/.exec(line);
     if (d && !/^::[^:]/.test(line)) {
       if (d[2]) {
@@ -130,9 +154,10 @@ export function repairLearningBlocks(markdown: string): string {
     if (invalid(open)) drop.add(open.index);
     else closers.push(":".repeat(open.colons));
   }
+  const openFence = fence as (Fence & { index: number }) | null;
+  if (openFence?.sim) dropRange(openFence.index, lines.length - 1);
   const out = lines.filter((_, i) => !drop.has(i));
-  const openFence = fence as { char: string; len: number } | null;
-  if (openFence) out.push(openFence.char.repeat(openFence.len));
+  if (openFence && !openFence.sim) out.push(openFence.char.repeat(openFence.len));
   out.push(...closers);
   return out.join("\n");
 }

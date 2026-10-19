@@ -1,6 +1,7 @@
 import type { Root, Parent, Paragraph, Text, Code, Heading, ListItem, List, RootContent, PhrasingContent } from "mdast";
 import type { VFile } from "vfile";
 import { visit, SKIP } from "unist-util-visit";
+import { parseSimulation, SIMULATION_LANG } from "./simulation";
 
 /**
  * Remark-Plugin für die Inhaltsblöcke der Lernmaterialien (docs/ROADMAP-UI.md U5). Läuft nach `remark-directive` und
@@ -12,6 +13,7 @@ import { visit, SKIP } from "unist-util-visit";
  *  - `:::tabs` mit `::tab[Label]`                          → div[data-block=tabs] > div[data-tab]
  *  - `:::steps` mit Listenpunkten `Label | Befehl`         → div[data-block=steps] > div[data-step]
  *  - `:::practice` mit ### Szenario / Aufgabe / Lösung / Warum → div[data-block=practice] > div[data-part]
+ *  - ```simulation mit gültigem JSON (lib/markdown/simulation.ts) → div[data-block=simulation][data-spec]
  *
  * Unbekannte oder unvollständige Direktiven werden als der ursprüngliche Text gezeigt, nie als HTML. Das ist wichtig,
  * weil `remark-directive` auch gewöhnlichen Text wie „Port:443“ als Text-Direktive liest.
@@ -207,6 +209,14 @@ export function remarkLearningBlocks() {
       if (head.value === "") first.children.shift();
       if (first.children.length === 0) node.children.shift();
       setHast(node, "div", { "data-callout": CALLOUT_MARKERS[m[1]] });
+    });
+
+    // Simulationen: gültiges JSON wird zum interaktiven Block, ungültiges bleibt ein gewöhnlicher Codeblock.
+    visit(tree, "code", (node: Code, index, parent) => {
+      if (!parent || index === undefined || (node.lang ?? "").toLowerCase() !== SIMULATION_LANG) return;
+      if (!parseSimulation(node.value).ok) return;
+      (parent.children as RootContent[])[index] = wrap([], "div", { "data-block": "simulation", "data-spec": node.value }) as RootContent;
+      return SKIP;
     });
 
     // Codeblöcke: Meta (title, Zeilen) und Terminal weiterreichen

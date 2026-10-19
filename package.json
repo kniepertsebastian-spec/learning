@@ -22,6 +22,7 @@
     "rationales:backfill": "tsx scripts/backfill-option-rationales.ts",
     "exams:remind": "tsx scripts/exam-reminders.ts",
     "lessons:blocks": "tsx scripts/backfill-lesson-blocks.ts",
+    "lessons:simulations": "tsx scripts/backfill-simulations.ts",
     "company:set-member": "tsx scripts/manage-company.ts set-member",
     "company:remove-member": "tsx scripts/manage-company.ts remove-member",
     "user:reset-password": "tsx scripts/reset-user-password.ts",

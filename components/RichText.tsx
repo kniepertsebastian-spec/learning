@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { CalloutBlock, PracticeBlock, StepsBlock, TabsBlock } from "@/components/richtext/Blocks";
 import { CodeBlock, TerminalBlock } from "@/components/richtext/CodeBlock";
+import { SimulationBlock } from "@/components/richtext/Simulation";
 import { parseLineRanges, remarkLearningBlocks } from "@/lib/markdown/blocks";
 import { nodeText } from "@/components/richtext/code-lines";
 import { slugify } from "@/lib/markdown/toc";
@@ -16,7 +17,7 @@ import type { CalloutTone } from "@/components/ui/callout";
  * Text von Fragen, Antwortoptionen, Erklärungen und Lektionen als Markdown: Logs, Befehle und Konfigurationen stehen in
  * Codeblöcken (mit Zeilenumbrüchen und Einrückung), einzelne Befehle und Pfade in `Backticks`. Sicher für KI-Text:
  * rohes HTML wird nicht ausgeführt (nur als Text gezeigt), Links sind keine Links, Bilder entfallen.
- * Lernblöcke (Hinweise, Terminal, Tabs, Schritte, Praxisbeispiel) siehe lib/markdown/blocks.ts.
+ * Lernblöcke (Hinweise, Terminal, Tabs, Schritte, Praxisbeispiel, Simulation) siehe lib/markdown/blocks.ts.
  * `inline`: für Antwortknöpfe, Absätze werden zu laufendem Text statt zu Blöcken.
  *
  * Highlighting: bewusst bei highlight.js (rehype-highlight) geblieben statt Shiki/rehype-pretty-code: RichText wird in
@@ -52,6 +53,7 @@ const baseComponents: Components = {
     const block = p["data-block"];
     if (block === "tabs") return <TabsBlock>{children}</TabsBlock>;
     if (block === "steps") return <StepsBlock>{children}</StepsBlock>;
+    if (block === "simulation" && typeof p["data-spec"] === "string") return <SimulationBlock spec={p["data-spec"] as string} />;
     if (block === "practice") return <PracticeBlock minutes={typeof p["data-minutes"] === "string" ? (p["data-minutes"] as string) : undefined}>{children}</PracticeBlock>;
     return <div>{children}</div>;
   },
