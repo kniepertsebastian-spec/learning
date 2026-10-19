@@ -70,3 +70,18 @@ describe("repairLearningBlocks", () => {
     expect(repaired("> [!TIP]\n> x")).toBe("> [!NOTE]\n> x");
   });
 });
+
+describe("Simulationen", () => {
+  const sim = JSON.stringify({ type: "terminal", title: "T", scenario: "S", steps: [{ goal: "g", accept: ["ls"], output: "", hint: "h" }], success: "ok" });
+  it("gültige Simulation ergibt keinen Fehler, ungültige schon", () => {
+    expect(validateLearningBlocks("Text\n\n```simulation\n" + sim + "\n```")).toEqual([]);
+    expect(validateLearningBlocks("```simulation\n{\"type\":\"terminal\"}\n```")[0]).toMatch(/Simulation ab Zeile 1 ungültig/);
+  });
+  it("Reparatur entfernt ungültige und nicht geschlossene Simulationen ganz, gültige bleiben", () => {
+    expect(repairLearningBlocks("A\n```simulation\n{kaputt}\n```\nB")).toBe("A\nB");
+    expect(repairLearningBlocks("A\n```simulation\n{\"type\":")).toBe("A");
+    const good = "A\n```simulation\n" + sim + "\n```";
+    expect(repairLearningBlocks(good)).toBe(good);
+    expect(validateLearningBlocks(repairLearningBlocks("```simulation\n{}\n```\n:::steps\n- a | b\n:::"))).toEqual([]);
+  });
+});
