@@ -1,4 +1,4 @@
-import { AlertTriangle, Lightbulb, Shield, Target } from "lucide-react";
+import { AlertTriangle, Lightbulb, Rocket, Shield, Target } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/cn";
 
@@ -6,6 +6,7 @@ const TONES = {
   exam: { icon: Target, box: "border-mint-border bg-mint-soft", tile: "bg-mint-soft text-mint-text", title: "text-mint-text" },
   mistake: { icon: AlertTriangle, box: "border-warning/40 bg-warning-soft", tile: "bg-warning-soft text-warning-text", title: "text-warning-text" },
   memo: { icon: Lightbulb, box: "border-info/40 bg-info-soft", tile: "bg-info-soft text-info-text", title: "text-info-text" },
+  possible: { icon: Rocket, box: "border-violet/40 bg-surface-2", tile: "bg-surface-2 text-violet", title: "text-violet" },
   info: { icon: Shield, box: "border-border-strong bg-surface-2", tile: "bg-surface-2 text-muted", title: "text-muted" },
 } as const;
 

@@ -81,10 +81,18 @@ Schrittleiste je Lektion (Verstehen, Anwenden, Auswerten); während der Simulati
 (Desktop daneben, mobil als Seitenblatt); Auswertung mit Hinweis auf die passenden Textstellen; Fortschritt der
 Simulationen speichern und in die Wiederholung aufnehmen.
 
-## Schritt 6: Lebendigere Texte bei neuen Kursen
+## Schritt 6: Lebendigere Texte bei neuen Kursen ✅
 
-Prompt-Regeln (du-Form, erst Problem dann Lösung, jedes Konzept mit Praxisbeispiel), Block „Was damit möglich ist“,
-durchgehende Geschichte je Kurs (fiktive Firma), „Was passiert, wenn…“-Experimente in Simulationen.
+Gilt für neu erzeugte Kurse (bestehende Lektionen bleiben, die Werkstatt-KI aus Schritt 3 kann sie später umschreiben).
+
+- Stilregeln im Inhaltsprompt (`LIVELY_STYLE_PROMPT`): du-Form, erst Problem dann Lösung, jedes Konzept mit Praxisbeispiel,
+  Beispiele passend zum Kursthema (nicht IT-lastig), kein Werbeton.
+- Neuer Hinweisblock `> [!POSSIBLE]` („Was damit möglich ist“) je Lektion, ehrlich und ohne Karriere- oder Gehaltsversprechen;
+  in Validierung, Darstellung (de/en) und Backfill-Erkennung bekannt.
+- Durchgehende Geschichte: je Kurs eine fiktive Firma und Person, abgeleitet aus dem Kurstitel (daher bleibt der Systemprompt
+  für alle Lernziele gleich und cache-freundlich); die Branche wählt die KI passend zum Thema. Nicht bei Firmenkursen und
+  Stichwortlisten, dort zählen die echten Unterlagen.
+- Simulationen enthalten mindestens eine „Was passiert, wenn …?“-Stelle (plausible Fehlentscheidung samt Folge).
 
 ## Schritt 7: Anonyme Abschluss-Statistik ✅
 

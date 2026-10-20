@@ -7,6 +7,9 @@ describe("validateLearningBlocks", () => {
   it("gültige Blöcke und normaler Text geben keine Fehler", () => {
     expect(validateLearningBlocks("Text\n\n> [!EXAM]\n> x\n\n" + ok + "\n\n:::tabs\n::tab[A]\nx\n::tab[B]\ny\n:::\n\n:::steps\n- a | b\n- c | d\n:::")).toEqual([]);
   });
+  it("Hinweis „Was damit möglich ist“ ist gültig", () => {
+    expect(validateLearningBlocks("> [!POSSIBLE]\n> Du kannst jetzt Regeln prüfen.")).toEqual([]);
+  });
   it("nicht geschlossene Direktive", () => {
     expect(validateLearningBlocks(":::tabs\n::tab[A]\nx")[0]).toMatch(/nicht geschlossen/);
   });

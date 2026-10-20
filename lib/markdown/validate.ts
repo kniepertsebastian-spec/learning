@@ -6,7 +6,7 @@ import { parseSimulation, SIMULATION_LANG } from "./simulation";
  * geschlossen, ```simulation enthält eine gültige Simulation (lib/markdown/simulation.ts). Fehlende Blöcke sind kein Fehler (der Prompt verlangt sie, die Quelle entscheidet). Liefert Fehlertexte.
  */
 const KNOWN_DIRECTIVES = new Set(["tabs", "steps", "practice"]);
-const KNOWN_CALLOUTS = new Set(["EXAM", "MISTAKE", "MEMO", "NOTE"]);
+const KNOWN_CALLOUTS = new Set(["EXAM", "MISTAKE", "MEMO", "NOTE", "POSSIBLE"]);
 const PRACTICE_HEADINGS: Record<string, string> = { szenario: "scenario", scenario: "scenario", aufgabe: "task", task: "task", lösung: "solution", loesung: "solution", solution: "solution", warum: "why", why: "why" };
 
 /** Ein Schritt in `:::steps`: Aufzählungs- oder nummerierter Listenpunkt (der Renderer nimmt beide Listenarten an). */
@@ -65,7 +65,7 @@ export function validateLearningBlocks(markdown: string): string[] {
       if (top.name === "steps" && STEP_ITEM.test(line)) top.items++;
     }
     const c = /^\s*>\s*\[!([A-Za-z]+)\]/.exec(line);
-    if (c && !KNOWN_CALLOUTS.has(c[1].toUpperCase())) errors.push(`Zeile ${n}: unbekannter Hinweis "[!${c[1]}]" (erlaubt: EXAM, MISTAKE, MEMO, NOTE).`);
+    if (c && !KNOWN_CALLOUTS.has(c[1].toUpperCase())) errors.push(`Zeile ${n}: unbekannter Hinweis "[!${c[1]}]" (erlaubt: EXAM, MISTAKE, MEMO, NOTE, POSSIBLE).`);
   });
 
   const unclosedFence = fence as { line: number } | null;
