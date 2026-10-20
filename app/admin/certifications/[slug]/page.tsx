@@ -96,12 +96,19 @@ export default async function AdminCertificationPage({
             {cert.examName} {cert.examVersion}
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {cert.kind === "general" && (
+          <Link href={`/admin/certifications/${slug}/workshop`} className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:opacity-90" data-testid="open-workshop">
+            {locale === "de" ? "Kurs bearbeiten" : "Edit course"}
+          </Link>
+        )}
         <Link
           href={`/admin/certifications/${slug}/sources`}
           className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-background"
         >
           {locale === "de" ? "Offizielle Quellen verwalten" : "Manage official sources"}
         </Link>
+        </div>
       </div>
 
       <ContentGenerationControl

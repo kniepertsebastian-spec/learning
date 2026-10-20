@@ -68,6 +68,8 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "blueprint_drafts.generated_by_user_id": OPERATIONAL_REASON,
   "blueprint_drafts.edited_by_user_id": OPERATIONAL_REASON,
   "certification_sources.approved_by": OPERATIONAL_REASON,
+  "content_revisions.author_user_id": "Versionsgeschichte der Kursinhalte (Betreiber-Admins), keine persönlichen Lerndaten; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "course_checkpoints.created_by_user_id": "Gemerkter Kursstand (Betreiber-Admins), keine persönlichen Lerndaten; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "company_modules.responsible_user_id": "Zuordnung der Firma (wer ein Modul betreut), nicht persönliche Lerndaten; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "exam_vouchers.created_by_user_id": "Der Gutschein gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "company_course_groups.created_by_user_id": "Die Kursgruppe gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
