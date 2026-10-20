@@ -147,6 +147,12 @@ run("Merkzettel bis in die Datenbank (echte DB, Fake-KI)", () => {
     expect((await lessonOf(job.resultCertificationId!)).cheatSheet).toEqual(sheet);
   });
 
+  it("der Auftrag hält fest, was die Quellen hergeben (Quellenbericht)", async () => {
+    const job = await generate(content({ de: "- x", en: "- x" }));
+    expect(job.sourceReport).toMatchObject({ sourceCount: 1, truncated: [], officialObjectives: [] });
+    expect(typeof job.sourceReport?.checkedAt).toBe("string");
+  });
+
   it("Zugangsdaten im Merkzettel: der Merkzettel entfällt, die Lektion und der Kurs bleiben", async () => {
     const job = await generate(content({ de: j("Zugang:\n-----BEGIN ", "PRIVATE KEY-----\nabc"), en: "Access" }));
     expect(job.status).toBe("published");

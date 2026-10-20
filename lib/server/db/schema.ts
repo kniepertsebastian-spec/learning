@@ -1180,6 +1180,14 @@ export const contentReports = pgTable(
  * jeden Übergang idempotent (siehe dortige Kommentare), diese Liste ist nur
  * die Menge gültiger Werte.
  */
+export type SourceReport = {
+  checkedAt: string;
+  officialObjectives: Array<{ code: string; title: string }>;
+  /** Quellen, die für die KI gekürzt wurden: Anfang statt ganzer Text, Lernziele aus dem Rest fehlen dann womöglich. */
+  truncated: Array<{ title: string; url: string }>;
+  sourceCount: number;
+};
+
 export type CourseGenerationJobStatus =
   | "queued"
   | "preflight"
@@ -1311,6 +1319,8 @@ export const courseGenerationJobs = pgTable(
     routineSessionUrl: text("routine_session_url"),
     blueprintJson: jsonb("blueprint_json").$type<Record<string, unknown>>(),
     packageJson: jsonb("package_json").$type<Record<string, unknown>>(),
+    /** Was die Quellen hergeben (roadmap3.md, Schritt 2): erkannte offizielle Lernziel-Nummern, gekürzte Quellen, Zeitpunkt. */
+    sourceReport: jsonb("source_report").$type<SourceReport>(),
     estimatedCostUsd: numeric("estimated_cost_usd", { precision: 10, scale: 4 }),
     actualCostUsd: numeric("actual_cost_usd", { precision: 10, scale: 4 }).notNull().default("0"),
     resultCertificationId: uuid("result_certification_id").references(() => certifications.id, {

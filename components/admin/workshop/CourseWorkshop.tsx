@@ -1,16 +1,17 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Bookmark, ChevronDown, FileText, Flag, HelpCircle, Plus, RotateCcw, SquareTerminal } from "lucide-react";
+import { ArrowDown, ArrowUp, Bookmark, ChevronDown, ClipboardList, FileText, Flag, HelpCircle, Plus, RotateCcw, SquareTerminal } from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import type { WorkshopTree } from "@/lib/server/course-editor/service";
+import { CourseReport } from "./CourseReport";
 import { QuestionsPanel } from "./QuestionsPanel";
 import { SectionEditor } from "./SectionEditor";
 import { api, formatDate, inputCls, Problems, useTr, type Lang } from "./shared";
 
-type Selection = { kind: "section"; id: string; objectiveId: string } | { kind: "new-section"; objectiveId: string } | { kind: "questions"; objectiveId: string } | { kind: "checkpoints" } | null;
+type Selection = { kind: "section"; id: string; objectiveId: string } | { kind: "new-section"; objectiveId: string } | { kind: "questions"; objectiveId: string } | { kind: "checkpoints" } | { kind: "report" } | null;
 
 /** Auswahl in der Adresse (#section=…), damit Neuladen und Links auf dieselbe Stelle führen. */
 function parseHash(): Selection {
@@ -18,6 +19,7 @@ function parseHash(): Selection {
   if (p.get("section") && p.get("objective")) return { kind: "section", id: p.get("section")!, objectiveId: p.get("objective")! };
   if (p.get("questions")) return { kind: "questions", objectiveId: p.get("questions")! };
   if (p.has("checkpoints")) return { kind: "checkpoints" };
+  if (p.has("report")) return { kind: "report" };
   return null;
 }
 function toHash(s: Selection): string {
@@ -25,6 +27,7 @@ function toHash(s: Selection): string {
   if (s.kind === "section") return `section=${s.id}&objective=${s.objectiveId}`;
   if (s.kind === "questions") return `questions=${s.objectiveId}`;
   if (s.kind === "checkpoints") return "checkpoints";
+  if (s.kind === "report") return "report";
   return "";
 }
 
@@ -75,6 +78,10 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
 
   const outline = (
     <nav aria-label={tr("Gliederung", "Outline")} className="flex flex-col gap-4" data-testid="workshop-tree">
+      <button type="button" onClick={() => select({ kind: "report" })} className={cn("flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm font-medium hover:bg-surface-2", selection?.kind === "report" && "border-accent-border bg-accent-soft")} data-testid="open-report">
+        <ClipboardList className="h-4 w-4" aria-hidden="true" />
+        {tr("Qualitätsbericht", "Quality report")}
+      </button>
       <button type="button" onClick={() => select({ kind: "checkpoints" })} className={cn("flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm font-medium hover:bg-surface-2", selection?.kind === "checkpoints" && "border-accent-border bg-accent-soft")}>
         <Bookmark className="h-4 w-4" aria-hidden="true" />
         {tr("Gemerkte Stände", "Saved checkpoints")}
@@ -161,7 +168,7 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
         </button>
         <div className={cn(!outlineOpen && "hidden", "lg:block")}>{outline}</div>
       </aside>
-      <main className="min-w-0">
+      <div className="min-w-0">
         {error && <div className="mb-3"><Problems title={error} /></div>}
         {!selection && (
           <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-subtle">
@@ -190,8 +197,15 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
           />
         )}
         {selection?.kind === "questions" && <QuestionsPanel key={selection.objectiveId} certId={certId} objectiveId={selection.objectiveId} locale={locale} onDirtyChange={setDirty} onChanged={() => void loadTree()} />}
+        {selection?.kind === "report" && (
+          <CourseReport
+            certId={certId}
+            locale={locale}
+            onOpen={(t) => select(t.sectionId ? { kind: "section", id: t.sectionId, objectiveId: t.objectiveId } : { kind: "questions", objectiveId: t.objectiveId })}
+          />
+        )}
         {selection?.kind === "checkpoints" && <Checkpoints certId={certId} locale={locale} onRestored={() => void loadTree()} />}
-      </main>
+      </div>
     </div>
   );
 }

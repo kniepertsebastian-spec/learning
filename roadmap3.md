@@ -33,14 +33,25 @@ Lernziele anlegen; das Zurücksetzen eines gemerkten Stands stellt keine Struktu
 Inhalte bleiben). Änderungen sind sofort live, es gibt keinen Entwurfsmodus. Die andere Sprache eines übersetzten
 Kurses wird nicht automatisch nachgezogen.
 
-## Schritt 2: Abdeckungs- und Qualitätsbericht
+## Schritt 2: Abdeckungs- und Qualitätsbericht ✅
 
-- Offizielle Lernziel-Nummern aus dem Prüfungsleitfaden („1.1“, „Task Statement 2.3“) gegen den Kurs abgleichen;
-  fehlende anzeigen und vor der Veröffentlichung bestätigen lassen.
-- Prüfungsleitfaden als Hauptquelle nie kürzen; gekürzte andere Quellen sichtbar melden (heute still, `truncated`).
-- Qualitätsbericht je Kurs: Lernziele offiziell/im Kurs, Lektionen, Fragen, Simulationen je Domain, Quellenstand.
-- Liste „Verbesserungspotenzial“ in der Werkstatt: Meldungen, oft falsch beantwortete Fragen, Lücken, Lektionen ohne
-  Simulation oder Praxisbeispiel.
+„Qualitätsbericht“ in der Kurs-Werkstatt (ohne KI, aus vorhandenen Daten):
+
+- **Abdeckung der offiziellen Lernziele:** erkennt in der Quelle nummerierte Lernziele („1.1 …“, „Objective 2.3 …“,
+  „Task Statement 3.2 …“, „101.1 …“) und vergleicht sie mit den Lernzielen des Kurses; fehlende werden genannt.
+  Gibt es weniger als drei erkannte Nummern (Gliederung ohne Nummern), gibt es keine Aussage statt einer falschen.
+  Beim Erzeugen eines Kurses hält der Auftrag fest, was die Quellen hergeben (`course_generation_jobs.source_report`);
+  für ältere Kurse ruft „Quelle prüfen“ die Quell-URLs des Auftrags neu ab. Individuelle Trainings und Kurse ohne Auftrag
+  haben keine Abdeckungsprüfung.
+- **Gekürzte Quellen** (für die KI auf 60.000 Zeichen begrenzt) werden jetzt sichtbar gemeldet.
+- **Je Domain:** Lernziele, Lektionen, Fragen, Simulationen, Praxisbeispiele.
+- **Verbesserungspotenzial** nach Wichtigkeit (wichtig/mittel/gering), Klick springt zur Lektion bzw. zu den Fragen:
+  fehlende offizielle Lernziele, offene Meldungen von Lernenden, Fragen mit hoher Fehlerquote (unter 40 % richtig bei
+  mindestens 10 Antworten, aggregiert), weniger Fragen als empfohlen (Blueprint, sonst 4), praxisnahe Lektion ohne
+  Simulation, Lektion ohne „Prüfungsrelevant“-Hinweis, sehr kurze Lektion.
+
+**Noch offen:** Die Erkennung der Nummern an echten Prüfungsleitfäden prüfen (hier kein Netz); Prüfungsleitfaden als
+Hauptquelle nie kürzen (heute wird jede Quelle bei 60.000 Zeichen gekappt, jetzt immerhin sichtbar).
 
 ## Schritt 3: Mit KI nachbessern
 

@@ -40,6 +40,7 @@ import {
 } from "./schemas";
 import { looksLikeOutline } from "./outline";
 import { fetchSources, type FetchedSource } from "./sources";
+import { buildSourceReport } from "./coverage";
 import { autoFixObjectiveContent, missingQuestionsOnly, pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
 import { getDb } from "@/lib/server/db/client";
 import { certificationCategories, certifications, courseGenerationJobDocuments } from "@/lib/server/db/schema";
@@ -512,6 +513,14 @@ export async function executeCourseGenerationJob(
       // der Quellen"), muss also als PreflightError enden, nicht als
       // generischer "failed"-Status.
       throw new PreflightError((error as Error).message);
+    }
+
+    // Was die Quellen hergeben (offizielle Lernziel-Nummern, gekürzte Quellen) für den Qualitätsbericht festhalten.
+    // Reine Zusatzinformation: ein Fehler hier darf den Auftrag nie aufhalten.
+    try {
+      await updateCourseGenerationJob(jobId, { sourceReport: buildSourceReport(sources) });
+    } catch (error) {
+      console.error("[course-generation] Quellenbericht nicht gespeichert:", error);
     }
 
     // Stichwortliste statt Text? Dann leitet die KI Lernziele aus den Stichwörtern ab und ergänzt Erklärungen.
