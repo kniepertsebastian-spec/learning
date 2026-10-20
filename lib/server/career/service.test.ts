@@ -10,7 +10,7 @@ import { getDb } from "@/lib/server/db/client";
 import { careerSuggestions, certifications, salaryDatasets, users } from "@/lib/server/db/schema";
 import { addSkill, saveProfile } from "@/lib/server/profile/service";
 import { importSalaryDataset, salaryFor, SalaryImportError } from "@/lib/server/salary/service";
-import { CareerLimitError, CareerProfileError, getCareerView, hasEnoughProfile, inputHash, MAX_RUNS_PER_DAY, refreshCareerPaths, sanitizePaths, type CareerGenerator, type CareerInput } from "./service";
+import { hintTerms, CareerLimitError, CareerProfileError, getCareerView, hasEnoughProfile, inputHash, MAX_RUNS_PER_DAY, refreshCareerPaths, sanitizePaths, type CareerGenerator, type CareerInput } from "./service";
 
 const run = TEST_DB ? describe : describe.skip;
 const tag = randomUUID().slice(0, 8);
@@ -32,6 +32,12 @@ describe("Bereinigung der KI-Antwort", () => {
     expect(p.courses.map((c) => c.courseId)).toEqual(["c2", "c1"]);
     expect(p.kldb).toBe("");
     expect(p.id).toBe("1");
+  });
+  it("Berufshinweise folgen dem Profil, nicht einer festen Branche", () => {
+    const pflege = hintTerms({ jobTitle: "Pflegefachkraft", jobDescription: "Betrieb von Wohnbereichen und Pflegedienst im Team", focusAreas: "Wundversorgung, Dokumentation", state: null }, [{ name: "Palliativpflege" }, { name: "IT" }]);
+    expect(pflege).toEqual(["pflegefachkraft", "palliativpflege", "wundversorgung", "dokumentation", "wohnbereichen", "pflegedienst"]);
+    expect(pflege).not.toContain("informatik");
+    expect(hintTerms({ jobTitle: null, jobDescription: null, focusAreas: null, state: null }, [])).toEqual([]);
   });
   it("höchstens fünf Pfade", () => {
     expect(sanitizePaths({ paths: Array.from({ length: 6 }, () => path()) }, input)).toHaveLength(5);
