@@ -66,3 +66,30 @@ Simulationen speichern und in die Wiederholung aufnehmen.
 
 Prompt-Regeln (du-Form, erst Problem dann Lösung, jedes Konzept mit Praxisbeispiel), Block „Was damit möglich ist“,
 durchgehende Geschichte je Kurs (fiktive Firma), „Was passiert, wenn…“-Experimente in Simulationen.
+
+## Schritt 7: Anonyme Abschluss-Statistik ✅
+
+Für Präsentationen: wie viele Menschen einen Kurs abgeschlossen haben, in welcher Zeit, je Woche/Monat/Jahr.
+
+- „Abgeschlossen“ = Abschlussprüfung erstmals bestanden (Punkte ≥ Bestehensgrenze des Kurses in Prozent, sonst 70 %;
+  `exam_attempts.passed` wird jetzt gesetzt). „Zertifikat ausgestellt“ (Prüfungsplaner „bestanden“ oder eingetragenes
+  Zertifikat zu einem Kurs, in dem die Person vorher gelernt hat) wird gesondert gezählt.
+- `course_completion_events`: ohne Bezug zur Person, nur Kurs, Tag, Dauer in Kalendertagen und aktive Lernzeit.
+- Aktive Lernzeit (`learning_time`, persönlich, im Export): gemessen auf allen Kursseiten, nur bei sichtbarem Tab und
+  Aktivität in den letzten 2 Minuten.
+- `/admin/stats`: Kennzahlen, Säulendiagramm je Woche/Monat/Jahr, Tabelle je Kurs mit Median, Mitte 50 % und
+  Durchschnitt (Dauerwerte erst ab 5 Abschlüssen), CSV-Export. Nachtrag aus vorhandenen Daten:
+  `npm run stats:backfill-completions` (ohne aktive Lernzeit).
+
+## Schritt 8: Nutzerprofil und Skills
+
+Aktuelle Stelle (mit Berufscode), Bundesland, Skills mit Stufe, Tools mit „zuletzt genutzt“, Schwerpunkte. Skills aus
+abgeschlossenen Kursen und Zertifikaten automatisch ergänzen, wenn in den Einstellungen erlaubt (mit Herkunft,
+entfernbar). Freiwillig, im Export, mit dem Konto gelöscht, für Firmen nicht sichtbar.
+
+## Schritt 9: Karrierepfade und Gehalt
+
+Auf Abruf etwa fünf passende Pfade; „mehr Informationen“: was die Stelle macht, was fehlt, welche Kurse aus dem
+aktuellen Katalog in welcher Reihenfolge (gegen den Katalog geprüft, fehlende Themen werden genannt). Gehalt aus dem
+Entgeltatlas der Bundesagentur für Arbeit: Median und Mitte 50 % je Beruf und Bundesland, mit Quelle und Stand, nie von
+der KI geschätzt (Nutzungsbedingungen vorher prüfen).

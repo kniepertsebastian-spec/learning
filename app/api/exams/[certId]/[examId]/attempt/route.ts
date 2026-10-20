@@ -5,6 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import {
+  certifications,
   exams,
   examAnswers,
   examAttempts,
@@ -14,6 +15,7 @@ import {
 import { ExamScoringService } from "@/lib/server/exam/scoring";
 import { getServerLocale } from "@/lib/server/locale";
 import { recordReviewOutcomes } from "@/lib/server/review/service";
+import { passMarkPercent, recordFinalExamPass } from "@/lib/server/stats/completions";
 
 interface ExamAnswerPayload {
   answers: Array<{ questionId: string; selectedOptionId: string }>;
@@ -90,6 +92,10 @@ export async function POST(
       locale,
     );
 
+    // Bestanden: Punkte erreichen die Bestehensgrenze des Kurses (offizielle Prozentgrenze, sonst 70 %).
+    const [cert] = await db.select({ passingScore: certifications.passingScore }).from(certifications).where(eq(certifications.id, examRecord[0].certificationId)).limit(1);
+    const passed = body.answers.length > 0 && score >= passMarkPercent(cert?.passingScore);
+
     // Create exam attempt with readiness
     const attemptInserted = await db
       .insert(examAttempts)
@@ -97,6 +103,7 @@ export async function POST(
         examId,
         userId: session.user.id,
         score: String(score),
+        passed,
         readiness: scoringResult.readinessLevel,
         completedAt: new Date(),
         durationSeconds:
@@ -119,6 +126,9 @@ export async function POST(
         })),
       );
     }
+
+    // Anonyme Abschluss-Statistik: erstes Bestehen der Person in diesem Kurs (lib/server/stats/completions.ts).
+    if (passed) await recordFinalExamPass(session.user.id, examRecord[0].certificationId, attemptInserted[0].id);
 
     // R2.2: Review-Zustand (Fälligkeit/Intervall) je beantworteter Frage fortschreiben.
     await recordReviewOutcomes(session.user.id, answerEvaluation);

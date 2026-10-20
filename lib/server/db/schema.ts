@@ -2240,3 +2240,54 @@ export const contentRevisions = pgTable(
     check("content_revisions_origin_check", sql`${table.origin} in ('manual', 'ai', 'backfill', 'translation', 'restore', 'checkpoint')`),
   ],
 );
+
+/**
+ * Aktive Lernzeit einer Person je Kurs und Tag (Sekunden). Gemessen im Browser nur, solange der Tab sichtbar ist und die
+ * Person in den letzten zwei Minuten etwas getan hat (lib/client/learning-time.ts). Persönliche Lerndaten: im Export,
+ * fällt mit dem Konto weg. Grundlage für die aktive Lernzeit in der anonymen Abschluss-Statistik.
+ */
+export const learningTime = pgTable(
+  "learning_time",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    seconds: integer("seconds").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.certificationId, table.day] }), check("learning_time_seconds_check", sql`${table.seconds} between 0 and 86400`)],
+);
+
+export type CourseCompletionKind = "final_exam_passed" | "certified";
+
+/**
+ * Anonyme Abschluss-Statistik (roadmap3.md): eine Zeile je erstem Bestehen der Abschlussprüfung bzw. erstem
+ * ausgestellten Zertifikat einer Person in einem Kurs. BEWUSST ohne Bezug zur Person: keine user_id, kein genauer
+ * Zeitpunkt (nur der Tag), keine Punkte. Bleibt erhalten, wenn das Konto gelöscht wird; wird der Kurs gelöscht, bleibt
+ * die Zeile mit dem Kursnamen stehen (für Auswertungen über die Zeit).
+ * - calendarDays: vom ersten Lernen im Kurs bis zum Abschluss, angefangene Tage (gleicher Tag = 1)
+ * - activeMinutes: gemessene aktive Lernzeit; null, wenn die Messung nicht den ganzen Zeitraum abdeckt (Lernen vor
+ *   Einführung der Messung)
+ */
+export const courseCompletionEvents = pgTable(
+  "course_completion_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    courseName: text("course_name").notNull(),
+    kind: text("kind").$type<CourseCompletionKind>().notNull(),
+    completedOn: date("completed_on", { mode: "string" }).notNull(),
+    calendarDays: integer("calendar_days").notNull(),
+    activeMinutes: integer("active_minutes"),
+    /** Nachträglich aus vorhandenen Prüfungsversuchen erzeugt (npm run stats:backfill-completions). */
+    backfilled: boolean("backfilled").notNull().default(false),
+  },
+  (table) => [
+    index("course_completion_events_cert_idx").on(table.certificationId, table.completedOn),
+    index("course_completion_events_day_idx").on(table.completedOn),
+    check("course_completion_events_kind_check", sql`${table.kind} in ('final_exam_passed', 'certified')`),
+  ],
+);

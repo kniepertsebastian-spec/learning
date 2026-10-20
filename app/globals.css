@@ -36,6 +36,9 @@
 
   --info: #3b82f6;
   --info-text: #1d5fd1;
+  /* Diagramme (kategorisch, validiert mit dataviz/validate_palette.js gegen --surface): 1 = Abschlussprüfung, 2 = Zertifikat */
+  --chart-1: #0e9f6e;
+  --chart-2: #3b82f6;
   --info-soft: rgba(59, 130, 246, 0.12);
   --warning: #e3a21a;
   --warning-text: #8a5d06;
@@ -82,6 +85,8 @@
 
   --info: #6ea8ff;
   --info-text: #8dbbff;
+  --chart-1: #17a473;
+  --chart-2: #4f8cf0;
   --info-soft: rgba(110, 168, 255, 0.12);
   --warning: #f4b740;
   --warning-text: #f4b740;
@@ -229,6 +234,8 @@
   --color-mint-soft: var(--accent-soft);
   --color-mint-border: var(--accent-border);
   --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
   --color-info-text: var(--info-text);
   --color-info-soft: var(--info-soft);
   --color-warning: var(--warning);
