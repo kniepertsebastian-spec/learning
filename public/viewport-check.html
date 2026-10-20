@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<title>Anzeige-Check</title>
+<style>body{font:16px system-ui,sans-serif;margin:16px;background:#0a0c10;color:#e8eaee}td{padding:4px 8px 4px 0;vertical-align:top;word-break:break-all}h1{font-size:20px}</style>
+</head>
+<body>
+<h1>Anzeige-Check</h1>
+<p>Bitte einen Screenshot dieser Seite schicken (in der PWA und einmal in normalem Chrome).</p>
+<table id="t"></table>
+<script>
+var rows = [
+  ["Fensterbreite (innerWidth)", innerWidth],
+  ["Bildschirmbreite (screen.width)", screen.width],
+  ["documentElement.clientWidth", document.documentElement.clientWidth],
+  ["devicePixelRatio", devicePixelRatio],
+  ["visualViewport.scale", window.visualViewport ? visualViewport.scale : "-"],
+  ["Standalone (PWA)", matchMedia("(display-mode: standalone)").matches],
+  ["Pointer grob/fein", matchMedia("(pointer: coarse)").matches ? "grob (Touch)" : "fein (Maus)"],
+  ["Viewport-Meta", (document.querySelector('meta[name=viewport]') || {}).content],
+  ["User-Agent", navigator.userAgent]
+];
+document.getElementById("t").innerHTML = rows.map(function (r) { return "<tr><td>" + r[0] + "</td><td><b>" + r[1] + "</b></td></tr>"; }).join("");
+</script>
+</body>
+</html>
