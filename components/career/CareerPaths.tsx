@@ -81,7 +81,7 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
                   <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-subtle">
                     <span>{LEVEL[p.level as 1 | 2 | 3 | 4]?.[de ? 0 : 1]}</span>
                     {p.courseItems.length > 0 && <span>{done}/{p.courseItems.length} {tr("Kurse abgeschlossen", "courses completed")}</span>}
-                    {shown && <span>{tr("Median", "Median")} {eur(shown.median)} {tr("brutto/Monat", "gross/month")}</span>}
+                    {view.hasSalaryData && shown && <span>{tr("Median", "Median")} {eur(shown.median)} {tr("brutto/Monat", "gross/month")}</span>}
                   </p>
                 </div>
                 <Button className="self-start" variant="secondary" size="sm" onClick={() => setOpen(isOpen ? null : p.id)} aria-expanded={isOpen} iconRight={<ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} aria-hidden="true" />} data-testid="career-more">
@@ -137,6 +137,7 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
                     </section>
                   )}
 
+                  {view.hasSalaryData && (
                   <section data-testid="career-salary">
                     <h3 className="font-semibold">{tr("Gehalt", "Salary")}</h3>
                     {!p.salary ? (
@@ -182,6 +183,7 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
                       </>
                     )}
                   </section>
+                  )}
                 </div>
               )}
             </li>

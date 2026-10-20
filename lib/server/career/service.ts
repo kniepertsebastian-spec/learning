@@ -7,7 +7,7 @@ import { CURRICULUM_MODEL } from "@/lib/claude";
 import { getDb } from "@/lib/server/db/client";
 import { careerSuggestions, certifications, domains, examAttempts, exams, userCertificates } from "@/lib/server/db/schema";
 import { getProfile } from "@/lib/server/profile/service";
-import { occupationsMatching, salaryFor, type SalaryInfo } from "@/lib/server/salary/service";
+import { currentDataset, occupationsMatching, salaryFor, type SalaryInfo } from "@/lib/server/salary/service";
 import type { Locale } from "@/lib/types";
 
 /**
@@ -152,6 +152,8 @@ export type CareerView = {
   enoughProfile: boolean;
   runsLeft: number;
   profileState: string | null;
+  /** Gibt es importierte Gehaltsdaten? Sonst blendet die Seite alles zum Gehalt aus. */
+  hasSalaryData: boolean;
 };
 
 /** Gespeicherte Pfade mit aktuellem Kursstand und Gehalt aus dem neuesten Datensatz. */
@@ -164,7 +166,9 @@ export async function getCareerView(userId: string, locale: Locale): Promise<Car
   const courseRows = ids.length ? await db.select({ id: certifications.id, name: certifications.name, slug: certifications.slug }).from(certifications).where(inArray(certifications.id, ids)) : [];
   const byId = new Map(courseRows.map((c) => [c.id, c]));
   const completed = new Set(input.completedCourseIds);
+  const hasSalaryData = Boolean(await currentDataset());
   return {
+    hasSalaryData,
     paths: await Promise.all(
       paths.map(async (p) => ({
         ...p,

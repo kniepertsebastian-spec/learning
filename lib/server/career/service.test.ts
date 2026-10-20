@@ -101,6 +101,7 @@ run("Karrierepfade und Gehalt (echte DB)", () => {
     const a = await mkCert(`Kurs A ${tag}`);
     const b = await mkCert(`Kurs B ${tag}`);
     let calls = 0;
+    expect((await getCareerView(u, "de")).hasSalaryData).toBe(true); // Datensatz aus dem ersten Test
     const gen: CareerGenerator = async () => {
       calls++;
       return { paths: [path({ courses: [{ courseId: a, reason: "Basis" }, { courseId: b, reason: "Aufbau" }, { courseId: randomUUID(), reason: "erfunden" }] })] };
