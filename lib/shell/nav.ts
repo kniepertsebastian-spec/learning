@@ -44,6 +44,7 @@ export type NavLabelKey =
   | "companySignIn"
   | "adminOverview"
   | "adminRequests"
+  | "adminStats"
   | "adminUi";
 
 export type NavIcon =
@@ -91,6 +92,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
       return [
         { href: "/admin", label: "adminOverview", icon: "layers", exact: true },
         { href: "/admin/requests", label: "adminRequests", icon: "inbox" },
+        { href: "/admin/stats", label: "adminStats", icon: "chart" },
         { href: "/admin/ui", label: "adminUi", icon: "layers" },
       ];
   }

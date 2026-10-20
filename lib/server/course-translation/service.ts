@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, sql, type AnyColumn } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import type { GoogleGenAI } from "@google/genai";
 import type { AIUsage } from "@/lib/ai/generate";
+import { recordQuestionRevision, recordSectionRevision } from "@/lib/server/course-editor/service";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, questionOptions, questions, sections } from "@/lib/server/db/schema";
 import { estimateCostUsd } from "@/lib/server/admin/content-generation";
@@ -108,12 +109,15 @@ async function loadChunks(certificationId: string, source: Locale): Promise<Tran
   return chunks;
 }
 
-async function saveChunk(chunk: TranslationChunk, result: TranslationResponse, target: Locale): Promise<void> {
+async function saveChunk(certificationId: string, chunk: TranslationChunk, result: TranslationResponse, target: Locale): Promise<void> {
   const byKeyS = new Map(result.sections.map((s) => [s.key, s]));
   const byKeyQ = new Map(result.questions.map((q) => [q.key, q]));
+  // Der alte Stand (meist die Kopie der Ausgangssprache) bleibt als Revision, falls eine Übersetzung danebenliegt.
+  const actor = { userId: null, origin: "translation" as const, note: `Übersetzung nach ${target}` };
   await getDb().transaction(async (tx) => {
     for (const s of chunk.sections) {
       const t = byKeyS.get(s.key)!;
+      await recordSectionRevision(tx, certificationId, s.sectionId, actor);
       await tx.update(sections).set({ title: setLocale(sections.title, target, t.title) }).where(eq(sections.id, s.sectionId));
       await tx
         .update(lessons)
@@ -129,6 +133,7 @@ async function saveChunk(chunk: TranslationChunk, result: TranslationResponse, t
     }
     for (const q of chunk.questions) {
       const t = byKeyQ.get(q.key)!;
+      await recordQuestionRevision(tx, certificationId, q.questionId, actor);
       await tx
         .update(questions)
         .set({ question: setLocale(questions.question, target, t.question), explanation: setLocale(questions.explanation, target, t.explanation) })
@@ -202,7 +207,7 @@ export async function translateCourse(certificationId: string, translator?: Chun
       await Promise.all(
         chunks.slice(i, i + PARALLEL).map(async (chunk) => {
           try {
-            await saveChunk(chunk, await translate(chunk, source, target), target);
+            await saveChunk(certificationId, chunk, await translate(chunk, source, target), target);
             counts.done++;
             consecutiveFailures = 0;
             await reportProgress();

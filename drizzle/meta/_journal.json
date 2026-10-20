@@ -407,6 +407,20 @@
       "when": 1791603861453,
       "tag": "0057_translation_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1792449699575,
+      "tag": "0058_course_workshop",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1792481092196,
+      "tag": "0059_completion_stats",
+      "breakpoints": true
     }
   ]
 }

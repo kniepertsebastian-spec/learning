@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured, type AIUsage } from "@/lib/ai/generate";
@@ -8,6 +8,7 @@ import { getDb } from "@/lib/server/db/client";
 import { domains, lessons, objectives, sections } from "@/lib/server/db/schema";
 import { LEARNING_BLOCKS_PROMPT } from "@/lib/server/course-generation/providers";
 import { estimateCostUsd } from "@/lib/server/admin/content-generation";
+import { replaceLessonContent } from "@/lib/server/course-editor/service";
 import { validateLearningBlocks } from "@/lib/markdown/validate";
 
 /**
@@ -62,7 +63,7 @@ export async function backfillBlocks(
 ): Promise<BlocksCounts> {
   const db = getDb();
   const rows = await db
-    .select({ id: lessons.id, content: lessons.content, title: sections.title })
+    .select({ id: lessons.id, sectionId: sections.id, content: lessons.content, title: sections.title })
     .from(lessons)
     .innerJoin(sections, eq(sections.id, lessons.sectionId))
     .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
@@ -78,8 +79,11 @@ export async function backfillBlocks(
         try {
           const next = await generate({ title: row.title, content: row.content });
           if (!acceptBlocks(row.content, next)) throw new Error("abgelehnt");
-          // nur schreiben, wenn der Inhalt zwischenzeitlich nicht geändert wurde
-          await db.update(lessons).set({ content: next, updatedAt: sql`now()` }).where(and(eq(lessons.id, row.id), sql`${lessons.content} = ${JSON.stringify(row.content)}::jsonb`));
+          // nur schreiben, wenn der Inhalt zwischenzeitlich nicht geändert wurde; der alte Stand bleibt als Revision (Kurs-Werkstatt)
+          if (!(await replaceLessonContent(certificationId, row.sectionId, row.content, next, { userId: null, origin: "backfill", note: "Lernblöcke ergänzt (npm run lessons:blocks)" }))) {
+            counts.skipped++;
+            return;
+          }
           counts.updated++;
           streak = 0;
         } catch {

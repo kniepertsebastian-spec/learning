@@ -2187,3 +2187,107 @@ export const ssoLoginTickets = pgTable("sso_login_tickets", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Kurs-Werkstatt (roadmap3.md, Schritt 1): gemerkter Stand eines ganzen Kurses („vor KI-Überarbeitung Oktober“). Die
+ * Inhalte selbst stehen als content_revisions mit dieser checkpointId; Wiederherstellen setzt jede Lektion und Frage
+ * darauf zurück, die es noch gibt.
+ */
+export const courseCheckpoints = pgTable(
+  "course_checkpoints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("course_checkpoints_cert_idx").on(table.certificationId, table.createdAt)],
+);
+
+export type ContentRevisionTarget = "section" | "question";
+/** Wodurch der Stand abgelöst wurde: manuelle Bearbeitung, KI, Backfill-Skript, Übersetzung, Wiederherstellung; „checkpoint“ = Teil eines gemerkten Kursstands. */
+export type ContentRevisionOrigin = "manual" | "ai" | "backfill" | "translation" | "restore" | "checkpoint";
+
+/**
+ * Versionsgeschichte der Kursinhalte: jede Zeile ist der vollständige Stand einer Lektion (Section-Titel + Lektion) oder
+ * einer Frage (mit Optionen) VOR einer Änderung. Zurücksetzen schreibt diesen Stand zurück und legt vorher den
+ * aktuellen als neue Revision ab, nichts geht verloren. `targetId` ohne FK wie bei content_reports: eine Spalte für
+ * zwei Tabellen; die Zeilen verschwinden mit dem Kurs.
+ */
+export const contentRevisions = pgTable(
+  "content_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    targetType: text("target_type").$type<ContentRevisionTarget>().notNull(),
+    targetId: uuid("target_id").notNull(),
+    data: jsonb("data").notNull(),
+    origin: text("origin").$type<ContentRevisionOrigin>().notNull(),
+    note: text("note"),
+    checkpointId: uuid("checkpoint_id").references(() => courseCheckpoints.id, { onDelete: "cascade" }),
+    authorUserId: uuid("author_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("content_revisions_target_idx").on(table.targetType, table.targetId, table.createdAt),
+    index("content_revisions_checkpoint_idx").on(table.checkpointId),
+    check("content_revisions_target_type_check", sql`${table.targetType} in ('section', 'question')`),
+    check("content_revisions_origin_check", sql`${table.origin} in ('manual', 'ai', 'backfill', 'translation', 'restore', 'checkpoint')`),
+  ],
+);
+
+/**
+ * Aktive Lernzeit einer Person je Kurs und Tag (Sekunden). Gemessen im Browser nur, solange der Tab sichtbar ist und die
+ * Person in den letzten zwei Minuten etwas getan hat (lib/client/learning-time.ts). Persönliche Lerndaten: im Export,
+ * fällt mit dem Konto weg. Grundlage für die aktive Lernzeit in der anonymen Abschluss-Statistik.
+ */
+export const learningTime = pgTable(
+  "learning_time",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    seconds: integer("seconds").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.certificationId, table.day] }), check("learning_time_seconds_check", sql`${table.seconds} between 0 and 86400`)],
+);
+
+export type CourseCompletionKind = "final_exam_passed" | "certified";
+
+/**
+ * Anonyme Abschluss-Statistik (roadmap3.md): eine Zeile je erstem Bestehen der Abschlussprüfung bzw. erstem
+ * ausgestellten Zertifikat einer Person in einem Kurs. BEWUSST ohne Bezug zur Person: keine user_id, kein genauer
+ * Zeitpunkt (nur der Tag), keine Punkte. Bleibt erhalten, wenn das Konto gelöscht wird; wird der Kurs gelöscht, bleibt
+ * die Zeile mit dem Kursnamen stehen (für Auswertungen über die Zeit).
+ * - calendarDays: vom ersten Lernen im Kurs bis zum Abschluss, angefangene Tage (gleicher Tag = 1)
+ * - activeMinutes: gemessene aktive Lernzeit; null, wenn die Messung nicht den ganzen Zeitraum abdeckt (Lernen vor
+ *   Einführung der Messung)
+ */
+export const courseCompletionEvents = pgTable(
+  "course_completion_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    courseName: text("course_name").notNull(),
+    kind: text("kind").$type<CourseCompletionKind>().notNull(),
+    completedOn: date("completed_on", { mode: "string" }).notNull(),
+    calendarDays: integer("calendar_days").notNull(),
+    activeMinutes: integer("active_minutes"),
+    /** Nachträglich aus vorhandenen Prüfungsversuchen erzeugt (npm run stats:backfill-completions). */
+    backfilled: boolean("backfilled").notNull().default(false),
+  },
+  (table) => [
+    index("course_completion_events_cert_idx").on(table.certificationId, table.completedOn),
+    index("course_completion_events_day_idx").on(table.completedOn),
+    check("course_completion_events_kind_check", sql`${table.kind} in ('final_exam_passed', 'certified')`),
+  ],
+);

@@ -3,6 +3,7 @@ import { getDb } from "@/lib/server/db/client";
 import { certifications, examVouchers, userCertificates, organizations } from "@/lib/server/db/schema";
 import { decryptSecret, DecryptionFailedError } from "@/lib/server/crypto/secret-box";
 import { expiryFrom } from "@/lib/certificates/logic";
+import { recordCertified } from "@/lib/server/stats/completions";
 
 /** Eigene Zertifikate und zugewiesene Gutscheine (UI U9). Jede Abfrage filtert nach `userId`; die Firma kommt hier nicht vor. */
 export class CertError extends Error {}
@@ -32,6 +33,8 @@ export async function listOwnCertificates(userId: string) {
 export async function addOwnCertificate(userId: string, input: CertInput): Promise<string> {
   const title = validate(input);
   const [row] = await getDb().insert(userCertificates).values({ userId, certificationId: input.certificationId, title, vendor: input.vendor.trim(), earnedAt: input.earnedAt, expiresAt: input.expiresAt, evidenceUrl: input.evidenceUrl || null }).returning({ id: userCertificates.id });
+  // Anonyme Abschluss-Statistik: Zertifikat zu einem Kurs, in dem die Person vorher gelernt hat.
+  if (input.certificationId) await recordCertified(userId, input.certificationId, row.id, input.earnedAt);
   return row.id;
 }
 
@@ -54,6 +57,7 @@ export async function createFromPassedExam(userId: string, certificationId: stri
   const existing = await db.select({ id: userCertificates.id, at: userCertificates.earnedAt }).from(userCertificates).where(and(eq(userCertificates.userId, userId), eq(userCertificates.certificationId, certificationId)));
   if (existing.some((e) => e.at.toISOString().slice(0, 10) === day)) return null;
   const [row] = await db.insert(userCertificates).values({ userId, certificationId, title: cert.name, vendor: cert.provider, earnedAt, expiresAt: expiryFrom(earnedAt, cert.validityMonths) }).returning({ id: userCertificates.id });
+  await recordCertified(userId, certificationId, row.id, earnedAt);
   return row.id;
 }
 
