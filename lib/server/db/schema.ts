@@ -2346,3 +2346,64 @@ export const userSkills = pgTable(
     check("user_skills_source_check", sql`${table.source} in ('manual', 'course', 'certificate')`),
   ],
 );
+
+/**
+ * Importierte Gehaltsstatistik (roadmap3.md, Schritt 9): eine hochgeladene Tabelle der Entgeltstatistik der Bundesagentur
+ * für Arbeit. Angezeigt wird immer der neueste Datensatz, mit Quelle und Stichtag; ältere bleiben zum Vergleich stehen.
+ */
+export const salaryDatasets = pgTable("salary_datasets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  source: text("source").notNull(),
+  /** Stichtag der Statistik (bei der BA der 31.12. eines Jahres). */
+  referenceDate: date("reference_date", { mode: "string" }).notNull(),
+  fileName: text("file_name"),
+  rowCount: integer("row_count").notNull().default(0),
+  importedByUserId: uuid("imported_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Region der Gehaltsstatistik: Deutschland, Ost/West oder ein Bundesland (GERMAN_STATES). */
+export type SalaryRegion = "DE" | "OST" | "WEST" | GermanState;
+
+/**
+ * Bruttomonatsentgelt (Euro, Vollzeit) je Beruf (KldB 2010, 3–5 Stellen), Anforderungsniveau (1 Helfer … 4 Experte,
+ * null = alle) und Region: Median und, wenn die Tabelle sie enthält, unteres und oberes Quartil.
+ */
+export const salaryStats = pgTable(
+  "salary_stats",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    datasetId: uuid("dataset_id")
+      .notNull()
+      .references(() => salaryDatasets.id, { onDelete: "cascade" }),
+    kldb: text("kldb").notNull(),
+    occupationName: text("occupation_name"),
+    level: integer("level"),
+    region: text("region").$type<SalaryRegion>().notNull(),
+    median: integer("median").notNull(),
+    q25: integer("q25"),
+    q75: integer("q75"),
+  },
+  (table) => [
+    index("salary_stats_lookup_idx").on(table.datasetId, table.kldb, table.region),
+    check("salary_stats_kldb_check", sql`${table.kldb} ~ '^[0-9]{3,5}$'`),
+    check("salary_stats_level_check", sql`${table.level} is null or ${table.level} between 1 and 4`),
+  ],
+);
+
+/**
+ * Zuletzt berechnete Karrierepfade einer Person (KI). `inputHash` fasst Profil, Skills, Abschlüsse und Katalog zusammen:
+ * weicht er ab, bietet die Seite „Pfade aktualisieren“ an. Persönliche Daten: im Export, fällt mit dem Konto weg.
+ */
+export const careerSuggestions = pgTable("career_suggestions", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  inputHash: text("input_hash").notNull(),
+  paths: jsonb("paths").notNull(),
+  model: text("model"),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Berechnungen heute (Kostenbremse), zurückgesetzt an einem neuen Tag. */
+  runsToday: integer("runs_today").notNull().default(1),
+  runsDay: date("runs_day", { mode: "string" }).notNull().default(sql`(now() at time zone 'utc')::date`),
+});

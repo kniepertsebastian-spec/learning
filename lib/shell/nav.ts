@@ -32,6 +32,7 @@ export type NavLabelKey =
   | "catalog"
   | "examPlanner"
   | "certificates"
+  | "career"
   | "profile"
   | "account"
   | "companyResults"
@@ -45,6 +46,7 @@ export type NavLabelKey =
   | "adminOverview"
   | "adminRequests"
   | "adminStats"
+  | "adminSalary"
   | "adminUi";
 
 export type NavIcon =
@@ -73,6 +75,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
         { href: "/catalog", label: "catalog", icon: "book" },
         { href: "/exams", label: "examPlanner", icon: "calendar" },
         { href: "/certificates", label: "certificates", icon: "shield" },
+        { href: "/career", label: "career", icon: "chart" },
         { href: "/profile", label: "profile", icon: "user" },
         { href: "/account", label: "account", icon: "shield" },
       ];
@@ -93,6 +96,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
         { href: "/admin", label: "adminOverview", icon: "layers", exact: true },
         { href: "/admin/requests", label: "adminRequests", icon: "inbox" },
         { href: "/admin/stats", label: "adminStats", icon: "chart" },
+        { href: "/admin/salary", label: "adminSalary", icon: "file" },
         { href: "/admin/ui", label: "adminUi", icon: "layers" },
       ];
   }
