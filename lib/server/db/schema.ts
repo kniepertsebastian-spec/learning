@@ -19,6 +19,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import type { AnswerConfidence, EnergyLevel, Locale, Localized } from "@/lib/types";
+import type { CourseOverview } from "@/lib/course-overview";
 
 /** R0.2 (roadmap.md): learner is the default, admin unlocks /admin and every
  * admin API route/server action. */
@@ -284,6 +285,8 @@ export const certifications = pgTable("certifications", {
   /** Summe der geschätzten KI-Kosten aller Übersetzungsläufe (USD); null = kein Preis hinterlegt. */
   translationCostUsd: numeric("translation_cost_usd", { precision: 10, scale: 4 }),
   translatedAt: timestamp("translated_at", { withTimezone: true }),
+  /** Kursbeschreibung vor dem Start (roadmap3.md, Schritt 4); null = noch keine. */
+  overview: jsonb("overview").$type<CourseOverview>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

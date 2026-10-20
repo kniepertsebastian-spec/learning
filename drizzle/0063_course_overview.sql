@@ -1,0 +1,1 @@
+ALTER TABLE "certifications" ADD COLUMN "overview" jsonb;

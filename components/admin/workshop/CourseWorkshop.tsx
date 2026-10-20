@@ -1,17 +1,18 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Bookmark, ChevronDown, ClipboardList, FileText, Flag, HelpCircle, Plus, RotateCcw, SquareTerminal } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, Bookmark, ChevronDown, ClipboardList, FileText, Flag, HelpCircle, Plus, RotateCcw, SquareTerminal } from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import type { WorkshopTree } from "@/lib/server/course-editor/service";
 import { CourseReport } from "./CourseReport";
+import { OverviewEditor } from "./OverviewEditor";
 import { QuestionsPanel } from "./QuestionsPanel";
 import { SectionEditor } from "./SectionEditor";
 import { api, formatDate, inputCls, Problems, useTr, type Lang } from "./shared";
 
-type Selection = { kind: "section"; id: string; objectiveId: string } | { kind: "new-section"; objectiveId: string } | { kind: "questions"; objectiveId: string } | { kind: "checkpoints" } | { kind: "report" } | null;
+type Selection = { kind: "section"; id: string; objectiveId: string } | { kind: "new-section"; objectiveId: string } | { kind: "questions"; objectiveId: string } | { kind: "checkpoints" } | { kind: "report" } | { kind: "overview" } | null;
 
 /** Auswahl in der Adresse (#section=…), damit Neuladen und Links auf dieselbe Stelle führen. */
 function parseHash(): Selection {
@@ -20,6 +21,7 @@ function parseHash(): Selection {
   if (p.get("questions")) return { kind: "questions", objectiveId: p.get("questions")! };
   if (p.has("checkpoints")) return { kind: "checkpoints" };
   if (p.has("report")) return { kind: "report" };
+  if (p.has("overview")) return { kind: "overview" };
   return null;
 }
 function toHash(s: Selection): string {
@@ -28,6 +30,7 @@ function toHash(s: Selection): string {
   if (s.kind === "questions") return `questions=${s.objectiveId}`;
   if (s.kind === "checkpoints") return "checkpoints";
   if (s.kind === "report") return "report";
+  if (s.kind === "overview") return "overview";
   return "";
 }
 
@@ -78,6 +81,10 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
 
   const outline = (
     <nav aria-label={tr("Gliederung", "Outline")} className="flex flex-col gap-4" data-testid="workshop-tree">
+      <button type="button" onClick={() => select({ kind: "overview" })} className={cn("flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm font-medium hover:bg-surface-2", selection?.kind === "overview" && "border-accent-border bg-accent-soft")} data-testid="open-overview">
+        <BookOpen className="h-4 w-4" aria-hidden="true" />
+        {tr("Kursbeschreibung", "Course description")}
+      </button>
       <button type="button" onClick={() => select({ kind: "report" })} className={cn("flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm font-medium hover:bg-surface-2", selection?.kind === "report" && "border-accent-border bg-accent-soft")} data-testid="open-report">
         <ClipboardList className="h-4 w-4" aria-hidden="true" />
         {tr("Qualitätsbericht", "Quality report")}
@@ -204,6 +211,7 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
             onOpen={(t) => select(t.sectionId ? { kind: "section", id: t.sectionId, objectiveId: t.objectiveId } : { kind: "questions", objectiveId: t.objectiveId })}
           />
         )}
+        {selection?.kind === "overview" && <OverviewEditor key="overview" certId={certId} locale={locale} onDirtyChange={setDirty} />}
         {selection?.kind === "checkpoints" && <Checkpoints certId={certId} locale={locale} onRestored={() => void loadTree()} />}
       </div>
     </div>

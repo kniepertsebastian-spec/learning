@@ -20,7 +20,7 @@ export default async function CatalogPage() {
   const groupIds = await categoryIdsByCertification(certs.map((c) => c.id));
   return (
     <CatalogView
-      certs={certs.map((c) => ({ id: c.id, slug: c.slug, name: c.name, provider: c.provider, version: c.examVersion, shortCode: shortCodeOf(c.name, c.shortCode), categoryId: c.categoryId, categoryIds: groupIds.get(c.id) ?? [], custom: c.courseType === "custom" }))}
+      certs={certs.map((c) => ({ id: c.id, slug: c.slug, name: c.name, provider: c.provider, version: c.examVersion, shortCode: shortCodeOf(c.name, c.shortCode), categoryId: c.categoryId, categoryIds: groupIds.get(c.id) ?? [], custom: c.courseType === "custom", summary: c.overview?.summary ?? null }))}
       groups={groups.map((g) => ({ id: g.id, name: g.name, color: g.color }))}
       signedIn={Boolean(user)}
     />

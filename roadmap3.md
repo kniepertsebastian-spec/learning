@@ -61,11 +61,19 @@ Hauptquelle nie kürzen (heute wird jede Quelle bei 60.000 Zeichen gekappt, jetz
   Kostenschätzung, Revisionen mit Herkunft „KI“.
 - Andere Sprache nach einer Änderung als veraltet markieren und über den Übersetzungslauf nachziehen.
 
-## Schritt 4: Kursbeschreibung
+## Schritt 4: Kursbeschreibung ✅
 
-Vor dem Start: Worum es geht, was man danach kann, was es bringt, wo der Kurs unverzichtbar ist (mit Begründung),
-Voraussetzungen und Aufwand, wie man hier lernt. Generiert aus Blueprint und Quellen, in der Werkstatt bearbeitbar,
-übersetzt, Backfill für bestehende Kurse.
+Auf `/cert/[slug]` steht oben „Über diesen Kurs“ (ausgeklappt, solange noch nichts gelernt wurde, sonst eingeklappt):
+worum es geht, das kannst du danach, das bringt dir das, wo das Wissen unverzichtbar ist (Situationen mit Begründung), für
+wen, Vorkenntnisse, so lernst du hier. Umfang (Lektionen, Simulationen, Fragen, Lernzeit) wird live gezählt, nicht
+gespeichert. Katalogkacheln zeigen die Kurzfassung.
+
+- `certifications.overview` (zweisprachig, zod-geprüft in `lib/course-overview.ts`).
+- Neue Kurse: nach der Veröffentlichung erzeugt die KI die Beschreibung aus Themenbereichen und Lernzielen (ohne erfundene
+  Zahlen, ohne Bestehens- oder Gehaltsversprechen); Fehler lassen den Kurs unberührt. Der Übersetzungslauf übersetzt sie mit.
+- Werkstatt → „Kursbeschreibung“: manuell bearbeiten, „Mit KI erzeugen“ liefert nur einen Entwurf im Formular (gespeichert
+  wird erst mit „Speichern“), Vorschau wie bei Lernenden.
+- Bestehende Kurse: `npm run courses:overviews -- <slug|--all>` (nur Kurse ohne Beschreibung).
 
 ## Schritt 5: Lernablauf Lesen → Simulation → Auswertung
 
