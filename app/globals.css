@@ -261,6 +261,9 @@
 }
 
 body {
+  /* Nichts schiebt die Seite seitwärts: breite Tabellen scrollen in ihrem Kasten (overflow-x-auto). `clip` statt `hidden`,
+     damit position: sticky (Leisten, Seitenleiste) weiter funktioniert. */
+  overflow-x: clip;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;

@@ -35,19 +35,22 @@ export function CompletionChart({ periods, granularity, locale, title }: { perio
     { key: "certified", label: de ? "Zertifikat ausgestellt" : "Certificate issued", color: "var(--chart-2)" },
   ];
   const ref = React.useRef<HTMLDivElement>(null);
-  const [width, setWidth] = React.useState(720);
+  // Erst rendern, wenn die Breite des Containers gemessen ist: ein Diagramm mit fester Startbreite (früher 720 px) ist beim
+  // ersten Laden breiter als ein Handy, und Chrome auf Android weitet dann den ganzen Viewport aus und zoomt die Seite heraus.
+  const [width, setWidth] = React.useState<number | null>(null);
   const [hover, setHover] = React.useState<number | null>(null);
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setWidth(Math.max(280, Math.floor(entry.contentRect.width))));
+    const ro = new ResizeObserver(([entry]) => setWidth(Math.max(160, Math.floor(entry.contentRect.width))));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
   const height = 240;
+  const w = width ?? 0;
   const pad = { top: 12, right: 8, bottom: 28, left: 36 };
-  const innerW = width - pad.left - pad.right;
+  const innerW = w - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
   const max = Math.max(0, ...periods.flatMap((p) => [p.final_exam_passed, p.certified]));
   const ticks = niceTicks(max);
@@ -79,12 +82,14 @@ export function CompletionChart({ periods, granularity, locale, title }: { perio
           </span>
         ))}
       </figcaption>
-      <div ref={ref} className="relative w-full">
+      <div ref={ref} className="relative w-full min-w-0 overflow-hidden">
         {total === 0 && <p className="absolute inset-0 flex items-center justify-center text-sm text-subtle">{de ? "Noch keine Abschlüsse in diesem Zeitraum." : "No completions in this period yet."}</p>}
+        {width === null && <div style={{ height }} aria-hidden="true" />}
+        {width !== null && (
         <svg width={width} height={height} role="img" aria-label={`${title}: ${total} ${de ? "Abschlüsse" : "completions"}`} onMouseLeave={() => setHover(null)}>
           {ticks.map((t) => (
             <g key={t}>
-              <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} stroke="var(--border-subtle)" strokeWidth={1} />
+              <line x1={pad.left} x2={w - pad.right} y1={y(t)} y2={y(t)} stroke="var(--border-subtle)" strokeWidth={1} />
               <text x={pad.left - 6} y={y(t)} dy="0.32em" textAnchor="end" className="fill-faint text-[11px]">
                 {t}
               </text>
@@ -107,13 +112,14 @@ export function CompletionChart({ periods, granularity, locale, title }: { perio
               </g>
             );
           })}
-          <line x1={pad.left} x2={width - pad.right} y1={pad.top + innerH} y2={pad.top + innerH} stroke="var(--border)" strokeWidth={1} />
+          <line x1={pad.left} x2={w - pad.right} y1={pad.top + innerH} y2={pad.top + innerH} stroke="var(--border)" strokeWidth={1} />
         </svg>
-        {tip && hover !== null && (
+        )}
+        {tip && hover !== null && width !== null && (
           <div
             className="pointer-events-none absolute z-10 rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-lg"
             // Neben den Zeitraum, nie darüber: die Säulen, die man ansieht, bleiben sichtbar.
-            style={{ left: pad.left + hover * band + band / 2 > width / 2 ? Math.max(0, pad.left + hover * band - 188) : Math.min(width - 180, pad.left + (hover + 1) * band + 8), top: 0, width: 180 }}
+            style={{ left: pad.left + hover * band + band / 2 > w / 2 ? Math.max(0, pad.left + hover * band - 188) : Math.min(w - 180, pad.left + (hover + 1) * band + 8), top: 0, width: 180 }}
             role="tooltip"
           >
             <p className="mb-1 font-semibold">{periodLabel(tip.start, granularity, locale)}</p>

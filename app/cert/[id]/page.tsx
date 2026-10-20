@@ -364,9 +364,9 @@ export default async function CertDetailPage({
           const { mastery } = domainMastery[domain.id] || { mastery: 0 };
           return (
             <div key={domain.id}>
-              <div className="mb-4 flex items-end justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold break-words">
                     {domain.name}
                     {domain.weightPercent && (
                       <span className="ml-2 text-sm font-normal text-foreground/60">
@@ -376,7 +376,7 @@ export default async function CertDetailPage({
                   </h2>
                 </div>
                 {session && quizzes && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     <div className="h-2 w-24 rounded-full bg-gray-300">
                       <div
                         className="h-full rounded-full bg-accent transition-all"

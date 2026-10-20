@@ -22,7 +22,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const btn = "flex h-10 items-center gap-1.5 rounded-md border border-border-strong bg-control px-2.5 text-sm font-medium hover:bg-surface-2";
   return (
-    <div data-context="personal" className="flex min-h-screen flex-col">
+    <div data-context="personal" className="flex min-h-dvh flex-col">
       <header className="flex h-16 items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 font-semibold">
           <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">P</span>
@@ -55,7 +55,7 @@ export function AppShell({ shell, streak, children }: { shell: ShellData | null;
   const sidebarWidth = ctx === "admin" ? "md:w-[232px]" : "md:w-[248px]";
 
   return (
-    <div data-app-shell data-context={ctx} className="flex min-h-screen flex-col bg-background text-foreground">
+    <div data-app-shell data-context={ctx} className="flex min-h-dvh flex-col bg-background text-foreground">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-on-accent">{t.shell.skipToContent}</a>
 
       {ctx === "admin" && (

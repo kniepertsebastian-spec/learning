@@ -60,6 +60,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Chrome auf Android berechnet das kleinste Zoom-Level sonst selbst so, dass der ganze Inhalt passt: ist beim Laden auch nur
+  // ein Element breiter als der Bildschirm, wird der Viewport aufgeweitet und die Seite herausgezoomt (keine „mobile Ansicht“ mehr).
+  // Mit minimum-scale=1 bleibt die Seite in Gerätebreite; Hineinzoomen bleibt erlaubt.
+  minimumScale: 1,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#F6F7F9" },
     { media: "(prefers-color-scheme: dark)", color: "#0A0C10" },
