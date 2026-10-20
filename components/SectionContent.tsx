@@ -9,6 +9,8 @@ import { RichText } from "@/components/RichText";
 import { SectionQuiz } from "@/components/SectionQuiz";
 import type { SectionQuizQuestion } from "@/components/SectionQuiz";
 import { ContentLanguageSwitch } from "@/components/lesson/ContentLanguageSwitch";
+import { LessonPhases } from "@/components/lesson/LessonPhases";
+import { LessonSimulationsProvider } from "@/components/lesson/LessonSimulations";
 import { OutlineList } from "@/components/lesson/OutlineList";
 import { ReadingProgress } from "@/components/lesson/ReadingProgress";
 import { TocList } from "@/components/lesson/TocList";
@@ -53,6 +55,8 @@ interface SectionContentProps {
   contentLocale?: Locale | null;
   /** Übersetzung in die zweite Sprache läuft gerade. */
   translationPending?: boolean;
+  /** Gelöste Simulationen dieser Person in dieser Lektion. */
+  simulationProgress?: Array<{ simIndex: number; bestHelps: number }>;
 }
 
 export function SectionContent({
@@ -74,6 +78,7 @@ export function SectionContent({
   initialCompleted = false,
   contentLocale = null,
   translationPending = false,
+  simulationProgress = [],
 }: SectionContentProps) {
   const { locale, t } = useLocale();
   const router = useRouter();
@@ -107,6 +112,7 @@ export function SectionContent({
   }
 
   return (
+    <LessonSimulationsProvider text={content} sectionId={sectionId} persist={signedIn && !offline} initialProgress={simulationProgress}>
     <div className="flex flex-1 flex-col" data-testid="lesson-page">
       <ReadingProgress />
 
@@ -167,6 +173,8 @@ export function SectionContent({
               <h1 className="text-[28px] leading-[1.15] font-semibold tracking-tight sm:text-[38px]">{sectionTitle[locale]}</h1>
               <p className="mt-2 text-sm text-subtle">{objectiveCode} · {objectiveTitle}</p>
             </header>
+
+            <LessonPhases quizStarted={showQuiz} completed={completed} hasEvaluation={hasQuiz || !quizEnabled} />
 
             <div className="text-base leading-[1.7] text-text-2 [&_p:first-child]:text-[17px] [&_p]:my-3 [&_p]:whitespace-normal">
               <RichText text={content} headingIds />
@@ -290,5 +298,6 @@ export function SectionContent({
         </aside>
       </div>
     </div>
+    </LessonSimulationsProvider>
   );
 }

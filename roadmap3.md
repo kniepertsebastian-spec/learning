@@ -75,11 +75,22 @@ gespeichert. Katalogkacheln zeigen die Kurzfassung.
   wird erst mit „Speichern“), Vorschau wie bei Lernenden.
 - Bestehende Kurse: `npm run courses:overviews -- <slug|--all>` (nur Kurse ohne Beschreibung).
 
-## Schritt 5: Lernablauf Lesen → Simulation → Auswertung
+## Schritt 5: Lernablauf Lesen → Simulation → Auswertung ✅
 
-Schrittleiste je Lektion (Verstehen, Anwenden, Auswerten); während der Simulation bleibt der Text erreichbar
-(Desktop daneben, mobil als Seitenblatt); Auswertung mit Hinweis auf die passenden Textstellen; Fortschritt der
-Simulationen speichern und in die Wiederholung aufnehmen.
+- **Schrittleiste** über jeder Lektion mit Simulation und Auswertung: Verstehen, Anwenden („x von y gelöst“), Auswerten;
+  jeder Schritt springt an die Stelle, der Stand kommt aus den gelösten Simulationen und dem Lektionsfortschritt.
+- **Text während der Simulation:** Knopf „Zum Text“ in jeder Simulation öffnet den Lektionstext (ohne die Simulationen) in
+  einem Seitenblatt, auch auf dem Handy; die Simulation behält ihren Stand.
+- **Auswertung:** nach dem Lösen verweist die Simulation auf Textstellen („Nochmal nachlesen“, Feld `review` mit 1–3
+  Überschriften der Lektion; unbekannte Überschriften werden nicht gezeigt). Ein Klick öffnet den Text an dieser Stelle.
+  Neue Kurse bekommen `review` von der KI, ältere Simulationen zeigen die Auswertung ohne Verweise.
+- **Gespeichert** (`simulation_results`, im Datenexport, fällt mit dem Konto weg): je Person, Lektion und Simulation
+  Bestwert (wenigste Hilfen), Anzahl der Lösungen; die Schrittleiste zeigt den Stand auch nach dem Neuladen.
+- **Wiederholung:** wer eine Simulation nur mit mindestens zwei Hilfen (Tipp, Lösung, Fehlversuche) löst, bekommt die
+  bestehenden Wiederholungsfragen des Lernziels sofort fällig (es entstehen keine neuen Einträge) und einen Hinweis.
+
+Offen: Simulationen erscheinen noch nicht als eigene Aufgaben in Übungssitzungen; Fortschritt wird nur gespeichert, wenn man
+angemeldet ist (Offline-Reader: nein).
 
 ## Schritt 6: Lebendigere Texte bei neuen Kursen ✅
 

@@ -18,10 +18,13 @@ import { z } from "zod";
 export const SIMULATION_LANG = "simulation";
 
 const line = (max: number) => z.string().trim().min(1).max(max);
+/** Überschriften der Lektion, die man bei Schwierigkeiten nachlesen sollte (Auswertung verweist darauf). */
+const review = z.array(line(160)).max(3).optional();
 const id = z.string().trim().regex(/^[A-Za-z0-9_-]{1,40}$/, "IDs nur aus Buchstaben, Ziffern, _ und -");
 
 const terminalSchema = z.object({
   type: z.literal("terminal"),
+  review,
   title: line(120),
   scenario: line(2000),
   prompt: z.string().trim().max(60).optional(),
@@ -42,6 +45,7 @@ const terminalSchema = z.object({
 const decisionSchema = z
   .object({
     type: z.literal("decision"),
+    review,
     title: line(120),
     scenario: line(2000),
     start: id,
@@ -97,6 +101,7 @@ const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_-]{1,40})\s*\}\}/g;
 const configSchema = z
   .object({
     type: z.literal("config"),
+    review,
     title: line(120),
     scenario: line(2000),
     file: z.string().trim().max(120).optional(),
@@ -202,4 +207,30 @@ export function extractSimulationSources(markdown: string): string[] {
     fence?.body.push(line);
   }
   return out;
+}
+
+/** Lektionstext ohne die ```simulation-Blöcke (für das Seitenblatt, in dem man während einer Simulation nachliest). */
+export function stripSimulations(markdown: string): string {
+  const out: string[] = [];
+  let fence: { char: string; len: number; sim: boolean } | null = null;
+  for (const line of markdown.split("\n")) {
+    const f = /^\s*(`{3,}|~{3,})\s*([\w-]*)/.exec(line);
+    if (!fence && f) {
+      fence = { char: f[1][0], len: f[1].length, sim: f[2].toLowerCase() === SIMULATION_LANG };
+      if (!fence.sim) out.push(line);
+      continue;
+    }
+    if (fence && f && f[1][0] === fence.char && f[1].length >= fence.len && /^\s*(`{3,}|~{3,})\s*$/.test(line)) {
+      if (!fence.sim) out.push(line);
+      fence = null;
+      continue;
+    }
+    if (!fence?.sim) out.push(line);
+  }
+  return out.join("\n");
+}
+
+/** Position einer Simulation unter den Simulationen der Lektion (gleicher Inhalt, Leerraum am Rand egal); -1 wenn unbekannt. */
+export function simulationIndex(sources: string[], spec: string): number {
+  return sources.findIndex((s) => s.trim() === spec.trim());
 }

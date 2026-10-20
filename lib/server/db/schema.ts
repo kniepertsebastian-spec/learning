@@ -1913,6 +1913,30 @@ export const companyModules = pgTable(
  * Absolvierung aller Lektionen (bei Lernpfaden mit Tests zählt weiter das Beherrschen jedes Lernziels). Gehört der
  * Person und fällt mit dem Konto weg.
  */
+/**
+ * Fortschritt der Simulationen in Lektionen (roadmap3.md, Schritt 5): je Person, Lektion und Simulation (Nummer in der
+ * Lektion) einmal; `bestHelps` = wenigste Hilfen (Tipp, Lösung, Fehlversuche) bei einer gelösten Runde.
+ */
+export const simulationResults = pgTable(
+  "simulation_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => sections.id, { onDelete: "cascade" }),
+    simIndex: integer("sim_index").notNull(),
+    solves: integer("solves").notNull().default(1),
+    bestHelps: integer("best_helps").notNull(),
+    lastHelps: integer("last_helps").notNull(),
+    firstSolvedAt: timestamp("first_solved_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSolvedAt: timestamp("last_solved_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("simulation_results_user_section_sim_unique").on(table.userId, table.sectionId, table.simIndex)],
+);
+
 export const lessonCompletions = pgTable(
   "lesson_completions",
   {
