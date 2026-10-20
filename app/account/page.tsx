@@ -2,9 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
+import { AutoSkillsToggle } from "@/components/AutoSkillsToggle";
 import { ExamRemindersToggle } from "@/components/ExamRemindersToggle";
 import { getDb } from "@/lib/server/db/client";
-import { users } from "@/lib/server/db/schema";
+import { userProfiles, users } from "@/lib/server/db/schema";
 import { AccountForms } from "./account-forms-section";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { getCompanyMembership } from "@/lib/server/company/access";
@@ -16,6 +17,7 @@ export default async function AccountPage() {
   if (!user) redirect("/login?from=%2Faccount");
   const membership = await getCompanyMembership(user.id);
   const [prefs] = await getDb().select({ optOut: users.examRemindersOptOut }).from(users).where(eq(users.id, user.id)).limit(1);
+  const [profile] = await getDb().select({ autoSkills: userProfiles.autoSkills }).from(userProfiles).where(eq(userProfiles.userId, user.id)).limit(1);
   return (
     <div className="flex flex-col gap-6">
       <AccountForms
@@ -25,6 +27,7 @@ export default async function AccountPage() {
         company={membership ? { name: membership.organizationName, role: membership.role } : null}
       />
       <ExamRemindersToggle initialOptOut={prefs?.optOut ?? false} />
+      <AutoSkillsToggle initialEnabled={profile?.autoSkills ?? false} />
     </div>
   );
 }

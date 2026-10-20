@@ -81,11 +81,14 @@ Für Präsentationen: wie viele Menschen einen Kurs abgeschlossen haben, in welc
   Durchschnitt (Dauerwerte erst ab 5 Abschlüssen), CSV-Export. Nachtrag aus vorhandenen Daten:
   `npm run stats:backfill-completions` (ohne aktive Lernzeit).
 
-## Schritt 8: Nutzerprofil und Skills
+## Schritt 8: Nutzerprofil und Skills ✅
 
-Aktuelle Stelle (mit Berufscode), Bundesland, Skills mit Stufe, Tools mit „zuletzt genutzt“, Schwerpunkte. Skills aus
-abgeschlossenen Kursen und Zertifikaten automatisch ergänzen, wenn in den Einstellungen erlaubt (mit Herkunft,
-entfernbar). Freiwillig, im Export, mit dem Konto gelöscht, für Firmen nicht sichtbar.
+Auf `/profile` („Beruf und Skills“): aktuelle Stelle, was man dort macht, Bundesland, „Womit hattest du schon viel zu
+tun?“, Skills mit Stufe (Grundlagen/sicher/Experte) und Tools zusätzlich mit Aktualität (aktueller Stand, 1–3 Jahre her,
+länger her). Einstellung im Konto: bestandene Abschlussprüfungen und Zertifikate kommen automatisch als Skill dazu
+(Kursname, Stufe „sicher“, mit Herkunft, löschbar; beim Einschalten werden bisherige Abschlüsse nachgetragen; selbst
+eingetragene Skills werden nie überschrieben). Freiwillig, im Datenexport, fällt mit dem Konto weg, für Firmen nicht
+sichtbar. Berufscode (KldB) für die Gehaltsdaten folgt mit Schritt 9.
 
 ## Schritt 9: Karrierepfade und Gehalt
 

@@ -16,6 +16,7 @@ import { ExamScoringService } from "@/lib/server/exam/scoring";
 import { getServerLocale } from "@/lib/server/locale";
 import { recordReviewOutcomes } from "@/lib/server/review/service";
 import { passMarkPercent, recordFinalExamPass } from "@/lib/server/stats/completions";
+import { addSkillFromCourse } from "@/lib/server/profile/service";
 
 interface ExamAnswerPayload {
   answers: Array<{ questionId: string; selectedOptionId: string }>;
@@ -129,6 +130,8 @@ export async function POST(
 
     // Anonyme Abschluss-Statistik: erstes Bestehen der Person in diesem Kurs (lib/server/stats/completions.ts).
     if (passed) await recordFinalExamPass(session.user.id, examRecord[0].certificationId, attemptInserted[0].id);
+    // Skill aus dem Kurs ins Profil, wenn die Person das erlaubt hat (lib/server/profile/service.ts).
+    if (passed) await addSkillFromCourse(session.user.id, examRecord[0].certificationId, "course");
 
     // R2.2: Review-Zustand (Fälligkeit/Intervall) je beantworteter Frage fortschreiben.
     await recordReviewOutcomes(session.user.id, answerEvaluation);

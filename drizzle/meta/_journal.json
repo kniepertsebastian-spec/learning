@@ -421,6 +421,13 @@
       "when": 1792481092196,
       "tag": "0059_completion_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1792482384007,
+      "tag": "0060_user_profiles",
+      "breakpoints": true
     }
   ]
 }
