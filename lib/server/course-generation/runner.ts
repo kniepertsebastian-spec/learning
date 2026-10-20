@@ -1,5 +1,6 @@
 import { cleanupJobDocumentsIfDone } from "@/lib/server/internal-courses/temporary-documents";
 import { isAutoTranslateEnabled, startCourseTranslation } from "@/lib/server/course-translation/runner";
+import { ensureCourseOverview } from "@/lib/server/course-overview/service";
 import { getCourseGenerationJob } from "./job-service";
 import { executeCourseGenerationJob, publishPreparedCourseGenerationPackage } from "./worker";
 
@@ -25,6 +26,13 @@ export function isCourseGenerationJobActive(jobId: string): boolean {
  * Nach der Veröffentlichung: der Kurs wird einmal in die zweite Sprache übersetzt (eigener, kleiner Kontext mit dem
  * schlanken Übersetzungsmodell, siehe lib/server/course-translation). Ein Fehler hier betrifft den Kurs nicht.
  */
+async function overviewIfPublished(jobId: string): Promise<void> {
+  const job = await getCourseGenerationJob(jobId);
+  if (job?.status !== "published" || !job.resultCertificationId) return;
+  // Die Kursbeschreibung ist eine Zugabe: schlägt sie fehl, bleibt der Kurs veröffentlicht, die Werkstatt erzeugt sie nach.
+  await ensureCourseOverview(job.resultCertificationId).catch((error) => console.error(`Kursbeschreibung (${jobId}) nicht erzeugt:`, error));
+}
+
 async function translateIfPublished(jobId: string): Promise<void> {
   if (!isAutoTranslateEnabled()) return;
   const job = await getCourseGenerationJob(jobId);
@@ -41,6 +49,7 @@ export function startCourseGenerationJob(jobId: string): void {
       // try/catch-Klammer dort (z.B. beim initialen getCourseGenerationJob).
       console.error(`Course generation job ${jobId} failed outside its own error handling:`, error);
     })
+    .then(() => overviewIfPublished(jobId))
     .then(() => translateIfPublished(jobId))
     .catch((error) => console.error(`Übersetzung nach Kursgenerierung ${jobId} nicht gestartet:`, error))
     // Temporäre Dateien eines Kurses der Firma verschwinden nach Erfolg oder Abbruch (nach einem Fehler bleiben sie für den nächsten Versuch).
@@ -58,6 +67,7 @@ export function startCourseGenerationPublish(jobId: string): void {
     .catch((error) => {
       console.error(`Course generation publish ${jobId} failed outside its own error handling:`, error);
     })
+    .then(() => overviewIfPublished(jobId))
     .then(() => translateIfPublished(jobId))
     .catch((error) => console.error(`Übersetzung nach Kursgenerierung ${jobId} nicht gestartet:`, error))
     .finally(() => activeJobs.delete(jobId));

@@ -15,6 +15,7 @@ import {
   questions,
   questionOptions,
 } from "@/lib/server/db/schema";
+import { listSimulationProgress } from "@/lib/server/simulations/service";
 import { SectionContent } from "@/components/SectionContent";
 import type { SectionQuizQuestion } from "@/components/SectionQuiz";
 
@@ -138,6 +139,7 @@ export default async function SectionPage({
       initialCompleted={completed}
       contentLocale={certRow?.contentLocale ?? "de"}
       translationPending={certRow?.translationStatus === "running"}
+      simulationProgress={session?.user?.id ? await listSimulationProgress(session.user.id, sectionId) : []}
     />
   );
 }

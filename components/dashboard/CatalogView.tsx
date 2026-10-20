@@ -16,7 +16,7 @@ export function CatalogView({
   certs,
   groups,
 }: {
-  certs: Array<{ id: string; slug: string; name: string; provider: string; version: string; shortCode: string; categoryId: string | null; categoryIds: string[]; custom: boolean }>;
+  certs: Array<{ id: string; slug: string; name: string; provider: string; version: string; shortCode: string; categoryId: string | null; categoryIds: string[]; custom: boolean; summary: { de: string; en: string } | null }>;
   groups: Array<{ id: string; name: { de: string; en: string }; color: CourseCategoryColor }>;
   signedIn: boolean;
 }) {
@@ -61,6 +61,7 @@ export function CatalogView({
                       <p className="font-mono text-[11.5px] text-subtle">{c.custom ? h.customTraining : `${c.provider} · ${c.version}`}</p>
                     </div>
                   </div>
+                  {c.summary && <p className="line-clamp-3 text-[13px] text-muted" data-testid="catalog-summary">{c.summary[locale]}</p>}
                   <Button asChild size="sm" variant="secondary" className="mt-auto self-end"><Link href={`/cert/${c.slug}`}>{h.startLearning}</Link></Button>
                 </Card>
               </li>

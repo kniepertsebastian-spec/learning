@@ -150,7 +150,7 @@ async function saveChunk(certificationId: string, chunk: TranslationChunk, resul
 }
 
 /** Der KI-Zugang für den Kurs: bei internen Kursen der der Firma, sonst der der Plattform. */
-async function clientFor(cert: { kind: string; ownerOrganizationId: string | null }): Promise<GoogleGenAI | undefined> {
+export async function clientFor(cert: { kind: string; ownerOrganizationId: string | null }): Promise<GoogleGenAI | undefined> {
   if (cert.kind === "internal") {
     if (!cert.ownerOrganizationId) throw new AiAccessUnavailableError("Interner Kurs ohne Firma.");
     return clientForOrganization(cert.ownerOrganizationId);

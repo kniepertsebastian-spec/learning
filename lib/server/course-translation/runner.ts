@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
+import { translateCourseOverview } from "@/lib/server/course-overview/service";
 import { translateCourse } from "./service";
 
 /**
@@ -29,6 +30,8 @@ export async function startCourseTranslation(certificationId: string): Promise<S
     .set({ translationStatus: "running", translationMessage: "Übersetzung gestartet …", translationProcessed: 0, translationTotal: 0 })
     .where(eq(certifications.id, certificationId));
   const run = translateCourse(certificationId)
+    // Die Kursbeschreibung gehört dazu, ihr Fehler (oder fehlende Beschreibung) ändert am Kurs nichts.
+    .then(() => translateCourseOverview(certificationId).catch((error) => console.error(`Übersetzung der Kursbeschreibung (${certificationId}) fehlgeschlagen:`, error)))
     .then(() => undefined)
     // translateCourse() hält Fehler selbst am Kurs fest; hier nur protokollieren.
     .catch((error) => console.error(`Übersetzung des Kurses ${certificationId} fehlgeschlagen:`, error))

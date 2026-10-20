@@ -61,22 +61,49 @@ Hauptquelle nie kürzen (heute wird jede Quelle bei 60.000 Zeichen gekappt, jetz
   Kostenschätzung, Revisionen mit Herkunft „KI“.
 - Andere Sprache nach einer Änderung als veraltet markieren und über den Übersetzungslauf nachziehen.
 
-## Schritt 4: Kursbeschreibung
+## Schritt 4: Kursbeschreibung ✅
 
-Vor dem Start: Worum es geht, was man danach kann, was es bringt, wo der Kurs unverzichtbar ist (mit Begründung),
-Voraussetzungen und Aufwand, wie man hier lernt. Generiert aus Blueprint und Quellen, in der Werkstatt bearbeitbar,
-übersetzt, Backfill für bestehende Kurse.
+Auf `/cert/[slug]` steht oben „Über diesen Kurs“ (ausgeklappt, solange noch nichts gelernt wurde, sonst eingeklappt):
+worum es geht, das kannst du danach, das bringt dir das, wo das Wissen unverzichtbar ist (Situationen mit Begründung), für
+wen, Vorkenntnisse, so lernst du hier. Umfang (Lektionen, Simulationen, Fragen, Lernzeit) wird live gezählt, nicht
+gespeichert. Katalogkacheln zeigen die Kurzfassung.
 
-## Schritt 5: Lernablauf Lesen → Simulation → Auswertung
+- `certifications.overview` (zweisprachig, zod-geprüft in `lib/course-overview.ts`).
+- Neue Kurse: nach der Veröffentlichung erzeugt die KI die Beschreibung aus Themenbereichen und Lernzielen (ohne erfundene
+  Zahlen, ohne Bestehens- oder Gehaltsversprechen); Fehler lassen den Kurs unberührt. Der Übersetzungslauf übersetzt sie mit.
+- Werkstatt → „Kursbeschreibung“: manuell bearbeiten, „Mit KI erzeugen“ liefert nur einen Entwurf im Formular (gespeichert
+  wird erst mit „Speichern“), Vorschau wie bei Lernenden.
+- Bestehende Kurse: `npm run courses:overviews -- <slug|--all>` (nur Kurse ohne Beschreibung).
 
-Schrittleiste je Lektion (Verstehen, Anwenden, Auswerten); während der Simulation bleibt der Text erreichbar
-(Desktop daneben, mobil als Seitenblatt); Auswertung mit Hinweis auf die passenden Textstellen; Fortschritt der
-Simulationen speichern und in die Wiederholung aufnehmen.
+## Schritt 5: Lernablauf Lesen → Simulation → Auswertung ✅
 
-## Schritt 6: Lebendigere Texte bei neuen Kursen
+- **Schrittleiste** über jeder Lektion mit Simulation und Auswertung: Verstehen, Anwenden („x von y gelöst“), Auswerten;
+  jeder Schritt springt an die Stelle, der Stand kommt aus den gelösten Simulationen und dem Lektionsfortschritt.
+- **Text während der Simulation:** Knopf „Zum Text“ in jeder Simulation öffnet den Lektionstext (ohne die Simulationen) in
+  einem Seitenblatt, auch auf dem Handy; die Simulation behält ihren Stand.
+- **Auswertung:** nach dem Lösen verweist die Simulation auf Textstellen („Nochmal nachlesen“, Feld `review` mit 1–3
+  Überschriften der Lektion; unbekannte Überschriften werden nicht gezeigt). Ein Klick öffnet den Text an dieser Stelle.
+  Neue Kurse bekommen `review` von der KI, ältere Simulationen zeigen die Auswertung ohne Verweise.
+- **Gespeichert** (`simulation_results`, im Datenexport, fällt mit dem Konto weg): je Person, Lektion und Simulation
+  Bestwert (wenigste Hilfen), Anzahl der Lösungen; die Schrittleiste zeigt den Stand auch nach dem Neuladen.
+- **Wiederholung:** wer eine Simulation nur mit mindestens zwei Hilfen (Tipp, Lösung, Fehlversuche) löst, bekommt die
+  bestehenden Wiederholungsfragen des Lernziels sofort fällig (es entstehen keine neuen Einträge) und einen Hinweis.
 
-Prompt-Regeln (du-Form, erst Problem dann Lösung, jedes Konzept mit Praxisbeispiel), Block „Was damit möglich ist“,
-durchgehende Geschichte je Kurs (fiktive Firma), „Was passiert, wenn…“-Experimente in Simulationen.
+Offen: Simulationen erscheinen noch nicht als eigene Aufgaben in Übungssitzungen; Fortschritt wird nur gespeichert, wenn man
+angemeldet ist (Offline-Reader: nein).
+
+## Schritt 6: Lebendigere Texte bei neuen Kursen ✅
+
+Gilt für neu erzeugte Kurse (bestehende Lektionen bleiben, die Werkstatt-KI aus Schritt 3 kann sie später umschreiben).
+
+- Stilregeln im Inhaltsprompt (`LIVELY_STYLE_PROMPT`): du-Form, erst Problem dann Lösung, jedes Konzept mit Praxisbeispiel,
+  Beispiele passend zum Kursthema (nicht IT-lastig), kein Werbeton.
+- Neuer Hinweisblock `> [!POSSIBLE]` („Was damit möglich ist“) je Lektion, ehrlich und ohne Karriere- oder Gehaltsversprechen;
+  in Validierung, Darstellung (de/en) und Backfill-Erkennung bekannt.
+- Durchgehende Geschichte: je Kurs eine fiktive Firma und Person, abgeleitet aus dem Kurstitel (daher bleibt der Systemprompt
+  für alle Lernziele gleich und cache-freundlich); die Branche wählt die KI passend zum Thema. Nicht bei Firmenkursen und
+  Stichwortlisten, dort zählen die echten Unterlagen.
+- Simulationen enthalten mindestens eine „Was passiert, wenn …?“-Stelle (plausible Fehlentscheidung samt Folge).
 
 ## Schritt 7: Anonyme Abschluss-Statistik ✅
 

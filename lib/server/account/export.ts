@@ -9,6 +9,7 @@ import {
   examAttempts,
   objectiveProgress,
   lessonCompletions,
+  simulationResults,
   learningTime,
   userProfiles,
   userSkills,
@@ -41,6 +42,7 @@ import {
 export const EXPORTED_USER_REFERENCES: readonly string[] = [
   "organization_memberships.user_id",
   "lesson_completions.user_id",
+  "simulation_results.user_id",
   "learning_time.user_id",
   "user_profiles.user_id",
   "user_skills.user_id",
@@ -208,6 +210,7 @@ export async function exportAccountData(userId: string) {
         answers: examAnswerRows.filter((a) => a.examAttemptId === attempt.id),
       })),
       lessonCompletions: await db.select().from(lessonCompletions).where(eq(lessonCompletions.userId, userId)),
+      simulationResults: await db.select().from(simulationResults).where(eq(simulationResults.userId, userId)),
       learningTime: await db.select().from(learningTime).where(eq(learningTime.userId, userId)),
       profile: await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)),
       skills: await db.select().from(userSkills).where(eq(userSkills.userId, userId)),

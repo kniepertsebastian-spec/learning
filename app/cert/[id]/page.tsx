@@ -10,6 +10,9 @@ import { certifications, domains, objectives, sections, lessons, lessonCompletio
 import { getCompanyMembership } from "@/lib/server/company/access";
 import { listModulesForPath } from "@/lib/server/company/modules";
 import { CompanyModulesSection } from "@/components/CompanyModulesSection";
+import { CourseOverviewView } from "@/components/CourseOverviewView";
+import { courseOverviewSchema } from "@/lib/course-overview";
+import { getCourseScope } from "@/lib/server/course-overview/service";
 import { getServerLocale } from "@/lib/server/locale";
 import { RemediationService } from "@/lib/server/remediation/service";
 import { getStudyProfile } from "@/lib/server/study/profile";
@@ -216,6 +219,12 @@ export default async function CertDetailPage({
       })
     : [];
 
+  // Kursbeschreibung: ausgeklappt, solange die Person noch nichts gelernt hat, sonst eingeklappt.
+  const parsedOverview = courseOverviewSchema.safeParse(cert.overview);
+  const overview = parsedOverview.success ? parsedOverview.data : null;
+  const overviewScope = overview ? await getCourseScope(cert.id) : undefined;
+  const hasStarted = Object.keys(progressData).some((k) => allObjectives.some((o) => o.id === k));
+
   return (
     <div className="flex flex-1 flex-col">
       <Link
@@ -271,6 +280,15 @@ export default async function CertDetailPage({
           </div>
         )}
       </div>
+
+      {overview && (
+        <details open={!hasStarted} className="mb-6 rounded-2xl border border-border bg-surface p-4" data-testid="course-description">
+          <summary className="cursor-pointer text-sm font-semibold">{locale === "de" ? "Über diesen Kurs" : "About this course"}</summary>
+          <div className="mt-3">
+            <CourseOverviewView overview={overview} scope={overviewScope} locale={locale} />
+          </div>
+        </details>
+      )}
 
       {companyMembership && companyModules.length > 0 && (
         <CompanyModulesSection modules={companyModules} companyName={companyMembership.organizationName} locale={locale} />

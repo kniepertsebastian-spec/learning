@@ -7,7 +7,7 @@ import { parseSimulation, SIMULATION_LANG } from "./simulation";
  * Remark-Plugin für die Inhaltsblöcke der Lernmaterialien (docs/ROADMAP-UI.md U5). Läuft nach `remark-directive` und
  * übersetzt in mdast-Knoten mit `data.hName`/`hProperties`, die RichText in Komponenten abbildet:
  *
- *  - `> [!EXAM]` / `[!MISTAKE]` / `[!MEMO]` / `[!NOTE]`  → div[data-callout]
+ *  - `> [!EXAM]` / `[!MISTAKE]` / `[!MEMO]` / `[!NOTE]` / `[!POSSIBLE]`  → div[data-callout]
  *  - ```console / ```terminal                              → pre[data-terminal]
  *  - Codeblöcke mit `title="…"` und `{7-8}`                → code[data-title][data-lines]
  *  - `:::tabs` mit `::tab[Label]`                          → div[data-block=tabs] > div[data-tab]
@@ -19,8 +19,8 @@ import { parseSimulation, SIMULATION_LANG } from "./simulation";
  * weil `remark-directive` auch gewöhnlichen Text wie „Port:443“ als Text-Direktive liest.
  */
 
-export type CalloutKind = "exam" | "mistake" | "memo" | "info";
-const CALLOUT_MARKERS: Record<string, CalloutKind> = { EXAM: "exam", MISTAKE: "mistake", MEMO: "memo", NOTE: "info" };
+export type CalloutKind = "exam" | "mistake" | "memo" | "info" | "possible";
+const CALLOUT_MARKERS: Record<string, CalloutKind> = { EXAM: "exam", MISTAKE: "mistake", MEMO: "memo", NOTE: "info", POSSIBLE: "possible" };
 
 export const PRACTICE_PARTS = ["scenario", "task", "solution", "why"] as const;
 export type PracticePart = (typeof PRACTICE_PARTS)[number];
@@ -203,7 +203,7 @@ export function remarkLearningBlocks() {
       if (first?.type !== "paragraph") return;
       const head = first.children[0];
       if (head?.type !== "text") return;
-      const m = /^\[!(EXAM|MISTAKE|MEMO|NOTE)\][ \t]*\n?/.exec(head.value);
+      const m = /^\[!(EXAM|MISTAKE|MEMO|NOTE|POSSIBLE)\][ \t]*\n?/.exec(head.value);
       if (!m) return;
       head.value = head.value.slice(m[0].length);
       if (head.value === "") first.children.shift();

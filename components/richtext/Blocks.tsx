@@ -13,7 +13,7 @@ const childElements = (children: React.ReactNode) => React.Children.toArray(chil
 
 export function CalloutBlock({ kind, children }: { kind: CalloutTone; children: React.ReactNode }) {
   const { t } = useLocaleOptional();
-  const title = { exam: t.lesson_blocks.calloutExam, mistake: t.lesson_blocks.calloutMistake, memo: t.lesson_blocks.calloutMemo, info: t.lesson_blocks.calloutNote }[kind];
+  const title = { exam: t.lesson_blocks.calloutExam, mistake: t.lesson_blocks.calloutMistake, memo: t.lesson_blocks.calloutMemo, info: t.lesson_blocks.calloutNote, possible: t.lesson_blocks.calloutPossible }[kind];
   return (
     <Callout tone={kind} title={title} className="my-3">
       {children}

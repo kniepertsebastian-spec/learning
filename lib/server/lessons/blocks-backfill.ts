@@ -37,7 +37,7 @@ export function createBlocksGenerator(client?: GoogleGenAI, onUsage?: (u: AIUsag
   };
 }
 
-export const HAS_BLOCKS = /^\s*>\s*\[!(EXAM|MISTAKE|MEMO|NOTE)\]|^:{3,}\s*(practice|tabs|steps)\b|^\s*```+\s*(console|terminal|simulation)\b/m;
+export const HAS_BLOCKS = /^\s*>\s*\[!(EXAM|MISTAKE|MEMO|NOTE|POSSIBLE)\]|^:{3,}\s*(practice|tabs|steps)\b|^\s*```+\s*(console|terminal|simulation)\b/m;
 
 /** Bleibt der Originaltext erhalten? Mindestens 85 % der längeren Zeilen müssen wörtlich vorkommen. */
 export function preservesContent(original: string, next: string): boolean {

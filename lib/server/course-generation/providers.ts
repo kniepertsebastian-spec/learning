@@ -239,7 +239,7 @@ const OUTLINE_CONTENT_PROMPT = [
  */
 export const SIMULATION_PROMPT = [
   "- Wenn sich ein Thema zum aktiven Ausprobieren eignet (Befehlsfolge, Fehlersuche, Konfiguration, Entscheidung in einer Lage), höchstens EINE interaktive Simulation je Section, die der Lerner selbst lösen muss; sonst keine.",
-  "  Format: Codeblock mit Sprache `simulation`, Inhalt ist ein JSON-Objekt (kein Kommentar, kein Text daneben). Gemeinsame Felder: `type`, `title`, `scenario` (Markdown: Ausgangslage und Auftrag).",
+  "  Format: Codeblock mit Sprache `simulation`, Inhalt ist ein JSON-Objekt (kein Kommentar, kein Text daneben). Gemeinsame Felder: `type`, `title`, `scenario` (Markdown: Ausgangslage und Auftrag), `review` (1-3 Überschriften dieser Lektion, genau wie im Text geschrieben, die man bei Schwierigkeiten nachlesen soll).",
   '  `"type":"terminal"`: `prompt` (z. B. "admin@web01:~$"), `steps`: 1-6 Schritte mit `goal` (was erreicht werden soll, ohne den Befehl zu verraten), `accept` (alle gleichwertig richtigen Befehle als vollständige Zeilen), `output` (realistische Ausgabe danach), `hint`; dazu `success` (was der Lerner erreicht hat und warum es so funktioniert).',
   '  `"type":"decision"`: `start` (ID) und `nodes` (2-12) mit `id`, `text` (Situation), optional `status` [{`label`,`value`,`tone`: ok|warn|bad}], dann ENTWEDER `choices` (2-4, je `label`, `next` = ID, `feedback` mit Begründung) ODER `outcome` ("success" oder "failure") für ein Ende. Plausible Fehlentscheidungen führen in eine Sackgasse oder einen Umweg; mindestens ein Weg endet mit "success".',
   '  `"type":"config"`: `file` (Dateiname), `template` (Konfiguration mit Lücken `{{id}}`), `blanks` (1-6, je `id`, `options` mit 2-4 plausiblen Werten, `answer` = einer der Werte, `explanation`), `successOutput` und `failureOutput` (Ausgabe beim Anwenden), `success`.',
@@ -256,6 +256,35 @@ export const LEARNING_BLOCKS_PROMPT = [
   ...SIMULATION_PROMPT,
   "Erfinde keine Befehle, Optionen, Ausgaben oder Fehler, die nicht aus den Quellen oder anerkanntem Fachwissen zum Thema stammen.",
 ];
+
+/**
+ * Lebendige Texte (roadmap3.md, Schritt 6). Die Regeln gelten für alle Branchen; die Beispiele richten sich nach dem
+ * Thema des Kurses, nicht nach IT.
+ */
+export const LIVELY_STYLE_PROMPT = [
+  "",
+  "Schreibstil (wichtig): Sprich Lernende direkt an (du-Form, im Englischen „you“), konkret und mit Beispielen aus dem Berufsalltag des Kursthemas statt trockener Definitionen.",
+  "- Beginne jede Section mit dem Problem oder der Lage, in der das Thema gebraucht wird (ein Vorfall, eine Aufgabe, eine Entscheidung), und führe dann zur Lösung. Nicht umgekehrt.",
+  "- Jedes Konzept bekommt direkt ein kurzes Praxisbeispiel; erkläre, warum es so ist, nicht nur wie.",
+  "- Je Section ein Hinweis `> [!POSSIBLE]`: was du mit diesem Wissen jetzt konkret tun kannst, das vorher nicht ging (ein bis drei Sätze, ehrlich, ohne Versprechen zu Karriere oder Gehalt).",
+  "- Simulationen: baue mindestens eine „Was passiert, wenn …?“-Stelle ein (z. B. eine plausible Fehlentscheidung oder ein falscher Wert), deren Folge der Lerner sieht und erklärt bekommt.",
+  "- Nutze nur Beispiele, die fachlich stimmen; keine Floskeln, kein Werbeton.",
+];
+
+/** Fiktive Beispielfirmen (branchenneutral benannt): derselbe Kurs bekommt immer dieselbe Firma, damit sie sich durch alle Lektionen zieht. */
+const STORY_COMPANIES = ["Nordlicht GmbH", "Brandt & Söhne", "Lindenhof AG", "Kaiser Werke", "Falkenstein & Partner", "Morgenstern GmbH", "Ostertal Gruppe", "Blaubach GmbH"];
+const STORY_PEOPLE = ["Mara", "Jonas", "Selin", "Tim", "Amira", "Lukas", "Nora", "Paul"];
+
+export function courseStory(courseTitle: string): string {
+  let h = 0;
+  for (const ch of courseTitle) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const company = STORY_COMPANIES[h % STORY_COMPANIES.length];
+  const person = STORY_PEOPLE[(h >>> 3) % STORY_PEOPLE.length];
+  return [
+    `Durchgehende Geschichte: Alle Beispiele und Szenarien des Kurses spielen in der fiktiven Firma „${company}“, in der ${person} arbeitet und die Aufgaben des Kursthemas übernimmt.`,
+    "Wähle die Branche der Firma passend zum Kursthema und halte sie in allen Lektionen gleich; die Firma ist erfunden, nenne keine echten Firmenangaben. Stelle die Geschichte nie als Fakt aus den Quellen dar.",
+  ].join("\n");
+}
 
 export const CHEAT_SHEET_PROMPT = [
   "Der Merkzettel ist ein Nachschlagezettel für später, kein zweiter Lektionstext: die wichtigsten Befehle (in einem Codeblock mit Sprachangabe),",
@@ -297,6 +326,9 @@ export const CONTENT_SYSTEM_PROMPT_TEMPLATE = (input: Pick<ObjectiveGenerationIn
     "NUR die erste Section bekommt einen Merkzettel `cheatSheet` (Markdown, höchstens etwa 15 Zeilen) für das ganze Objective; alle weiteren Sections lassen `cheatSheet` weg.",
     ...CHEAT_SHEET_PROMPT,
     ...LEARNING_BLOCKS_PROMPT,
+    ...LIVELY_STYLE_PROMPT,
+    // Firmenkurse arbeiten mit den echten Unterlagen der Firma: dort keine erfundene Firma.
+    ...(input.outline || input.practical ? [] : [courseStory(input.courseTitle)]),
     ...(withQuestions
       ? [
           "",

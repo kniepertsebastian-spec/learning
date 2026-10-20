@@ -1,7 +1,8 @@
 "use client";
 
-import { CheckCircle2, GitBranch, Lightbulb, RotateCcw, SlidersHorizontal, SquareTerminal, XCircle } from "lucide-react";
+import { BookOpen, CheckCircle2, GitBranch, Lightbulb, RotateCcw, SlidersHorizontal, SquareTerminal, XCircle } from "lucide-react";
 import * as React from "react";
+import { useLessonSimulations } from "@/components/lesson/LessonSimulations";
 import { RichText } from "@/components/RichText";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,8 @@ import {
  * Server und ohne gespeicherten Fortschritt: ein Übungsraum, in dem man Fehler machen darf. Hilfen (Tipp, Lösung zeigen)
  * werden gezählt und am Ende genannt, damit „ohne Hilfe gelöst“ etwas bedeutet.
  */
+const SimMeta = React.createContext<{ spec: string; review: string[] } | null>(null);
+
 export function SimulationBlock({ spec }: { spec: string }) {
   const parsed = React.useMemo(() => parseSimulation(spec), [spec]);
   const [run, setRun] = React.useState(0);
@@ -30,9 +33,11 @@ export function SimulationBlock({ spec }: { spec: string }) {
   const restart = () => setRun((r) => r + 1);
   const sim = parsed.simulation;
   return (
-    <Frame sim={sim} onRestart={restart}>
-      {sim.type === "terminal" ? <TerminalSim key={run} sim={sim} /> : sim.type === "decision" ? <DecisionSim key={run} sim={sim} restarts={run} onRestart={restart} /> : <ConfigSim key={run} sim={sim} />}
-    </Frame>
+    <SimMeta.Provider value={{ spec, review: sim.review ?? [] }}>
+      <Frame sim={sim} onRestart={restart}>
+        {sim.type === "terminal" ? <TerminalSim key={run} sim={sim} /> : sim.type === "decision" ? <DecisionSim key={run} sim={sim} restarts={run} onRestart={restart} /> : <ConfigSim key={run} sim={sim} />}
+      </Frame>
+    </SimMeta.Provider>
   );
 }
 
@@ -41,6 +46,7 @@ const ICONS = { terminal: SquareTerminal, decision: GitBranch, config: SlidersHo
 function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () => void; children: React.ReactNode }) {
   const { t } = useLocaleOptional();
   const Icon = ICONS[sim.type];
+  const lesson = useLessonSimulations();
   const kind = { terminal: t.lesson_blocks.simTerminal, decision: t.lesson_blocks.simDecision, config: t.lesson_blocks.simConfig }[sim.type];
   return (
     <section className="my-4 rounded-2xl border border-accent-border bg-surface-inset p-4 sm:p-5" data-testid="simulation-block" data-sim-type={sim.type} aria-label={`${kind}: ${sim.title}`}>
@@ -48,10 +54,15 @@ function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () =>
         <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-accent-soft text-link" aria-hidden="true">
           <Icon className="h-[18px] w-[18px]" />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-40">
           <p className="text-[11px] font-semibold tracking-[0.07em] text-link uppercase">{kind}</p>
           <p className="text-[15px] font-semibold">{sim.title}</p>
         </div>
+        {lesson && (
+          <Button variant="ghost" size="sm" onClick={() => lesson.openText()} iconLeft={<BookOpen className="h-3.5 w-3.5" aria-hidden="true" />} data-testid="simulation-open-text">
+            {t.lesson_blocks.simShowText}
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={onRestart} iconLeft={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}>
           {t.lesson_blocks.simRestart}
         </Button>
@@ -64,16 +75,46 @@ function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () =>
   );
 }
 
-/** Abschluss; `helps` = genutzte Hilfen (Tipp, Lösung, Fehlversuche), `null` = ohne Zählung („Gelöst“). */
+/**
+ * Abschluss; `helps` = genutzte Hilfen (Tipp, Lösung, Fehlversuche), `null` = ohne Zählung („Gelöst“). Meldet die Lösung
+ * einmal an die Lektion (Speichern, Wiederholung) und verweist auf die Textstellen, die man nachlesen kann.
+ */
 function SolvedBanner({ helps, children }: { helps: number | null; children: React.ReactNode }) {
   const { t } = useLocaleOptional();
+  const lesson = useLessonSimulations();
+  const meta = React.useContext(SimMeta);
+  const [struggled, setStruggled] = React.useState(false);
+  const reported = React.useRef(false);
+  React.useEffect(() => {
+    if (reported.current || !lesson || !meta) return;
+    reported.current = true;
+    // Ohne Zählung (nach einem Neustart der Entscheidung) gilt die Runde als „mit einer Hilfe“.
+    void lesson.reportSolved(meta.spec, helps ?? 1).then((r) => setStruggled(Boolean(r?.struggled)));
+    // Einmal je eingeblendetem Banner.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const title = helps === null ? t.lesson_blocks.simSolved : helps === 0 ? t.lesson_blocks.simSolvedClean : fmt(t.lesson_blocks.simSolvedHelped, { n: String(helps) });
+  // Nur Überschriften, die es im Text der Lektion wirklich gibt (die KI schreibt sie ab, kann sich aber vertun).
+  const review = lesson && meta ? meta.review.filter((h) => lesson.headings.some((x) => x.trim() === h.trim())) : [];
   return (
     <div className="mt-3 flex gap-3 rounded-xl border border-mint-border bg-mint-soft p-4" data-testid="simulation-solved" role="status">
       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-mint-text" aria-hidden="true" />
       <div className="min-w-0">
         <p className="text-[13px] font-semibold tracking-wide text-mint-text uppercase">{title}</p>
         <div className="mt-1 text-[15px] leading-relaxed text-text-2">{children}</div>
+        {review.length > 0 && (
+          <div className="mt-3" data-testid="simulation-review">
+            <p className="text-xs font-semibold text-subtle">{t.lesson_blocks.simReviewTitle}</p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {review.map((h) => (
+                <button key={h} type="button" onClick={() => lesson?.openText(h)} className="rounded-full border border-border-strong bg-surface px-3 py-1 text-left text-[13px] hover:bg-surface-2">
+                  {h}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {struggled && <p className="mt-3 text-sm text-subtle" data-testid="simulation-struggled">{t.lesson_blocks.simStruggled}</p>}
       </div>
     </div>
   );
