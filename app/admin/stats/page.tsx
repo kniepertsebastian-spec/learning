@@ -53,10 +53,10 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <form action="/admin/stats" className="flex items-center gap-2 text-sm">
+        <form action="/admin/stats" className="flex flex-wrap items-center gap-2 text-sm">
           <input type="hidden" name="g" value={g} />
           <label htmlFor="course" className="text-subtle">{de ? "Kurs" : "Course"}</label>
-          <select id="course" name="course" defaultValue={course ?? ""} className="h-9 rounded-md border border-border-strong bg-control px-2 text-sm">
+          <select id="course" name="course" defaultValue={course ?? ""} className="h-9 min-w-0 max-w-full rounded-md border border-border-strong bg-control px-2 text-sm">
             <option value="">{de ? "Alle Kurse" : "All courses"}</option>
             {courses.filter((c) => c.certificationId).map((c) => (
               <option key={c.certificationId!} value={c.certificationId!}>{c.courseName}</option>

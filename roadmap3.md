@@ -90,9 +90,18 @@ länger her). Einstellung im Konto: bestandene Abschlussprüfungen und Zertifika
 eingetragene Skills werden nie überschrieben). Freiwillig, im Datenexport, fällt mit dem Konto weg, für Firmen nicht
 sichtbar. Berufscode (KldB) für die Gehaltsdaten folgt mit Schritt 9.
 
-## Schritt 9: Karrierepfade und Gehalt
+## Schritt 9: Karrierepfade und Gehalt ✅
 
-Auf Abruf etwa fünf passende Pfade; „mehr Informationen“: was die Stelle macht, was fehlt, welche Kurse aus dem
-aktuellen Katalog in welcher Reihenfolge (gegen den Katalog geprüft, fehlende Themen werden genannt). Gehalt aus dem
-Entgeltatlas der Bundesagentur für Arbeit: Median und Mitte 50 % je Beruf und Bundesland, mit Quelle und Stand, nie von
-der KI geschätzt (Nutzungsbedingungen vorher prüfen).
+- **Gehaltsdaten** (`/admin/salary`): CSV der Entgeltstatistik der Bundesagentur für Arbeit hochladen (die BA bietet keine
+  offizielle Schnittstelle). Der Browser findet die Kopfzeile, schlägt die Spalten vor und zeigt eine Vorschau
+  (importiert/übersprungen mit Gründen, z. B. Stadt, unterdrückter Wert); jede Zuordnung ist änderbar. Je Beruf (KldB 2010),
+  Anforderungsniveau und Region: Median und Quartile. Es gilt immer der Datensatz mit dem jüngsten Stichtag; Quelle und
+  Stichtag stehen bei jeder Gehaltsangabe. Werte kommen nur aus der Tabelle, nie von der KI.
+- **Karrierepfade** (`/career`, „Karriere“ im Menü): auf Abruf 3–5 Stellen aus Profil, Skills, Abschlüssen und dem
+  Katalog (KI). „Mehr Informationen“: was die Stelle macht, Aufgaben, was fehlt, Kurse aus dem Katalog in Reihenfolge
+  (nur echte Katalogkurse, Abgeschlossenes abgehakt, fehlende Themen als „noch kein Kurs“), Gehalt für Deutschland und das
+  Bundesland aus dem Profil (alle Bundesländer auf Klick). Ändern sich Profil, Skills oder Abschlüsse, bietet die Seite
+  „Pfade aktualisieren“ an; höchstens 5 Berechnungen pro Person und Tag. Der Kursstand ist immer aktuell.
+- Beruf ohne genauen Treffer in der Tabelle: nächst gröbere Berufsgruppe (als „verwandt“ gekennzeichnet).
+
+**Offen:** Die erste echte BA-Tabelle prüfen (Spaltenstruktur); Pfade mit echter KI ausprobieren (hier kein Zugang).

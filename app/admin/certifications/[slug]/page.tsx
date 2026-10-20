@@ -144,7 +144,7 @@ export default async function AdminCertificationPage({
 
       <div className="grid gap-6">
         {/* Validation Summary */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-lg border border-border bg-surface p-4">
             <p className="text-xs text-foreground/60">{locale === "de" ? "Gesamt" : "Total"}</p>
             <p className="mt-1 text-xl font-semibold">{validation.totalContent}</p>
