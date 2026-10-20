@@ -2,9 +2,11 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { users } from "@/lib/server/db/schema";
+import { certifications, users } from "@/lib/server/db/schema";
+import { CareerProfile } from "@/components/profile/CareerProfile";
+import { getProfile } from "@/lib/server/profile/service";
 import { listMyAssignments, type MyAssignment } from "@/lib/server/assignments/sync";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { getCompanyMembership } from "@/lib/server/company/access";
@@ -31,10 +33,12 @@ export default async function ProfilePage() {
   const [user, locale] = await Promise.all([getCurrentUser(), getServerLocale()]);
   if (!user) redirect("/login?from=%2Fprofile");
   const de = locale === "de";
-  const [membership, assignments, [row]] = await Promise.all([
+  const [membership, assignments, [row], career, catalog] = await Promise.all([
     getCompanyMembership(user.id),
     listMyAssignments(user.id),
     getDb().select({ name: users.name }).from(users).where(eq(users.id, user.id)).limit(1),
+    getProfile(user.id),
+    getDb().select({ name: certifications.name }).from(certifications).where(and(eq(certifications.kind, "general"), eq(certifications.catalogStatus, "approved"))).orderBy(asc(certifications.name)),
   ]);
   const fmt = (d: Date) => d.toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" });
   const done = assignments.filter((a) => a.status === "completed");
@@ -66,6 +70,8 @@ export default async function ProfilePage() {
           {de ? "Konto & Daten" : "Account & data"}
         </Link>
       </header>
+
+      <CareerProfile initial={career} courseNames={catalog.map((c) => c.name)} />
 
       <section className="rounded-xl border border-border bg-surface p-5" data-testid="profile-courses">
         <h2 className="font-semibold">{de ? "Kurse deiner Firma" : "Your company's courses"}</h2>

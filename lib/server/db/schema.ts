@@ -2291,3 +2291,58 @@ export const courseCompletionEvents = pgTable(
     check("course_completion_events_kind_check", sql`${table.kind} in ('final_exam_passed', 'certified')`),
   ],
 );
+
+export const GERMAN_STATES = ["BW", "BY", "BE", "BB", "HB", "HH", "HE", "MV", "NI", "NW", "RP", "SL", "SN", "ST", "SH", "TH"] as const;
+export type GermanState = (typeof GERMAN_STATES)[number];
+
+/**
+ * Berufliches Profil (roadmap3.md, Schritt 8): aktuelle Stelle, Bundesland, Schwerpunkte. Freiwillig, gehört der Person
+ * (im Export, fällt mit dem Konto weg), für Firmen nicht sichtbar. Grundlage für die Karrierepfade (Schritt 9).
+ */
+export const userProfiles = pgTable(
+  "user_profiles",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    jobTitle: text("job_title"),
+    jobDescription: text("job_description"),
+    focusAreas: text("focus_areas"),
+    state: text("state").$type<GermanState>(),
+    /** Skills aus bestandenen Abschlussprüfungen und Zertifikaten automatisch ergänzen (Einstellung, Standard aus). */
+    autoSkills: boolean("auto_skills").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check("user_profiles_state_check", sql`${table.state} is null or ${table.state} in ('BW','BY','BE','BB','HB','HH','HE','MV','NI','NW','RP','SL','SN','ST','SH','TH')`)],
+);
+
+export type SkillKind = "skill" | "tool";
+export type SkillLevel = "basic" | "confident" | "expert";
+/** Tools: wie aktuell das Wissen ist. */
+export type SkillRecency = "current" | "recent" | "older";
+export type SkillSource = "manual" | "course" | "certificate";
+
+/** Skills und Tools einer Person, mit Stufe und Herkunft (selbst eingetragen, aus Kurs, aus Zertifikat). */
+export const userSkills = pgTable(
+  "user_skills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<SkillKind>().notNull(),
+    name: text("name").notNull(),
+    level: text("level").$type<SkillLevel>().notNull(),
+    recency: text("recency").$type<SkillRecency>(),
+    source: text("source").$type<SkillSource>().notNull().default("manual"),
+    sourceCertificationId: uuid("source_certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("user_skills_user_kind_name_unique").on(table.userId, table.kind, sql`lower(${table.name})`),
+    check("user_skills_kind_check", sql`${table.kind} in ('skill', 'tool')`),
+    check("user_skills_level_check", sql`${table.level} in ('basic', 'confident', 'expert')`),
+    check("user_skills_recency_check", sql`${table.recency} is null or ${table.recency} in ('current', 'recent', 'older')`),
+    check("user_skills_source_check", sql`${table.source} in ('manual', 'course', 'certificate')`),
+  ],
+);
