@@ -112,7 +112,7 @@ export function SectionContent({
   }
 
   return (
-    <LessonSimulationsProvider text={content} sectionId={sectionId} persist={signedIn && !offline} initialProgress={simulationProgress}>
+    <LessonSimulationsProvider text={content} sectionId={sectionId} persist={signedIn && !offline} offlineUserId={offline?.userId} initialProgress={simulationProgress}>
     <div className="flex flex-1 flex-col" data-testid="lesson-page">
       <ReadingProgress />
 

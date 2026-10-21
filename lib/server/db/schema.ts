@@ -284,6 +284,8 @@ export const certifications = pgTable("certifications", {
   translationTotal: integer("translation_total").notNull().default(0),
   /** Summe der geschätzten KI-Kosten aller Übersetzungsläufe (USD); null = kein Preis hinterlegt. */
   translationCostUsd: numeric("translation_cost_usd", { precision: 10, scale: 4 }),
+  /** Summe der geschätzten Kosten aller KI-Vorschläge der Werkstatt (roadmap3.md, Schritt 3), auch verworfener. */
+  aiEditCostUsd: numeric("ai_edit_cost_usd", { precision: 10, scale: 4 }),
   translatedAt: timestamp("translated_at", { withTimezone: true }),
   /** Kursbeschreibung vor dem Start (roadmap3.md, Schritt 4); null = noch keine. */
   overview: jsonb("overview").$type<CourseOverview>(),
@@ -387,6 +389,11 @@ export const lessons = pgTable("lessons", {
     onDelete: "set null",
   }),
   reviewStatus: text("review_status").$type<LessonReviewStatus>().notNull().default("unreviewed"),
+  /**
+   * Die zweite Sprache ist veraltet: die Kurssprache wurde (per KI in der Werkstatt) geändert, die Übersetzung noch nicht.
+   * Lernende sehen bis dahin die alte Übersetzung; der Übersetzungslauf übersetzt die Lektion neu und setzt das Feld zurück.
+   */
+  translationOutdated: boolean("translation_outdated").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -415,6 +422,8 @@ export const questions = pgTable("questions", {
   /** R1.5: true, wenn die Quelle, aus der diese Frage stammt, durch eine neue
    * Version ersetzt wurde, die dieses Objective inhaltlich verändert hat. */
   stale: boolean("stale").notNull().default(false),
+  /** Wie lessons.translationOutdated: Kurssprache per KI geändert, die zweite Sprache noch nicht neu übersetzt. */
+  translationOutdated: boolean("translation_outdated").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -1054,7 +1063,8 @@ export const objectiveSourceRefs = pgTable(
  * versucht zuerst, die Zeile einzufügen, wendet die eigentliche Logik
  * (Quiz-/Session-Auswertung) nur bei Erfolg an und gibt bei einem Konflikt
  * einfach das zuvor gespeicherte Ergebnis zurück. */
-export type SyncEventType = "section_quiz" | "study_session";
+/** `simulation_result`: offline gelöste Simulation (roadmap3.md, Schritt 5). */
+export type SyncEventType = "section_quiz" | "study_session" | "simulation_result";
 export type SyncEventStatus = "applied" | "conflict" | "error";
 
 export const syncEvents = pgTable(
@@ -1189,6 +1199,16 @@ export type SourceReport = {
   /** Quellen, die für die KI gekürzt wurden: Anfang statt ganzer Text, Lernziele aus dem Rest fehlen dann womöglich. */
   truncated: Array<{ title: string; url: string }>;
   sourceCount: number;
+  /** Als Prüfungsleitfaden erkannte Quelle (wird nicht auf 60.000 Zeichen gekürzt); fehlt bei älteren Berichten. */
+  primary?: { title: string; url: string } | null;
+  /** Fingerabdruck des Quelltexts (Leitfaden, sonst alle Quellen) und darin genannte Prüfungsversionen („SY0-701“, „Version 7.0“). */
+  fingerprint?: string;
+  versions?: string[];
+  /**
+   * Stand bei der Kurserstellung (bzw. zuletzt als aktuell bestätigt): „Quelle prüfen“ vergleicht damit und erkennt so
+   * eine neue Prüfungsversion oder geänderte Lernziele.
+   */
+  baseline?: { checkedAt: string; fingerprint: string | null; officialObjectives: Array<{ code: string; title: string }>; versions: string[] } | null;
 };
 
 export type CourseGenerationJobStatus =
@@ -1324,6 +1344,13 @@ export const courseGenerationJobs = pgTable(
     packageJson: jsonb("package_json").$type<Record<string, unknown>>(),
     /** Was die Quellen hergeben (roadmap3.md, Schritt 2): erkannte offizielle Lernziel-Nummern, gekürzte Quellen, Zeitpunkt. */
     sourceReport: jsonb("source_report").$type<SourceReport>(),
+    /**
+     * Aufgeteilter sehr großer Kurs (mehr als COURSE_GEN_HARD_MAX_OBJECTIVES Lernziele): Teil `splitPart` von `splitParts`;
+     * die Teile 2 ff. verweisen auf den ersten Auftrag und laufen nach ihm nacheinander, mit fertigem Teil-Blueprint.
+     */
+    splitOfJobId: uuid("split_of_job_id"),
+    splitPart: integer("split_part"),
+    splitParts: integer("split_parts"),
     estimatedCostUsd: numeric("estimated_cost_usd", { precision: 10, scale: 4 }),
     actualCostUsd: numeric("actual_cost_usd", { precision: 10, scale: 4 }).notNull().default("0"),
     resultCertificationId: uuid("result_certification_id").references(() => certifications.id, {

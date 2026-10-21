@@ -6,6 +6,7 @@ import type {
   ObjectiveContentResponse,
 } from "./schemas";
 import type { SourceExcerpt } from "./sources";
+import { nearDuplicate } from "./variety";
 
 /**
  * course_generation.md Abschnitt 10 "Frühzeitige Freigabegates" / Gate B:
@@ -92,15 +93,9 @@ export function validateObjectiveContent(
     );
   }
 
-  const seenQuestions = new Map<string, number>();
   content.questions.forEach((question, index) => {
-    const normalized = normalizeQuestionText(question.question.en);
-    const priorIndex = seenQuestions.get(normalized);
-    if (priorIndex !== undefined) {
-      errors.push(`Frage ${index + 1} ist (nahezu) identisch mit Frage ${priorIndex + 1}.`);
-    } else {
-      seenQuestions.set(normalized, index);
-    }
+    const priorIndex = content.questions.slice(0, index).findIndex((prior) => sameQuestion(prior.question.en, question.question.en));
+    if (priorIndex >= 0) errors.push(`Frage ${index + 1} ist (nahezu) identisch mit Frage ${priorIndex + 1}.`);
   });
 
   content.sections.forEach((section, index) => {
@@ -146,6 +141,11 @@ function normalizeQuestionText(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/** Gleich oder fast gleich (dieselbe Frage umformuliert, siehe variety.ts). */
+function sameQuestion(a: string, b: string): boolean {
+  return normalizeQuestionText(a) === normalizeQuestionText(b) || nearDuplicate(a, b);
+}
+
 /** Passt der Quellenverweis zu einem mitgelieferten Ausschnitt (exakt oder als Teilstring)? `null` gilt als passend. */
 function locatorKnown(locator: string | null, sourceExcerpts: SourceExcerpt[]): boolean {
   if (locator === null) return true;
@@ -167,14 +167,13 @@ export function autoFixObjectiveContent(
   sourceExcerpts: SourceExcerpt[],
 ): { content: ObjectiveContentResponse; fixes: string[] } {
   const fixes: string[] = [];
-  const seen = new Set<string>();
+  const kept: string[] = [];
   const questions = content.questions.flatMap((question, index) => {
-    const key = normalizeQuestionText(question.question.en);
-    if (seen.has(key)) {
+    if (kept.some((k) => sameQuestion(k, question.question.en))) {
       fixes.push(`Frage ${index + 1} war doppelt und wurde entfernt.`);
       return [];
     }
-    seen.add(key);
+    kept.push(question.question.en);
     if (!locatorKnown(question.sourceLocator, sourceExcerpts)) {
       fixes.push(`Unbekannter Quellenverweis "${question.sourceLocator}" bei Frage ${index + 1} wurde entfernt.`);
       return [{ ...question, sourceLocator: null }];

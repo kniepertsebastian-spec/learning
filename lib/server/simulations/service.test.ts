@@ -9,7 +9,8 @@ import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, questions, reviewItems, sections, users } from "@/lib/server/db/schema";
 import { extractSimulationSources, simulationIndex, stripSimulations } from "@/lib/markdown/simulation";
-import { listSimulationProgress, recordSimulationSolved, SimulationNotFoundError } from "./service";
+import { processSyncEvents } from "@/lib/server/sync/service";
+import { listSimulationProgress, pickPracticeSimulation, recordSimulationSolved, SimulationNotFoundError } from "./service";
 
 const SIM = '```simulation\n{"type":"terminal","title":"T","scenario":"S","steps":[{"goal":"g","accept":["a"],"output":"","hint":"h"}],"success":"ok"}\n```';
 const TEXT = `## Einleitung\n\nText\n\n${SIM}\n\n## Ende\n\nMehr`;
@@ -56,6 +57,28 @@ run("Simulationsfortschritt (echte DB)", () => {
     await d.insert(reviewItems).values({ userId: u.id, questionId: q.id, dueAt: later });
     return { sectionId: sec.id, userId: u.id, questionId: q.id };
   }
+
+  it("Praxisaufgabe für die Übungssitzung: ungelöst oder mühsam gelöst, sicher gelöste nicht", async () => {
+    const { sectionId, userId, questionId } = await setup();
+    expect(await pickPracticeSimulation(userId, [], "s")).toBeNull();
+    expect(await pickPracticeSimulation(userId, [questionId], "s")).toMatchObject({ sectionId, simIndex: 0 });
+    await recordSimulationSolved(userId, sectionId, 0, 3);
+    expect(await pickPracticeSimulation(userId, [questionId], "s")).toMatchObject({ sectionId });
+    await recordSimulationSolved(userId, sectionId, 0, 0);
+    expect(await pickPracticeSimulation(userId, [questionId], "s")).toBeNull();
+  });
+
+  it("offline gelöste Simulation kommt über die Sync-Warteschlange an, genau einmal", async () => {
+    const { sectionId, userId } = await setup();
+    const ev = { clientEventId: randomUUID(), type: "simulation_result" as const, clientCreatedAt: new Date().toISOString(), payload: { sectionId, simIndex: 0, helps: 1 } };
+    const [first] = await processSyncEvents(userId, [ev]);
+    expect(first.status).toBe("applied");
+    const [again] = await processSyncEvents(userId, [ev]);
+    expect(again.status).toBe("already_applied");
+    expect(await listSimulationProgress(userId, sectionId)).toMatchObject([{ simIndex: 0, bestHelps: 1, solves: 1 }]);
+    const [bad] = await processSyncEvents(userId, [{ ...ev, clientEventId: randomUUID(), payload: { sectionId, simIndex: 9, helps: 0 } }]);
+    expect(bad.status).toBe("error");
+  });
 
   it("speichert den Bestwert und zählt die Runden", async () => {
     const { sectionId, userId } = await setup();

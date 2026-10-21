@@ -53,13 +53,31 @@ Kurses wird nicht automatisch nachgezogen.
 **Noch offen:** Die Erkennung der Nummern an echten Prüfungsleitfäden prüfen (hier kein Netz); Prüfungsleitfaden als
 Hauptquelle nie kürzen (heute wird jede Quelle bei 60.000 Zeichen gekappt, jetzt immerhin sichtbar).
 
-## Schritt 3: Mit KI nachbessern
+## Schritt 3: Mit KI nachbessern ✅
 
-- Aktionen je Lektion/Lernziel: lebendiger schreiben, Simulation ergänzen, Praxisbeispiel ergänzen, Fragen ergänzen
-  oder verbessern, gemeldeten Fehler beheben, fehlendes Lernziel ergänzen; freie Anweisung.
-- Immer als Vorschlag mit Vergleich: übernehmen, anpassen oder verwerfen. Vorher automatischer gemerkter Stand,
-  Kostenschätzung, Revisionen mit Herkunft „KI“.
-- Andere Sprache nach einer Änderung als veraltet markieren und über den Übersetzungslauf nachziehen.
+In der Werkstatt gibt es bei jeder Lektion und jeder Frage „Mit KI nachbessern“, bei den Fragen eines Lernziels „Fragen
+ergänzen“ und im Qualitätsbericht bei passenden Punkten einen KI-Knopf (öffnet die Lektion mit vorgewählter Aktion).
+
+- **Aktionen je Lektion:** lebendiger schreiben, ausführlicher erklären, Praxisbeispiel ergänzen, Simulation ergänzen (mit
+  Textverweisen), „Was damit möglich ist“ ergänzen, Prüfungshinweis ergänzen, gemeldeten Fehler beheben (nur bei offenen
+  Meldungen), eigene Anweisung. Zu jeder Aktion kann eine zusätzliche Anweisung mitgegeben werden.
+- **Je Frage:** verbessern, gemeldeten Fehler beheben, eigene Anweisung (Optionen behalten IDs und Plätze, die KI darf
+  die richtige Antwort ändern). **Je Lernziel:** 1–10 neue Fragen, einzeln an- oder abwählbar.
+- **Fehlendes Lernziel** (aus der Abdeckungsprüfung): Domain wählen (vorgeschlagen nach der ersten Stelle der Nummer),
+  die KI entwirft Titel, Beschreibung, 1–3 Lektionen und Fragen; Titel und Beschreibung sind anpassbar.
+- **Immer als Vorschlag:** Vergleich (Unterschied und Vorschau), dann übernehmen, anpassen (Vorschlag ins Formular,
+  speichern wie gewohnt) oder verwerfen. Fehlerhafte Lernblöcke: ein Korrekturversuch, sonst repariert und gekennzeichnet.
+- **Vorher:** Kostenschätzung je Aktion (ohne KI-Aufruf), danach die tatsächlichen Kosten und die Summe am Kurs
+  (`certifications.ai_edit_cost_usd`, auch verworfene Vorschläge). Das KI-Budget (`GEMINI_BUDGET_USD`) gilt auch hier.
+- **Sicherheit:** vor der ersten übernommenen KI-Änderung ein automatisch gemerkter Kursstand („Automatisch vor
+  KI-Überarbeitung …“, höchstens einer je 6 Stunden); Revisionen mit Herkunft „KI“ und der Aktion; gemeldete Fehler
+  lassen sich beim Übernehmen als erledigt schließen.
+- **Andere Sprache:** die KI schreibt in der Kurssprache. Ist der Inhalt schon übersetzt, wird die andere Sprache als
+  veraltet markiert (`translation_outdated` an Lektion bzw. Frage) und der Übersetzungslauf startet (bei
+  `COURSE_AUTO_TRANSLATE=0` nicht); bis dahin sehen Lernende die bisherige Übersetzung. Läuft schon eine Übersetzung,
+  folgt ihr ein zweiter Lauf.
+
+Offen: mit echter KI ausprobieren (hier kein Zugang); Prompts liegen in `lib/server/course-editor/ai-prompt.ts`.
 
 ## Schritt 4: Kursbeschreibung ✅
 
@@ -89,8 +107,8 @@ gespeichert. Katalogkacheln zeigen die Kurzfassung.
 - **Wiederholung:** wer eine Simulation nur mit mindestens zwei Hilfen (Tipp, Lösung, Fehlversuche) löst, bekommt die
   bestehenden Wiederholungsfragen des Lernziels sofort fällig (es entstehen keine neuen Einträge) und einen Hinweis.
 
-Offen: Simulationen erscheinen noch nicht als eigene Aufgaben in Übungssitzungen; Fortschritt wird nur gespeichert, wenn man
-angemeldet ist (Offline-Reader: nein).
+Nachgetragen: Übungssitzungen zeigen nach den Fragen eine Praxisaufgabe (Simulation aus denselben Lernzielen, ungelöst
+oder mühsam gelöst); im Offline-Reader gelöste Simulationen gehen über die Sync-Warteschlange.
 
 ## Schritt 6: Lebendigere Texte bei neuen Kursen ✅
 
@@ -142,4 +160,22 @@ sichtbar. Berufscode (KldB) für die Gehaltsdaten folgt mit Schritt 9.
   „Pfade aktualisieren“ an; höchstens 5 Berechnungen pro Person und Tag. Der Kursstand ist immer aktuell.
 - Beruf ohne genauen Treffer in der Tabelle: nächst gröbere Berufsgruppe (als „verwandt“ gekennzeichnet).
 
-**Offen:** Die erste echte BA-Tabelle prüfen (Spaltenstruktur); Pfade mit echter KI ausprobieren (hier kein Zugang).
+**Offen:** Pfade mit echter KI ausprobieren (hier kein Zugang). Der Import einer echten BA-Tabelle ist vorerst
+zurückgestellt; ohne importierte Daten bleibt das Gehalt ausgeblendet.
+
+## Kleinere offene Punkte (erledigt)
+
+- **Prüfungsleitfaden nie kürzen:** die Quelle mit den meisten nummerierten Lernzielen gilt als Leitfaden und wird bis
+  400.000 Zeichen gelesen (`COURSE_GEN_PRIMARY_SOURCE_MAX_CHARS`), die übrigen weiter bis 60.000; der Qualitätsbericht
+  nennt sie.
+- **Bestehende Lektionen nachrüsten:** `npm run lessons:possible -- <slug|--all> [--dry-run] [--limit N]` ergänzt per KI
+  „Was damit möglich ist“ und die Textverweise der Simulationen (gemerkter Stand vorher, Herkunft „KI“, danach Übersetzung).
+- **Versionsüberwachung:** „Quelle prüfen“ vergleicht mit dem Stand bei der Kurserstellung (Fingerabdruck, erkannte
+  Prüfungsversion wie „SY0-701“, neue und entfallene Lernziele) und setzt `lastVerifiedDate`; der Bericht zeigt die
+  Änderung und lässt den neuen Stand bestätigen. Für regelmäßige Läufe: `npm run courses:check-sources -- --all`
+  (Exit-Code 2 bei Änderungen, z. B. wöchentlich per Cron).
+- **Sehr große Kurse:** mehr als 80 Lernziele werden automatisch in Teile aufgeteilt („… (Teil 1 von 2)“), die
+  nacheinander erzeugt werden (Details in `course_generation.md`).
+- **Fragenvielfalt:** Antwortoptionen stabil gemischt, umformulierte Dubletten erkannt, Prompt-Regeln für Typen und
+  Frageformen, Hinweis im Bericht bei nur einem Fragetyp.
+- Die Diagnoseseite `viewport-check.html` ist entfernt.

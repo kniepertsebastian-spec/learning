@@ -11,6 +11,7 @@ import {
 } from "@/lib/server/db/schema";
 import { scanForSecrets } from "@/lib/server/documents/secret-scanner";
 import { type CoursePackageV1 } from "./schemas";
+import { shuffleOptions } from "./variety";
 
 export class CoursePackageImportError extends Error {}
 
@@ -211,8 +212,9 @@ export async function importCoursePackage(
             .returning();
           questionCount++;
 
+          // Gemischt, damit die richtige Antwort nicht immer an derselben Stelle steht (stabil je Frage-ID).
           await tx.insert(questionOptions).values(
-            question.options.map((option, index) => ({
+            shuffleOptions(question.options, question.explanation, humanId).map((option, index) => ({
               questionId: questionRow.id,
               orderNum: index + 1,
               text: option.text,

@@ -5,12 +5,12 @@ import { afterAll, describe, expect, it } from "vitest";
 const TEST_DB = process.env.TEST_DATABASE_URL;
 if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, contentReports, courseGenerationJobs, domains, examAnswers, examAttempts, exams, lessons, objectives, questionOptions, questions, quizAnswers, sections, users } from "@/lib/server/db/schema";
 import { buildSourceReport } from "@/lib/server/course-generation/coverage";
 import type { FetchedSource } from "@/lib/server/course-generation/sources";
-import { CoverageRefreshError, getCourseReport, refreshCoverage } from "./report";
+import { acceptSourceBaseline, CoverageRefreshError, getCourseReport, refreshCoverage } from "./report";
 
 const run = TEST_DB ? describe : describe.skip;
 const tag = randomUUID().slice(0, 8);
@@ -126,5 +126,23 @@ run("Qualitätsbericht (echte DB)", () => {
     await expect(refreshCoverage(certId, async () => { throw new (await import("@/lib/server/course-generation/sources")).SourceFetchError("Zeitüberschreitung"); })).rejects.toBeInstanceOf(CoverageRefreshError);
     const none = await mk({ lessonText: "x", questionCount: 0 });
     await expect(refreshCoverage(none.certId)).rejects.toBeInstanceOf(CoverageRefreshError);
+  });
+
+  it("Versionsüberwachung: neue Prüfungsversion und geänderte Lernziele gegen den ersten Stand, bestätigen setzt zurück", async () => {
+    const { certId } = await mk({ lessonText: "x".repeat(600), questionCount: 4, jobSources: ["https://example.org/guide.pdf"] });
+    const v1 = "Exam SY0-601\n" + GUIDE;
+    expect(await refreshCoverage(certId, async () => [{ ...source(v1), primary: true }])).toBeNull();
+    expect(await refreshCoverage(certId, async () => [{ ...source(v1), primary: true }])).toBeNull();
+    const v2 = "Exam SY0-701\n" + GUIDE.replace("2.2 Monitor everything", "4.1 Automate responses");
+    const change = await refreshCoverage(certId, async () => [{ ...source(v2), primary: true }]);
+    expect(change).toMatchObject({ textChanged: true, versionsBefore: ["SY0-601"], versionsNow: ["SY0-701"] });
+    expect(change!.added.map((o) => o.code)).toEqual(["4.1"]);
+    expect(change!.removed.map((o) => o.code)).toEqual(["2.2"]);
+    const r = await getCourseReport(certId);
+    expect(r.coverage.change?.added).toHaveLength(1);
+    const [cert] = await getDb().select({ v: certifications.lastVerifiedDate }).from(certifications).where(eq(certifications.id, certId));
+    expect(cert.v).toBeInstanceOf(Date);
+    await acceptSourceBaseline(certId);
+    expect((await getCourseReport(certId)).coverage.change).toBeNull();
   });
 });

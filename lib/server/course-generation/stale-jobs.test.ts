@@ -13,6 +13,8 @@ import { getDb } from "@/lib/server/db/client";
 import { courseGenerationJobs, courseGenerationObjectives, users } from "@/lib/server/db/schema";
 import {
   createCourseGenerationJob,
+  createSplitPartJobs,
+  nextSplitPartJob,
   getCourseGenerationJob,
   MAX_AUTO_RESUMES,
   recoverStaleCourseGenerationJobs,
@@ -67,6 +69,30 @@ run("hängende Kursgenerierungen (echte DB)", () => {
     const again: string[] = [];
     await recoverStaleCourseGenerationJobs(() => false, (id) => again.push(id));
     expect(again).not.toContain(orphan);
+  });
+
+  it("aufgeteilter Kurs: Teile nacheinander, der Watchdog startet keinen Teil vor dem vorigen", async () => {
+    const parentId = await job("batch_generating");
+    const parent = (await getCourseGenerationJob(parentId))!;
+    const [p2, p3] = await createSplitPartJobs(parent, [{ title: "Teil 2", blueprint: { title: "b2" } }, { title: "Teil 3", blueprint: { title: "b3" } }], 3);
+    ids.push(p2, p3);
+    await getDb().update(courseGenerationJobs).set({ splitPart: 1, splitParts: 3 }).where(eq(courseGenerationJobs.id, parentId));
+    expect(await nextSplitPartJob(parentId)).toBe(p2);
+    expect(await nextSplitPartJob(p2)).toBe(p3);
+    const second = (await getCourseGenerationJob(p2))!;
+    expect(second).toMatchObject({ splitOfJobId: parentId, splitPart: 2, splitParts: 3, status: "queued", blueprintJson: { title: "b2" } });
+
+    // Wartende Teile sind „queued“ und alt: der Watchdog lässt sie stehen, solange ein voriger Teil läuft.
+    await getDb().update(courseGenerationJobs).set({ updatedAt: old() }).where(eq(courseGenerationJobs.splitOfJobId, parentId));
+    const started: string[] = [];
+    await recoverStaleCourseGenerationJobs((id) => id === parentId, (id) => started.push(id));
+    expect(started).not.toContain(p2);
+    expect(started).not.toContain(p3);
+    // Teil 1 fertig: jetzt darf der Watchdog Teil 2 übernehmen, Teil 3 aber nicht.
+    await getDb().update(courseGenerationJobs).set({ status: "published" }).where(eq(courseGenerationJobs.id, parentId));
+    await recoverStaleCourseGenerationJobs(() => false, (id) => started.push(id));
+    expect(started).toContain(p2);
+    expect(started).not.toContain(p3);
   });
 
   it("nach MAX_AUTO_RESUMES Fortsetzungen endet der Auftrag als unterbrochen (erneut startbar)", async () => {

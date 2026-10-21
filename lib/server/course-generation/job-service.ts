@@ -212,6 +212,8 @@ export async function recoverStaleCourseGenerationJobs(
   const out: Array<{ jobId: string; action: StaleJobAction }> = [];
   for (const job of candidates) {
     if (isActive(job.id)) continue;
+    // Ein wartender Teil eines aufgeteilten Kurses startet erst nach dem vorigen (nacheinander, nicht parallel).
+    if (job.status === "queued" && job.splitOfJobId && (await earlierPartPending(job))) continue;
     const objectiveActivity = activity.get(job.id);
     if (objectiveActivity && objectiveActivity >= threshold) continue;
     const resumes = job.errorCode?.startsWith(AUTO_RESUME_PREFIX) ? Number(job.errorCode.slice(AUTO_RESUME_PREFIX.length)) || 0 : 0;
@@ -309,4 +311,75 @@ export async function listCourseGenerationObjectives(
     .select()
     .from(courseGenerationObjectives)
     .where(eq(courseGenerationObjectives.jobId, jobId));
+}
+
+/**
+ * Teile 2 ff. eines aufgeteilten sehr großen Kurses als eigene Aufträge anlegen (split.ts): gleiche Quellen und
+ * Einstellungen, eigener Titel, fertiger Teil-Blueprint (der Worker verwendet ihn weiter, statt einen neuen zu erzeugen).
+ * Sie bleiben „queued“; gestartet werden sie nacheinander nach dem vorigen Teil (runner.ts).
+ */
+export async function createSplitPartJobs(
+  parent: CourseGenerationJob,
+  parts: Array<{ title: string; blueprint: Record<string, unknown> }>,
+  partCount: number,
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const [i, part] of parts.entries()) {
+    const [row] = await getDb()
+      .insert(courseGenerationJobs)
+      .values({
+        requestedByUserId: parent.requestedByUserId,
+        courseTitle: part.title,
+        courseDescription: parent.courseDescription,
+        language: parent.language,
+        provider: parent.provider,
+        certificationVersion: parent.certificationVersion,
+        courseType: parent.courseType,
+        sourceUrls: parent.sourceUrls,
+        categoryId: parent.categoryId,
+        includeSectionQuizzes: parent.includeSectionQuizzes,
+        includeFinalExam: parent.includeFinalExam,
+        autoPublish: parent.autoPublish,
+        initialCostLimitUsd: parent.initialCostLimitUsd,
+        absoluteCostLimitUsd: parent.absoluteCostLimitUsd,
+        blueprintProvider: parent.blueprintProvider,
+        blueprintJson: part.blueprint,
+        splitOfJobId: parent.id,
+        splitPart: i + 2,
+        splitParts: partCount,
+        status: "queued",
+        phase: "queued",
+        message: `Teil ${i + 2} von ${partCount}: wartet auf den vorigen Teil …`,
+      })
+      .returning({ id: courseGenerationJobs.id });
+    ids.push(row.id);
+  }
+  return ids;
+}
+
+/** Nächster wartender Teil eines aufgeteilten Kurses nach `jobId` (oder null). */
+export async function nextSplitPartJob(jobId: string): Promise<string | null> {
+  const job = await getCourseGenerationJob(jobId);
+  if (!job) return null;
+  const rootId = job.splitOfJobId ?? (job.splitParts ? job.id : null);
+  if (!rootId) return null;
+  const rows = await getDb()
+    .select({ id: courseGenerationJobs.id, part: courseGenerationJobs.splitPart, status: courseGenerationJobs.status })
+    .from(courseGenerationJobs)
+    .where(eq(courseGenerationJobs.splitOfJobId, rootId));
+  const next = rows.filter((r) => r.status === "queued" && (r.part ?? 0) > (job.splitPart ?? 1)).sort((a, b) => (a.part ?? 0) - (b.part ?? 0))[0];
+  return next?.id ?? null;
+}
+
+async function earlierPartPending(job: CourseGenerationJob): Promise<boolean> {
+  const rows = await getDb()
+    .select({ id: courseGenerationJobs.id, part: courseGenerationJobs.splitPart, status: courseGenerationJobs.status, splitOfJobId: courseGenerationJobs.splitOfJobId })
+    .from(courseGenerationJobs)
+    .where(inArray(courseGenerationJobs.id, [job.splitOfJobId!]));
+  const siblings = await getDb()
+    .select({ part: courseGenerationJobs.splitPart, status: courseGenerationJobs.status })
+    .from(courseGenerationJobs)
+    .where(eq(courseGenerationJobs.splitOfJobId, job.splitOfJobId!));
+  const earlier = [...rows.map((r) => ({ part: 1, status: r.status })), ...siblings].filter((r) => (r.part ?? 0) < (job.splitPart ?? 0));
+  return earlier.some((r) => !isTerminalCourseGenerationStatus(r.status));
 }

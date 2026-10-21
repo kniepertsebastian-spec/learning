@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { compareCoverage, extractOfficialObjectives, normalizeCode } from "./coverage";
+import { buildSourceReport, compareCoverage, detectExamVersions, extractOfficialObjectives, normalizeCode } from "./coverage";
+import { capExcerpts, primarySourceIndex, PRIMARY_SOURCE_MAX_CHARS } from "./sources";
 
 const guide = (text: string) => [{ text }];
 
@@ -39,5 +40,27 @@ describe("Abdeckung", () => {
   });
   it("zu wenige erkannte Nummern: keine Aussage statt einer falschen", () => {
     expect(compareCoverage(official.slice(0, 2), ["1.1"])).toEqual({ status: "not_numbered", recognised: 2 });
+  });
+});
+
+describe("Prüfungsleitfaden als Hauptquelle", () => {
+  const numbered = (n: number) => Array.from({ length: n }, (_, i) => `${Math.floor(i / 5) + 1}.${(i % 5) + 1} Configure the component number ${i + 1}`).join("\n");
+  it("die Quelle mit den meisten nummerierten Lernzielen; ohne Nummern keine", () => {
+    expect(primarySourceIndex([{ excerpts: [{ locator: "a", text: "Fließtext ohne Nummern" }] }, { excerpts: [{ locator: "b", text: numbered(12) }] }, { excerpts: [{ locator: "c", text: numbered(4) }] }])).toBe(1);
+    expect(primarySourceIndex([{ excerpts: [{ locator: "a", text: "1.1 Nur eins" }] }])).toBe(-1);
+  });
+  it("die Hauptquelle wird nicht auf 60.000 Zeichen gekürzt, die übrigen schon", () => {
+    const long = [{ locator: "S. 1", text: "x".repeat(150_000) }];
+    expect(capExcerpts(long).truncated).toBe(true);
+    expect(capExcerpts(long, PRIMARY_SOURCE_MAX_CHARS).truncated).toBe(false);
+    const sources = [{ id: "1", title: "Guide", url: "u", retrievedAt: "", excerpts: long, truncated: false, primary: true }];
+    expect(buildSourceReport(sources).primary).toEqual({ title: "Guide", url: "u" });
+  });
+});
+
+describe("Prüfungsversionen erkennen", () => {
+  it("Prüfungscodes und Versionsangaben", () => {
+    expect(detectExamVersions("CompTIA Security+ SY0-701 Exam Objectives, Version 5.0 – AZ-104 later")).toEqual(["SY0-701", "AZ-104", "Version 5.0"]);
+    expect(detectExamVersions("Ganz normaler Text ohne Codes")).toEqual([]);
   });
 });

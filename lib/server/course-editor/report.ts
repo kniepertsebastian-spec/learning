@@ -13,7 +13,7 @@ import {
   sections,
   type SourceReport,
 } from "@/lib/server/db/schema";
-import { buildSourceReport, compareCoverage, type CoverageResult } from "@/lib/server/course-generation/coverage";
+import { baselineFor, buildSourceReport, compareCoverage, sourceChange, type CoverageResult, type SourceChange } from "@/lib/server/course-generation/coverage";
 import { fetchSources, SourceFetchError, type FetchedSource } from "@/lib/server/course-generation/sources";
 import { isHandsOn } from "@/lib/markdown/toc";
 import { editableCourse } from "./service";
@@ -29,7 +29,7 @@ export const HARD_QUESTION_MAX_ACCURACY = 0.4;
 export const MIN_QUESTIONS_PER_OBJECTIVE = 4;
 export const THIN_LESSON_CHARS = 500;
 
-export type ImprovementKind = "missing_objective" | "open_report" | "hard_question" | "few_questions" | "hands_on_without_simulation" | "no_exam_callout" | "thin_lesson";
+export type ImprovementKind = "missing_objective" | "open_report" | "hard_question" | "few_questions" | "one_question_type" | "hands_on_without_simulation" | "no_exam_callout" | "thin_lesson";
 export type Severity = "high" | "medium" | "low";
 export type Improvement = {
   id: string;
@@ -39,6 +39,8 @@ export type Improvement = {
   objectiveCode: string | null;
   sectionId: string | null;
   text: { de: string; en: string };
+  /** Nur bei „missing_objective“: das offizielle Lernziel und die Domain, in die es vermutlich gehört (gleiche erste Stelle der Nummer). */
+  missing?: { code: string; title: string; domainId: string | null };
 };
 
 export type DomainRow = { id: string; name: string; objectives: number; sections: number; questions: number; simulations: number; practice: number };
@@ -49,6 +51,10 @@ export type CoverageView = {
   checkedAt: string | null;
   sourceCount: number;
   truncated: SourceReport["truncated"];
+  /** Als Prüfungsleitfaden erkannte Quelle (vollständig gelesen). */
+  primary: { title: string; url: string } | null;
+  /** Hat sich die Quelle seit der Kurserstellung (bzw. dem letzten bestätigten Stand) geändert? */
+  change: SourceChange | null;
   result: CoverageResult | null;
   canRefresh: boolean;
 };
@@ -111,7 +117,7 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
         .where(inArray(sections.objectiveId, objIds))
         .orderBy(asc(sections.orderNum))
     : [];
-  const qs = objIds.length ? await db.select({ id: questions.id, objectiveId: questions.objectiveId, humanId: questions.humanId }).from(questions).where(inArray(questions.objectiveId, objIds)) : [];
+  const qs = objIds.length ? await db.select({ id: questions.id, objectiveId: questions.objectiveId, humanId: questions.humanId, type: questions.type }).from(questions).where(inArray(questions.objectiveId, objIds)) : [];
   const stats = await answerStats(qs.map((q) => q.id));
   const targetIds = [...secs.map((s) => s.lessonId), ...qs.map((q) => q.id)];
   const reports = targetIds.length
@@ -149,6 +155,12 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
   for (const o of objs) {
     const qCount = qs.filter((q) => q.objectiveId === o.id).length;
     const target = recommended.get(o.code) ?? MIN_QUESTIONS_PER_OBJECTIVE;
+    // Abwechslung: ab 4 Fragen nicht alle vom selben Typ (nur Wissensfragen prüfen kein Anwenden).
+    const types = new Set(qs.filter((q) => q.objectiveId === o.id).map((q) => q.type));
+    if (qCount >= MIN_QUESTIONS_PER_OBJECTIVE && types.size === 1) {
+      const [only] = types;
+      push({ kind: "one_question_type", severity: "low", objectiveId: o.id, objectiveCode: o.code, sectionId: null, text: { de: `${o.code} ${o.title}: alle ${qCount} Fragen sind vom Typ „${only}“.`, en: `${o.code} ${o.title}: all ${qCount} questions are of type “${only}”.` } });
+    }
     if (qCount < target) {
       push({ kind: "few_questions", severity: "medium", objectiveId: o.id, objectiveCode: o.code, sectionId: null, text: { de: `${o.code} ${o.title}: ${qCount} Fragen, empfohlen sind ${target}.`, en: `${o.code} ${o.title}: ${qCount} questions, ${target} recommended.` } });
     }
@@ -175,8 +187,8 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
 
   // Abdeckung gegen die Quelle
   let coverage: CoverageView;
-  if (meta?.courseType === "custom") coverage = { unavailable: "custom_course", checkedAt: null, sourceCount: 0, truncated: [], result: null, canRefresh: false };
-  else if (!job) coverage = { unavailable: "no_job", checkedAt: null, sourceCount: 0, truncated: [], result: null, canRefresh: false };
+  if (meta?.courseType === "custom") coverage = { unavailable: "custom_course", checkedAt: null, sourceCount: 0, truncated: [], primary: null, change: null, result: null, canRefresh: false };
+  else if (!job) coverage = { unavailable: "no_job", checkedAt: null, sourceCount: 0, truncated: [], primary: null, change: null, result: null, canRefresh: false };
   else {
     const rep = job.sourceReport;
     coverage = {
@@ -184,11 +196,14 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
       checkedAt: rep?.checkedAt ?? null,
       sourceCount: rep?.sourceCount ?? 0,
       truncated: rep?.truncated ?? [],
+      primary: rep?.primary ?? null,
+      change: sourceChange(rep),
       result: rep ? compareCoverage(rep.officialObjectives, objs.map((o) => o.code)) : null,
       canRefresh: job.sourceUrls.length > 0,
     };
     if (coverage.result?.status === "ok") {
-      for (const m of coverage.result.missing) push({ kind: "missing_objective", severity: "high", objectiveId: null, objectiveCode: m.code, sectionId: null, text: { de: `Offizielles Lernziel ${m.code} „${m.title}“ fehlt im Kurs.`, en: `Official objective ${m.code} “${m.title}” is missing from the course.` } });
+      const domainOfPrefix = new Map(objs.map((o) => [o.code.split(".")[0], o.domainId]));
+      for (const m of coverage.result.missing) push({ kind: "missing_objective", severity: "high", objectiveId: null, objectiveCode: m.code, sectionId: null, missing: { code: m.code, title: m.title, domainId: domainOfPrefix.get(m.code.split(".")[0]) ?? doms[0]?.id ?? null }, text: { de: `Offizielles Lernziel ${m.code} „${m.title}“ fehlt im Kurs.`, en: `Official objective ${m.code} “${m.title}” is missing from the course.` } });
     }
   }
 
@@ -215,7 +230,7 @@ export class CoverageRefreshError extends Error {}
  * Quellen des Erzeugungsauftrags neu abrufen und die erkannten offiziellen Lernziele speichern („Quelle prüfen“). Für Kurse,
  * die vor dem Quellenbericht entstanden sind, und wenn sich die Quelle geändert hat.
  */
-export async function refreshCoverage(certId: string, fetcher: (urls: string[]) => Promise<FetchedSource[]> = fetchSources): Promise<void> {
+export async function refreshCoverage(certId: string, fetcher: (urls: string[]) => Promise<FetchedSource[]> = fetchSources, now = new Date()): Promise<SourceChange | null> {
   await editableCourse(certId);
   const job = await latestJob(certId);
   if (!job || job.sourceUrls.length === 0) throw new CoverageRefreshError("Zu diesem Kurs ist keine Quelle hinterlegt.");
@@ -226,5 +241,19 @@ export async function refreshCoverage(certId: string, fetcher: (urls: string[]) 
     if (error instanceof SourceFetchError) throw new CoverageRefreshError(`Quelle nicht abrufbar: ${error.message}`);
     throw error;
   }
-  await getDb().update(courseGenerationJobs).set({ sourceReport: buildSourceReport(sources) }).where(eq(courseGenerationJobs.id, job.id));
+  const report = { ...buildSourceReport(sources, now), baseline: baselineFor(job.sourceReport) };
+  await getDb().update(courseGenerationJobs).set({ sourceReport: report }).where(eq(courseGenerationJobs.id, job.id));
+  // Versionsüberwachung: zuletzt gegen die Quelle geprüft.
+  await getDb().update(certifications).set({ lastVerifiedDate: now }).where(eq(certifications.id, certId));
+  return sourceChange(report);
+}
+
+/** Den aktuellen Stand der Quelle als neuen Vergleichsstand bestätigen (nachdem der Kurs angepasst wurde). */
+export async function acceptSourceBaseline(certId: string): Promise<void> {
+  await editableCourse(certId);
+  const job = await latestJob(certId);
+  const rep = job?.sourceReport;
+  if (!job || !rep) throw new CoverageRefreshError("Die Quelle wurde noch nicht geprüft.");
+  const baseline = { checkedAt: rep.checkedAt, fingerprint: rep.fingerprint ?? null, officialObjectives: rep.officialObjectives, versions: rep.versions ?? [] };
+  await getDb().update(courseGenerationJobs).set({ sourceReport: { ...rep, baseline } }).where(eq(courseGenerationJobs.id, job.id));
 }

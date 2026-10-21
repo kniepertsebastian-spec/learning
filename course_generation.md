@@ -50,7 +50,7 @@ Danach wurde der Teil von Phase 8 nachgeholt, der eine Sandbox ohne Live-Key nic
 
 CKA und PCA liefen im Anschluss beide vollständig durch ohne weitere Fehlermeldungen.
 
-Noch offen: die eigentliche Claude-Code-Cloud-Routine-Anbindung (`routineBlueprintProvider` ist ein Platzhalter - erfordert einen echten, öffentlich erreichbaren Callback sowie `CLAUDE_ROUTINE_TRIGGER_URL`/`_TOKEN`; MUSS zudem neu bewertet werden, da die Kosten-Prämisse an Claude hing, siehe Update oben); die dynamische Fragenmengen-Reduktion bei Überschreiten von `initialCostLimitUsd` (aktuell nur eine Statusmeldung, siehe Kommentar in `worker.ts::recordSpend`); der harte `HARD_MAX_OBJECTIVES`-Split großer Kurse in mehrere Versionen (aktuell bricht ein zu großer Blueprint einfach ab, statt automatisch aufgeteilt zu werden - explizit noch NICHT über die neue One-Click-Pipeline getestet); der Rest von Phase 8 (Rate-Limit-/Worker-Neustart-Simulation, Prompt-Injection-Testquellen, strukturierte Logs).
+Noch offen: die eigentliche Claude-Code-Cloud-Routine-Anbindung (`routineBlueprintProvider` ist ein Platzhalter - erfordert einen echten, öffentlich erreichbaren Callback sowie `CLAUDE_ROUTINE_TRIGGER_URL`/`_TOKEN`; MUSS zudem neu bewertet werden, da die Kosten-Prämisse an Claude hing, siehe Update oben); die dynamische Fragenmengen-Reduktion bei Überschreiten von `initialCostLimitUsd` (aktuell nur eine Statusmeldung, siehe Kommentar in `worker.ts::recordSpend`); der Rest von Phase 8 (Rate-Limit-/Worker-Neustart-Simulation, Prompt-Injection-Testquellen, strukturierte Logs).
 
 ## 1. Zielbild
 
@@ -302,6 +302,8 @@ MAX_QUESTIONS_PER_OBJECTIVE=15
 ```
 
 `SOFT_TARGET_OBJECTIVES` ist nur ein Planungswert. Werden beispielsweise 38 relevante Lernziele erkannt, bleiben alle 38 erhalten. Der Hard-Limit-Wert schützt vor fehlerhaften oder manipulierten Quellen. Erreicht ein valider Kurs mehr als 80 Lernziele, wird er automatisch in mehrere logisch verbundene Teile oder Versionen aufgeteilt; Lernziele werden niemals stillschweigend entfernt.
+
+Umsetzung (`lib/server/course-generation/split.ts`): ganze Domains in ihrer Reihenfolge, möglichst gleich große Teile, eine einzelne zu große Domain wird in Stücke geteilt („Netzwerke (1/2)“); die Domain-Gewichte gelten je Teil relativ. Der Auftrag erzeugt Teil 1 („Titel (Teil 1 von 3)“), die übrigen Teile werden als eigene Aufträge mit fertigem Teil-Blueprint angelegt (`split_of_job_id`, `split_part`, `split_parts`) und laufen nacheinander nach dem vorigen Teil. Firmenkurse aus Dateien brechen weiterhin ab (die Dateien gehören zum Auftrag).
 
 ### Fragen nach Relevanz verteilen
 

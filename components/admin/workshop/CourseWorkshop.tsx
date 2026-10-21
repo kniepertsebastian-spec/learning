@@ -6,13 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import type { WorkshopTree } from "@/lib/server/course-editor/service";
+import type { AiAction } from "@/lib/workshop-ai";
 import { CourseReport } from "./CourseReport";
 import { OverviewEditor } from "./OverviewEditor";
 import { QuestionsPanel } from "./QuestionsPanel";
 import { SectionEditor } from "./SectionEditor";
 import { api, formatDate, inputCls, Problems, useTr, type Lang } from "./shared";
 
-type Selection = { kind: "section"; id: string; objectiveId: string } | { kind: "new-section"; objectiveId: string } | { kind: "questions"; objectiveId: string } | { kind: "checkpoints" } | { kind: "report" } | { kind: "overview" } | null;
+/** `ai`: aus dem Qualitätsbericht geöffnet, das KI-Panel startet mit dieser Aktion (nicht in der Adresse). */
+type Selection = { kind: "section"; id: string; objectiveId: string; ai?: AiAction | null } | { kind: "new-section"; objectiveId: string } | { kind: "questions"; objectiveId: string; ai?: AiAction | null } | { kind: "checkpoints" } | { kind: "report" } | { kind: "overview" } | null;
 
 /** Auswahl in der Adresse (#section=…), damit Neuladen und Links auf dieselbe Stelle führen. */
 function parseHash(): Selection {
@@ -77,6 +79,7 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
   }
 
   const objectiveOf = (id: string) => tree?.flatMap((d) => d.objectives).find((o) => o.id === id);
+  const sectionOf = (id: string) => tree?.flatMap((d) => d.objectives).flatMap((o) => o.sections).find((s) => s.id === id);
   const current = selection && "objectiveId" in selection ? objectiveOf(selection.objectiveId) : undefined;
 
   const outline = (
@@ -185,7 +188,17 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
         )}
         {current && <p className="mb-2 text-xs text-subtle"><span className="font-mono">{current.code}</span> {current.title}</p>}
         {selection?.kind === "section" && (
-          <SectionEditor key={selection.id} certId={certId} sectionId={selection.id} objectiveId={selection.objectiveId} locale={locale} onDirtyChange={setDirty} onSaved={() => void loadTree()} />
+          <SectionEditor
+            key={selection.id}
+            certId={certId}
+            sectionId={selection.id}
+            objectiveId={selection.objectiveId}
+            locale={locale}
+            openReports={sectionOf(selection.id)?.openReports ?? 0}
+            initialAiAction={selection.ai}
+            onDirtyChange={setDirty}
+            onSaved={() => void loadTree()}
+          />
         )}
         {selection?.kind === "new-section" && (
           <SectionEditor
@@ -203,12 +216,13 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
             }}
           />
         )}
-        {selection?.kind === "questions" && <QuestionsPanel key={selection.objectiveId} certId={certId} objectiveId={selection.objectiveId} locale={locale} onDirtyChange={setDirty} onChanged={() => void loadTree()} />}
+        {selection?.kind === "questions" && <QuestionsPanel key={selection.objectiveId} certId={certId} objectiveId={selection.objectiveId} locale={locale} initialAiAction={selection.ai} onDirtyChange={setDirty} onChanged={() => void loadTree()} />}
         {selection?.kind === "report" && (
           <CourseReport
             certId={certId}
             locale={locale}
-            onOpen={(t) => select(t.sectionId ? { kind: "section", id: t.sectionId, objectiveId: t.objectiveId } : { kind: "questions", objectiveId: t.objectiveId })}
+            onOpen={(t) => select(t.sectionId ? { kind: "section", id: t.sectionId, objectiveId: t.objectiveId, ai: t.ai } : { kind: "questions", objectiveId: t.objectiveId, ai: t.ai })}
+            onObjectiveCreated={() => void loadTree()}
           />
         )}
         {selection?.kind === "overview" && <OverviewEditor key="overview" certId={certId} locale={locale} onDirtyChange={setDirty} />}

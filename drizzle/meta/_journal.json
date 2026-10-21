@@ -456,6 +456,20 @@
       "when": 1792532200302,
       "tag": "0064_simulation_results",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1792539654438,
+      "tag": "0065_ai_edits",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1792563683413,
+      "tag": "0066_course_split",
+      "breakpoints": true
     }
   ]
 }

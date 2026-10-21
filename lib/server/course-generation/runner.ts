@@ -1,7 +1,7 @@
 import { cleanupJobDocumentsIfDone } from "@/lib/server/internal-courses/temporary-documents";
 import { isAutoTranslateEnabled, startCourseTranslation } from "@/lib/server/course-translation/runner";
 import { ensureCourseOverview } from "@/lib/server/course-overview/service";
-import { getCourseGenerationJob } from "./job-service";
+import { getCourseGenerationJob, isTerminalCourseGenerationStatus, nextSplitPartJob } from "./job-service";
 import { executeCourseGenerationJob, publishPreparedCourseGenerationPackage } from "./worker";
 
 /**
@@ -39,6 +39,18 @@ async function translateIfPublished(jobId: string): Promise<void> {
   if (job?.status === "published" && job.resultCertificationId) await startCourseTranslation(job.resultCertificationId);
 }
 
+async function startNextSplitPart(jobId: string): Promise<void> {
+  try {
+    const job = await getCourseGenerationJob(jobId);
+    // Nur nach einem endgültigen Ende; ein unterbrochener Lauf setzt erst sich selbst fort.
+    if (!job || !isTerminalCourseGenerationStatus(job.status)) return;
+    const next = await nextSplitPartJob(jobId);
+    if (next) startCourseGenerationJob(next);
+  } catch (error) {
+    console.error(`Nächster Kursteil nach ${jobId} nicht gestartet:`, error);
+  }
+}
+
 export function startCourseGenerationJob(jobId: string): void {
   if (activeJobs.has(jobId)) return;
   const processPromise = executeCourseGenerationJob(jobId)
@@ -55,7 +67,11 @@ export function startCourseGenerationJob(jobId: string): void {
     // Temporäre Dateien eines Kurses der Firma verschwinden nach Erfolg oder Abbruch (nach einem Fehler bleiben sie für den nächsten Versuch).
     .then(() => cleanupJobDocumentsIfDone(jobId))
     .catch((error) => console.error(`Aufräumen der temporären Dateien (${jobId}) fehlgeschlagen:`, error))
-    .finally(() => activeJobs.delete(jobId));
+    .finally(() => {
+      activeJobs.delete(jobId);
+      // Aufgeteilter sehr großer Kurs: der nächste Teil startet, sobald dieser fertig ist (nacheinander, nicht parallel).
+      void startNextSplitPart(jobId);
+    });
   activeJobs.set(jobId, processPromise);
 }
 

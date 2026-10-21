@@ -56,6 +56,7 @@ async function loadChunks(certificationId: string, source: Locale): Promise<Tran
         keyTakeaways: lessons.keyTakeaways,
         examFocusPoints: lessons.examFocusPoints,
         cheatSheet: lessons.cheatSheet,
+        outdated: lessons.translationOutdated,
       })
       .from(sections)
       .innerJoin(lessons, eq(lessons.sectionId, sections.id))
@@ -63,7 +64,7 @@ async function loadChunks(certificationId: string, source: Locale): Promise<Tran
       .orderBy(asc(sections.orderNum)),
     // Veraltete Fragen sehen Lernende nicht mehr (nur alte Verläufe): sie zu übersetzen kostet nur.
     db
-      .select({ id: questions.id, objectiveId: questions.objectiveId, question: questions.question, explanation: questions.explanation })
+      .select({ id: questions.id, objectiveId: questions.objectiveId, question: questions.question, explanation: questions.explanation, outdated: questions.translationOutdated })
       .from(questions)
       .where(and(inArray(questions.objectiveId, objectiveIds), eq(questions.stale, false)))
       .orderBy(asc(questions.humanId)),
@@ -82,7 +83,8 @@ async function loadChunks(certificationId: string, source: Locale): Promise<Tran
   for (const objective of objectiveRows) {
     const sectionItems: SectionItem[] = sectionRows
       .filter((s) => s.objectiveId === objective.id)
-      .filter((s) => untranslated(s.title) || untranslated(s.content) || untranslated(s.keyTakeaways) || untranslated(s.examFocusPoints) || untranslated(s.cheatSheet))
+      // Veraltet (Kurssprache per KI geändert): die ganze Lektion neu übersetzen, auch Felder, die schon verschieden sind.
+      .filter((s) => s.outdated || untranslated(s.title) || untranslated(s.content) || untranslated(s.keyTakeaways) || untranslated(s.examFocusPoints) || untranslated(s.cheatSheet))
       .map((s, i) => ({
         key: `s${i + 1}`,
         sectionId: s.sectionId,
@@ -96,7 +98,7 @@ async function loadChunks(certificationId: string, source: Locale): Promise<Tran
     const questionItems: QuestionItem[] = questionRows
       .filter((q) => q.objectiveId === objective.id)
       .map((q) => ({ ...q, options: optionsByQuestion.get(q.id) ?? [] }))
-      .filter((q) => untranslated(q.question) || untranslated(q.explanation) || q.options.some((o) => untranslated(o.text) || untranslated(o.rationale)))
+      .filter((q) => q.outdated || untranslated(q.question) || untranslated(q.explanation) || q.options.some((o) => untranslated(o.text) || untranslated(o.rationale)))
       .map((q, i) => ({
         key: `q${i + 1}`,
         questionId: q.id,
@@ -126,6 +128,7 @@ async function saveChunk(certificationId: string, chunk: TranslationChunk, resul
           ...(s.keyTakeaways ? { keyTakeaways: setLocale(lessons.keyTakeaways, target, t.keyTakeaways) } : {}),
           ...(s.examFocusPoints ? { examFocusPoints: setLocale(lessons.examFocusPoints, target, t.examFocusPoints) } : {}),
           ...(s.cheatSheet && t.cheatSheet ? { cheatSheet: setLocale(lessons.cheatSheet, target, t.cheatSheet) } : {}),
+          translationOutdated: false,
           // Neuer Stand für Offline-Pakete (deren Version richtet sich nach lessons.updatedAt).
           updatedAt: new Date(),
         })
@@ -136,7 +139,7 @@ async function saveChunk(certificationId: string, chunk: TranslationChunk, resul
       await recordQuestionRevision(tx, certificationId, q.questionId, actor);
       await tx
         .update(questions)
-        .set({ question: setLocale(questions.question, target, t.question), explanation: setLocale(questions.explanation, target, t.explanation) })
+        .set({ question: setLocale(questions.question, target, t.question), explanation: setLocale(questions.explanation, target, t.explanation), translationOutdated: false })
         .where(eq(questions.id, q.questionId));
       for (const [i, o] of q.options.entries()) {
         const to = t.options[i];

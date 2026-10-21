@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { SourceReport } from "@/lib/server/db/schema";
 import type { FetchedSource, SourceExcerpt } from "./sources";
 
@@ -70,10 +71,58 @@ export function compareCoverage(official: OfficialObjective[], courseCodes: stri
  */
 export function buildSourceReport(sources: FetchedSource[], now: Date = new Date()): SourceReport {
   const excerpts = sources.flatMap((s) => s.excerpts.filter((e) => !e.locator.startsWith("Bild:")));
+  const main = sources.find((s) => s.primary) ?? null;
+  const tracked = (main ? main.excerpts : excerpts).map((e) => e.text).join("\n");
   return {
+    fingerprint: createHash("sha256").update(tracked.replace(/\s+/g, " ").trim()).digest("hex").slice(0, 16),
+    versions: detectExamVersions(tracked),
     checkedAt: now.toISOString(),
     officialObjectives: extractOfficialObjectives(excerpts),
     truncated: sources.filter((s) => s.truncated).map((s) => ({ title: s.title, url: s.url })),
     sourceCount: sources.length,
+    primary: sources.filter((s) => s.primary).map((s) => ({ title: s.title, url: s.url }))[0] ?? null,
   };
+}
+
+/** Genannte Prüfungsversionen: Prüfungscodes wie „SY0-701“, „SAA-C03“, „AZ-104“ und „Version 7.0“ (höchstens fünf, in Reihenfolge). */
+export function detectExamVersions(text: string): string[] {
+  const found: string[] = [];
+  const add = (v: string) => {
+    if (!found.includes(v) && found.length < 5) found.push(v);
+  };
+  for (const m of text.matchAll(/\b([A-Z]{2,4}[0-9]?-[A-Z]?[0-9]{2,4})\b/g)) add(m[1]);
+  for (const m of text.matchAll(/\b(?:Version|Exam version|Prüfungsversion|Versión)\s+([0-9]+(?:\.[0-9]+)?)\b/gi)) add(`Version ${m[1]}`);
+  return found;
+}
+
+export type SourceChange = {
+  /** Seit wann der Vergleichsstand gilt. */
+  since: string;
+  textChanged: boolean;
+  added: OfficialObjective[];
+  removed: OfficialObjective[];
+  versionsBefore: string[];
+  versionsNow: string[];
+};
+
+/** Unterschied des aktuellen Quellenberichts zum Vergleichsstand; null, wenn es keinen Vergleichsstand gibt oder nichts anders ist. */
+export function sourceChange(report: SourceReport | null | undefined): SourceChange | null {
+  const base = report?.baseline;
+  if (!report || !base) return null;
+  const before = new Set(base.officialObjectives.map((o) => o.code));
+  const now = new Set(report.officialObjectives.map((o) => o.code));
+  const added = report.officialObjectives.filter((o) => !before.has(o.code));
+  const removed = base.officialObjectives.filter((o) => !now.has(o.code));
+  const textChanged = Boolean(base.fingerprint && report.fingerprint && base.fingerprint !== report.fingerprint);
+  const versionsNow = report.versions ?? [];
+  const versionChanged = base.versions.length > 0 && versionsNow.length > 0 && base.versions.join("|") !== versionsNow.join("|");
+  if (!textChanged && !added.length && !removed.length && !versionChanged) return null;
+  return { since: base.checkedAt, textChanged, added, removed, versionsBefore: base.versions, versionsNow };
+}
+
+/** Vergleichsstand für einen neuen Bericht: der bisherige bleibt; ohne einen wird der vorige Bericht dazu. */
+export function baselineFor(previous: SourceReport | null | undefined): SourceReport["baseline"] {
+  if (!previous) return null;
+  if (previous.baseline) return previous.baseline;
+  return { checkedAt: previous.checkedAt, fingerprint: previous.fingerprint ?? null, officialObjectives: previous.officialObjectives, versions: previous.versions ?? [] };
 }

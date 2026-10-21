@@ -1,6 +1,7 @@
 import { isRetryableError, type AIUsage } from "@/lib/ai/generate";
 import { estimateCostUsd } from "@/lib/server/admin/content-generation";
 import {
+  createSplitPartJobs,
   getCourseGenerationJob,
   markCourseGenerationJobFailed,
   touchCourseGenerationJob,
@@ -39,6 +40,7 @@ import {
   type ObjectiveContentResponse,
 } from "./schemas";
 import { looksLikeOutline } from "./outline";
+import { partTitle, splitBlueprint } from "./split";
 import { fetchSources, type FetchedSource } from "./sources";
 import { buildSourceReport } from "./coverage";
 import { autoFixObjectiveContent, missingQuestionsOnly, pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
@@ -587,9 +589,35 @@ export async function executeCourseGenerationJob(
       domain.objectives.map((objective) => ({ domain, objective })),
     );
     if (allObjectives.length > HARD_MAX_OBJECTIVES) {
-      throw new BlueprintValidationError(
-        `${allObjectives.length} Objectives überschreiten das Hard-Limit von ${HARD_MAX_OBJECTIVES} - Kurs muss aufgeteilt werden.`,
+      // Firmenkurse aus Dateien teilen sich die hochgeladenen Dateien mit dem Auftrag: dort weiterhin abbrechen.
+      if (job.organizationId) {
+        throw new BlueprintValidationError(
+          `${allObjectives.length} Objectives überschreiten das Hard-Limit von ${HARD_MAX_OBJECTIVES} - bitte die Unterlagen auf mehrere Lernpfade aufteilen.`,
+        );
+      }
+      // Sehr großer Kurs: in Teile aufteilen (split.ts). Dieser Auftrag erzeugt Teil 1, die übrigen laufen danach als
+      // eigene Aufträge mit ihrem Teil-Blueprint. Kein Lernziel geht verloren.
+      const parts = splitBlueprint(blueprint, HARD_MAX_OBJECTIVES);
+      const baseTitle = job.courseTitle;
+      const language = job.language as "de" | "en";
+      await createSplitPartJobs(
+        job,
+        parts.slice(1).map((p, i) => ({ title: partTitle(baseTitle, i + 2, parts.length, language), blueprint: { ...p, title: partTitle(blueprint.title, i + 2, parts.length, language) } })),
+        parts.length,
       );
+      const title = partTitle(baseTitle, 1, parts.length, language);
+      blueprint = { ...parts[0], title: partTitle(blueprint.title, 1, parts.length, language) };
+      job.courseTitle = title;
+      job.splitPart = 1;
+      job.splitParts = parts.length;
+      await updateCourseGenerationJob(jobId, {
+        courseTitle: title,
+        splitPart: 1,
+        splitParts: parts.length,
+        blueprintJson: blueprint,
+        message: `Kurs mit ${allObjectives.length} Lernzielen in ${parts.length} Teile aufgeteilt; Teil 1 wird erzeugt, die übrigen folgen nacheinander.`,
+      });
+      allObjectives.splice(0, allObjectives.length, ...blueprint.domains.flatMap((domain) => domain.objectives.map((objective) => ({ domain, objective }))));
     }
 
     // Kostenschätzung (grob, siehe course_generation.md Abschnitt 12)

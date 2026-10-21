@@ -7,6 +7,7 @@ import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { getOrCreateStudySession, getStudySessionWithContent } from "@/lib/server/study/session-service";
+import { pickPracticeSimulation } from "@/lib/server/simulations/service";
 import { StudySession } from "@/components/StudySession";
 
 export default async function StudySessionPage({
@@ -59,9 +60,13 @@ export default async function StudySessionPage({
       : [],
   );
 
+  // Nach den Fragen eine Praxisaufgabe aus denselben Lernzielen (ungelöst oder mühsam gelöst), falls es eine gibt.
+  const practice = await pickPracticeSimulation(session.user.id, questionItems.map((q) => q.questionId), summary.id);
+
   return (
     <div className="flex flex-1 flex-col">
       <StudySession
+        practice={practice}
         certSlug={slug}
         sessionId={summary.id}
         questionItems={questionItems}
