@@ -4,9 +4,8 @@ import { History, RotateCcw } from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { collapseSame, lineDiff } from "@/lib/diff";
 import { cn } from "@/lib/cn";
-import { api, formatDate, Problems, useTr, type Lang } from "./shared";
+import { api, DiffView, formatDate, Problems, useTr, type Lang } from "./shared";
 
 type Revision = { id: string; origin: string; note: string | null; createdAt: string; author: string | null; authorEmail: string | null; checkpointName: string | null; data: unknown };
 
@@ -64,7 +63,6 @@ export function RevisionHistory({
   }, [load]);
 
   const rev = revs?.find((r) => r.id === selected) ?? null;
-  const diff = React.useMemo(() => (rev ? collapseSame(lineDiff(toText(rev.data, lang), currentText)) : []), [rev, lang, currentText, toText]);
 
   async function restore() {
     if (!rev || !window.confirm(tr("Auf diesen Stand zurücksetzen? Der aktuelle Stand bleibt in der Versionsgeschichte.", "Restore this version? The current version stays in the history."))) return;
@@ -110,22 +108,7 @@ export function RevisionHistory({
       {rev && (
         <div className="mt-3">
           <p className="mb-1.5 text-xs text-subtle">{tr("Unterschied: dieser Stand (rot) → aktuell gespeichert (grün)", "Difference: this version (red) → currently saved (green)")}</p>
-          <pre className="max-h-96 overflow-auto rounded-xl border border-border bg-surface-inset p-2 font-mono text-xs leading-relaxed" data-testid="revision-diff">
-            {diff.length === 0 || diff.every((d) => d.type === "same" || d.type === "skip") ? (
-              <span className="text-subtle">{tr("Kein Unterschied in dieser Sprache.", "No difference in this language.")}</span>
-            ) : (
-              diff.map((d, i) =>
-                d.type === "skip" ? (
-                  <span key={i} className="block text-faint">⋯ {d.count} {tr("unveränderte Zeilen", "unchanged lines")}</span>
-                ) : (
-                  <span key={i} className={cn("block px-1 whitespace-pre-wrap", d.type === "add" && "bg-mint-soft text-mint-text", d.type === "del" && "bg-danger-soft text-danger-text")}>
-                    {d.type === "add" ? "+ " : d.type === "del" ? "− " : "  "}
-                    {d.text || " "}
-                  </span>
-                ),
-              )
-            )}
-          </pre>
+<DiffView before={toText(rev.data, lang)} after={currentText} locale={locale} testId="revision-diff" />
           <Button className="mt-2" size="sm" variant="secondary" onClick={restore} disabled={busy || Boolean(disabled)} iconLeft={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />} data-testid="revision-restore">
             {tr("Diesen Stand wiederherstellen", "Restore this version")}
           </Button>

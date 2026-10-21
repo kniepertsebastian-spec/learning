@@ -39,6 +39,8 @@ export type Improvement = {
   objectiveCode: string | null;
   sectionId: string | null;
   text: { de: string; en: string };
+  /** Nur bei „missing_objective“: das offizielle Lernziel und die Domain, in die es vermutlich gehört (gleiche erste Stelle der Nummer). */
+  missing?: { code: string; title: string; domainId: string | null };
 };
 
 export type DomainRow = { id: string; name: string; objectives: number; sections: number; questions: number; simulations: number; practice: number };
@@ -188,7 +190,8 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
       canRefresh: job.sourceUrls.length > 0,
     };
     if (coverage.result?.status === "ok") {
-      for (const m of coverage.result.missing) push({ kind: "missing_objective", severity: "high", objectiveId: null, objectiveCode: m.code, sectionId: null, text: { de: `Offizielles Lernziel ${m.code} „${m.title}“ fehlt im Kurs.`, en: `Official objective ${m.code} “${m.title}” is missing from the course.` } });
+      const domainOfPrefix = new Map(objs.map((o) => [o.code.split(".")[0], o.domainId]));
+      for (const m of coverage.result.missing) push({ kind: "missing_objective", severity: "high", objectiveId: null, objectiveCode: m.code, sectionId: null, missing: { code: m.code, title: m.title, domainId: domainOfPrefix.get(m.code.split(".")[0]) ?? doms[0]?.id ?? null }, text: { de: `Offizielles Lernziel ${m.code} „${m.title}“ fehlt im Kurs.`, en: `Official objective ${m.code} “${m.title}” is missing from the course.` } });
     }
   }
 

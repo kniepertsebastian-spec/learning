@@ -12,6 +12,10 @@ import { translateCourse } from "./service";
 const globalForTranslations = globalThis as unknown as { courseTranslations?: Map<string, Promise<void>> };
 const active = globalForTranslations.courseTranslations ?? new Map<string, Promise<void>>();
 globalForTranslations.courseTranslations = active;
+/** Kurse, die während eines laufenden Laufs erneut angefordert wurden (z. B. eine KI-Änderung in der Werkstatt): danach noch ein Lauf. */
+const globalForRerun = globalThis as unknown as { courseTranslationRerun?: Set<string> };
+const rerun = globalForRerun.courseTranslationRerun ?? new Set<string>();
+globalForRerun.courseTranslationRerun = rerun;
 
 export function isCourseTranslationActive(certificationId: string): boolean {
   return active.has(certificationId);
@@ -19,9 +23,15 @@ export function isCourseTranslationActive(certificationId: string): boolean {
 
 export type StartTranslationResult = "started" | "already_running" | "not_found";
 
-/** Startet die Übersetzung eines Kurses im Hintergrund (höchstens ein Lauf je Kurs). */
+/**
+ * Startet die Übersetzung eines Kurses im Hintergrund (höchstens ein Lauf je Kurs). Läuft schon einer, folgt ihm noch
+ * einer, denn der laufende kennt seine Teile schon und sähe die neue Änderung nicht.
+ */
 export async function startCourseTranslation(certificationId: string): Promise<StartTranslationResult> {
-  if (active.has(certificationId)) return "already_running";
+  if (active.has(certificationId)) {
+    rerun.add(certificationId);
+    return "already_running";
+  }
   const [cert] = await getDb().select({ id: certifications.id }).from(certifications).where(eq(certifications.id, certificationId)).limit(1);
   if (!cert) return "not_found";
   if (active.has(certificationId)) return "already_running";
@@ -35,7 +45,10 @@ export async function startCourseTranslation(certificationId: string): Promise<S
     .then(() => undefined)
     // translateCourse() hält Fehler selbst am Kurs fest; hier nur protokollieren.
     .catch((error) => console.error(`Übersetzung des Kurses ${certificationId} fehlgeschlagen:`, error))
-    .finally(() => active.delete(certificationId));
+    .finally(() => {
+      active.delete(certificationId);
+      if (rerun.delete(certificationId)) void startCourseTranslation(certificationId).catch((error) => console.error(`Erneute Übersetzung (${certificationId}) fehlgeschlagen:`, error));
+    });
   active.set(certificationId, run);
   return "started";
 }

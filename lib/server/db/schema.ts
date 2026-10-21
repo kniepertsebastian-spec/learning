@@ -284,6 +284,8 @@ export const certifications = pgTable("certifications", {
   translationTotal: integer("translation_total").notNull().default(0),
   /** Summe der geschätzten KI-Kosten aller Übersetzungsläufe (USD); null = kein Preis hinterlegt. */
   translationCostUsd: numeric("translation_cost_usd", { precision: 10, scale: 4 }),
+  /** Summe der geschätzten Kosten aller KI-Vorschläge der Werkstatt (roadmap3.md, Schritt 3), auch verworfener. */
+  aiEditCostUsd: numeric("ai_edit_cost_usd", { precision: 10, scale: 4 }),
   translatedAt: timestamp("translated_at", { withTimezone: true }),
   /** Kursbeschreibung vor dem Start (roadmap3.md, Schritt 4); null = noch keine. */
   overview: jsonb("overview").$type<CourseOverview>(),
@@ -387,6 +389,11 @@ export const lessons = pgTable("lessons", {
     onDelete: "set null",
   }),
   reviewStatus: text("review_status").$type<LessonReviewStatus>().notNull().default("unreviewed"),
+  /**
+   * Die zweite Sprache ist veraltet: die Kurssprache wurde (per KI in der Werkstatt) geändert, die Übersetzung noch nicht.
+   * Lernende sehen bis dahin die alte Übersetzung; der Übersetzungslauf übersetzt die Lektion neu und setzt das Feld zurück.
+   */
+  translationOutdated: boolean("translation_outdated").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -415,6 +422,8 @@ export const questions = pgTable("questions", {
   /** R1.5: true, wenn die Quelle, aus der diese Frage stammt, durch eine neue
    * Version ersetzt wurde, die dieses Objective inhaltlich verändert hat. */
   stale: boolean("stale").notNull().default(false),
+  /** Wie lessons.translationOutdated: Kurssprache per KI geändert, die zweite Sprache noch nicht neu übersetzt. */
+  translationOutdated: boolean("translation_outdated").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

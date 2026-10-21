@@ -1,26 +1,40 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, RefreshCw, Sparkles } from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatTile } from "@/components/ui/stat-tile";
-import type { CourseReport as Report, Severity } from "@/lib/server/course-editor/report";
+import type { Improvement, ImprovementKind, CourseReport as Report, Severity } from "@/lib/server/course-editor/report";
 import { cn } from "@/lib/cn";
+import { AI_ACTION_LABELS, type AiAction } from "@/lib/workshop-ai";
+import { MissingObjective } from "./MissingObjective";
 import { api, formatDate, Problems, useTr, type Lang } from "./shared";
 
 const TONE: Record<Severity, "danger" | "warning" | "neutral"> = { high: "danger", medium: "warning", low: "neutral" };
+
+/** Passende KI-Aktion je Verbesserungspunkt (roadmap3.md, Schritt 3). */
+const LESSON_AI: Partial<Record<ImprovementKind, AiAction>> = { open_report: "fix_reports", no_exam_callout: "exam", hands_on_without_simulation: "simulation", thin_lesson: "expand" };
+function aiActionFor(i: Improvement): AiAction | null {
+  if (i.kind === "missing_objective") return i.missing ? "add_objective" : null;
+  if (i.kind === "few_questions") return "add_questions";
+  return i.sectionId ? (LESSON_AI[i.kind] ?? null) : null;
+}
+
+export type OpenTarget = { objectiveId: string; sectionId: string | null; ai?: AiAction | null };
 
 /**
  * Qualitätsbericht (roadmap3.md, Schritt 2): Kennzahlen je Domain, Abdeckung der offiziellen Lernziele gegen die Quelle
  * (mit „Quelle prüfen“) und „Verbesserungspotenzial“, jeweils mit Sprung zur betroffenen Lektion oder zu den Fragen.
  */
-export function CourseReport({ certId, locale, onOpen }: { certId: string; locale: Lang; onOpen: (target: { objectiveId: string; sectionId: string | null }) => void }) {
+export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { certId: string; locale: Lang; onOpen: (target: OpenTarget) => void; onObjectiveCreated: (target: OpenTarget) => void }) {
   const tr = useTr(locale);
   const [report, setReport] = React.useState<Report | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [filter, setFilter] = React.useState<Severity | "all">("all");
+  const [missingOpen, setMissingOpen] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     void (async () => {
@@ -53,6 +67,7 @@ export function CourseReport({ certId, locale, onOpen }: { certId: string; local
         <p className="mt-1 text-sm text-subtle">{tr("Wo der Kurs Lücken hat und was sich zu verbessern lohnt. Alles aus den vorhandenen Daten, ohne KI.", "Where the course has gaps and what is worth improving. All from existing data, no AI.")}</p>
       </div>
       {error && <Problems title={error} />}
+      {message && <p className="rounded-xl border border-mint-border bg-mint-soft p-3 text-sm text-mint-text" role="status">{message}</p>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label={tr("Lernziele", "Objectives")} value={report.totals.objectives} sub={`${report.totals.domains} ${tr("Domains", "domains")}`} />
@@ -150,14 +165,48 @@ export function CourseReport({ certId, locale, onOpen }: { certId: string; local
         </div>
         {shown.length === 0 && <p className="rounded-xl border border-border p-4 text-sm text-subtle">{tr("Nichts gefunden. Das ist ein gutes Zeichen.", "Nothing found. That's a good sign.")}</p>}
         <ul className="flex flex-col gap-1.5">
-          {shown.map((i) => (
-            <li key={i.id} data-testid="improvement">
-              <button type="button" disabled={!i.objectiveId} onClick={() => i.objectiveId && onOpen({ objectiveId: i.objectiveId, sectionId: i.sectionId })} className="flex w-full items-start gap-2.5 rounded-xl border border-border-subtle bg-surface px-3 py-2 text-left text-sm enabled:hover:bg-surface-2">
-                <Badge tone={TONE[i.severity]} className="mt-0.5 shrink-0">{sev[i.severity]}</Badge>
-                <span className="min-w-0">{i.text[locale]}</span>
-              </button>
-            </li>
-          ))}
+          {shown.map((i) => {
+            const ai = aiActionFor(i);
+            return (
+              <li key={i.id} data-testid="improvement">
+                <div className="flex items-stretch gap-1.5">
+                  <button type="button" disabled={!i.objectiveId} onClick={() => i.objectiveId && onOpen({ objectiveId: i.objectiveId, sectionId: i.sectionId })} className="flex min-w-0 flex-1 items-start gap-2.5 rounded-xl border border-border-subtle bg-surface px-3 py-2 text-left text-sm enabled:hover:bg-surface-2">
+                    <Badge tone={TONE[i.severity]} className="mt-0.5 shrink-0">{sev[i.severity]}</Badge>
+                    <span className="min-w-0">{i.text[locale]}</span>
+                  </button>
+                  {ai && (
+                    <button
+                      type="button"
+                      onClick={() => (i.kind === "missing_objective" ? setMissingOpen(missingOpen === i.id ? null : i.id) : i.objectiveId && onOpen({ objectiveId: i.objectiveId, sectionId: i.sectionId, ai }))}
+                      className="flex shrink-0 items-center gap-1.5 rounded-xl border border-border-subtle bg-surface px-2.5 text-xs font-medium text-violet hover:bg-surface-2"
+                      title={AI_ACTION_LABELS[ai][locale]}
+                      data-testid="improvement-ai"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span className="hidden sm:inline">{AI_ACTION_LABELS[ai][locale]}</span>
+                      <span className="sr-only sm:hidden">{AI_ACTION_LABELS[ai][locale]}</span>
+                    </button>
+                  )}
+                </div>
+                {missingOpen === i.id && i.missing && (
+                  <MissingObjective
+                    certId={certId}
+                    locale={locale}
+                    code={i.missing.code}
+                    title={i.missing.title}
+                    domains={report.domains}
+                    suggestedDomainId={i.missing.domainId}
+                    onClose={() => setMissingOpen(null)}
+                    onCreated={(created, msg) => {
+                      setMissingOpen(null);
+                      setMessage(msg);
+                      onObjectiveCreated({ objectiveId: created.objectiveId, sectionId: created.sectionIds[0] ?? null });
+                    }}
+                  />
+                )}
+              </li>
+            );
+          })}
         </ul>
         {report.improvements.length >= 300 && <p className="mt-2 text-xs text-faint">{tr("Die ersten 300 Einträge, nach Wichtigkeit sortiert.", "The first 300 entries, sorted by importance.")}</p>}
       </section>

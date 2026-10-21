@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { collapseSame, lineDiff } from "@/lib/diff";
 import { cn } from "@/lib/cn";
 
 /** Gemeinsames der Kurs-Werkstatt: Texte (de/en wie die übrigen Admin-Seiten inline), Fetch-Helfer, Eingabefelder. */
@@ -73,4 +74,28 @@ export function useUnsavedWarning(dirty: boolean) {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
+}
+
+/** Zeilenweiser Unterschied zweier Texte (rot = vorher, grün = nachher), unveränderte Strecken eingeklappt. */
+export function DiffView({ before, after, locale, testId }: { before: string; after: string; locale: Lang; testId?: string }) {
+  const tr = useTr(locale);
+  const diff = React.useMemo(() => collapseSame(lineDiff(before, after)), [before, after]);
+  return (
+    <pre className="max-h-96 overflow-auto rounded-xl border border-border bg-surface-inset p-2 font-mono text-xs leading-relaxed" data-testid={testId}>
+      {diff.length === 0 || diff.every((d) => d.type === "same" || d.type === "skip") ? (
+        <span className="text-subtle">{tr("Kein Unterschied in dieser Sprache.", "No difference in this language.")}</span>
+      ) : (
+        diff.map((d, i) =>
+          d.type === "skip" ? (
+            <span key={i} className="block text-faint">⋯ {d.count} {tr("unveränderte Zeilen", "unchanged lines")}</span>
+          ) : (
+            <span key={i} className={cn("block px-1 whitespace-pre-wrap", d.type === "add" && "bg-mint-soft text-mint-text", d.type === "del" && "bg-danger-soft text-danger-text")}>
+              {d.type === "add" ? "+ " : d.type === "del" ? "− " : "  "}
+              {d.text || " "}
+            </span>
+          ),
+        )
+      )}
+    </pre>
+  );
 }

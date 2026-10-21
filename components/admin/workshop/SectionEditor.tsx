@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/tabs";
 import { validateLearningBlocks } from "@/lib/markdown/validate";
 import { cn } from "@/lib/cn";
+import type { AiProposal, SectionProposal } from "@/lib/server/course-editor/ai";
 import type { SectionSnapshot } from "@/lib/server/course-editor/snapshots";
+import { SECTION_AI_ACTIONS, type AiAction } from "@/lib/workshop-ai";
+import { acceptMessage, AiAssist, ProposalReview, type AcceptResult } from "./AiAssist";
 import { RevisionHistory } from "./RevisionHistory";
-import { api, Field, inputCls, Problems, textareaCls, useTr, useUnsavedWarning, type L, type Lang } from "./shared";
+import { api, DiffView, Field, inputCls, Problems, textareaCls, useTr, useUnsavedWarning, type L, type Lang } from "./shared";
 
 /** Entwurf im Editor: Listen als Text (eine Zeile je Punkt), Merkzettel immer vorhanden. */
 type Draft = { title: L; minutes: string; difficulty: string; content: L; cheatSheet: L; keyTakeaways: L; examFocusPoints: L };
@@ -57,6 +60,8 @@ export function SectionEditor({
   locale,
   onSaved,
   onDirtyChange,
+  openReports = 0,
+  initialAiAction = null,
 }: {
   certId: string;
   sectionId: string | null;
@@ -64,6 +69,9 @@ export function SectionEditor({
   locale: Lang;
   onSaved: (sectionId: string) => void;
   onDirtyChange: (dirty: boolean) => void;
+  openReports?: number;
+  /** Aus dem Qualitätsbericht: KI-Panel gleich mit dieser Aktion öffnen. */
+  initialAiAction?: AiAction | null;
 }) {
   const tr = useTr(locale);
   const [saved, setSaved] = React.useState<{ snapshot: SectionSnapshot; fingerprint: string } | null>(null);
@@ -75,6 +83,9 @@ export function SectionEditor({
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<{ kind: "ok" | "error" | "conflict"; title: string; items?: string[]; fingerprint?: string } | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [proposal, setProposal] = React.useState<(SectionProposal & AiProposal) | null>(null);
+  /** KI-Vorschlag ins Formular übernommen („Anpassen“): Speichern trägt ihn mit Herkunft „KI“ ein. */
+  const [aiPending, setAiPending] = React.useState<{ action: AiAction; resolveReports: boolean } | null>(null);
 
   const load = React.useCallback(async () => {
     if (!sectionId) return;
@@ -85,6 +96,7 @@ export function SectionEditor({
     setDraft(d);
     setLinked(sameInBoth(d));
     setResult(null);
+    setAiPending(null);
   }, [certId, sectionId]);
   React.useEffect(() => {
     void (async () => {
@@ -113,13 +125,14 @@ export function SectionEditor({
   const set = (key: "title" | "content" | "cheatSheet" | "keyTakeaways" | "examFocusPoints", value: string) =>
     setDraft((d) => (d ? { ...d, [key]: linked ? { de: value, en: value } : { ...d[key], [lang]: value } } : d));
 
-  async function save(base?: string) {
+  async function save(base?: string, direct?: { snapshot: SectionSnapshot; ai: { action: AiAction; resolveReports: boolean } }) {
     if (!draft) return;
     setBusy(true);
     setResult(null);
-    const snapshot = toSnapshot(draft);
+    const snapshot = direct?.snapshot ?? toSnapshot(draft);
+    const ai = direct?.ai ?? aiPending ?? undefined;
     const r = sectionId
-      ? await api<{ fingerprint: string; changed: boolean }>(`/api/admin/certifications/${certId}/workshop/sections/${sectionId}`, { method: "PUT", body: { snapshot, baseFingerprint: base ?? saved!.fingerprint, note: note || undefined } })
+      ? await api<{ fingerprint: string; changed: boolean } & AcceptResult>(`/api/admin/certifications/${certId}/workshop/sections/${sectionId}`, { method: "PUT", body: { snapshot, baseFingerprint: base ?? saved!.fingerprint, note: note || undefined, ai } })
       : await api<{ sectionId: string; fingerprint: string }>(`/api/admin/certifications/${certId}/workshop/objectives/${objectiveId}/sections`, { method: "POST", body: { snapshot } });
     setBusy(false);
     if (r.ok) {
@@ -128,8 +141,13 @@ export function SectionEditor({
         onDirtyChange(false);
         return onSaved((r.data as { sectionId: string }).sectionId);
       }
+      const d = toDraft(snapshot);
       setSaved({ snapshot, fingerprint: r.data.fingerprint });
-      setResult({ kind: "ok", title: tr("Gespeichert. Lernende sehen die neue Fassung sofort.", "Saved. Learners see the new version right away.") });
+      setDraft(d);
+      setLinked(sameInBoth(d));
+      setProposal(null);
+      setAiPending(null);
+      setResult({ kind: "ok", title: ai ? acceptMessage(r.data as AcceptResult, tr) : tr("Gespeichert. Lernende sehen die neue Fassung sofort.", "Saved. Learners see the new version right away.") });
       return onSaved(sectionId);
     }
     if (r.status === 409) return setResult({ kind: "conflict", title: tr("Jemand (oder ein Skript) hat diese Lektion inzwischen geändert.", "Someone (or a script) changed this lesson in the meantime."), fingerprint: r.fingerprint });
@@ -163,6 +181,53 @@ export function SectionEditor({
       ) : (
         draft.content[otherLang] === saved?.snapshot.content[otherLang] &&
         dirty && <p className="-mt-2 text-xs text-warning-text">{tr(`Denk an die andere Sprache (${otherLang}): sie wird nicht automatisch angepasst.`, `Remember the other language (${otherLang}): it isn't updated automatically.`)}</p>
+      )}
+
+      {sectionId && saved && !proposal && (
+        <AiAssist
+          key={`ai-${saved.fingerprint}`}
+          certId={certId}
+          locale={locale}
+          target={{ target: "section", id: sectionId }}
+          actions={[...SECTION_AI_ACTIONS].filter((a) => a !== "fix_reports" || openReports > 0)}
+          initialAction={initialAiAction}
+          disabled={dirty ? tr("Erst speichern oder Änderungen verwerfen: der Vorschlag baut auf dem gespeicherten Stand auf.", "Save or discard your changes first: the proposal builds on the saved version.") : null}
+          onProposal={(p) => p.kind === "section" && setProposal(p)}
+        />
+      )}
+      {proposal && saved && (
+        <ProposalReview
+          locale={locale}
+          proposal={proposal}
+          translated={!sameInBoth(toDraft(saved.snapshot))}
+          hasReports={openReports > 0}
+          busy={busy}
+          onAccept={(resolveReports) => void save(proposal.baseFingerprint, { snapshot: proposal.snapshot, ai: { action: proposal.action, resolveReports } })}
+          onAdjust={() => {
+            const d = toDraft(proposal.snapshot);
+            setDraft(d);
+            setLinked(sameInBoth(d));
+            setLang(proposal.locale);
+            setAiPending({ action: proposal.action, resolveReports: true });
+            setProposal(null);
+          }}
+          onDiscard={() => setProposal(null)}
+        >
+          <p className="text-xs text-subtle">{tr("Unterschied: gespeichert (rot) → Vorschlag (grün)", "Difference: saved (red) → proposal (green)")}</p>
+          <DiffView before={sectionText(saved.snapshot, proposal.locale)} after={sectionText(proposal.snapshot, proposal.locale)} locale={locale} testId="ai-diff" />
+          <details className="rounded-xl border border-border">
+            <summary className="cursor-pointer px-3 py-2 text-sm font-medium">{tr("Vorschau des Vorschlags (so sähen es Lernende)", "Preview of the proposal (as learners would see it)")}</summary>
+            <div className="max-h-[60vh] overflow-y-auto border-t border-border bg-background p-4 text-[15px] leading-relaxed" data-testid="ai-preview">
+              <RichText text={proposal.snapshot.content[proposal.locale]} headingIds />
+            </div>
+          </details>
+        </ProposalReview>
+      )}
+      {aiPending && (
+        <p className="rounded-xl border border-accent-border bg-accent-soft p-3 text-sm" role="status" data-testid="ai-pending">
+          {tr("Der KI-Vorschlag steht im Editor. Passe ihn an und speichere; er wird mit Herkunft „KI“ eingetragen.", "The AI proposal is in the editor. Adjust it and save; it is recorded with origin “AI”.")}{" "}
+          <button type="button" className="font-medium underline" onClick={() => void load()}>{tr("Verwerfen", "Discard")}</button>
+        </p>
       )}
 
       <div className="grid gap-3 sm:grid-cols-[1fr_120px_160px]">

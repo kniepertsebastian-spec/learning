@@ -7,9 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/tabs";
 import { cn } from "@/lib/cn";
-import type { QuestionSnapshot } from "@/lib/server/course-editor/snapshots";
+import type { AiProposal, QuestionProposal, QuestionsProposal } from "@/lib/server/course-editor/ai";
+import type { NewQuestion, QuestionSnapshot } from "@/lib/server/course-editor/snapshots";
+import { QUESTION_AI_ACTIONS, type AiAction } from "@/lib/workshop-ai";
+import { acceptMessage, AiAssist, ProposalReview, type AcceptResult } from "./AiAssist";
 import { RevisionHistory } from "./RevisionHistory";
-import { api, Field, inputCls, Problems, textareaCls, useTr, useUnsavedWarning, type L, type Lang } from "./shared";
+import { api, DiffView, Field, inputCls, Problems, textareaCls, useTr, useUnsavedWarning, type L, type Lang } from "./shared";
 
 type Item = { id: string; humanId: string; snapshot: QuestionSnapshot; fingerprint: string; openReports: number };
 type Draft = Omit<QuestionSnapshot, "options"> & { options: Array<{ id: string | null; orderNum: number; text: L; isCorrect: boolean; rationale: L }> };
@@ -55,13 +58,29 @@ function questionText(q: QuestionSnapshot, lang: Lang): string {
 }
 
 /** Alle Fragen eines Lernziels: aufklappbar bearbeiten, mit Versionen; neue Frage anlegen. */
-export function QuestionsPanel({ certId, objectiveId, locale, onChanged, onDirtyChange }: { certId: string; objectiveId: string; locale: Lang; onChanged: () => void; onDirtyChange: (dirty: boolean) => void }) {
+export function QuestionsPanel({
+  certId,
+  objectiveId,
+  locale,
+  onChanged,
+  onDirtyChange,
+  initialAiAction = null,
+}: {
+  certId: string;
+  objectiveId: string;
+  locale: Lang;
+  onChanged: () => void;
+  onDirtyChange: (dirty: boolean) => void;
+  initialAiAction?: AiAction | null;
+}) {
   const tr = useTr(locale);
   const [items, setItems] = React.useState<Item[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState<string | null>(null);
   const [lang, setLang] = React.useState<Lang>(locale);
   const [dirtyIds, setDirtyIds] = React.useState<Set<string>>(new Set());
+  const [proposal, setProposal] = React.useState<(QuestionsProposal & AiProposal) | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     const r = await api<{ questions: Item[] }>(`/api/admin/certifications/${certId}/workshop/objectives/${objectiveId}/questions`);
@@ -98,6 +117,30 @@ export function QuestionsPanel({ certId, objectiveId, locale, onChanged, onDirty
           {tr("Neue Frage", "New question")}
         </Button>
       </div>
+      {message && <p className="rounded-xl border border-mint-border bg-mint-soft p-3 text-sm text-mint-text" role="status">{message}</p>}
+      {proposal ? (
+        <NewQuestionsReview
+          certId={certId}
+          objectiveId={objectiveId}
+          locale={locale}
+          lang={lang}
+          proposal={proposal}
+          onDone={async (msg) => {
+            setProposal(null);
+            if (msg) {
+              setMessage(msg);
+              await load();
+              onChanged();
+            }
+          }}
+        />
+      ) : (
+        <AiAssist certId={certId} locale={locale} target={{ target: "objective", id: objectiveId }} actions={["add_questions"]} initialAction={initialAiAction === "add_questions" ? "add_questions" : null} onProposal={(p) => {
+            if (p.kind !== "questions") return;
+            setMessage(null);
+            setProposal(p);
+          }} />
+      )}
       {open === "new" && (
         <div className="rounded-2xl border border-accent-border bg-surface p-4">
           <QuestionForm
@@ -146,8 +189,9 @@ export function QuestionsPanel({ certId, objectiveId, locale, onChanged, onDirty
               lang={lang}
               locale={locale}
               onDirty={(d) => markDirty(q.id, d)}
-              onSaved={async () => {
+              onSaved={async (msg) => {
                 markDirty(q.id, false);
+                setMessage(msg ?? null);
                 await load();
                 onChanged();
               }}
@@ -159,13 +203,15 @@ export function QuestionsPanel({ certId, objectiveId, locale, onChanged, onDirty
   );
 }
 
-function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty, onSaved }: { active: boolean; certId: string; objectiveId: string; item: Item | null; lang: Lang; locale: Lang; onDirty: (dirty: boolean) => void; onSaved: () => void }) {
+function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty, onSaved }: { active: boolean; certId: string; objectiveId: string; item: Item | null; lang: Lang; locale: Lang; onDirty: (dirty: boolean) => void; onSaved: (message?: string) => void }) {
   const tr = useTr(locale);
   const initial = React.useMemo(() => (item ? toDraft(item.snapshot) : NEW()), [item]);
   const [draft, setDraft] = React.useState<Draft>(initial);
   const [linked, setLinked] = React.useState(() => sameInBoth(initial));
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<{ kind: "ok" | "error" | "conflict"; title: string; items?: string[]; fingerprint?: string } | null>(null);
+  const [proposal, setProposal] = React.useState<(QuestionProposal & AiProposal) | null>(null);
+  const [aiPending, setAiPending] = React.useState<{ action: AiAction; resolveReports: boolean } | null>(null);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   React.useEffect(() => onDirty(dirty), [dirty, onDirty]);
@@ -174,21 +220,55 @@ function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty
   const setOption = (i: number, patch: Partial<Draft["options"][number]>) => setDraft((d) => ({ ...d, options: d.options.map((o, k) => (k === i ? { ...o, ...patch } : o)) }));
   const missing = !draft.question.de.trim() || !draft.question.en.trim() || !draft.explanation.de.trim() || !draft.explanation.en.trim() || draft.options.some((o) => !o.text.de.trim() || !o.text.en.trim());
 
-  async function save(base?: string) {
+  async function save(base?: string, direct?: { snapshot: QuestionSnapshot; ai: { action: AiAction; resolveReports: boolean } }) {
     setBusy(true);
     setResult(null);
     const options = draft.options.map((o) => ({ ...o, rationale: rationaleOrNull(o.rationale) }));
+    const ai = direct?.ai ?? aiPending ?? undefined;
     const r = item
-      ? await api<{ fingerprint: string }>(`/api/admin/certifications/${certId}/workshop/questions/${item.id}`, { method: "PUT", body: { snapshot: { ...draft, options }, baseFingerprint: base ?? item.fingerprint } })
+      ? await api<{ fingerprint: string } & AcceptResult>(`/api/admin/certifications/${certId}/workshop/questions/${item.id}`, { method: "PUT", body: { snapshot: direct?.snapshot ?? { ...draft, options }, baseFingerprint: base ?? item.fingerprint, ai } })
       : await api<{ questionId: string }>(`/api/admin/certifications/${certId}/workshop/objectives/${objectiveId}/questions`, { method: "POST", body: { question: { ...draft, options: options.map(({ text, isCorrect, rationale }) => ({ text, isCorrect, rationale })) } } });
     setBusy(false);
-    if (r.ok) return onSaved();
+    if (r.ok) {
+      return onSaved(ai ? acceptMessage(r.data as AcceptResult, tr) : undefined);
+    }
     if (r.status === 409) return setResult({ kind: "conflict", title: tr("Diese Frage wurde inzwischen geändert.", "This question was changed in the meantime."), fingerprint: r.fingerprint });
     setResult({ kind: "error", title: r.error, items: r.problems });
   }
 
   return (
     <div className="flex flex-col gap-3" data-testid="question-form">
+      {item && active && !proposal && (
+        <AiAssist
+          certId={certId}
+          locale={locale}
+          target={{ target: "question", id: item.id }}
+          actions={[...QUESTION_AI_ACTIONS].filter((a) => a !== "fix_reports" || item.openReports > 0)}
+          disabled={dirty ? tr("Erst speichern oder Änderungen verwerfen.", "Save or discard your changes first.") : null}
+          onProposal={(p) => p.kind === "question" && setProposal(p)}
+        />
+      )}
+      {item && proposal && (
+        <ProposalReview
+          locale={locale}
+          proposal={proposal}
+          translated={!sameInBoth(toDraft(item.snapshot))}
+          hasReports={item.openReports > 0}
+          busy={busy}
+          onAccept={(resolveReports) => void save(proposal.baseFingerprint, { snapshot: proposal.snapshot, ai: { action: proposal.action, resolveReports } })}
+          onAdjust={() => {
+            const d = toDraft(proposal.snapshot);
+            setDraft(d);
+            setLinked(sameInBoth(d));
+            setAiPending({ action: proposal.action, resolveReports: true });
+            setProposal(null);
+          }}
+          onDiscard={() => setProposal(null)}
+        >
+          <DiffView before={questionText(item.snapshot, proposal.locale)} after={questionText(proposal.snapshot, proposal.locale)} locale={locale} testId="ai-diff" />
+        </ProposalReview>
+      )}
+      {aiPending && <p className="rounded-xl border border-accent-border bg-accent-soft p-3 text-sm" role="status">{tr("Der KI-Vorschlag steht im Formular. Anpassen und speichern; er wird mit Herkunft „KI“ eingetragen.", "The AI proposal is in the form. Adjust and save; it is recorded with origin “AI”.")}</p>}
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={linked} onChange={(e) => setLinked(e.target.checked)} />
         {tr("Beide Sprachen gleich", "Same text in both languages")}
@@ -239,7 +319,7 @@ function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty
       {result?.kind === "conflict" && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-warning/40 bg-warning-soft p-3 text-sm text-warning-text" role="alert">
           <span className="font-semibold">{result.title}</span>
-          <Button size="sm" variant="secondary" onClick={onSaved}>{tr("Neu laden", "Reload")}</Button>
+          <Button size="sm" variant="secondary" onClick={() => onSaved()}>{tr("Neu laden", "Reload")}</Button>
           <Button size="sm" variant="ghost" onClick={() => void save(result.fingerprint)}>{tr("Trotzdem speichern", "Save anyway")}</Button>
         </div>
       )}
@@ -247,7 +327,18 @@ function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty
         <Button size="sm" onClick={() => void save()} disabled={busy || !dirty || missing} iconLeft={<Save className="h-4 w-4" aria-hidden="true" />} data-testid="question-save">
           {item ? tr("Frage speichern", "Save question") : tr("Frage anlegen", "Create question")}
         </Button>
-        {dirty && <Button size="sm" variant="ghost" onClick={() => setDraft(initial)}>{tr("Verwerfen", "Discard")}</Button>}
+        {dirty && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setDraft(initial);
+              setAiPending(null);
+            }}
+          >
+            {tr("Verwerfen", "Discard")}
+          </Button>
+        )}
         {missing && dirty && <span className="text-xs text-subtle">{tr("Frage, Erklärung und alle Optionen brauchen Text in beiden Sprachen.", "Question, explanation and all options need text in both languages.")}</span>}
       </div>
       {item && active && (
@@ -261,9 +352,57 @@ function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty
           currentText={questionText(item.snapshot, lang)}
           toText={(data, l) => questionText(data as QuestionSnapshot, l)}
           disabled={dirty ? tr("Erst speichern oder Änderungen verwerfen.", "Save or discard your changes first.") : null}
-          onRestored={onSaved}
+          onRestored={() => onSaved()}
         />
       )}
     </div>
+  );
+}
+
+/** Neue Fragen aus „Fragen ergänzen“: einzeln an- oder abwählen, dann gesammelt anlegen (danach normal bearbeitbar). */
+function NewQuestionsReview({ certId, objectiveId, locale, lang, proposal, onDone }: { certId: string; objectiveId: string; locale: Lang; lang: Lang; proposal: QuestionsProposal & AiProposal; onDone: (message: string | null) => void }) {
+  const tr = useTr(locale);
+  const [picked, setPicked] = React.useState<Set<number>>(() => new Set(proposal.questions.map((_, i) => i)));
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const toggle = (i: number) => setPicked((s) => {
+    const n = new Set(s);
+    if (n.has(i)) n.delete(i);
+    else n.add(i);
+    return n;
+  });
+
+  async function accept() {
+    const questions: NewQuestion[] = proposal.questions.filter((_, i) => picked.has(i));
+    setBusy(true);
+    const r = await api<{ created: unknown[] } & AcceptResult>(`/api/admin/certifications/${certId}/workshop/objectives/${objectiveId}/questions`, { method: "POST", body: { questions, ai: true } });
+    setBusy(false);
+    if (!r.ok) return setError(r.problems?.length ? `${r.error} ${r.problems.join(" ")}` : r.error);
+    onDone(`${tr(`${questions.length} Fragen angelegt.`, `${questions.length} questions created.`)} ${acceptMessage(r.data, tr)}`);
+  }
+
+  return (
+    <ProposalReview locale={locale} proposal={proposal} translated={false} busy={busy || picked.size === 0} onAccept={() => void accept()} onDiscard={() => onDone(null)} acceptLabel={tr(`${picked.size} Fragen anlegen`, `Create ${picked.size} questions`)}>
+      {error && <Problems title={error} />}
+      <ul className="flex flex-col gap-2" data-testid="ai-new-questions">
+        {proposal.questions.map((q, i) => (
+          <li key={i} className={cn("rounded-xl border p-3 text-sm", picked.has(i) ? "border-accent-border" : "border-border-subtle opacity-60")}>
+            <label className="flex items-start gap-2">
+              <input type="checkbox" className="mt-1" checked={picked.has(i)} onChange={() => toggle(i)} aria-label={tr(`Frage ${i + 1} übernehmen`, `Accept question ${i + 1}`)} />
+              <span className="min-w-0 flex-1">
+                <RichText text={q.question[lang]} />
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {q.options.map((o, k) => (
+                    <li key={k} className={cn(o.isCorrect && "font-semibold text-mint-text")}>{o.isCorrect ? "✓" : "·"} {String.fromCharCode(65 + k)}) {o.text[lang]}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs text-subtle">{q.explanation[lang]}</p>
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-faint">{tr("Nach dem Anlegen lassen sich die Fragen wie alle anderen bearbeiten.", "After creating them you can edit the questions like any other.")}</p>
+    </ProposalReview>
   );
 }

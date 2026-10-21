@@ -328,7 +328,7 @@ export async function createSection(certId: string, objectiveId: string, s: Sect
 }
 
 /** Frage-ID im Schema der Geschwister („SEC-1.2-Q007“), sonst aus der Kurs-ID; nächste freie Nummer. */
-async function nextHumanId(tx: Tx, certId: string, objectiveId: string, code: string): Promise<string> {
+export async function nextHumanId(tx: Tx, certId: string, objectiveId: string, code: string): Promise<string> {
   const siblings = await tx.select({ humanId: questions.humanId }).from(questions).where(eq(questions.objectiveId, objectiveId));
   const m = siblings.map((s) => /^(.*)-Q(\d+)$/.exec(s.humanId)).find(Boolean);
   const prefix = m ? m[1] : `E${certId.replace(/-/g, "").slice(0, 8).toUpperCase()}-${code}`;
