@@ -562,7 +562,12 @@ export async function completeStudySession(
     );
     await recordReviewOutcomes(
       userId,
-      results.map((r) => ({ questionId: r.questionId, isCorrect: r.isCorrect })),
+      results.map((r) => ({
+        questionId: r.questionId,
+        isCorrect: r.isCorrect,
+        confidence: confidenceByItemId.get(r.itemId) ?? null,
+      })),
+      { sessionId },
     );
   }
 

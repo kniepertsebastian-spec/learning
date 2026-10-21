@@ -1,6 +1,6 @@
 /**
  * R2.5 (roadmap.md): "Readiness weiterentwickeln" - reine Berechnungslogik
- * (kein DB-Zugriff), analog zu lib/server/review/scheduler.ts und
+ * (kein DB-Zugriff), analog zu
  * lib/server/study/session-builder.ts. Ersetzt die bisherige Readiness aus
  * lib/server/exam/scoring.ts (dort: ausschließlich der EINE gerade
  * abgelegte Exam-Versuch) durch eine Einschätzung, die Objective-Abdeckung,
