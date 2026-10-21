@@ -25,6 +25,7 @@ run("Implizite Reviews (echte DB)", () => {
   let userId = "";
   let objectiveId = "";
   let questionIds: string[] = [];
+  const taskRef = `sec-${Math.random().toString(36).slice(2)}:0`;
   beforeAll(async () => {
     userId = await seedUser();
     ({ objectiveId, questionIds } = await seedCourse(3));
@@ -35,8 +36,8 @@ run("Implizite Reviews (echte DB)", () => {
 
   it("gelöste Aufgabe aktualisiert den Item-Zustand; das Log unterscheidet interleaved von card", async () => {
     await recordRatedReviews(userId, [{ itemId: questionIds[0], rawRating: 3 }], { now: new Date("2026-02-01T10:00:00Z") });
-    await linkTaskItems("simulation", "sec:0", [questionIds[0]]);
-    const n = await recordInterleavedTask({ userId, taskType: "simulation", taskRef: "sec:0", solved: true, now: new Date("2026-02-04T10:00:00Z") });
+    await linkTaskItems("simulation", taskRef, [questionIds[0]]);
+    const n = await recordInterleavedTask({ userId, taskType: "simulation", taskRef: taskRef, solved: true, now: new Date("2026-02-04T10:00:00Z") });
     expect(n).toBe(1);
     const rows = await getDb().select().from(reviewLog).where(eq(reviewLog.userId, userId));
     expect(rows.map((r) => r.reviewType).sort()).toEqual(["card", "interleaved"]);

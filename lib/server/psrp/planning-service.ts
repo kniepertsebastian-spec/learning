@@ -2,10 +2,12 @@
  * PSRP-HR Phase 3+4 (DB-Seite): Check-in speichern, Φ und Tagesplan berechnen, Tages-Queue bauen.
  * Die Berechnungen selbst stehen in planner.ts und state.ts (rein, ohne DB).
  */
-import { and, desc, eq, lte, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
+  concepts,
   domains,
+  itemConcepts,
   itemStates,
   objectives,
   questions,
@@ -29,6 +31,7 @@ import {
   type DailyQueueResult,
   type DueCandidate,
 } from "./planner";
+import { overestimatedTopics } from "./probes";
 import { localTimeParts } from "./review-log";
 import {
   chronoProfile,
@@ -218,6 +221,17 @@ export async function loadDueCandidates(userId: string, certificationId: string,
         eq(questions.stale, false),
       ),
     );
+  // Phase 7.4: Items in Themengebieten mit belastbarer Überschätzung früher einplanen.
+  const over = await overestimatedTopics(userId);
+  const overItems = new Set<string>();
+  if (over.size > 0 && rows.length > 0) {
+    const topicRows = await getDb()
+      .select({ itemId: itemConcepts.itemId, topicArea: concepts.topicArea })
+      .from(itemConcepts)
+      .innerJoin(concepts, eq(concepts.id, itemConcepts.conceptId))
+      .where(inArray(itemConcepts.itemId, rows.map((r) => r.itemId)));
+    for (const t of topicRows) if (over.has(t.topicArea)) overItems.add(t.itemId);
+  }
   const maxWeight = Math.max(1, ...rows.map((r) => (r.weight === null ? 0 : Number(r.weight))));
   return rows.map((row) => {
     const state: ItemState | null =
@@ -233,6 +247,7 @@ export async function loadDueCandidates(userId: string, certificationId: string,
       retrievability: retrievability(state, now) ?? 0.7,
       difficulty: state?.difficulty ?? 5,
       examRelevance: row.weight === null ? 0 : Number(row.weight) / maxWeight,
+      overestimated: overItems.has(row.itemId),
       due: row.legacyDue,
     };
   });

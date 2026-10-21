@@ -43,7 +43,7 @@ export async function getCourseScope(certificationId: string): Promise<CourseSco
     .from(questions)
     .innerJoin(objectives, eq(objectives.id, questions.objectiveId))
     .innerJoin(domains, eq(domains.id, objectives.domainId))
-    .where(and(eq(domains.certificationId, certificationId), eq(questions.stale, false)));
+    .where(and(eq(domains.certificationId, certificationId), eq(questions.stale, false), eq(questions.probeOnly, false)));
   const known = sectionRows.filter((s) => s.minutes != null);
   return {
     lessons: sectionRows.length,

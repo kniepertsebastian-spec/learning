@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { domains, objectives, questions, reviewItems } from "@/lib/server/db/schema";
 import type { AnswerConfidence } from "@/lib/types";
+import { probeVariantsByQuestion, recordProbeAnswer } from "@/lib/server/psrp/probes";
 import { ratingFromOutcome, recordRatedReviews } from "@/lib/server/psrp/service";
 
 export interface ReviewOutcomeInput {
@@ -25,15 +26,29 @@ export async function recordReviewOutcomes(
   const db = getDb();
   // Dedupliziert auf die letzte Antwort je Frage.
   const deduped = [...new Map(results.map((r) => [r.questionId, r])).values()];
+  // Abfragevarianten (PSRP-HR Phase 7) werden als Review des Original-Items mit Messwerten erfasst.
+  const variants = await probeVariantsByQuestion(deduped.map((r) => r.questionId));
+  for (const result of deduped.filter((r) => variants.has(r.questionId))) {
+    await recordProbeAnswer({
+      userId,
+      variant: variants.get(result.questionId)!,
+      isCorrect: result.isCorrect,
+      confidence: result.confidence,
+      responseTimeMs: result.responseTimeMs,
+      sessionId: options.sessionId,
+    });
+  }
+  const regular = deduped.filter((r) => !variants.has(r.questionId));
+  if (regular.length === 0) return;
   const known = await db
     .select({ id: questions.id })
     .from(questions)
-    .where(inArray(questions.id, deduped.map((r) => r.questionId)));
+    .where(inArray(questions.id, regular.map((r) => r.questionId)));
   const knownIds = new Set(known.map((q) => q.id));
 
   await recordRatedReviews(
     userId,
-    deduped
+    regular
       .filter((r) => knownIds.has(r.questionId))
       .map((r) => ({
         itemId: r.questionId,

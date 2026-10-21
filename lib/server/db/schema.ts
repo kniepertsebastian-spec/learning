@@ -444,6 +444,8 @@ export const questions = pgTable("questions", {
   stale: boolean("stale").notNull().default(false),
   /** Wie lessons.translationOutdated: Kurssprache per KI geändert, die zweite Sprache noch nicht neu übersetzt. */
   translationOutdated: boolean("translation_outdated").notNull().default(false),
+  /** PSRP-HR Phase 7: Abfragevariante (probe_variant), erscheint nie in Lektionstests, Prüfungen oder Sessions als normale Frage. */
+  probeOnly: boolean("probe_only").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -2604,6 +2606,8 @@ export const probeVariants = pgTable(
       .references(() => concepts.id, { onDelete: "cascade" }),
     /** Frage, die als Abfrage gestellt wird (dieselbe UI wie normale Aufgaben). */
     questionId: uuid("question_id").references(() => questions.id, { onDelete: "cascade" }),
+    /** Original-Item, dessen Wissen die Variante prüft; Reviews der Abfrage werden diesem Item zugeschrieben. */
+    sourceItemId: uuid("source_item_id").references(() => questions.id, { onDelete: "cascade" }),
     format: text("format").$type<ProbeFormat>().notNull(),
     content: jsonb("content").$type<Localized<string>>().notNull(),
     isBottleneck: boolean("is_bottleneck").notNull().default(false),

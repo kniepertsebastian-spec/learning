@@ -15,6 +15,8 @@ export interface DueCandidate {
   difficulty: number;
   /** 0..1: Prüfungsrelevanz (z. B. Domain-Gewicht); zählt nur bei aktivem Prüfungsdatum. */
   examRelevance?: number;
+  /** Konzept liegt in einem Themengebiet mit belastbarer Überschätzung (Phase 7.4). */
+  overestimated?: boolean;
   due: Date;
 }
 
@@ -49,7 +51,9 @@ export function prioritize(
   config: PsrpConfig = DEFAULT_PSRP_CONFIG,
 ): DueCandidate[] {
   const score = (c: DueCandidate) =>
-    c.retrievability - (examActive ? config.planning.examRelevanceWeight * (c.examRelevance ?? 0) : 0);
+    c.retrievability -
+    (examActive ? config.planning.examRelevanceWeight * (c.examRelevance ?? 0) : 0) -
+    (c.overestimated ? config.probes.overestimateBoost * 0.1 : 0);
   return [...candidates].sort((a, b) => score(a) - score(b) || a.due.getTime() - b.due.getTime());
 }
 

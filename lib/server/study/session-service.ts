@@ -26,6 +26,7 @@ import {
   type CheckinInput,
 } from "@/lib/server/psrp/planning-service";
 import { usesPlanning } from "@/lib/server/psrp/evaluation";
+import { interleaveProbes, selectProbes } from "@/lib/server/psrp/probes";
 import { getDueReviewCount, getDueReviewItems, recordReviewOutcomes } from "@/lib/server/review/service";
 import {
   computeLessonFallbackCount,
@@ -403,6 +404,16 @@ async function buildAndPersistSession(
     })),
   ];
 
+  // PSRP-HR Phase 7: höchstens 10 % versteckte Abfragen, nie direkt hintereinander, gleiche Darstellung wie normale Fragen.
+  const probes = await selectProbes(userId, certificationId, items.length, now);
+  if (probes.length > 0) {
+    const withProbes = interleaveProbes(
+      items,
+      probes.map((p) => ({ category: "review" as const, referenceType: "question" as const, referenceId: p.questionId })),
+    );
+    items.splice(0, items.length, ...withProbes);
+  }
+
   // "Bei zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen":
   // nur wenn die drei Fragen-Kategorien zusammen das Tagesziel verfehlen.
   const fallbackCount = computeLessonFallbackCount(targetQuestionCount, composition);
@@ -457,6 +468,7 @@ async function selectWeakObjectiveQuestions(
         eq(objectiveProgress.status, "NEEDS_REMEDIATION"),
         eq(domains.certificationId, certificationId),
         eq(questions.stale, false),
+        eq(questions.probeOnly, false),
         excludeQuestionIds.length > 0 ? notInArray(questions.id, excludeQuestionIds) : undefined,
       ),
     )
@@ -485,6 +497,7 @@ async function selectNewQuestions(
       and(
         eq(domains.certificationId, certificationId),
         eq(questions.stale, false),
+        eq(questions.probeOnly, false),
         isNull(reviewItems.id),
         excludeQuestionIds.length > 0 ? notInArray(questions.id, excludeQuestionIds) : undefined,
       ),

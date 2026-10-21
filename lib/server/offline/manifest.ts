@@ -268,7 +268,7 @@ export async function getOfflinePackage(
           .where(inArray(questions.objectiveId, objectiveIds))
       : Promise.resolve([]),
   ]);
-  const nonStaleQuestionRows = questionRows.filter((q) => !q.stale);
+  const nonStaleQuestionRows = questionRows.filter((q) => !q.stale && !q.probeOnly);
   const questionIds = nonStaleQuestionRows.map((q) => q.id);
 
   const optionRows =
