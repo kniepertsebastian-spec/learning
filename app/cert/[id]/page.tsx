@@ -161,6 +161,7 @@ export default async function CertDetailPage({
           dailyGoalValue: studyProfile.dailyGoalValue,
           activeDays: studyProfile.activeDays,
           preferredLocale: studyProfile.preferredLocale,
+          lightWeekdays: studyProfile.lightWeekdays,
         }
       : null;
     if (sessionSummary) {
@@ -173,6 +174,7 @@ export default async function CertDetailPage({
       ]);
       todayDashboard = {
         sessionId: sessionSummary.id,
+        certificationId: cert.id,
         sessionStatus: sessionSummary.status,
         estimatedMinutes: sessionSummary.estimatedMinutes,
         dueCount,

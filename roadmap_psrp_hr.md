@@ -81,10 +81,10 @@ Folgende Punkte sind noch nicht final entschieden. Implementiere sie mit dem ang
 - [x] Priorisierung fälliger Karten: niedrigste aktuelle Retrievability zuerst; bei aktivem Prüfungsdatum prüfungsrelevante Items höher gewichten (Gewicht konfigurierbar)
 - [x] Nicht gezeigte fällige Karten bleiben fällig (kein künstliches Neusetzen von `due`)
 - [x] Load Balancing: bei der Intervallberechnung das Intervall innerhalb ±5 % (min. ±1 Tag ab Intervall ≥ 7) auf den Tag mit der geringsten bereits geplanten Last legen
-- [x] Leichte Tage: pro Nutzer konfigurierbare Wochentage mit reduziertem Kontingent (Faktor konfigurierbar, Standard 0.5); Load Balancing meidet diese Tage (Spalte `study_profiles.light_weekdays`; Einstellung in der UI fehlt noch)
+- [x] Leichte Tage: pro Nutzer konfigurierbare Wochentage mit reduziertem Kontingent (Faktor konfigurierbar, Standard 0.5); Load Balancing meidet diese Tage (Spalte `study_profiles.light_weekdays`, Einstellung im Lernziel-Panel)
 - [x] Prüfungsmodus: r_ziel steigt linear in den letzten N Tagen vor exam_date bis zur Obergrenze (N konfigurierbar, Standard 21); Intervalle dürfen nicht über das Prüfungsdatum hinausgehen, solange es in der Zukunft liegt
 - [x] Rückstau-Abbau: bei Rückstand > Tageslimit wird der Rückstand über mehrere Tage verteilt, neue Karten werden pausiert, bis der Rückstand unter einer Schwelle liegt
-- [ ] Nutzer kann Tageslimit manuell erhöhen („Mehr lernen“) – Logik fertig (`moreStudyExtra`, Parameter `extraCards`), Knopf/Endpunkt in der UI fehlt noch
+- [x] Nutzer kann Tageslimit manuell erhöhen („Mehr lernen“) – Knopf nach abgeschlossener Session, `POST /api/study-sessions/more`
 
 **Akzeptanzkriterium:** Simulationstest: Nutzer mit 500 Karten pausiert 7 Tage; beim Wiedereinstieg überschreitet keine Tages-Queue das Zeitbudget, und der Rückstau ist nach endlicher Zeit abgebaut.
 
@@ -189,4 +189,4 @@ Alle Phasen sind umgesetzt (Code in `lib/server/psrp/`, Migrationen 0067–0069)
 - **Abfragevarianten** sind echte Fragen mit `questions.probe_only = true` (nie in Tests, Prüfungen oder Sessions als normale Frage); Reviews werden dem Original-Item (`probe_variant.source_item_id`) mit `review_type = probe` zugeschrieben.
 - **Optimizer:** `npm run fsrs:optimize` (fsrs-rs über `@open-spaced-repetition/binding`); muss periodisch (z. B. wöchentlich per Cron) angestoßen werden.
 - **Auswertung:** `npm run psrp:metrics`, `npm run psrp:simulate`, `npm run psrp:fit-weights`.
-- **Noch offen:** „Mehr lernen“-Knopf, Einstellung der leichten Tage und Altersspanne in der UI, Aufruf der Skip-Erkennung durch einen Einstiegstest, Anbindung weiterer Aufgabentypen (Praxisaufgaben) an `task_item`.
+- **Noch offen:** Aufruf der Skip-Erkennung durch einen Einstiegstest, Anbindung weiterer Aufgabentypen (Praxisaufgaben) an `task_item`. Die Altersspanne lässt sich im Konto setzen; die altersabhängigen Kaltstart-Parameter sind noch leer (überall Standardparameter, wie vorgesehen).

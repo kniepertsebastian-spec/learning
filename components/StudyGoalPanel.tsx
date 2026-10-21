@@ -10,6 +10,7 @@ export interface StudyGoalState {
   dailyGoalValue: number;
   activeDays: number[];
   preferredLocale: "de" | "en" | null;
+  lightWeekdays: number[];
 }
 
 const DEFAULT_GOAL: StudyGoalState = {
@@ -18,6 +19,7 @@ const DEFAULT_GOAL: StudyGoalState = {
   dailyGoalValue: 15,
   activeDays: [1, 2, 3, 4, 5, 6, 7],
   preferredLocale: null,
+  lightWeekdays: [],
 };
 
 const WEEKDAYS: Array<{ day: number; de: string; en: string }> = [
@@ -157,6 +159,32 @@ export function StudyGoalPanel({
                 onClick={() => setGoal({ ...goal, activeDays: toggleDay(goal.activeDays, day) })}
                 className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
                   active
+                    ? "border-accent bg-accent/10 text-link"
+                    : "border-border text-foreground/60 hover:bg-background"
+                }`}
+              >
+                {locale === "de" ? de : en}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <span className="mb-1 block text-xs font-medium text-foreground/70">
+          {locale === "de" ? "Leichte Tage (weniger Wiederholungen)" : "Light days (fewer reviews)"}
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {WEEKDAYS.map(({ day, de, en }) => {
+            const light = goal.lightWeekdays.includes(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                aria-pressed={light}
+                onClick={() => setGoal({ ...goal, lightWeekdays: toggleDay(goal.lightWeekdays, day) })}
+                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  light
                     ? "border-accent bg-accent/10 text-link"
                     : "border-border text-foreground/60 hover:bg-background"
                 }`}

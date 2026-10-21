@@ -22,6 +22,7 @@ export interface TodayDashboardCategoryBreakdown {
 
 export interface TodayDashboardData {
   sessionId: string;
+  certificationId: string;
   sessionStatus: "planned" | "in_progress" | "completed" | "skipped" | "abandoned";
   estimatedMinutes: number;
   dueCount: number;
@@ -104,6 +105,22 @@ export function TodayDashboard({
   const [feedback, setFeedback] = useState(data.feedback);
   const [sendingFeedback, setSendingFeedback] = useState(false);
 
+  const [startingMore, setStartingMore] = useState(false);
+  async function handleMore() {
+    if (startingMore) return;
+    setStartingMore(true);
+    try {
+      const response = await fetch("/api/study-sessions/more", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ certificationId: data.certificationId }),
+      });
+      if (response.ok) router.refresh();
+    } finally {
+      setStartingMore(false);
+    }
+  }
+
   async function handleSkip() {
     setSkipping(true);
     try {
@@ -143,6 +160,15 @@ export function TodayDashboard({
             {data.streak} {locale === "de" ? "Tage in Folge" : "day streak"}
           </span>
         )}
+        <button
+          type="button"
+          onClick={() => void handleMore()}
+          disabled={startingMore}
+          className="ml-auto flex items-center gap-1.5 rounded-md border border-green-300 bg-white px-3 py-1 text-xs font-medium hover:bg-green-100 disabled:opacity-60"
+        >
+          {startingMore && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+          {locale === "de" ? "Mehr lernen" : "Study more"}
+        </button>
       </div>
     );
   }

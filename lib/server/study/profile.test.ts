@@ -89,3 +89,14 @@ describe("validateStudyProfileInput", () => {
     expect(errors.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("leichte Tage", () => {
+  it("akzeptiert gültige Wochentage und lässt das Feld weg", () => {
+    expect(validateStudyProfileInput(input({ lightWeekdays: [6, 7] })).errors).toEqual([]);
+    expect(validateStudyProfileInput(input()).errors).toEqual([]);
+  });
+  it("lehnt Duplikate und ungültige Tage ab", () => {
+    expect(validateStudyProfileInput(input({ lightWeekdays: [6, 6] })).errors.length).toBeGreaterThan(0);
+    expect(validateStudyProfileInput(input({ lightWeekdays: [0, 8] })).errors.length).toBe(2);
+  });
+});
