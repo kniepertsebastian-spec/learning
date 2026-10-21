@@ -35,6 +35,9 @@
     "content:draft-lessons": "tsx scripts/generate-lessons-and-questions.ts",
     "course:import-fixture": "tsx scripts/import-course-package-fixture.ts",
     "fsrs:optimize": "tsx scripts/fsrs-optimize.ts",
+    "psrp:metrics": "tsx scripts/psrp-metrics.ts",
+    "psrp:simulate": "tsx scripts/psrp-simulate.ts",
+    "psrp:fit-weights": "tsx scripts/psrp-fit-weights.ts",
     "course:e2e": "tsx scripts/run-fake-course-generation.ts"
   },
   "dependencies": {

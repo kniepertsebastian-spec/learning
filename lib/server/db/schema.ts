@@ -2714,3 +2714,23 @@ export const probeResults = pgTable(
   },
   (table) => [index("probe_result_user_topic_idx").on(table.userId, table.topicArea)],
 );
+
+/**
+ * PSRP-HR Phase 6: Aufgaben (z. B. Simulationen), die Wiederholungs-Items referenzieren. Wird die Aufgabe
+ * gelöst, entsteht für jedes Item ein impliziter Review (review_type = interleaved).
+ * `taskRef` ist bei Simulationen "<sectionId>:<simIndex>".
+ */
+export const taskItems = pgTable(
+  "task_item",
+  {
+    taskType: text("task_type").$type<"simulation" | "practice">().notNull(),
+    taskRef: text("task_ref").notNull(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.taskType, table.taskRef, table.itemId] }),
+    check("task_item_type_check", sql`${table.taskType} in ('simulation', 'practice')`),
+  ],
+);
