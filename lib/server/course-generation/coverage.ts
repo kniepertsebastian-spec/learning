@@ -75,5 +75,6 @@ export function buildSourceReport(sources: FetchedSource[], now: Date = new Date
     officialObjectives: extractOfficialObjectives(excerpts),
     truncated: sources.filter((s) => s.truncated).map((s) => ({ title: s.title, url: s.url })),
     sourceCount: sources.length,
+    primary: sources.filter((s) => s.primary).map((s) => ({ title: s.title, url: s.url }))[0] ?? null,
   };
 }

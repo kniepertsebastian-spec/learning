@@ -453,7 +453,7 @@ export type AiAcceptResult = { checkpoint: string | null; translation: "started"
 export async function finishAiAccept(
   certId: string,
   changed: { sections?: string[]; questions?: string[] },
-  opts: { userId: string | null; resolveReports?: boolean; checkpoint: string | null },
+  opts: { userId: string | null; resolveReports?: boolean; checkpoint: string | null; startTranslation?: boolean },
 ): Promise<AiAcceptResult> {
   const db = getDb();
   let outdated = false;
@@ -479,7 +479,7 @@ export async function finishAiAccept(
   const cert = await loadCert(certId);
   // Einsprachige Kurse bleiben einsprachig; in übersetzten Kursen kommen Veraltetes und Neues gleich in die Übersetzung.
   if (!cert.translatedAt && !outdated) return { checkpoint: opts.checkpoint, translation: "not_needed" };
-  if (!isAutoTranslateEnabled()) return { checkpoint: opts.checkpoint, translation: "off" };
+  if (!isAutoTranslateEnabled() || opts.startTranslation === false) return { checkpoint: opts.checkpoint, translation: "off" };
   const started = await startCourseTranslation(certId);
   return { checkpoint: opts.checkpoint, translation: started === "already_running" ? "running" : "started" };
 }

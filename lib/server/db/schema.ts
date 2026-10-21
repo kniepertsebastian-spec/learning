@@ -1198,6 +1198,8 @@ export type SourceReport = {
   /** Quellen, die für die KI gekürzt wurden: Anfang statt ganzer Text, Lernziele aus dem Rest fehlen dann womöglich. */
   truncated: Array<{ title: string; url: string }>;
   sourceCount: number;
+  /** Als Prüfungsleitfaden erkannte Quelle (wird nicht auf 60.000 Zeichen gekürzt); fehlt bei älteren Berichten. */
+  primary?: { title: string; url: string } | null;
 };
 
 export type CourseGenerationJobStatus =

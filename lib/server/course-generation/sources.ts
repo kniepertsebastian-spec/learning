@@ -1,6 +1,7 @@
 import { extractPdfPages } from "@/lib/server/admin/source-extraction";
 import { fetchUrlSafely, UrlFetchError } from "@/lib/server/network/fetch-url";
 import { UnsafeUrlError } from "@/lib/server/network/ssrf-guard";
+import { extractOfficialObjectives, MIN_RECOGNISED } from "./coverage";
 
 export class SourceFetchError extends Error {}
 
@@ -9,6 +10,12 @@ const FETCH_TIMEOUT_MS = 30_000;
 /** Bewusst knapp gehalten wie buildSourceText() in lib/server/admin/blueprint.ts
  * (Kostenschutz + Kontextgrenze), pro Quelle statt für alle Quellen zusammen. */
 const MAX_EXCERPT_CHARS_PER_SOURCE = 60_000;
+/**
+ * Der Prüfungsleitfaden (die Quelle mit den meisten nummerierten Lernzielen) wird nicht bei 60.000 Zeichen gekappt: aus
+ * ihm kommen Gliederung und Abdeckungsprüfung, ein abgeschnittener Rest hieße fehlende Lernziele. Nur eine großzügige
+ * Sicherheitsgrenze bleibt (etwa 400 PDF-Seiten Text).
+ */
+export const PRIMARY_SOURCE_MAX_CHARS = Number(process.env.COURSE_GEN_PRIMARY_SOURCE_MAX_CHARS) || 400_000;
 
 export interface SourceExcerpt {
   /** Seiten-/Abschnittsbezug, z. B. "S. 4" (PDF) oder "Abschnitt 1" (Text/HTML). */
@@ -25,6 +32,8 @@ export interface FetchedSource {
   truncated: boolean;
   /** Hinweise zur Aufbereitung (z. B. ein ausgelassenes Bild), nie Inhalt. */
   warnings?: string[];
+  /** Als Prüfungsleitfaden erkannt (meiste nummerierte Lernziele): mit PRIMARY_SOURCE_MAX_CHARS statt der normalen Grenze. */
+  primary?: boolean;
 }
 
 /** Grobe HTML-Text-Extraktion für Nicht-PDF-Quellen - bewusst einfach
@@ -104,9 +113,9 @@ export function splitIntoSections(text: string, maxChars = SECTION_MAX_CHARS, mi
 }
 
 /** Kappt die Ausschnitte einer Quelle bei MAX_EXCERPT_CHARS_PER_SOURCE (Kostenschutz). */
-export function capExcerpts(excerpts: SourceExcerpt[]): { excerpts: SourceExcerpt[]; truncated: boolean } {
+export function capExcerpts(excerpts: SourceExcerpt[], maxChars = MAX_EXCERPT_CHARS_PER_SOURCE): { excerpts: SourceExcerpt[]; truncated: boolean } {
   let truncated = false;
-  let budget = MAX_EXCERPT_CHARS_PER_SOURCE;
+  let budget = maxChars;
   const capped: SourceExcerpt[] = [];
   for (const excerpt of excerpts) {
     if (budget <= 0) {
@@ -160,7 +169,7 @@ export function capTotalChars(sources: FetchedSource[], maxTotal: number): Fetch
  * gekappt bei MAX_EXCERPT_CHARS_PER_SOURCE (Kostenschutz, wie
  * buildSourceText() in lib/server/admin/blueprint.ts).
  */
-export async function fetchSource(id: string, url: string): Promise<FetchedSource> {
+export async function fetchSource(id: string, url: string, maxChars = MAX_EXCERPT_CHARS_PER_SOURCE): Promise<FetchedSource> {
   let contentType: string;
   let buffer: Buffer;
   try {
@@ -192,7 +201,7 @@ export async function fetchSource(id: string, url: string): Promise<FetchedSourc
     );
   }
 
-  const { excerpts: cappedExcerpts, truncated } = capExcerpts(excerpts);
+  const { excerpts: cappedExcerpts, truncated } = capExcerpts(excerpts, maxChars);
 
   return {
     id,
@@ -204,6 +213,30 @@ export async function fetchSource(id: string, url: string): Promise<FetchedSourc
   };
 }
 
+/**
+ * Index der Quelle, die der Prüfungsleitfaden ist: die mit den meisten nummerierten Lernzielen (mindestens
+ * MIN_RECOGNISED), sonst keine (-1).
+ */
+export function primarySourceIndex(sources: Array<Pick<FetchedSource, "excerpts">>): number {
+  let best = -1;
+  let bestCount = MIN_RECOGNISED - 1;
+  sources.forEach((s, i) => {
+    const n = extractOfficialObjectives(s.excerpts).length;
+    if (n > bestCount) {
+      best = i;
+      bestCount = n;
+    }
+  });
+  return best;
+}
+
+/** Alle Quellen abrufen; der Prüfungsleitfaden darunter wird bis PRIMARY_SOURCE_MAX_CHARS gelesen, die übrigen wie bisher. */
 export async function fetchSources(urls: string[]): Promise<FetchedSource[]> {
-  return Promise.all(urls.map((url, index) => fetchSource(`src-${index + 1}`, url)));
+  const full = await Promise.all(urls.map((url, index) => fetchSource(`src-${index + 1}`, url, PRIMARY_SOURCE_MAX_CHARS)));
+  const primary = primarySourceIndex(full);
+  return full.map((source, i) => {
+    if (i === primary) return { ...source, primary: true };
+    const { excerpts, truncated } = capExcerpts(source.excerpts);
+    return { ...source, excerpts, truncated: source.truncated || truncated };
+  });
 }

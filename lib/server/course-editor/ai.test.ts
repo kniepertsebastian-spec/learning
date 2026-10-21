@@ -12,6 +12,7 @@ import { translateCourse } from "@/lib/server/course-translation/service";
 import type { ChunkTranslator } from "@/lib/server/course-translation/translate";
 import { aiRequestSchema, AiEditError, createObjectiveWithContent, ensureAiCheckpoint, estimateAi, finishAiAccept, proposeAi, type Generate } from "./ai";
 import { sectionSystemPrompt } from "./ai-prompt";
+import { backfillPossible, lessonNeedsPossible } from "./possible-backfill";
 import { EditValidationError, getSectionForEditor, readQuestion, saveQuestion, saveSection } from "./service";
 
 const run = TEST_DB ? describe : describe.skip;
@@ -42,6 +43,15 @@ const decisionSim = {
 };
 
 const lessonAi = (content: string, extra: Record<string, unknown> = {}) => ({ title: "Neuer Titel", content, keyTakeaways: ["a", "b"], examFocusPoints: ["c"], cheatSheet: null, changes: "lebendiger", ...extra });
+
+describe("Nachtrag „Was damit möglich ist“", () => {
+  it("erkennt fehlenden Hinweis und Simulationen ohne Textverweise", () => {
+    const { review: _r, ...noReview } = decisionSim;
+    expect(lessonNeedsPossible("Text")).toEqual({ possible: true, review: false });
+    expect(lessonNeedsPossible("Text\n\n> [!POSSIBLE]\n> Jetzt geht X.")).toEqual({ possible: false, review: false });
+    expect(lessonNeedsPossible(`> [!POSSIBLE]\n> X\n\n\`\`\`simulation\n${JSON.stringify(noReview)}\n\`\`\``)).toEqual({ possible: false, review: true });
+  });
+});
 
 describe("Anfragen und Prompts", () => {
   it("„Eigene Anweisung“ braucht eine Anweisung", () => {
@@ -218,6 +228,19 @@ run("KI-Nachbesserung (echte DB)", () => {
     expect(later.created).toBe(true);
     const cps = await getDb().select().from(courseCheckpoints).where(eq(courseCheckpoints.certificationId, k.certId));
     expect(cps).toHaveLength(2);
+  });
+
+  it("Nachtrag: ergänzt fehlende Hinweise, überspringt unbrauchbare Vorschläge, merkt den Kurs vorher", async () => {
+    const k = await mk();
+    const dry = await backfillPossible(k.certId, { dryRun: true });
+    expect(dry).toMatchObject({ checked: 1, updated: 0 });
+    const useless = await backfillPossible(k.certId, { generate: fakeAi(lessonAi("## Ursache finden\nOhne Hinweis.")).generate });
+    expect(useless).toMatchObject({ updated: 0, skipped: 1 });
+    const ok = await backfillPossible(k.certId, { generate: fakeAi(lessonAi("## Ursache finden\nAlt.\n\n> [!POSSIBLE]\n> Jetzt kannst du X.")).generate });
+    expect(ok).toMatchObject({ updated: 1, failed: 0 });
+    expect((await backfillPossible(k.certId, { dryRun: true })).checked).toBe(0);
+    const cps = await getDb().select().from(courseCheckpoints).where(eq(courseCheckpoints.certificationId, k.certId));
+    expect(cps).toHaveLength(1);
   });
 
   it("Kostenschätzung je Aktion, ohne KI", async () => {

@@ -24,6 +24,7 @@
     "lessons:blocks": "tsx scripts/backfill-lesson-blocks.ts",
     "lessons:simulations": "tsx scripts/backfill-simulations.ts",
     "courses:overviews": "tsx scripts/backfill-course-overviews.ts",
+    "lessons:possible": "tsx scripts/backfill-lesson-possible.ts",
     "stats:backfill-completions": "tsx scripts/backfill-completion-stats.ts",
     "company:set-member": "tsx scripts/manage-company.ts set-member",
     "company:remove-member": "tsx scripts/manage-company.ts remove-member",

@@ -119,6 +119,11 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
             </ul>
           </div>
         )}
+        {c.primary && (
+          <p className="mt-2 text-xs text-subtle" data-testid="coverage-primary">
+            {tr("Prüfungsleitfaden (vollständig gelesen):", "Exam guide (read in full):")} <span className="break-all">{c.primary.title}</span>
+          </p>
+        )}
         {c.checkedAt && <p className="mt-2 text-xs text-faint">{tr("Quelle geprüft am", "Source checked on")} {formatDate(c.checkedAt, locale)} · {c.sourceCount} {tr("Quelle(n)", "source(s)")}</p>}
       </section>
 

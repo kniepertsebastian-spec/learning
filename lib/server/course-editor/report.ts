@@ -51,6 +51,8 @@ export type CoverageView = {
   checkedAt: string | null;
   sourceCount: number;
   truncated: SourceReport["truncated"];
+  /** Als Prüfungsleitfaden erkannte Quelle (vollständig gelesen). */
+  primary: { title: string; url: string } | null;
   result: CoverageResult | null;
   canRefresh: boolean;
 };
@@ -177,8 +179,8 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
 
   // Abdeckung gegen die Quelle
   let coverage: CoverageView;
-  if (meta?.courseType === "custom") coverage = { unavailable: "custom_course", checkedAt: null, sourceCount: 0, truncated: [], result: null, canRefresh: false };
-  else if (!job) coverage = { unavailable: "no_job", checkedAt: null, sourceCount: 0, truncated: [], result: null, canRefresh: false };
+  if (meta?.courseType === "custom") coverage = { unavailable: "custom_course", checkedAt: null, sourceCount: 0, truncated: [], primary: null, result: null, canRefresh: false };
+  else if (!job) coverage = { unavailable: "no_job", checkedAt: null, sourceCount: 0, truncated: [], primary: null, result: null, canRefresh: false };
   else {
     const rep = job.sourceReport;
     coverage = {
@@ -186,6 +188,7 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
       checkedAt: rep?.checkedAt ?? null,
       sourceCount: rep?.sourceCount ?? 0,
       truncated: rep?.truncated ?? [],
+      primary: rep?.primary ?? null,
       result: rep ? compareCoverage(rep.officialObjectives, objs.map((o) => o.code)) : null,
       canRefresh: job.sourceUrls.length > 0,
     };
