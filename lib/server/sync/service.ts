@@ -7,6 +7,7 @@ import {
   SectionNotFoundError,
   type SectionQuizAnswerInput,
 } from "@/lib/server/sections/attempt-service";
+import { recordSimulationSolved, SimulationNotFoundError } from "@/lib/server/simulations/service";
 import {
   completeStudySession,
   StudySessionNotActiveError,
@@ -31,6 +32,12 @@ export interface SyncEventResult {
 interface SectionQuizPayload {
   sectionId: string;
   answers: SectionQuizAnswerInput[];
+}
+
+interface SimulationResultPayload {
+  sectionId: string;
+  simIndex: number;
+  helps: number;
 }
 
 interface StudySessionPayload {
@@ -131,7 +138,7 @@ async function processSingleEvent(userId: string, event: SyncEventInput): Promis
     if (error instanceof StudySessionNotActiveError) {
       return finalizeTerminal(claimId, event, "conflict", error.message);
     }
-    if (error instanceof StudySessionNotFoundError || error instanceof SectionNotFoundError) {
+    if (error instanceof StudySessionNotFoundError || error instanceof SectionNotFoundError || error instanceof SimulationNotFoundError) {
       return finalizeTerminal(claimId, event, "error", error.message);
     }
     await db.delete(syncEvents).where(eq(syncEvents.id, claimId));
@@ -168,6 +175,12 @@ async function applyEvent(userId: string, event: SyncEventInput): Promise<unknow
     const payload = event.payload as StudySessionPayload;
     if (await isStudySessionHidden(userId, payload.sessionId)) throw new StudySessionNotFoundError(payload.sessionId);
     return completeStudySession(payload.sessionId, userId, payload.answers);
+  }
+  if (event.type === "simulation_result") {
+    const payload = event.payload as SimulationResultPayload;
+    if (typeof payload?.sectionId !== "string" || !Number.isInteger(payload.simIndex) || typeof payload.helps !== "number") throw new SimulationNotFoundError("Ungültige Simulation.");
+    if (await isSectionHidden(userId, payload.sectionId)) throw new SectionNotFoundError(payload.sectionId);
+    return recordSimulationSolved(userId, payload.sectionId, payload.simIndex, payload.helps);
   }
   throw new Error(`Unbekannter Sync-Ereignistyp: ${event.type}`);
 }

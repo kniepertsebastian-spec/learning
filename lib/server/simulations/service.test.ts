@@ -9,6 +9,7 @@ import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, questions, reviewItems, sections, users } from "@/lib/server/db/schema";
 import { extractSimulationSources, simulationIndex, stripSimulations } from "@/lib/markdown/simulation";
+import { processSyncEvents } from "@/lib/server/sync/service";
 import { listSimulationProgress, recordSimulationSolved, SimulationNotFoundError } from "./service";
 
 const SIM = '```simulation\n{"type":"terminal","title":"T","scenario":"S","steps":[{"goal":"g","accept":["a"],"output":"","hint":"h"}],"success":"ok"}\n```';
@@ -56,6 +57,18 @@ run("Simulationsfortschritt (echte DB)", () => {
     await d.insert(reviewItems).values({ userId: u.id, questionId: q.id, dueAt: later });
     return { sectionId: sec.id, userId: u.id, questionId: q.id };
   }
+
+  it("offline gelöste Simulation kommt über die Sync-Warteschlange an, genau einmal", async () => {
+    const { sectionId, userId } = await setup();
+    const ev = { clientEventId: randomUUID(), type: "simulation_result" as const, clientCreatedAt: new Date().toISOString(), payload: { sectionId, simIndex: 0, helps: 1 } };
+    const [first] = await processSyncEvents(userId, [ev]);
+    expect(first.status).toBe("applied");
+    const [again] = await processSyncEvents(userId, [ev]);
+    expect(again.status).toBe("already_applied");
+    expect(await listSimulationProgress(userId, sectionId)).toMatchObject([{ simIndex: 0, bestHelps: 1, solves: 1 }]);
+    const [bad] = await processSyncEvents(userId, [{ ...ev, clientEventId: randomUUID(), payload: { sectionId, simIndex: 9, helps: 0 } }]);
+    expect(bad.status).toBe("error");
+  });
 
   it("speichert den Bestwert und zählt die Runden", async () => {
     const { sectionId, userId } = await setup();

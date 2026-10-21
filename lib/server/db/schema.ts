@@ -1063,7 +1063,8 @@ export const objectiveSourceRefs = pgTable(
  * versucht zuerst, die Zeile einzufügen, wendet die eigentliche Logik
  * (Quiz-/Session-Auswertung) nur bei Erfolg an und gibt bei einem Konflikt
  * einfach das zuvor gespeicherte Ergebnis zurück. */
-export type SyncEventType = "section_quiz" | "study_session";
+/** `simulation_result`: offline gelöste Simulation (roadmap3.md, Schritt 5). */
+export type SyncEventType = "section_quiz" | "study_session" | "simulation_result";
 export type SyncEventStatus = "applied" | "conflict" | "error";
 
 export const syncEvents = pgTable(

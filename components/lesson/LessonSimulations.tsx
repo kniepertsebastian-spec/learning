@@ -3,6 +3,7 @@
 import * as React from "react";
 import { RichText } from "@/components/RichText";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 import { useLocaleOptional } from "@/lib/i18n";
 import { extractSimulationSources, simulationIndex, stripSimulations } from "@/lib/markdown/simulation";
 
@@ -30,13 +31,16 @@ export function LessonSimulationsProvider({
   text,
   sectionId,
   persist,
+  offlineUserId,
   initialProgress,
   children,
 }: {
   text: string;
   sectionId: string;
-  /** false im Offline-Reader und ohne Anmeldung: nichts wird gespeichert, der Stand gilt nur für diesen Besuch. */
+  /** false im Offline-Reader und ohne Anmeldung: nicht direkt gespeichert (offline geht es über die Sync-Warteschlange). */
   persist: boolean;
+  /** Im Offline-Reader: gelöste Simulationen gehen in die Sync-Warteschlange dieser Person. */
+  offlineUserId?: string;
   initialProgress: Array<{ simIndex: number; bestHelps: number }>;
   children: React.ReactNode;
 }) {
@@ -58,6 +62,11 @@ export function LessonSimulationsProvider({
         next.set(idx, { bestHelps: Math.min(m.get(idx)?.bestHelps ?? helps, helps) });
         return next;
       });
+      // Offline-Reader: in die Sync-Warteschlange, wird beim nächsten Online-Sync gespeichert (wie das Abschnittsquiz).
+      if (offlineUserId) {
+        await enqueueSyncEvent(offlineUserId, "simulation_result", { sectionId, simIndex: idx, helps }, "Simulation").catch(() => {});
+        return null;
+      }
       if (!persist) return null;
       try {
         const res = await fetch(`/api/sections/${sectionId}/simulations`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ simIndex: idx, helps }) });
@@ -66,7 +75,7 @@ export function LessonSimulationsProvider({
         return null;
       }
     },
-    [sources, persist, sectionId],
+    [sources, persist, sectionId, offlineUserId],
   );
 
   const openText = React.useCallback((heading?: string) => {
