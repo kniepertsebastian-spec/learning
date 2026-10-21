@@ -29,7 +29,7 @@ export const HARD_QUESTION_MAX_ACCURACY = 0.4;
 export const MIN_QUESTIONS_PER_OBJECTIVE = 4;
 export const THIN_LESSON_CHARS = 500;
 
-export type ImprovementKind = "missing_objective" | "open_report" | "hard_question" | "few_questions" | "hands_on_without_simulation" | "no_exam_callout" | "thin_lesson";
+export type ImprovementKind = "missing_objective" | "open_report" | "hard_question" | "few_questions" | "one_question_type" | "hands_on_without_simulation" | "no_exam_callout" | "thin_lesson";
 export type Severity = "high" | "medium" | "low";
 export type Improvement = {
   id: string;
@@ -117,7 +117,7 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
         .where(inArray(sections.objectiveId, objIds))
         .orderBy(asc(sections.orderNum))
     : [];
-  const qs = objIds.length ? await db.select({ id: questions.id, objectiveId: questions.objectiveId, humanId: questions.humanId }).from(questions).where(inArray(questions.objectiveId, objIds)) : [];
+  const qs = objIds.length ? await db.select({ id: questions.id, objectiveId: questions.objectiveId, humanId: questions.humanId, type: questions.type }).from(questions).where(inArray(questions.objectiveId, objIds)) : [];
   const stats = await answerStats(qs.map((q) => q.id));
   const targetIds = [...secs.map((s) => s.lessonId), ...qs.map((q) => q.id)];
   const reports = targetIds.length
@@ -155,6 +155,12 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
   for (const o of objs) {
     const qCount = qs.filter((q) => q.objectiveId === o.id).length;
     const target = recommended.get(o.code) ?? MIN_QUESTIONS_PER_OBJECTIVE;
+    // Abwechslung: ab 4 Fragen nicht alle vom selben Typ (nur Wissensfragen prüfen kein Anwenden).
+    const types = new Set(qs.filter((q) => q.objectiveId === o.id).map((q) => q.type));
+    if (qCount >= MIN_QUESTIONS_PER_OBJECTIVE && types.size === 1) {
+      const [only] = types;
+      push({ kind: "one_question_type", severity: "low", objectiveId: o.id, objectiveCode: o.code, sectionId: null, text: { de: `${o.code} ${o.title}: alle ${qCount} Fragen sind vom Typ „${only}“.`, en: `${o.code} ${o.title}: all ${qCount} questions are of type “${only}”.` } });
+    }
     if (qCount < target) {
       push({ kind: "few_questions", severity: "medium", objectiveId: o.id, objectiveCode: o.code, sectionId: null, text: { de: `${o.code} ${o.title}: ${qCount} Fragen, empfohlen sind ${target}.`, en: `${o.code} ${o.title}: ${qCount} questions, ${target} recommended.` } });
     }

@@ -17,7 +17,7 @@ const TONE: Record<Severity, "danger" | "warning" | "neutral"> = { high: "danger
 const LESSON_AI: Partial<Record<ImprovementKind, AiAction>> = { open_report: "fix_reports", no_exam_callout: "exam", hands_on_without_simulation: "simulation", thin_lesson: "expand" };
 function aiActionFor(i: Improvement): AiAction | null {
   if (i.kind === "missing_objective") return i.missing ? "add_objective" : null;
-  if (i.kind === "few_questions") return "add_questions";
+  if (i.kind === "few_questions" || i.kind === "one_question_type") return "add_questions";
   return i.sectionId ? (LESSON_AI[i.kind] ?? null) : null;
 }
 

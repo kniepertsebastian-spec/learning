@@ -1,3 +1,4 @@
+import { QUESTION_VARIETY_PROMPT } from "@/lib/server/course-generation/variety";
 import { CHEAT_SHEET_PROMPT, LEARNING_BLOCKS_PROMPT, LIVELY_STYLE_PROMPT, courseStory } from "@/lib/server/course-generation/providers";
 import type { ContentReportReason } from "@/lib/server/db/schema";
 import type { Locale } from "@/lib/types";
@@ -141,6 +142,7 @@ export function newQuestionsSystemPrompt(c: CourseFacts): string {
     "Mischung aus knowledge/comprehension/application/scenario/troubleshooting, Szenario- und Anwendungsfragen bevorzugt.",
     "Genau 4 Antwortoptionen pro Frage, genau EINE davon richtig, plausible falsche Antworten, Erklärung mit Begründung. `rationale` bei der richtigen Option `null`, sonst ein kurzer Satz.",
     "Die Fragen müssen sich mit dem Inhalt der Lektionen beantworten lassen.",
+    ...QUESTION_VARIETY_PROMPT,
   ].join("\n");
 }
 

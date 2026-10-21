@@ -5,6 +5,7 @@ import { CURRICULUM_MODEL } from "@/lib/claude";
 import { extractSimulationSources } from "@/lib/markdown/simulation";
 import { repairLearningBlocks, validateLearningBlocks } from "@/lib/markdown/validate";
 import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/content-generation";
+import { shuffleOptions } from "@/lib/server/course-generation/variety";
 import { clientFor } from "@/lib/server/course-translation/service";
 import { isAutoTranslateEnabled, startCourseTranslation } from "@/lib/server/course-translation/runner";
 import { getDb } from "@/lib/server/db/client";
@@ -325,7 +326,12 @@ const toNewQuestion = (q: z.infer<typeof newQuestionAiSchema>): NewQuestion => (
   explanation: both(q.explanation),
   difficulty: q.difficulty,
   type: q.type,
-  options: toOptions(q).map((o) => ({ text: both(o.text), isCorrect: o.isCorrect, rationale: o.rationale ? both(o.rationale) : null })),
+  // Gemischt wie beim Import, damit die richtige Antwort nicht immer vorn steht.
+  options: shuffleOptions(
+    toOptions(q).map((o) => ({ text: both(o.text), isCorrect: o.isCorrect, rationale: o.rationale ? both(o.rationale) : null })),
+    both(q.explanation),
+    q.question,
+  ),
 });
 
 async function proposeQuestions(cert: Cert, objectiveId: string, count: number, instr: string | null, generate: Generate): Promise<Omit<QuestionsProposal, "kind">> {
