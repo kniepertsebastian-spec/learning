@@ -107,8 +107,8 @@ gespeichert. Katalogkacheln zeigen die Kurzfassung.
 - **Wiederholung:** wer eine Simulation nur mit mindestens zwei Hilfen (Tipp, Lösung, Fehlversuche) löst, bekommt die
   bestehenden Wiederholungsfragen des Lernziels sofort fällig (es entstehen keine neuen Einträge) und einen Hinweis.
 
-Offen: Simulationen erscheinen noch nicht als eigene Aufgaben in Übungssitzungen; Fortschritt wird nur gespeichert, wenn man
-angemeldet ist (Offline-Reader: nein).
+Nachgetragen: Übungssitzungen zeigen nach den Fragen eine Praxisaufgabe (Simulation aus denselben Lernzielen, ungelöst
+oder mühsam gelöst); im Offline-Reader gelöste Simulationen gehen über die Sync-Warteschlange.
 
 ## Schritt 6: Lebendigere Texte bei neuen Kursen ✅
 
@@ -160,4 +160,22 @@ sichtbar. Berufscode (KldB) für die Gehaltsdaten folgt mit Schritt 9.
   „Pfade aktualisieren“ an; höchstens 5 Berechnungen pro Person und Tag. Der Kursstand ist immer aktuell.
 - Beruf ohne genauen Treffer in der Tabelle: nächst gröbere Berufsgruppe (als „verwandt“ gekennzeichnet).
 
-**Offen:** Die erste echte BA-Tabelle prüfen (Spaltenstruktur); Pfade mit echter KI ausprobieren (hier kein Zugang).
+**Offen:** Pfade mit echter KI ausprobieren (hier kein Zugang). Der Import einer echten BA-Tabelle ist vorerst
+zurückgestellt; ohne importierte Daten bleibt das Gehalt ausgeblendet.
+
+## Kleinere offene Punkte (erledigt)
+
+- **Prüfungsleitfaden nie kürzen:** die Quelle mit den meisten nummerierten Lernzielen gilt als Leitfaden und wird bis
+  400.000 Zeichen gelesen (`COURSE_GEN_PRIMARY_SOURCE_MAX_CHARS`), die übrigen weiter bis 60.000; der Qualitätsbericht
+  nennt sie.
+- **Bestehende Lektionen nachrüsten:** `npm run lessons:possible -- <slug|--all> [--dry-run] [--limit N]` ergänzt per KI
+  „Was damit möglich ist“ und die Textverweise der Simulationen (gemerkter Stand vorher, Herkunft „KI“, danach Übersetzung).
+- **Versionsüberwachung:** „Quelle prüfen“ vergleicht mit dem Stand bei der Kurserstellung (Fingerabdruck, erkannte
+  Prüfungsversion wie „SY0-701“, neue und entfallene Lernziele) und setzt `lastVerifiedDate`; der Bericht zeigt die
+  Änderung und lässt den neuen Stand bestätigen. Für regelmäßige Läufe: `npm run courses:check-sources -- --all`
+  (Exit-Code 2 bei Änderungen, z. B. wöchentlich per Cron).
+- **Sehr große Kurse:** mehr als 80 Lernziele werden automatisch in Teile aufgeteilt („… (Teil 1 von 2)“), die
+  nacheinander erzeugt werden (Details in `course_generation.md`).
+- **Fragenvielfalt:** Antwortoptionen stabil gemischt, umformulierte Dubletten erkannt, Prompt-Regeln für Typen und
+  Frageformen, Hinweis im Bericht bei nur einem Fragetyp.
+- Die Diagnoseseite `viewport-check.html` ist entfernt.
