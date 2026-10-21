@@ -12,6 +12,8 @@ export interface StudyProfileInput {
   /** ISO-Wochentage, 1 (Montag) bis 7 (Sonntag). */
   activeDays: number[];
   preferredLocale: Locale | null;
+  /** PSRP-HR: „leichte Tage“ (ISO-Wochentage) mit reduziertem Kontingent; fehlt das Feld, bleibt der gespeicherte Wert. */
+  lightWeekdays?: number[];
 }
 
 export interface StudyProfileValidationResult {
@@ -46,6 +48,17 @@ export function validateStudyProfileInput(input: StudyProfileInput): StudyProfil
   for (const day of input.activeDays) {
     if (!Number.isInteger(day) || day < 1 || day > 7) {
       errors.push(`Ungültiger Wochentag: ${day} (erwartet 1-7, 1 = Montag).`);
+    }
+  }
+
+  if (input.lightWeekdays) {
+    if (new Set(input.lightWeekdays).size !== input.lightWeekdays.length) {
+      errors.push("Leichte Tage dürfen keine Duplikate enthalten.");
+    }
+    for (const day of input.lightWeekdays) {
+      if (!Number.isInteger(day) || day < 1 || day > 7) {
+        errors.push(`Ungültiger leichter Tag: ${day} (erwartet 1-7, 1 = Montag).`);
+      }
     }
   }
 
@@ -104,6 +117,7 @@ export async function upsertStudyProfile(
     dailyGoalValue: input.dailyGoalValue,
     activeDays: input.activeDays,
     preferredLocale: input.preferredLocale,
+    ...(input.lightWeekdays ? { lightWeekdays: input.lightWeekdays } : {}),
     updatedAt: new Date(),
   };
 

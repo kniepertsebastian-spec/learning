@@ -29,6 +29,8 @@ import type { ReadinessResult } from "@/lib/server/readiness/engine";
 import { StudyGoalPanel, type StudyGoalState } from "@/components/StudyGoalPanel";
 import { TodayDashboard, type TodayDashboardData } from "@/components/TodayDashboard";
 import { StartSessionPicker } from "@/components/StartSessionPicker";
+import { SelfAssessmentCard } from "@/components/SelfAssessmentCard";
+import { getSelfAssessment, type SelfAssessmentTopic } from "@/lib/server/psrp/self-assessment";
 import { ReadinessCard } from "@/components/ReadinessCard";
 
 interface ProgressData {
@@ -118,7 +120,9 @@ export default async function CertDetailPage({
   let studyGoal: StudyGoalState | null = null;
   let todayDashboard: TodayDashboardData | null = null;
   let readiness: ReadinessResult | null = null;
+  let selfAssessment: SelfAssessmentTopic[] = [];
   if (session?.user?.id) {
+    selfAssessment = await getSelfAssessment(session.user.id, cert.id).catch(() => []);
     const [
       progress,
       remediationTargets,
@@ -157,6 +161,7 @@ export default async function CertDetailPage({
           dailyGoalValue: studyProfile.dailyGoalValue,
           activeDays: studyProfile.activeDays,
           preferredLocale: studyProfile.preferredLocale,
+          lightWeekdays: studyProfile.lightWeekdays,
         }
       : null;
     if (sessionSummary) {
@@ -169,6 +174,7 @@ export default async function CertDetailPage({
       ]);
       todayDashboard = {
         sessionId: sessionSummary.id,
+        certificationId: cert.id,
         sessionStatus: sessionSummary.status,
         estimatedMinutes: sessionSummary.estimatedMinutes,
         dueCount,
@@ -336,6 +342,8 @@ export default async function CertDetailPage({
       )}
 
       {session && quizzes && readiness && <ReadinessCard locale={locale} readiness={readiness} />}
+
+      {session && quizzes && <SelfAssessmentCard locale={locale} topics={selfAssessment} />}
 
       {session && quizzes && <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} />}
 

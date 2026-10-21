@@ -86,7 +86,7 @@ export default async function SectionPage({
   const questionRows = await db
     .select()
     .from(questions)
-    .where(and(eq(questions.objectiveId, objective.id), eq(questions.stale, false)));
+    .where(and(eq(questions.objectiveId, objective.id), eq(questions.stale, false), eq(questions.probeOnly, false)));
 
   const questionIds = questionRows.map((q) => q.id);
   const optionRows =

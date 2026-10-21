@@ -24,6 +24,10 @@ import type { CourseOverview } from "@/lib/course-overview";
 /** R0.2 (roadmap.md): learner is the default, admin unlocks /admin and every
  * admin API route/server action. */
 export type UserRole = "learner" | "admin";
+export const AGE_RANGES = ["under_18", "18_24", "25_34", "35_44", "45_54", "55_plus"] as const;
+export type AgeRange = (typeof AGE_RANGES)[number];
+export const EVALUATION_GROUPS = ["vanilla", "planning", "planning_state"] as const;
+export type EvaluationGroup = (typeof EVALUATION_GROUPS)[number];
 
 /** R0.1 (roadmap.md): Fehlerklassen für content_generation_jobs, siehe
  * classifyGenerationError() in lib/server/admin/content-generation.ts. */
@@ -110,9 +114,25 @@ export const users = pgTable(
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     /** UI U8: Opt-out für E-Mail-Erinnerungen des Prüfungsplaners. */
     examRemindersOptOut: boolean("exam_reminders_opt_out").notNull().default(false),
+    /** PSRP-HR (roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
+    ageRange: text("age_range").$type<AgeRange>(),
+    /** IANA-Zeitzone für die lokale Tageszeit (Chronotyp) und Tagesgrenzen der Planung. */
+    timezone: text("timezone").notNull().default("Europe/Berlin"),
+    /** Phase 5: Evaluationsgruppe; null = noch nicht zugeteilt (wird beim ersten Zugriff stabil zugeteilt). */
+    evaluationGroup: text("evaluation_group").$type<EvaluationGroup>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [check("users_role_check", sql`${table.role} in ('learner', 'admin')`)],
+  (table) => [
+    check("users_role_check", sql`${table.role} in ('learner', 'admin')`),
+    check(
+      "users_age_range_check",
+      sql`${table.ageRange} is null or ${table.ageRange} in ('under_18', '18_24', '25_34', '35_44', '45_54', '55_plus')`,
+    ),
+    check(
+      "users_evaluation_group_check",
+      sql`${table.evaluationGroup} is null or ${table.evaluationGroup} in ('vanilla', 'planning', 'planning_state')`,
+    ),
+  ],
 );
 
 export const EXAM_PROVIDERS = ["pearson_vue", "psi", "linux_foundation", "other"] as const;
@@ -424,6 +444,8 @@ export const questions = pgTable("questions", {
   stale: boolean("stale").notNull().default(false),
   /** Wie lessons.translationOutdated: Kurssprache per KI geändert, die zweite Sprache noch nicht neu übersetzt. */
   translationOutdated: boolean("translation_outdated").notNull().default(false),
+  /** PSRP-HR Phase 7: Abfragevariante (probe_variant), erscheint nie in Lektionstests, Prüfungen oder Sessions als normale Frage. */
+  probeOnly: boolean("probe_only").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -558,7 +580,7 @@ export type ReviewOutcome = "correct" | "incorrect";
 
 /**
  * R2.2 (roadmap.md): Spaced-Repetition-Zustand pro (Nutzer, Frage) - ein
- * vereinfachter SM-2/Leitner-Hybrid (siehe lib/server/review/scheduler.ts),
+ * Fälligkeits-Sicht auf den FSRS-Zustand (siehe lib/server/psrp/service.ts; der alte SM-2-Scheduler ist entfernt),
  * bewusst NICHT pro Objective, weil "Fragenrotation sicherstellen" (roadmap.md)
  * eine pro-Frage-Fälligkeit braucht: sonst würde ein Objective mit vielen
  * Fragen nach der ersten richtigen Antwort komplett als "erledigt" gelten,
@@ -579,10 +601,10 @@ export const reviewItems = pgTable(
       .references(() => questions.id, { onDelete: "cascade" }),
     dueAt: timestamp("due_at", { withTimezone: true }).notNull().defaultNow(),
     /** Aktuelles Wiederholungsintervall in Tagen (kann gebrochen sein, z. B.
-     * durch die Schwierigkeits-Gewichtung in computeNextReview()). */
+     * aus der FSRS-Fälligkeit abgeleitet). */
     intervalDays: numeric("interval_days", { precision: 6, scale: 2 }).notNull().default("0"),
     /** Anzahl AUFEINANDERFOLGENDER richtiger Antworten - jede falsche Antwort
-     * setzt das auf 0 zurück (siehe computeNextReview()). */
+     * setzt das auf 0 zurück (FSRS-Lapse). */
     repetitions: integer("repetitions").notNull().default(0),
     /** SM-2-artiger Ease-Faktor, steuert wie stark das Intervall bei
      * richtigen Antworten wächst - sinkt bei falschen, steigt bei richtigen,
@@ -633,6 +655,8 @@ export const studyProfiles = pgTable(
     /** ISO-Wochentage (1 = Montag ... 7 = Sonntag), an denen gelernt werden
      * soll - "Aktive Lerntage ... speichern". */
     activeDays: jsonb("active_days").$type<number[]>().notNull().default([1, 2, 3, 4, 5, 6, 7]),
+    /** PSRP-HR Phase 3: „leichte Tage“ (ISO-Wochentage 1-7) mit reduziertem Kontingent. */
+    lightWeekdays: jsonb("light_weekdays").$type<number[]>().notNull().default([]),
     /** "bevorzugte Sprache speichern" - unabhängig vom UI-Sprachcookie
      * (lib/server/locale.ts): eine bewusste Lernziel-Angabe je Kurs, z. B. um
      * Inhalte auf Englisch zu üben, obwohl die Oberfläche auf Deutsch steht.
@@ -2471,3 +2495,246 @@ export const careerSuggestions = pgTable("career_suggestions", {
   runsToday: integer("runs_today").notNull().default(1),
   runsDay: date("runs_day", { mode: "string" }).notNull().default(sql`(now() at time zone 'utc')::date`),
 });
+
+// ---------------------------------------------------------------------------
+// PSRP-HR (roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
+// Engine und Kalibrierung. „Item“ der Roadmap = Frage (`questions`), „Kurs“ =
+// Zertifizierung (`certifications`), `course_enrollment` = `study_profiles`
+// (dort liegen Prüfungsdatum und leichte Tage bereits je Nutzer und Kurs).
+// ---------------------------------------------------------------------------
+
+export type ReviewLogType = "card" | "interleaved" | "probe";
+
+/** FSRS-Zustand je (Nutzer, Frage). Abgeleitet aus dem Review-Log, wird mit jedem Review fortgeschrieben. */
+export const itemStates = pgTable(
+  "item_state",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    stability: numeric("stability", { precision: 10, scale: 4, mode: "number" }).notNull(),
+    difficulty: numeric("difficulty", { precision: 8, scale: 4, mode: "number" }).notNull(),
+    reps: integer("reps").notNull().default(0),
+    lapses: integer("lapses").notNull().default(0),
+    /** ts-fsrs State (0 New, 1 Learning, 2 Review, 3 Relearning). */
+    fsrsState: integer("fsrs_state").notNull().default(2),
+    lastReview: timestamp("last_review", { withTimezone: true }),
+    due: timestamp("due", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("item_state_user_item_unique").on(table.userId, table.itemId),
+    index("item_state_user_due_idx").on(table.userId, table.due),
+  ],
+);
+
+/**
+ * Append-only Log jedes Reviews (Architektur-Regel 3). Ein Trigger (Migration 0067) verbietet
+ * UPDATE und DELETE; gelöscht wird nur beim Löschen des gesamten Nutzers (CASCADE).
+ */
+export const reviewLog = pgTable(
+  "review_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").notNull(),
+    timestampUtc: timestamp("timestamp_utc", { withTimezone: true }).notNull().defaultNow(),
+    /** Lokale Stunde (0-23) und ISO-Wochentag (1-7) in der Zeitzone des Nutzers. */
+    localHour: integer("local_hour").notNull(),
+    weekday: integer("weekday").notNull(),
+    /** Rohes Rating 1-4 (1 Again, 2 Hard, 3 Good, 4 Easy); geht unverändert an FSRS. */
+    rawRating: integer("raw_rating").notNull(),
+    responseTimeMs: integer("response_time_ms"),
+    reviewType: text("review_type").$type<ReviewLogType>().notNull().default("card"),
+    probeVariantId: uuid("probe_variant_id"),
+    /** Abrufwahrscheinlichkeit laut FSRS unmittelbar vor diesem Review (null bei erstem Review). */
+    predictedR: numeric("predicted_r", { precision: 6, scale: 5, mode: "number" }),
+  },
+  (table) => [
+    index("review_log_user_time_idx").on(table.userId, table.timestampUtc),
+    index("review_log_item_idx").on(table.itemId),
+    check("review_log_raw_rating_check", sql`${table.rawRating} between 1 and 4`),
+    check("review_log_type_check", sql`${table.reviewType} in ('card', 'interleaved', 'probe')`),
+    check("review_log_hour_check", sql`${table.localHour} between 0 and 23`),
+    check("review_log_weekday_check", sql`${table.weekday} between 1 and 7`),
+  ],
+);
+
+export const concepts = pgTable(
+  "concept",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    topicArea: text("topic_area").notNull(),
+    name: text("name").notNull(),
+  },
+  (table) => [unique("concept_course_name_unique").on(table.courseId, table.name)],
+);
+
+export const itemConcepts = pgTable(
+  "item_concept",
+  {
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    conceptId: uuid("concept_id")
+      .notNull()
+      .references(() => concepts.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.itemId, table.conceptId] })],
+);
+
+export type ProbeFormat = "embedded_step" | "distractor" | "error_spotting" | "transfer";
+
+export const probeVariants = pgTable(
+  "probe_variant",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conceptId: uuid("concept_id")
+      .notNull()
+      .references(() => concepts.id, { onDelete: "cascade" }),
+    /** Frage, die als Abfrage gestellt wird (dieselbe UI wie normale Aufgaben). */
+    questionId: uuid("question_id").references(() => questions.id, { onDelete: "cascade" }),
+    /** Original-Item, dessen Wissen die Variante prüft; Reviews der Abfrage werden diesem Item zugeschrieben. */
+    sourceItemId: uuid("source_item_id").references(() => questions.id, { onDelete: "cascade" }),
+    format: text("format").$type<ProbeFormat>().notNull(),
+    content: jsonb("content").$type<Localized<string>>().notNull(),
+    isBottleneck: boolean("is_bottleneck").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("probe_variant_concept_idx").on(table.conceptId),
+    check(
+      "probe_variant_format_check",
+      sql`${table.format} in ('embedded_step', 'distractor', 'error_spotting', 'transfer')`,
+    ),
+  ],
+);
+
+/** Check-in je Lernsession (Phase 4); Rohdaten, getrennt von abgeleiteten Werten. */
+export const sessionCheckins = pgTable(
+  "session_checkin",
+  {
+    sessionId: uuid("session_id")
+      .primaryKey()
+      .references(() => studySessions.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    energyLevel: integer("energy_level").notNull(),
+    timeBudgetMin: integer("time_budget_min").notNull(),
+    hadWorkday: boolean("had_workday").notNull(),
+    /** true, wenn der Check-in übersprungen und aus letzten/neutralen Werten ergänzt wurde. */
+    imputed: boolean("imputed").notNull().default(false),
+    timestamp: timestamp("timestamp", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("session_checkin_user_idx").on(table.userId, table.timestamp),
+    check("session_checkin_energy_check", sql`${table.energyLevel} between 1 and 5`),
+    check("session_checkin_budget_check", sql`${table.timeBudgetMin} > 0`),
+  ],
+);
+
+/** Abgeleitete Werte je Session (Phase 3/4), getrennt von den Rohdaten. */
+export const sessionDerived = pgTable("session_derived", {
+  sessionId: uuid("session_id")
+    .primaryKey()
+    .references(() => studySessions.id, { onDelete: "cascade" }),
+  phi: numeric("phi", { precision: 5, scale: 4, mode: "number" }).notNull(),
+  rTarget: numeric("r_target", { precision: 5, scale: 4, mode: "number" }).notNull(),
+  dailyLimit: integer("daily_limit").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Phase 4: Flag für monotone Check-ins (identische Werte über viele Sessions). */
+export const userCheckinFlags = pgTable("user_checkin_flags", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  monotone: boolean("monotone").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Phase 2: persönliche FSRS-Parameter nach dem Fit (Optimizer-Job). */
+export const userFsrsParams = pgTable("user_fsrs_params", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  weights: jsonb("weights").$type<number[]>().notNull(),
+  reviewCount: integer("review_count").notNull(),
+  fittedAt: timestamp("fitted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Phase 7.3: Kalibrierung (Selbsteinschätzung) je Nutzer und Themengebiet. */
+export const userCalibration = pgTable(
+  "user_calibration",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topicArea: text("topic_area").notNull(),
+    bias: numeric("bias", { precision: 6, scale: 5, mode: "number" }).notNull(),
+    ciLow: numeric("ci_low", { precision: 6, scale: 5, mode: "number" }).notNull(),
+    ciHigh: numeric("ci_high", { precision: 6, scale: 5, mode: "number" }).notNull(),
+    nProbes: integer("n_probes").notNull(),
+    /** Brier-Score über alle gewerteten Abfragen des Themengebiets. */
+    brier: numeric("brier", { precision: 6, scale: 5, mode: "number" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.topicArea] })],
+);
+
+/** Phase 7.3: je gewertete Abfrage die Messwerte, aus denen der Kalibrierungswert entsteht. */
+export const probeResults = pgTable(
+  "probe_result",
+  {
+    reviewLogId: uuid("review_log_id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    conceptId: uuid("concept_id")
+      .notNull()
+      .references(() => concepts.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => probeVariants.id, { onDelete: "cascade" }),
+    topicArea: text("topic_area").notNull(),
+    predictedR: numeric("predicted_r", { precision: 6, scale: 5, mode: "number" }).notNull(),
+    selfRating: integer("self_rating"),
+    populationRate: numeric("population_rate", { precision: 6, scale: 5, mode: "number" }),
+    success: boolean("success").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("probe_result_user_topic_idx").on(table.userId, table.topicArea)],
+);
+
+/**
+ * PSRP-HR Phase 6: Aufgaben (z. B. Simulationen), die Wiederholungs-Items referenzieren. Wird die Aufgabe
+ * gelöst, entsteht für jedes Item ein impliziter Review (review_type = interleaved).
+ * `taskRef` ist bei Simulationen "<sectionId>:<simIndex>".
+ */
+export const taskItems = pgTable(
+  "task_item",
+  {
+    taskType: text("task_type").$type<"simulation" | "practice">().notNull(),
+    taskRef: text("task_ref").notNull(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.taskType, table.taskRef, table.itemId] }),
+    check("task_item_type_check", sql`${table.taskType} in ('simulation', 'practice')`),
+  ],
+);

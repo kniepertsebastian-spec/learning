@@ -19,6 +19,16 @@ import {
   type StudySessionStatus,
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
+import {
+  buildDailyQueue,
+  persistSessionPlan,
+  planSession,
+  type CheckinInput,
+} from "@/lib/server/psrp/planning-service";
+import { usesPlanning } from "@/lib/server/psrp/evaluation";
+import { DEFAULT_PSRP_CONFIG } from "@/lib/server/psrp/config";
+import { moreStudyExtra } from "@/lib/server/psrp/planner";
+import { interleaveProbes, selectProbes } from "@/lib/server/psrp/probes";
 import { getDueReviewCount, getDueReviewItems, recordReviewOutcomes } from "@/lib/server/review/service";
 import {
   computeLessonFallbackCount,
@@ -154,8 +164,29 @@ export async function startStudySession(
   goalValue: number,
   goalType: StudyGoalType = "minutes",
   energyLevel?: EnergyLevel,
+  checkin?: CheckinInput,
 ): Promise<StudySessionSummary> {
-  return buildAndPersistSession(userId, certificationId, { goalType, goalValue, energyLevel });
+  return buildAndPersistSession(userId, certificationId, { goalType, goalValue, energyLevel, checkin });
+}
+
+/**
+ * „Mehr lernen“ (PSRP-HR Phase 3): nach einer abgeschlossenen Session eine weitere bauen, deren Limit um einen Anteil
+ * höher liegt. Nur wenn der Nutzer das Tageslimit überschreiben darf (Konfiguration) und die letzte Session von heute
+ * abgeschlossen ist. Gibt null zurück, wenn das nicht zutrifft.
+ */
+export async function startMoreStudySession(
+  userId: string,
+  certificationId: string,
+  now: Date = new Date(),
+): Promise<StudySessionSummary | null> {
+  if (!DEFAULT_PSRP_CONFIG.planning.allowLimitOverride) return null;
+  const latest = await peekActiveOrTodaySession(userId, certificationId, now);
+  if (!latest || latest.status !== "completed") return null;
+  return buildAndPersistSession(userId, certificationId, {
+    goalType: latest.goalType,
+    goalValue: latest.goalValue,
+    moreStudy: true,
+  });
 }
 
 async function countSessionItems(sessionId: string): Promise<number> {
@@ -273,9 +304,10 @@ export async function getStudySessionWithContent(
 async function buildAndPersistSession(
   userId: string,
   certificationId: string,
-  goalOverride?: { goalType: StudyGoalType; goalValue: number; energyLevel?: EnergyLevel },
+  goalOverride?: { goalType: StudyGoalType; goalValue: number; energyLevel?: EnergyLevel; checkin?: CheckinInput; moreStudy?: boolean },
 ): Promise<StudySessionSummary> {
   const db = getDb();
+  const now = new Date();
 
   const [profile] = await db
     .select({
@@ -289,8 +321,29 @@ async function buildAndPersistSession(
 
   const goalType = goalOverride?.goalType ?? profile?.dailyGoalType ?? DEFAULT_GOAL_TYPE;
   const goalValue = goalOverride?.goalValue ?? profile?.dailyGoalValue ?? DEFAULT_GOAL_VALUE;
-  const energyLevel = goalOverride?.energyLevel ?? null;
-  const targetQuestionCount = estimateTargetQuestionCount(goalType, goalValue);
+  // PSRP-HR: Check-in (1-5) hat Vorrang vor der groben Energie-Auswahl; beide landen in energyLevel.
+  const checkinEnergy = goalOverride?.checkin?.energyLevel;
+  const energyLevel: EnergyLevel | null =
+    checkinEnergy !== undefined ? (checkinEnergy <= 2 ? "low" : checkinEnergy >= 4 ? "high" : "medium") : (goalOverride?.energyLevel ?? null);
+
+  // PSRP-HR Planungsschicht (Gruppe vanilla: wie bisher, nur FSRS-Fälligkeit).
+  const plan = await planSession({
+    userId,
+    certificationId,
+    now,
+    timeBudgetMin: goalType === "minutes" ? goalValue : Math.max(1, Math.round(estimateSessionMinutes(goalValue))),
+    checkin: goalOverride?.checkin,
+  });
+  const planned = usesPlanning(plan.group);
+  let targetQuestionCount =
+    planned && goalType === "minutes" ? plan.dailyLimit : estimateTargetQuestionCount(goalType, goalValue);
+  if (goalOverride?.moreStudy) {
+    // „Mehr lernen“: das Tageslimit wird um einen konfigurierbaren Anteil erhöht (Phase 3).
+    const extra = moreStudyExtra(targetQuestionCount);
+    targetQuestionCount += extra;
+  }
+  // Gespeichertes Tageslimit = tatsächliche Zielgröße der Session (auch ohne Planungsschicht).
+  plan.dailyLimit = targetQuestionCount;
 
   // "Sanfter Comeback-Modus nach Pause": updatedAt statt completedAt, damit
   // sowohl eine abgeschlossene als auch eine "heute ausgesetzte" Session als
@@ -309,10 +362,20 @@ async function buildAndPersistSession(
     .limit(1);
   const isComeback = isComebackSession(lastActivity?.updatedAt ?? null);
 
-  const [dueCount, dueItems] = await Promise.all([
-    getDueReviewCount(userId, certificationId),
-    getDueReviewItems(userId, certificationId, { limit: targetQuestionCount }),
-  ]);
+  let dueCount: number;
+  let dueItems: Array<{ questionId: string }>;
+  let newCardsPaused = false;
+  if (planned) {
+    const queue = await buildDailyQueue({ userId, certificationId, now, limit: targetQuestionCount, phi: plan.phi });
+    dueCount = queue.totalDue;
+    dueItems = queue.queue.map((c) => ({ questionId: c.itemId }));
+    newCardsPaused = queue.newCardsPaused;
+  } else {
+    [dueCount, dueItems] = await Promise.all([
+      getDueReviewCount(userId, certificationId),
+      getDueReviewItems(userId, certificationId, { limit: targetQuestionCount }),
+    ]);
+  }
   const dueQuestionIds = dueItems.map((item) => item.questionId);
 
   const weakCandidates = await selectWeakObjectiveQuestions(
@@ -323,12 +386,10 @@ async function buildAndPersistSession(
   );
   const weakQuestionIds = weakCandidates.map((c) => c.questionId);
 
-  const newCandidates = await selectNewQuestions(
-    userId,
-    certificationId,
-    [...dueQuestionIds, ...weakQuestionIds],
-    CANDIDATE_POOL_LIMIT,
-  );
+  // Rückstau-Abbau: solange mehr fällig ist als das Tageslimit, pausieren neue Karten.
+  const newCandidates = newCardsPaused
+    ? []
+    : await selectNewQuestions(userId, certificationId, [...dueQuestionIds, ...weakQuestionIds], CANDIDATE_POOL_LIMIT);
 
   let composition: SessionComposition = computeSessionComposition(
     targetQuestionCount,
@@ -372,6 +433,16 @@ async function buildAndPersistSession(
     })),
   ];
 
+  // PSRP-HR Phase 7: höchstens 10 % versteckte Abfragen, nie direkt hintereinander, gleiche Darstellung wie normale Fragen.
+  const probes = await selectProbes(userId, certificationId, items.length, now);
+  if (probes.length > 0) {
+    const withProbes = interleaveProbes(
+      items,
+      probes.map((p) => ({ category: "review" as const, referenceType: "question" as const, referenceId: p.questionId })),
+    );
+    items.splice(0, items.length, ...withProbes);
+  }
+
   // "Bei zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen":
   // nur wenn die drei Fragen-Kategorien zusammen das Tagesziel verfehlen.
   const fallbackCount = computeLessonFallbackCount(targetQuestionCount, composition);
@@ -390,6 +461,7 @@ async function buildAndPersistSession(
     .insert(studySessions)
     .values({ userId, certificationId, status: "planned", goalType, goalValue, energyLevel, isComeback })
     .returning();
+  await persistSessionPlan(session.id, userId, plan, now);
 
   if (items.length > 0) {
     await db.insert(studySessionItems).values(
@@ -425,6 +497,7 @@ async function selectWeakObjectiveQuestions(
         eq(objectiveProgress.status, "NEEDS_REMEDIATION"),
         eq(domains.certificationId, certificationId),
         eq(questions.stale, false),
+        eq(questions.probeOnly, false),
         excludeQuestionIds.length > 0 ? notInArray(questions.id, excludeQuestionIds) : undefined,
       ),
     )
@@ -453,6 +526,7 @@ async function selectNewQuestions(
       and(
         eq(domains.certificationId, certificationId),
         eq(questions.stale, false),
+        eq(questions.probeOnly, false),
         isNull(reviewItems.id),
         excludeQuestionIds.length > 0 ? notInArray(questions.id, excludeQuestionIds) : undefined,
       ),
@@ -562,7 +636,12 @@ export async function completeStudySession(
     );
     await recordReviewOutcomes(
       userId,
-      results.map((r) => ({ questionId: r.questionId, isCorrect: r.isCorrect })),
+      results.map((r) => ({
+        questionId: r.questionId,
+        isCorrect: r.isCorrect,
+        confidence: confidenceByItemId.get(r.itemId) ?? null,
+      })),
+      { sessionId },
     );
   }
 

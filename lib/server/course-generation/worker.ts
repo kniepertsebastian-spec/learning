@@ -11,6 +11,7 @@ import {
   type CourseGenerationJob,
   type CourseGenerationObjectiveRow,
 } from "./job-service";
+import { tagConceptsAfterGeneration } from "@/lib/server/psrp/concepts";
 import { importCoursePackage, suggestCourseSlug } from "./importer";
 import { AiAccessUnavailableError, clientForOrganization } from "@/lib/server/internal-courses/ai-client";
 import { LESSONS_MODEL } from "@/lib/claude";
@@ -403,6 +404,8 @@ export async function publishPreparedCourseGenerationPackage(jobId: string): Pro
       message: `Veröffentlicht: ${imported.slug} (${imported.objectiveCount} Objective(s), ${imported.questionCount} Frage(n)).`,
       completedAt: new Date(),
     });
+    // PSRP-HR Phase 7.1: Konzepte und Abfragevarianten ergänzen (Hintergrund, best effort).
+    tagConceptsAfterGeneration(imported.certificationId, job.organizationId);
   } catch (error) {
     await handleJobFailure(jobId, error);
   }
@@ -805,6 +808,8 @@ export async function executeCourseGenerationJob(
       message: `Veröffentlicht: ${imported.slug} (${imported.objectiveCount} Objective(s), ${imported.questionCount} Frage(n)).`,
       completedAt: new Date(),
     });
+    // PSRP-HR Phase 7.1: Konzepte und Abfragevarianten ergänzen (Hintergrund, best effort).
+    tagConceptsAfterGeneration(imported.certificationId, job.organizationId);
   } catch (error) {
     await handleJobFailure(jobId, error);
   }

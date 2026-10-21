@@ -2,6 +2,7 @@ import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { domains, lessons, objectives, questions, reviewItems, sections, simulationResults } from "@/lib/server/db/schema";
 import { extractSimulationSources, parseSimulation } from "@/lib/markdown/simulation";
+import { recordInterleavedTask } from "@/lib/server/psrp/implicit";
 import type { Localized } from "@/lib/types";
 
 /** Ab so vielen Hilfen (Tipp, Lösung, Fehlversuche) gilt eine Simulation als „mit Mühe gelöst“ und kommt in die Wiederholung. */
@@ -52,6 +53,8 @@ export async function recordSimulationSolved(userId: string, sectionId: string, 
     });
 
   const struggled = h >= STRUGGLE_HELPS;
+  // PSRP-HR Phase 6: referenzierte Items bekommen einen impliziten Review (mit viel Hilfe = nicht souverän gelöst).
+  await recordInterleavedTask({ userId, taskType: "simulation", taskRef: `${sectionId}:${simIndex}`, solved: !struggled, now });
   let pulledForward = 0;
   if (struggled) {
     const questionIds = (await db.select({ id: questions.id }).from(questions).where(and(eq(questions.objectiveId, row.objectiveId), eq(questions.stale, false)))).map((q) => q.id);

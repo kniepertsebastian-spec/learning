@@ -82,6 +82,7 @@ export async function PUT(
     activeDays: Array.isArray(raw.activeDays) ? (raw.activeDays as number[]) : [],
     preferredLocale:
       raw.preferredLocale === "de" || raw.preferredLocale === "en" ? raw.preferredLocale : null,
+    lightWeekdays: Array.isArray(raw.lightWeekdays) ? (raw.lightWeekdays as number[]) : undefined,
   };
 
   try {

@@ -109,7 +109,11 @@ export async function recordSectionQuizAttempt(
   await ObjectiveProgressService.updateProgressForQuizAttempt(userId, attemptId);
   await recordReviewOutcomes(
     userId,
-    results.map((r) => ({ questionId: r.questionId, isCorrect: r.isCorrect })),
+    results.map((r) => ({
+      questionId: r.questionId,
+      isCorrect: r.isCorrect,
+      confidence: answers.find((a) => a.questionId === r.questionId)?.confidence ?? null,
+    })),
   );
 
   return { score, results, attemptId };

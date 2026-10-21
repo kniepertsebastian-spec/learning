@@ -71,6 +71,7 @@ export async function generateFinalExam(
           // Quellenversion inhaltlich verändert) nicht mehr in neue Prüfungen
           // aufnehmen.
           eq(questions.stale, false),
+          eq(questions.probeOnly, false),
           // Exclude already answered questions
           ...(!answeredIds.size ? [] : [notInArray(questions.id, Array.from(answeredIds))]),
         ),

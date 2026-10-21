@@ -1,105 +1,62 @@
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { domains, objectives, questions, reviewItems } from "@/lib/server/db/schema";
-import type { ReviewOutcome } from "@/lib/server/db/schema";
-import { computeNextReview, type ReviewState } from "./scheduler";
+import type { AnswerConfidence } from "@/lib/types";
+import { probeVariantsByQuestion, recordProbeAnswer } from "@/lib/server/psrp/probes";
+import { ratingFromOutcome, recordRatedReviews } from "@/lib/server/psrp/service";
 
 export interface ReviewOutcomeInput {
   questionId: string;
   isCorrect: boolean;
+  confidence?: AnswerConfidence | null;
+  responseTimeMs?: number | null;
 }
 
 /**
- * R2.2 (roadmap.md): aktualisiert (oder legt an) den Review-Zustand für jede
- * beantwortete Frage eines Nutzers - aufgerufen nach dem Auswerten eines
- * Quiz- oder Prüfungsversuchs (siehe app/api/sections/[id]/attempt,
- * app/api/exams/[certId]/[examId]/attempt). Fragen ohne eine questions-Zeile
- * (z. B. ad-hoc generierte Remediation-Fragen) werden übersprungen, nicht
- * verworfen mit Fehler - review_items.questionId ist eine echte FK.
- *
- * Ein Bulk-Upsert statt einer Schleife aus Einzelqueries, analog zu den
- * bereits bestehenden Bulk-Inserts für quizAnswers/examQuestions - wichtig
- * bei einer 90-Fragen-Abschlussprüfung. Wie der Rest der R1/R2-DB-Schicht
- * in dieser Sandbox mangels laufender Postgres-Instanz nicht End-to-End
- * getestet (siehe derselbe Hinweis in blueprint-approval.ts) - die reine
- * Scheduling-Logik ist vollständig in scheduler.test.ts abgedeckt.
+ * Schreibt die beantworteten Fragen eines Quiz-, Prüfungs- oder Session-Versuchs als Reviews
+ * (PSRP-HR: Review-Log + FSRS-Zustand, siehe lib/server/psrp/service.ts). Fragen ohne
+ * questions-Zeile (ad-hoc generierte Remediation-Fragen) werden übersprungen.
  */
 export async function recordReviewOutcomes(
   userId: string,
   results: ReviewOutcomeInput[],
+  options: { sessionId?: string; rTarget?: number } = {},
 ): Promise<void> {
   if (results.length === 0) return;
   const db = getDb();
-
-  // Dedupliziert auf die letzte Antwort je Frage - ein Bulk-Upsert darf
-  // dieselbe Konfliktzeile nicht zweimal in einer Anweisung treffen.
-  const dedupedResults = [...new Map(results.map((r) => [r.questionId, r])).values()];
-  const questionIds = dedupedResults.map((r) => r.questionId);
-
-  const [questionRows, existingRows] = await Promise.all([
-    db
-      .select({ id: questions.id, difficulty: questions.difficulty })
-      .from(questions)
-      .where(inArray(questions.id, questionIds)),
-    db
-      .select()
-      .from(reviewItems)
-      .where(and(eq(reviewItems.userId, userId), inArray(reviewItems.questionId, questionIds))),
-  ]);
-
-  const difficultyByQuestion = new Map(questionRows.map((q) => [q.id, q.difficulty]));
-  const existingByQuestion = new Map(existingRows.map((r) => [r.questionId, r]));
-  const now = new Date();
-
-  const rows = dedupedResults
-    .filter((result) => difficultyByQuestion.has(result.questionId))
-    .map((result) => {
-      const existing = existingByQuestion.get(result.questionId);
-      const previous: ReviewState | null = existing
-        ? {
-            repetitions: existing.repetitions,
-            easeFactor: Number(existing.easeFactor),
-            intervalDays: Number(existing.intervalDays),
-          }
-        : null;
-
-      const next = computeNextReview(
-        previous,
-        result.isCorrect ? "correct" : "incorrect",
-        difficultyByQuestion.get(result.questionId) ?? null,
-        now,
-      );
-
-      return {
-        userId,
-        questionId: result.questionId,
-        dueAt: next.dueAt,
-        intervalDays: next.intervalDays.toString(),
-        repetitions: next.repetitions,
-        easeFactor: next.easeFactor.toString(),
-        lastOutcome: (result.isCorrect ? "correct" : "incorrect") as ReviewOutcome,
-        lastAnsweredAt: now,
-        updatedAt: now,
-      };
+  // Dedupliziert auf die letzte Antwort je Frage.
+  const deduped = [...new Map(results.map((r) => [r.questionId, r])).values()];
+  // Abfragevarianten (PSRP-HR Phase 7) werden als Review des Original-Items mit Messwerten erfasst.
+  const variants = await probeVariantsByQuestion(deduped.map((r) => r.questionId));
+  for (const result of deduped.filter((r) => variants.has(r.questionId))) {
+    await recordProbeAnswer({
+      userId,
+      variant: variants.get(result.questionId)!,
+      isCorrect: result.isCorrect,
+      confidence: result.confidence,
+      responseTimeMs: result.responseTimeMs,
+      sessionId: options.sessionId,
     });
+  }
+  const regular = deduped.filter((r) => !variants.has(r.questionId));
+  if (regular.length === 0) return;
+  const known = await db
+    .select({ id: questions.id })
+    .from(questions)
+    .where(inArray(questions.id, regular.map((r) => r.questionId)));
+  const knownIds = new Set(known.map((q) => q.id));
 
-  if (rows.length === 0) return;
-
-  await db
-    .insert(reviewItems)
-    .values(rows)
-    .onConflictDoUpdate({
-      target: [reviewItems.userId, reviewItems.questionId],
-      set: {
-        dueAt: sql`excluded.due_at`,
-        intervalDays: sql`excluded.interval_days`,
-        repetitions: sql`excluded.repetitions`,
-        easeFactor: sql`excluded.ease_factor`,
-        lastOutcome: sql`excluded.last_outcome`,
-        lastAnsweredAt: sql`excluded.last_answered_at`,
-        updatedAt: sql`excluded.updated_at`,
-      },
-    });
+  await recordRatedReviews(
+    userId,
+    regular
+      .filter((r) => knownIds.has(r.questionId))
+      .map((r) => ({
+        itemId: r.questionId,
+        rawRating: ratingFromOutcome(r.isCorrect, r.confidence),
+        responseTimeMs: r.responseTimeMs ?? null,
+      })),
+    options,
+  );
 }
 
 export interface DueReviewItem {
