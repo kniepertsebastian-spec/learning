@@ -22,6 +22,8 @@ type Ctx = {
   /** Meldet eine gelöste Runde (`helps` = Hilfen); gibt an, ob die Wiederholungsfragen vorgezogen wurden. */
   reportSolved: (spec: string, helps: number) => Promise<{ struggled: boolean } | null>;
   headings: string[];
+  /** Position der Simulation in der Lektion (0-basiert, -1 unbekannt): für Sprungmarken wie #simulation-2. */
+  indexOf: (spec: string) => number;
 };
 
 const LessonSimulationsContext = React.createContext<Ctx | null>(null);
@@ -93,7 +95,8 @@ export function LessonSimulationsProvider({
     return () => window.clearTimeout(id);
   }, [open, target]);
 
-  const value = React.useMemo<Ctx>(() => ({ solved, simCount: sources.length, openText, reportSolved, headings }), [solved, sources.length, openText, reportSolved, headings]);
+  const indexOf = React.useCallback((spec: string) => simulationIndex(sources, spec), [sources]);
+  const value = React.useMemo<Ctx>(() => ({ solved, simCount: sources.length, openText, reportSolved, headings, indexOf }), [solved, sources.length, openText, reportSolved, headings, indexOf]);
 
   return (
     <LessonSimulationsContext.Provider value={value}>

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, objectives, sections, lessons, lessonCompletions, objectiveProgress } from "@/lib/server/db/schema";
@@ -34,6 +34,9 @@ import { ReadinessCard } from "@/components/ReadinessCard";
 interface ProgressData {
   [key: string]: { masteryScore: number; status: string };
 }
+
+/** Eine Simulation ist ein Codeblock ```simulation (bzw. ~~~simulation); das Wort allein im Text zählt nicht. */
+const SIMULATION_FENCE = "(`{3,}|~{3,}) *simulation";
 
 export default async function CertDetailPage({
   params,
@@ -79,6 +82,11 @@ export default async function CertDetailPage({
   const [withCheatSheet] =
     sectionIds.length > 0
       ? await db.select({ id: lessons.id }).from(lessons).where(and(inArray(lessons.sectionId, sectionIds), isNotNull(lessons.cheatSheet))).limit(1)
+      : [];
+  // Gibt es Simulationen? Dann führt oben ein Link zur Simulations-Übersicht.
+  const [withSimulations] =
+    sectionIds.length > 0
+      ? await db.select({ id: lessons.id }).from(lessons).where(and(inArray(lessons.sectionId, sectionIds), sql`${lessons.content}::text ~ ${SIMULATION_FENCE}`)).limit(1)
       : [];
   const lessonRows =
     sectionIds.length > 0
@@ -251,6 +259,15 @@ export default async function CertDetailPage({
                 data-testid="cheatsheets-link"
               >
                 {locale === "de" ? "Merkzettel" : "Cheat sheets"}
+              </Link>
+            )}
+            {withSimulations && (
+              <Link
+                href={`/cert/${slug}/simulations`}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
+                data-testid="simulations-link"
+              >
+                {locale === "de" ? "Simulationen" : "Simulations"}
               </Link>
             )}
             {hasExam && (

@@ -10,7 +10,7 @@ import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, questions, reviewItems, sections, users } from "@/lib/server/db/schema";
 import { extractSimulationSources, simulationIndex, stripSimulations } from "@/lib/markdown/simulation";
 import { processSyncEvents } from "@/lib/server/sync/service";
-import { listSimulationProgress, pickPracticeSimulation, recordSimulationSolved, SimulationNotFoundError } from "./service";
+import { listCourseSimulations, listSimulationProgress, pickPracticeSimulation, recordSimulationSolved, SimulationNotFoundError } from "./service";
 
 const SIM = '```simulation\n{"type":"terminal","title":"T","scenario":"S","steps":[{"goal":"g","accept":["a"],"output":"","hint":"h"}],"success":"ok"}\n```';
 const TEXT = `## Einleitung\n\nText\n\n${SIM}\n\n## Ende\n\nMehr`;
@@ -55,8 +55,17 @@ run("Simulationsfortschritt (echte DB)", () => {
     userIds.push(u.id);
     const later = new Date(Date.now() + 10 * 86400_000);
     await d.insert(reviewItems).values({ userId: u.id, questionId: q.id, dueAt: later });
-    return { sectionId: sec.id, userId: u.id, questionId: q.id };
+    return { sectionId: sec.id, userId: u.id, questionId: q.id, certId: c.id };
   }
+
+  it("Übersicht je Kurs: alle Simulationen mit Stand, ohne Anmeldung alle offen", async () => {
+    const { sectionId, userId, certId } = await setup();
+    expect(await listCourseSimulations(certId, null)).toMatchObject([{ sectionId, number: 1, type: "terminal", title: { de: "T", en: "T" }, status: "open", solves: 0 }]);
+    await recordSimulationSolved(userId, sectionId, 0, 3);
+    expect((await listCourseSimulations(certId, userId))[0]).toMatchObject({ status: "struggled", bestHelps: 3, solves: 1 });
+    await recordSimulationSolved(userId, sectionId, 0, 0);
+    expect((await listCourseSimulations(certId, userId))[0]).toMatchObject({ status: "solved", bestHelps: 0, solves: 2 });
+  });
 
   it("Praxisaufgabe für die Übungssitzung: ungelöst oder mühsam gelöst, sicher gelöste nicht", async () => {
     const { sectionId, userId, questionId } = await setup();

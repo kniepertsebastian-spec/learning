@@ -48,8 +48,11 @@ function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () =>
   const Icon = ICONS[sim.type];
   const lesson = useLessonSimulations();
   const kind = { terminal: t.lesson_blocks.simTerminal, decision: t.lesson_blocks.simDecision, config: t.lesson_blocks.simConfig }[sim.type];
+  const meta = React.useContext(SimMeta);
+  // Sprungmarke für die Simulations-Übersicht des Kurses (/cert/…/simulations → Lektion#simulation-2).
+  const index = lesson && meta ? lesson.indexOf(meta.spec) : -1;
   return (
-    <section className="my-4 rounded-2xl border border-accent-border bg-surface-inset p-4 sm:p-5" data-testid="simulation-block" data-sim-type={sim.type} aria-label={`${kind}: ${sim.title}`}>
+    <section id={index >= 0 ? `simulation-${index + 1}` : undefined} className="my-4 scroll-mt-24 rounded-2xl border border-accent-border bg-surface-inset p-4 sm:p-5" data-testid="simulation-block" data-sim-type={sim.type} aria-label={`${kind}: ${sim.title}`}>
       <header className="mb-3 flex flex-wrap items-center gap-2.5">
         <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-accent-soft text-link" aria-hidden="true">
           <Icon className="h-[18px] w-[18px]" />
