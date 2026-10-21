@@ -1888,6 +1888,8 @@ export const practiceTasks = pgTable(
       .references(() => certifications.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     description: text("description"),
+    /** Optional: Lernziel, dessen Wiederholungsfragen die Aufgabe prüft (PSRP-HR Phase 6, implizite Reviews). */
+    objectiveId: uuid("objective_id").references(() => objectives.id, { onDelete: "set null" }),
     createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
@@ -1915,6 +1917,8 @@ export const practiceTaskSubmissions = pgTable(
     reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     reviewerNote: text("reviewer_note"),
+    /** Wann die Entscheidung in die persönliche Wiederholungsplanung der abgebenden Person eingeflossen ist (Lernseite). */
+    learnedAt: timestamp("learned_at", { withTimezone: true }),
   },
   (table) => [
     check("practice_task_submissions_status_check", sql`${table.status} in ('submitted', 'confirmed', 'rework')`),

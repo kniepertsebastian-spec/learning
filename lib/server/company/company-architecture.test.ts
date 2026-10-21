@@ -31,6 +31,9 @@ const ALLOWED_TABLES = new Set([
   // Praxisaufgaben und ihre Abgaben (von der Firma verwaltet, Bestätigung durch den Mentor)
   "practiceTasks",
   "practiceTaskSubmissions",
+  // Kursstruktur für die Lernziel-Auswahl der Praxisaufgaben (Domains und Lernziele, keine Lerndaten)
+  "domains",
+  "objectives",
   // Onboarding-Pläne (benötigte Lernpfade, Mentor) und der Stand je Person
   "onboardingPlans",
   "onboardingPlanCourses",

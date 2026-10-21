@@ -1,9 +1,11 @@
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
 import {
   certifications,
   companyAssignments,
+  domains,
+  objectives,
   practiceTaskSubmissions,
   practiceTasks,
   users,
@@ -25,6 +27,7 @@ export const MAX_NOTE = 1000;
 
 export class InvalidTaskError extends Error {}
 export class UnknownPathError extends Error {}
+export class UnknownObjectiveError extends Error {}
 export class TaskNotFoundError extends Error {}
 export class NotAssignedError extends Error {}
 export class AlreadyConfirmedError extends Error {}
@@ -49,6 +52,8 @@ export async function createPracticeTask(input: {
   certificationId: string;
   title: string;
   description?: string | null;
+  /** Optional: Lernziel des Lernpfads, dessen Fragen die Aufgabe prüft. */
+  objectiveId?: string | null;
 }): Promise<{ id: string }> {
   const title = clean(input.title, MAX_TASK_TITLE);
   if (!title || title.length < 3) throw new InvalidTaskError();
@@ -57,9 +62,21 @@ export async function createPracticeTask(input: {
   const paths = await listAssignableLearningPaths(input.organizationId);
   if (!paths.some((p) => p.id === input.certificationId)) throw new UnknownPathError();
 
+  let objectiveId: string | null = null;
+  if (input.objectiveId) {
+    const [objective] = await getDb()
+      .select({ id: objectives.id })
+      .from(objectives)
+      .innerJoin(domains, eq(domains.id, objectives.domainId))
+      .where(and(eq(objectives.id, input.objectiveId), eq(domains.certificationId, input.certificationId)))
+      .limit(1);
+    if (!objective) throw new UnknownObjectiveError();
+    objectiveId = objective.id;
+  }
+
   const [row] = await getDb()
     .insert(practiceTasks)
-    .values({ organizationId: input.organizationId, certificationId: input.certificationId, title, description, createdByUserId: input.userId })
+    .values({ organizationId: input.organizationId, certificationId: input.certificationId, title, description, objectiveId, createdByUserId: input.userId })
     .returning({ id: practiceTasks.id });
   await recordAuditEvent({
     actorUserId: input.userId,
@@ -229,7 +246,7 @@ export async function submitPracticeTask(input: { organizationId: string; userId
       .for("update")
       .limit(1);
     if (existing?.status === "confirmed") throw new AlreadyConfirmedError();
-    const fresh = { status: "submitted" as const, learnerNote: note, submittedAt: new Date(), reviewedByUserId: null, reviewedAt: null, reviewerNote: null };
+    const fresh = { status: "submitted" as const, learnerNote: note, submittedAt: new Date(), reviewedByUserId: null, reviewedAt: null, reviewerNote: null, learnedAt: null };
     if (existing) {
       await tx.update(practiceTaskSubmissions).set(fresh).where(eq(practiceTaskSubmissions.id, existing.id));
     } else {
@@ -296,4 +313,18 @@ export async function reviewPracticeSubmission(input: {
     }).catch(logAuditFailure);
   }
   return found;
+}
+
+/** Lernziele je Lernpfad für die Auswahl bei der Aufgabe (nur Kursstruktur, keine Lerndaten). */
+export async function listObjectivesForPaths(certificationIds: string[]): Promise<Record<string, Array<{ id: string; code: string; title: string }>>> {
+  if (certificationIds.length === 0) return {};
+  const rows = await getDb()
+    .select({ certificationId: domains.certificationId, id: objectives.id, code: objectives.code, title: objectives.title })
+    .from(objectives)
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .where(inArray(domains.certificationId, certificationIds))
+    .orderBy(asc(domains.orderNum), asc(objectives.code));
+  const out: Record<string, Array<{ id: string; code: string; title: string }>> = {};
+  for (const r of rows) (out[r.certificationId] ??= []).push({ id: r.id, code: r.code, title: r.title });
+  return out;
 }

@@ -14,6 +14,11 @@ import {
 /**
  * Analytics service for tracking learner behavior and content effectiveness
  */
+/** Unter 60 % Ø-Mastery braucht ein Lernziel Aufmerksamkeit - aber nur, wenn überhaupt jemand dazu gelernt hat (ohne Lernende ist der Schnitt 0, kein Befund). */
+export function needsMasteryReview(learnerCount: number, avgMastery: number): boolean {
+  return learnerCount > 0 && avgMastery < 60;
+}
+
 export class AnalyticsService {
   /**
    * Gets learner analytics for a user
@@ -192,7 +197,7 @@ export class AnalyticsService {
         title: obj.title,
         avgMastery,
         learnerCount: progress.length,
-        needsReview: avgMastery < 60,
+        needsReview: needsMasteryReview(progress.length, avgMastery),
       });
     }
 
