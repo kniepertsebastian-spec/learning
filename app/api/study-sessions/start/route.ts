@@ -18,6 +18,10 @@ const startSessionSchema = z.object({
   /** R2 (roadmap.md): "optionaler Energiezustand" - freiwillig, wird beim
    * Fehlen einfach nicht berücksichtigt (siehe buildAndPersistSession). */
   energyLevel: z.enum(["low", "medium", "high"]).optional(),
+  /** PSRP-HR Phase 4: Check-in, jedes Feld überspringbar (fehlende Werte werden ergänzt und als imputed markiert). */
+  checkin: z
+    .object({ energyLevel: z.number().int().min(1).max(5).optional(), hadWorkday: z.boolean().optional() })
+    .optional(),
 });
 
 function isUniqueViolation(error: unknown): boolean {
@@ -43,7 +47,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
-  const { certificationId, goalValue, goalType, energyLevel } = parsed.data;
+  const { certificationId, goalValue, goalType, energyLevel, checkin } = parsed.data;
   if (await isCertificationHidden(session.user.id, certificationId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -58,7 +62,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const built = await startStudySession(session.user.id, certificationId, goalValue, goalType, energyLevel);
+    const built = await startStudySession(session.user.id, certificationId, goalValue, goalType, energyLevel, checkin);
     return NextResponse.json({ session: built }, { status: 201 });
   } catch (error) {
     if (isUniqueViolation(error)) {

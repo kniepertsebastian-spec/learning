@@ -19,6 +19,13 @@ import {
   type StudySessionStatus,
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
+import {
+  buildDailyQueue,
+  persistSessionPlan,
+  planSession,
+  type CheckinInput,
+} from "@/lib/server/psrp/planning-service";
+import { usesPlanning } from "@/lib/server/psrp/evaluation";
 import { getDueReviewCount, getDueReviewItems, recordReviewOutcomes } from "@/lib/server/review/service";
 import {
   computeLessonFallbackCount,
@@ -154,8 +161,9 @@ export async function startStudySession(
   goalValue: number,
   goalType: StudyGoalType = "minutes",
   energyLevel?: EnergyLevel,
+  checkin?: CheckinInput,
 ): Promise<StudySessionSummary> {
-  return buildAndPersistSession(userId, certificationId, { goalType, goalValue, energyLevel });
+  return buildAndPersistSession(userId, certificationId, { goalType, goalValue, energyLevel, checkin });
 }
 
 async function countSessionItems(sessionId: string): Promise<number> {
@@ -273,9 +281,10 @@ export async function getStudySessionWithContent(
 async function buildAndPersistSession(
   userId: string,
   certificationId: string,
-  goalOverride?: { goalType: StudyGoalType; goalValue: number; energyLevel?: EnergyLevel },
+  goalOverride?: { goalType: StudyGoalType; goalValue: number; energyLevel?: EnergyLevel; checkin?: CheckinInput },
 ): Promise<StudySessionSummary> {
   const db = getDb();
+  const now = new Date();
 
   const [profile] = await db
     .select({
@@ -289,8 +298,22 @@ async function buildAndPersistSession(
 
   const goalType = goalOverride?.goalType ?? profile?.dailyGoalType ?? DEFAULT_GOAL_TYPE;
   const goalValue = goalOverride?.goalValue ?? profile?.dailyGoalValue ?? DEFAULT_GOAL_VALUE;
-  const energyLevel = goalOverride?.energyLevel ?? null;
-  const targetQuestionCount = estimateTargetQuestionCount(goalType, goalValue);
+  // PSRP-HR: Check-in (1-5) hat Vorrang vor der groben Energie-Auswahl; beide landen in energyLevel.
+  const checkinEnergy = goalOverride?.checkin?.energyLevel;
+  const energyLevel: EnergyLevel | null =
+    checkinEnergy !== undefined ? (checkinEnergy <= 2 ? "low" : checkinEnergy >= 4 ? "high" : "medium") : (goalOverride?.energyLevel ?? null);
+
+  // PSRP-HR Planungsschicht (Gruppe vanilla: wie bisher, nur FSRS-Fälligkeit).
+  const plan = await planSession({
+    userId,
+    certificationId,
+    now,
+    timeBudgetMin: goalType === "minutes" ? goalValue : Math.max(1, Math.round(estimateSessionMinutes(goalValue))),
+    checkin: goalOverride?.checkin,
+  });
+  const planned = usesPlanning(plan.group);
+  const targetQuestionCount =
+    planned && goalType === "minutes" ? plan.dailyLimit : estimateTargetQuestionCount(goalType, goalValue);
 
   // "Sanfter Comeback-Modus nach Pause": updatedAt statt completedAt, damit
   // sowohl eine abgeschlossene als auch eine "heute ausgesetzte" Session als
@@ -309,10 +332,20 @@ async function buildAndPersistSession(
     .limit(1);
   const isComeback = isComebackSession(lastActivity?.updatedAt ?? null);
 
-  const [dueCount, dueItems] = await Promise.all([
-    getDueReviewCount(userId, certificationId),
-    getDueReviewItems(userId, certificationId, { limit: targetQuestionCount }),
-  ]);
+  let dueCount: number;
+  let dueItems: Array<{ questionId: string }>;
+  let newCardsPaused = false;
+  if (planned) {
+    const queue = await buildDailyQueue({ userId, certificationId, now, limit: targetQuestionCount, phi: plan.phi });
+    dueCount = queue.totalDue;
+    dueItems = queue.queue.map((c) => ({ questionId: c.itemId }));
+    newCardsPaused = queue.newCardsPaused;
+  } else {
+    [dueCount, dueItems] = await Promise.all([
+      getDueReviewCount(userId, certificationId),
+      getDueReviewItems(userId, certificationId, { limit: targetQuestionCount }),
+    ]);
+  }
   const dueQuestionIds = dueItems.map((item) => item.questionId);
 
   const weakCandidates = await selectWeakObjectiveQuestions(
@@ -323,12 +356,10 @@ async function buildAndPersistSession(
   );
   const weakQuestionIds = weakCandidates.map((c) => c.questionId);
 
-  const newCandidates = await selectNewQuestions(
-    userId,
-    certificationId,
-    [...dueQuestionIds, ...weakQuestionIds],
-    CANDIDATE_POOL_LIMIT,
-  );
+  // Rückstau-Abbau: solange mehr fällig ist als das Tageslimit, pausieren neue Karten.
+  const newCandidates = newCardsPaused
+    ? []
+    : await selectNewQuestions(userId, certificationId, [...dueQuestionIds, ...weakQuestionIds], CANDIDATE_POOL_LIMIT);
 
   let composition: SessionComposition = computeSessionComposition(
     targetQuestionCount,
@@ -390,6 +421,7 @@ async function buildAndPersistSession(
     .insert(studySessions)
     .values({ userId, certificationId, status: "planned", goalType, goalValue, energyLevel, isComeback })
     .returning();
+  await persistSessionPlan(session.id, userId, plan, now);
 
   if (items.length > 0) {
     await db.insert(studySessionItems).values(

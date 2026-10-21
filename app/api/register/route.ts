@@ -1,3 +1,4 @@
+import { getEvaluationGroup } from "@/lib/server/psrp/evaluation";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -98,6 +99,8 @@ export async function POST(request: Request) {
         emailVerifiedAt: verificationRequired ? null : new Date(),
       })
       .returning({ id: users.id, email: users.email, name: users.name });
+    // PSRP-HR Phase 5: stabile Evaluationsgruppe bei der Registrierung festlegen.
+    await getEvaluationGroup(user.id).catch((err) => console.error("Gruppenzuteilung fehlgeschlagen:", err));
 
     if (body.accountType === "company") {
       if (verificationRequired) {

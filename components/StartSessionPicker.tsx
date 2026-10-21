@@ -2,16 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BatteryFull, BatteryLow, BatteryMedium, Loader2, Sparkles, Zap } from "lucide-react";
-import type { EnergyLevel, Locale } from "@/lib/types";
+import { Loader2, Sparkles, Zap } from "lucide-react";
+import type { Locale } from "@/lib/types";
 
 const TIME_BUDGETS = [2, 5, 10, 20];
-
-const ENERGY_OPTIONS: Array<{ level: EnergyLevel; Icon: typeof BatteryLow; label: Record<Locale, string> }> = [
-  { level: "low", Icon: BatteryLow, label: { de: "Wenig Energie", en: "Low energy" } },
-  { level: "medium", Icon: BatteryMedium, label: { de: "Geht so", en: "Okay" } },
-  { level: "high", Icon: BatteryFull, label: { de: "Fit", en: "Energized" } },
-];
 
 /**
  * R2 (roadmap.md, neue Fassung): "Nutzer wählt 2, 5, 10 oder 20 Minuten" -
@@ -41,7 +35,8 @@ export function StartSessionPicker({
   const router = useRouter();
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [energy, setEnergy] = useState<EnergyLevel | null>(null);
+  const [energy, setEnergy] = useState<number | null>(null);
+  const [workday, setWorkday] = useState<boolean | null>(null);
 
   async function handleStart(key: string, goalType: "minutes" | "questions", goalValue: number) {
     if (starting !== null) return;
@@ -51,7 +46,7 @@ export function StartSessionPicker({
       const response = await fetch("/api/study-sessions/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ certificationId, goalValue, goalType, energyLevel: energy ?? undefined }),
+        body: JSON.stringify({ certificationId, goalValue, goalType, checkin: { energyLevel: energy ?? undefined, hadWorkday: workday ?? undefined } }),
       });
       if (!response.ok && response.status !== 409) {
         throw new Error(`Status ${response.status}`);
@@ -101,25 +96,45 @@ export function StartSessionPicker({
       </div>
 
       <p className="mb-1.5 mt-3 text-xs text-foreground/50">
-        {locale === "de" ? "Wie viel Energie hast du? (optional)" : "How much energy do you have? (optional)"}
+        {locale === "de" ? "Check-in (optional): Wie viel Energie hast du?" : "Check-in (optional): how much energy do you have?"}
       </p>
-      <div className="flex flex-wrap gap-1.5">
-        {ENERGY_OPTIONS.map(({ level, Icon, label }) => (
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={locale === "de" ? "Energie von 1 bis 5" : "Energy from 1 to 5"}>
+        {[1, 2, 3, 4, 5].map((level) => (
           <button
             key={level}
             type="button"
             onClick={() => setEnergy((current) => (current === level ? null : level))}
             disabled={starting !== null}
             aria-pressed={energy === level}
-            title={label[locale]}
-            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60 ${
+            title={level === 1 ? (locale === "de" ? "Erschöpft" : "Exhausted") : level === 5 ? (locale === "de" ? "Voller Energie" : "Full of energy") : String(level)}
+            className={`h-7 w-7 rounded-md border text-xs disabled:cursor-not-allowed disabled:opacity-60 ${
               energy === level
                 ? "border-accent bg-accent/10 text-link"
                 : "border-border bg-surface text-foreground/60 hover:border-accent/50"
             }`}
           >
-            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-            {label[locale]}
+            {level}
+          </button>
+        ))}
+      </div>
+      <p className="mb-1.5 mt-3 text-xs text-foreground/50">
+        {locale === "de" ? "Heute gearbeitet? (optional)" : "Worked today? (optional)"}
+      </p>
+      <div className="flex gap-1.5">
+        {([true, false] as const).map((value) => (
+          <button
+            key={String(value)}
+            type="button"
+            onClick={() => setWorkday((current) => (current === value ? null : value))}
+            disabled={starting !== null}
+            aria-pressed={workday === value}
+            className={`rounded-md border px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60 ${
+              workday === value
+                ? "border-accent bg-accent/10 text-link"
+                : "border-border bg-surface text-foreground/60 hover:border-accent/50"
+            }`}
+          >
+            {value ? (locale === "de" ? "Ja" : "Yes") : locale === "de" ? "Nein" : "No"}
           </button>
         ))}
       </div>

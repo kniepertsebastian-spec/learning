@@ -3,11 +3,15 @@
  * hält `review_items.due_at` für die bestehenden Leser (Dashboard, Bereitschaft) synchron.
  */
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, between, eq, inArray, sql } from "drizzle-orm";
 import type { AnswerConfidence } from "@/lib/types";
 import { getDb } from "@/lib/server/db/client";
 import {
+  domains,
   itemStates,
+  objectives,
+  questions,
+  studyProfiles,
   reviewItems,
   reviewLog,
   userFsrsParams,
@@ -16,7 +20,10 @@ import {
 } from "@/lib/server/db/schema";
 import { DEFAULT_PSRP_CONFIG } from "./config";
 import { scheduleReview, type ItemState, type RawRating } from "./fsrs";
-import { buildReviewLogRow } from "./review-log";
+import { getEvaluationGroup, usesPlanning } from "./evaluation";
+import { balanceInterval, clampIntervalToExam, dayKey, daysUntilExam, examAdjustedTarget } from "./planner";
+import { buildReviewLogRow, localTimeParts } from "./review-log";
+import { sessionRTarget } from "./planning-service";
 
 /** Rohes Rating aus Richtigkeit und (optionaler) Sicherheit der Antwort. */
 export function ratingFromOutcome(isCorrect: boolean, confidence?: AnswerConfidence | null): RawRating {
@@ -66,7 +73,12 @@ export async function recordRatedReviews(
   if (reviews.length === 0) return { sessionId };
   const db = getDb();
   const now = options.now ?? new Date();
-  const rTarget = options.rTarget ?? DEFAULT_PSRP_CONFIG.fsrs.rMax;
+  const group = await getEvaluationGroup(userId);
+  const planned = usesPlanning(group);
+  // Ziel-Retention: explizit, sonst die der Session (Planungsschicht), sonst Obergrenze des Korridors.
+  const sessionTarget = options.rTarget ?? (options.sessionId ? await sessionRTarget(options.sessionId) : null);
+  const baseTarget = sessionTarget ?? DEFAULT_PSRP_CONFIG.fsrs.rMax;
+  const DAY_MS = 86_400_000;
 
   await db.transaction(async (tx) => {
     const [user] = await tx.select({ timezone: users.timezone, ageRange: users.ageRange }).from(users).where(eq(users.id, userId)).limit(1);
@@ -78,16 +90,61 @@ export async function recordRatedReviews(
       .where(and(eq(itemStates.userId, userId), inArray(itemStates.itemId, itemIds)));
     const states = new Map<string, ItemState>(existing.map((row) => [row.itemId, rowToState(row)]));
 
+    // Planungsschicht: Prüfungsdatum und leichte Tage je Item (über den Kurs des Items).
+    const timeZone = user?.timezone ?? "UTC";
+    const itemContext = new Map<string, { examDate: Date | null; lightWeekdays: number[] }>();
+    const loadByDay = new Map<string, number>();
+    if (planned) {
+      const contexts = await tx
+        .select({ itemId: questions.id, examDate: studyProfiles.examDate, lightWeekdays: studyProfiles.lightWeekdays })
+        .from(questions)
+        .innerJoin(objectives, eq(objectives.id, questions.objectiveId))
+        .innerJoin(domains, eq(domains.id, objectives.domainId))
+        .leftJoin(
+          studyProfiles,
+          and(eq(studyProfiles.certificationId, domains.certificationId), eq(studyProfiles.userId, userId)),
+        )
+        .where(inArray(questions.id, itemIds));
+      for (const c of contexts) itemContext.set(c.itemId, { examDate: c.examDate, lightWeekdays: c.lightWeekdays ?? [] });
+      // Bereits geplante Last der kommenden Tage (Fenster um die zu erwartenden Fälligkeiten).
+      const horizon = new Date(now.getTime() + 400 * DAY_MS);
+      const loadRows = await tx
+        .select({ due: itemStates.due })
+        .from(itemStates)
+        .where(and(eq(itemStates.userId, userId), between(itemStates.due, now, horizon)));
+      for (const row of loadRows) loadByDay.set(dayKey(row.due, timeZone), (loadByDay.get(dayKey(row.due, timeZone)) ?? 0) + 1);
+    }
+
     const logRows: (typeof reviewLog.$inferInsert)[] = [];
     // Ein Review pro Item liegt im selben Moment; spätere Wiederholungen bekommen +1 ms,
     // damit die Reihenfolge im Log eindeutig bleibt.
     let offset = 0;
     for (const review of reviews) {
       const at = new Date(now.getTime() + offset++);
+      const context = itemContext.get(review.itemId);
+      const daysToExam = daysUntilExam(context?.examDate, at);
+      const rTarget = planned ? examAdjustedTarget(baseTarget, daysToExam) : baseTarget;
       const result = scheduleReview(states.get(review.itemId) ?? null, review.rawRating, at, rTarget, {
         weights: params?.weights ?? (user?.ageRange ? DEFAULT_PSRP_CONFIG.fsrs.ageRangeWeights[user.ageRange] : null) ?? null,
       });
-      states.set(review.itemId, result.state);
+      let state = result.state;
+      if (planned) {
+        // Nur die Fälligkeit wird verschoben; Stabilität und Schwierigkeit bleiben unverändert (Regel 1).
+        let interval = clampIntervalToExam(result.intervalDays, daysToExam);
+        interval = balanceInterval({
+          from: at,
+          intervalDays: interval,
+          loadByDay,
+          lightWeekdays: context?.lightWeekdays,
+          weekdayOf: (d) => localTimeParts(d, timeZone).weekday,
+          daysToExam,
+          timeZone,
+        });
+        state = { ...state, due: new Date(at.getTime() + interval * DAY_MS) };
+        const key = dayKey(state.due, timeZone);
+        loadByDay.set(key, (loadByDay.get(key) ?? 0) + 1);
+      }
+      states.set(review.itemId, state);
       logRows.push(
         buildReviewLogRow({
           userId,
