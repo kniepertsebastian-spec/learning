@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { lessons, questions, reviewItems, sections, simulationResults } from "@/lib/server/db/schema";
+import { domains, lessons, objectives, questions, reviewItems, sections, simulationResults } from "@/lib/server/db/schema";
 import { extractSimulationSources, parseSimulation } from "@/lib/markdown/simulation";
 import type { Localized } from "@/lib/types";
 
@@ -108,4 +108,76 @@ export async function pickPracticeSimulation(userId: string, questionIds: string
   for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const pick = top[h % top.length];
   return { sectionId: pick.sectionId, title: pick.title, content: pick.content, simIndex: pick.simIndex };
+}
+
+export type SimulationStatus = "open" | "struggled" | "solved";
+export type CourseSimulation = {
+  domain: string;
+  objectiveCode: string;
+  objectiveTitle: string;
+  sectionId: string;
+  sectionTitle: Localized<string>;
+  /** Position in der Lektion (1-basiert, wie die Sprungmarke #simulation-n). */
+  number: number;
+  type: "terminal" | "decision" | "config";
+  title: Localized<string>;
+  status: SimulationStatus;
+  bestHelps: number | null;
+  solves: number;
+};
+
+/**
+ * Alle Simulationen eines Kurses in Kursreihenfolge, mit dem Stand der Person (ohne Anmeldung alle „offen“). Titel je
+ * Sprache aus der jeweiligen Fassung der Lektion; fehlt dort die Simulation (Übersetzung weicht ab), gilt der deutsche.
+ */
+export async function listCourseSimulations(certificationId: string, userId: string | null): Promise<CourseSimulation[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      domain: domains.name,
+      objectiveCode: objectives.code,
+      objectiveTitle: objectives.title,
+      sectionId: sections.id,
+      sectionTitle: sections.title,
+      content: lessons.content,
+    })
+    .from(lessons)
+    .innerJoin(sections, eq(sections.id, lessons.sectionId))
+    .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .where(and(eq(domains.certificationId, certificationId), sql`${lessons.content}::text like '%simulation%'`))
+    .orderBy(asc(domains.orderNum), asc(objectives.code), asc(sections.orderNum));
+  if (rows.length === 0) return [];
+  const progress = userId
+    ? await db
+        .select({ sectionId: simulationResults.sectionId, simIndex: simulationResults.simIndex, bestHelps: simulationResults.bestHelps, solves: simulationResults.solves })
+        .from(simulationResults)
+        .where(and(eq(simulationResults.userId, userId), inArray(simulationResults.sectionId, rows.map((r) => r.sectionId))))
+    : [];
+  const byKey = new Map(progress.map((p) => [`${p.sectionId}:${p.simIndex}`, p]));
+
+  const out: CourseSimulation[] = [];
+  for (const r of rows) {
+    const de = extractSimulationSources(r.content.de).map(parseSimulation);
+    const en = extractSimulationSources(r.content.en).map(parseSimulation);
+    de.forEach((parsed, i) => {
+      if (!parsed.ok) return;
+      const other = en[i]?.ok ? en[i] : null;
+      const p = byKey.get(`${r.sectionId}:${i}`);
+      out.push({
+        domain: r.domain,
+        objectiveCode: r.objectiveCode,
+        objectiveTitle: r.objectiveTitle,
+        sectionId: r.sectionId,
+        sectionTitle: r.sectionTitle,
+        number: i + 1,
+        type: parsed.simulation.type,
+        title: { de: parsed.simulation.title, en: other && other.ok ? other.simulation.title : parsed.simulation.title },
+        status: !p ? "open" : p.bestHelps >= STRUGGLE_HELPS ? "struggled" : "solved",
+        bestHelps: p?.bestHelps ?? null,
+        solves: p?.solves ?? 0,
+      });
+    });
+  }
+  return out;
 }

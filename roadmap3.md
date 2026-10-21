@@ -107,6 +107,10 @@ gespeichert. Katalogkacheln zeigen die Kurzfassung.
 - **Wiederholung:** wer eine Simulation nur mit mindestens zwei Hilfen (Tipp, Lösung, Fehlversuche) löst, bekommt die
   bestehenden Wiederholungsfragen des Lernziels sofort fällig (es entstehen keine neuen Einträge) und einen Hinweis.
 
+**Übersicht je Kurs** (`/cert/[slug]/simulations`, Link „Simulationen“ auf der Kursseite, wenn es welche gibt): alle
+Simulationen nach Domain mit Typ, Lektion und eigenem Stand (offen, mit Mühe gelöst, gelöst), Filter, Fortschrittsbalken
+und „Nächste offene“. Ein Klick springt direkt zur Simulation in der Lektion (Sprungmarke `#simulation-n`).
+
 Nachgetragen: Übungssitzungen zeigen nach den Fragen eine Praxisaufgabe (Simulation aus denselben Lernzielen, ungelöst
 oder mühsam gelöst); im Offline-Reader gelöste Simulationen gehen über die Sync-Warteschlange.
 
