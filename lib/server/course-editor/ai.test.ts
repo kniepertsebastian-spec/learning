@@ -46,7 +46,7 @@ const lessonAi = (content: string, extra: Record<string, unknown> = {}) => ({ ti
 
 describe("Nachtrag „Was damit möglich ist“", () => {
   it("erkennt fehlenden Hinweis und Simulationen ohne Textverweise", () => {
-    const { review: _r, ...noReview } = decisionSim;
+    const noReview = { ...decisionSim, review: undefined };
     expect(lessonNeedsPossible("Text")).toEqual({ possible: true, review: false });
     expect(lessonNeedsPossible("Text\n\n> [!POSSIBLE]\n> Jetzt geht X.")).toEqual({ possible: false, review: false });
     expect(lessonNeedsPossible(`> [!POSSIBLE]\n> X\n\n\`\`\`simulation\n${JSON.stringify(noReview)}\n\`\`\``)).toEqual({ possible: false, review: true });
