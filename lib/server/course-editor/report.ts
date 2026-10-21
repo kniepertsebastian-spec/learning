@@ -13,7 +13,7 @@ import {
   sections,
   type SourceReport,
 } from "@/lib/server/db/schema";
-import { buildSourceReport, compareCoverage, type CoverageResult } from "@/lib/server/course-generation/coverage";
+import { baselineFor, buildSourceReport, compareCoverage, sourceChange, type CoverageResult, type SourceChange } from "@/lib/server/course-generation/coverage";
 import { fetchSources, SourceFetchError, type FetchedSource } from "@/lib/server/course-generation/sources";
 import { isHandsOn } from "@/lib/markdown/toc";
 import { editableCourse } from "./service";
@@ -53,6 +53,8 @@ export type CoverageView = {
   truncated: SourceReport["truncated"];
   /** Als Prüfungsleitfaden erkannte Quelle (vollständig gelesen). */
   primary: { title: string; url: string } | null;
+  /** Hat sich die Quelle seit der Kurserstellung (bzw. dem letzten bestätigten Stand) geändert? */
+  change: SourceChange | null;
   result: CoverageResult | null;
   canRefresh: boolean;
 };
@@ -179,8 +181,8 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
 
   // Abdeckung gegen die Quelle
   let coverage: CoverageView;
-  if (meta?.courseType === "custom") coverage = { unavailable: "custom_course", checkedAt: null, sourceCount: 0, truncated: [], primary: null, result: null, canRefresh: false };
-  else if (!job) coverage = { unavailable: "no_job", checkedAt: null, sourceCount: 0, truncated: [], primary: null, result: null, canRefresh: false };
+  if (meta?.courseType === "custom") coverage = { unavailable: "custom_course", checkedAt: null, sourceCount: 0, truncated: [], primary: null, change: null, result: null, canRefresh: false };
+  else if (!job) coverage = { unavailable: "no_job", checkedAt: null, sourceCount: 0, truncated: [], primary: null, change: null, result: null, canRefresh: false };
   else {
     const rep = job.sourceReport;
     coverage = {
@@ -189,6 +191,7 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
       sourceCount: rep?.sourceCount ?? 0,
       truncated: rep?.truncated ?? [],
       primary: rep?.primary ?? null,
+      change: sourceChange(rep),
       result: rep ? compareCoverage(rep.officialObjectives, objs.map((o) => o.code)) : null,
       canRefresh: job.sourceUrls.length > 0,
     };
@@ -221,7 +224,7 @@ export class CoverageRefreshError extends Error {}
  * Quellen des Erzeugungsauftrags neu abrufen und die erkannten offiziellen Lernziele speichern („Quelle prüfen“). Für Kurse,
  * die vor dem Quellenbericht entstanden sind, und wenn sich die Quelle geändert hat.
  */
-export async function refreshCoverage(certId: string, fetcher: (urls: string[]) => Promise<FetchedSource[]> = fetchSources): Promise<void> {
+export async function refreshCoverage(certId: string, fetcher: (urls: string[]) => Promise<FetchedSource[]> = fetchSources, now = new Date()): Promise<SourceChange | null> {
   await editableCourse(certId);
   const job = await latestJob(certId);
   if (!job || job.sourceUrls.length === 0) throw new CoverageRefreshError("Zu diesem Kurs ist keine Quelle hinterlegt.");
@@ -232,5 +235,19 @@ export async function refreshCoverage(certId: string, fetcher: (urls: string[]) 
     if (error instanceof SourceFetchError) throw new CoverageRefreshError(`Quelle nicht abrufbar: ${error.message}`);
     throw error;
   }
-  await getDb().update(courseGenerationJobs).set({ sourceReport: buildSourceReport(sources) }).where(eq(courseGenerationJobs.id, job.id));
+  const report = { ...buildSourceReport(sources, now), baseline: baselineFor(job.sourceReport) };
+  await getDb().update(courseGenerationJobs).set({ sourceReport: report }).where(eq(courseGenerationJobs.id, job.id));
+  // Versionsüberwachung: zuletzt gegen die Quelle geprüft.
+  await getDb().update(certifications).set({ lastVerifiedDate: now }).where(eq(certifications.id, certId));
+  return sourceChange(report);
+}
+
+/** Den aktuellen Stand der Quelle als neuen Vergleichsstand bestätigen (nachdem der Kurs angepasst wurde). */
+export async function acceptSourceBaseline(certId: string): Promise<void> {
+  await editableCourse(certId);
+  const job = await latestJob(certId);
+  const rep = job?.sourceReport;
+  if (!job || !rep) throw new CoverageRefreshError("Die Quelle wurde noch nicht geprüft.");
+  const baseline = { checkedAt: rep.checkedAt, fingerprint: rep.fingerprint ?? null, officialObjectives: rep.officialObjectives, versions: rep.versions ?? [] };
+  await getDb().update(courseGenerationJobs).set({ sourceReport: { ...rep, baseline } }).where(eq(courseGenerationJobs.id, job.id));
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSourceReport, compareCoverage, extractOfficialObjectives, normalizeCode } from "./coverage";
+import { buildSourceReport, compareCoverage, detectExamVersions, extractOfficialObjectives, normalizeCode } from "./coverage";
 import { capExcerpts, primarySourceIndex, PRIMARY_SOURCE_MAX_CHARS } from "./sources";
 
 const guide = (text: string) => [{ text }];
@@ -55,5 +55,12 @@ describe("Prüfungsleitfaden als Hauptquelle", () => {
     expect(capExcerpts(long, PRIMARY_SOURCE_MAX_CHARS).truncated).toBe(false);
     const sources = [{ id: "1", title: "Guide", url: "u", retrievedAt: "", excerpts: long, truncated: false, primary: true }];
     expect(buildSourceReport(sources).primary).toEqual({ title: "Guide", url: "u" });
+  });
+});
+
+describe("Prüfungsversionen erkennen", () => {
+  it("Prüfungscodes und Versionsangaben", () => {
+    expect(detectExamVersions("CompTIA Security+ SY0-701 Exam Objectives, Version 5.0 – AZ-104 later")).toEqual(["SY0-701", "AZ-104", "Version 5.0"]);
+    expect(detectExamVersions("Ganz normaler Text ohne Codes")).toEqual([]);
   });
 });

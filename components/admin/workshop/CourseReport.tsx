@@ -44,10 +44,10 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
     })();
   }, [certId]);
 
-  async function checkSource() {
+  async function checkSource(accept = false) {
     setBusy(true);
     setError(null);
-    const r = await api<Report>(`/api/admin/certifications/${certId}/workshop/report/coverage`, { method: "POST" });
+    const r = await api<Report>(`/api/admin/certifications/${certId}/workshop/report/coverage${accept ? "?accept=1" : ""}`, { method: "POST" });
     setBusy(false);
     if (r.ok) setReport(r.data);
     else setError(r.error);
@@ -117,6 +117,24 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
                 <li key={t.url} className="break-all">{t.title}</li>
               ))}
             </ul>
+          </div>
+        )}
+        {c.change && (
+          <div className="mt-3 rounded-xl border border-warning/40 bg-warning-soft p-3 text-sm text-warning-text" role="status" data-testid="coverage-change">
+            <p className="font-semibold">{tr("Die Quelle hat sich geändert", "The source has changed")}</p>
+            <p className="mt-0.5">
+              {tr(`Verglichen mit dem Stand vom ${formatDate(c.change.since, locale)}`, `Compared with the version from ${formatDate(c.change.since, locale)}`)}
+              {c.change.versionsBefore.join(", ") !== c.change.versionsNow.join(", ") && c.change.versionsNow.length > 0 && (
+                <> · {tr("Prüfungsversion", "Exam version")}: {c.change.versionsBefore.join(", ") || "?"} → <strong>{c.change.versionsNow.join(", ")}</strong></>
+              )}
+              {c.change.textChanged && !c.change.added.length && !c.change.removed.length && <> · {tr("der Text ist anders, die Lernziele sind gleich geblieben", "the text differs, the objectives stayed the same")}</>}
+            </p>
+            {c.change.added.length > 0 && <p className="mt-1">{tr("Neu:", "New:")} {c.change.added.map((o) => `${o.code} ${o.title}`).join(" · ")}</p>}
+            {c.change.removed.length > 0 && <p className="mt-1">{tr("Entfallen:", "Removed:")} {c.change.removed.map((o) => `${o.code} ${o.title}`).join(" · ")}</p>}
+            <p className="mt-1 text-xs">{tr("Neue Lernziele erscheinen unten als „fehlt im Kurs“ und lassen sich mit der KI ergänzen. Ist der Kurs angepasst, bestätige den Stand.", "New objectives show up below as “missing” and can be added with AI. Once the course is updated, confirm the version.")}</p>
+            <Button className="mt-2" size="sm" variant="secondary" onClick={() => void checkSource(true)} disabled={busy} data-testid="coverage-accept">
+              {tr("Als aktuellen Stand bestätigen", "Confirm as current version")}
+            </Button>
           </div>
         )}
         {c.primary && (

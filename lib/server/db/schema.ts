@@ -1201,6 +1201,14 @@ export type SourceReport = {
   sourceCount: number;
   /** Als Prüfungsleitfaden erkannte Quelle (wird nicht auf 60.000 Zeichen gekürzt); fehlt bei älteren Berichten. */
   primary?: { title: string; url: string } | null;
+  /** Fingerabdruck des Quelltexts (Leitfaden, sonst alle Quellen) und darin genannte Prüfungsversionen („SY0-701“, „Version 7.0“). */
+  fingerprint?: string;
+  versions?: string[];
+  /**
+   * Stand bei der Kurserstellung (bzw. zuletzt als aktuell bestätigt): „Quelle prüfen“ vergleicht damit und erkennt so
+   * eine neue Prüfungsversion oder geänderte Lernziele.
+   */
+  baseline?: { checkedAt: string; fingerprint: string | null; officialObjectives: Array<{ code: string; title: string }>; versions: string[] } | null;
 };
 
 export type CourseGenerationJobStatus =
