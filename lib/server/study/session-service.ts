@@ -25,6 +25,7 @@ import {
   planSession,
   type CheckinInput,
 } from "@/lib/server/psrp/planning-service";
+import { applyReviewedPracticeTasks } from "@/lib/server/psrp/practice-reviews";
 import { usesPlanning } from "@/lib/server/psrp/evaluation";
 import { DEFAULT_PSRP_CONFIG } from "@/lib/server/psrp/config";
 import { moreStudyExtra } from "@/lib/server/psrp/planner";
@@ -325,6 +326,9 @@ async function buildAndPersistSession(
   const checkinEnergy = goalOverride?.checkin?.energyLevel;
   const energyLevel: EnergyLevel | null =
     checkinEnergy !== undefined ? (checkinEnergy <= 2 ? "low" : checkinEnergy >= 4 ? "high" : "medium") : (goalOverride?.energyLevel ?? null);
+
+  // Entscheidungen zu Praxisaufgaben fließen als implizite Reviews ein (best effort, blockiert nie den Sessionstart).
+  await applyReviewedPracticeTasks(userId, now).catch((error) => console.error("Praxisaufgaben-Reviews fehlgeschlagen:", error));
 
   // PSRP-HR Planungsschicht (Gruppe vanilla: wie bisher, nur FSRS-Fälligkeit).
   const plan = await planSession({

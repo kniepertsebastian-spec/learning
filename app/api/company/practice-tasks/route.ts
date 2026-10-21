@@ -9,6 +9,7 @@ import {
   listPracticeTasksForOrg,
   MAX_TASK_DESCRIPTION,
   MAX_TASK_TITLE,
+  UnknownObjectiveError,
   UnknownPathError,
 } from "@/lib/server/company/practice-tasks";
 
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 
 const createSchema = z.object({
   certificationId: z.string().uuid(),
+  objectiveId: z.string().uuid().nullable().optional(),
   title: z.string().max(MAX_TASK_TITLE + 100),
   description: z.string().max(MAX_TASK_DESCRIPTION + 100).nullable().optional(),
 });
@@ -51,6 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Titel mindestens 3 und höchstens ${MAX_TASK_TITLE} Zeichen, Beschreibung höchstens ${MAX_TASK_DESCRIPTION}.` }, { status: 400 });
     }
     if (error instanceof UnknownPathError) return NextResponse.json({ error: "Lernpfad nicht gefunden." }, { status: 404 });
+    if (error instanceof UnknownObjectiveError) return NextResponse.json({ error: "Lernziel gehört nicht zu diesem Lernpfad." }, { status: 400 });
     throw error;
   }
 }

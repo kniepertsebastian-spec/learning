@@ -25,7 +25,7 @@ import { getAiSettings, resolveAiAccess } from "@/lib/server/company/ai-settings
 import { isOverdue, listAssignableLearningPaths, listAssignableMembers } from "@/lib/server/company/assignments";
 import { listCourseRequests, listRequestableCourses } from "@/lib/server/company/course-requests";
 import { listModulesForOrg, listResponsibleCandidates } from "@/lib/server/company/modules";
-import { listPracticeTasksForOrg } from "@/lib/server/company/practice-tasks";
+import { listObjectivesForPaths, listPracticeTasksForOrg } from "@/lib/server/company/practice-tasks";
 import { listInternalCourseJobs, listInternalCourses } from "@/lib/server/company/internal-courses-list";
 import { listCompanyDocuments } from "@/lib/server/company/documents";
 import { requireCompanyPage } from "@/lib/server/company/guard";
@@ -75,6 +75,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     listCheatSheetStatus(membership.organizationId),
     canAssign ? listCatalogCoursesForRules(membership.organizationId) : [],
   ]);
+  const objectivesByPath = await listObjectivesForPaths(paths.map((p) => p.id));
   const documentRows = documents.map((d) => ({
     id: d.id,
     title: d.title,
@@ -196,6 +197,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
             tasks={practice.tasks.map((t) => ({ id: t.id, title: t.title, description: t.description, learningPath: t.learningPath, assignees: t.assignees, submitted: t.submitted, confirmed: t.confirmed, rework: t.rework }))}
             pending={practice.pending.map((p) => ({ ...p, submittedAt: p.submittedAt.toISOString() }))}
             paths={paths.map((p) => ({ id: p.id, name: p.name }))}
+            objectivesByPath={objectivesByPath}
             locale={locale}
           />
           <CompanyModulesPanel
