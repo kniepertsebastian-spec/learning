@@ -1344,6 +1344,13 @@ export const courseGenerationJobs = pgTable(
     packageJson: jsonb("package_json").$type<Record<string, unknown>>(),
     /** Was die Quellen hergeben (roadmap3.md, Schritt 2): erkannte offizielle Lernziel-Nummern, gekürzte Quellen, Zeitpunkt. */
     sourceReport: jsonb("source_report").$type<SourceReport>(),
+    /**
+     * Aufgeteilter sehr großer Kurs (mehr als COURSE_GEN_HARD_MAX_OBJECTIVES Lernziele): Teil `splitPart` von `splitParts`;
+     * die Teile 2 ff. verweisen auf den ersten Auftrag und laufen nach ihm nacheinander, mit fertigem Teil-Blueprint.
+     */
+    splitOfJobId: uuid("split_of_job_id"),
+    splitPart: integer("split_part"),
+    splitParts: integer("split_parts"),
     estimatedCostUsd: numeric("estimated_cost_usd", { precision: 10, scale: 4 }),
     actualCostUsd: numeric("actual_cost_usd", { precision: 10, scale: 4 }).notNull().default("0"),
     resultCertificationId: uuid("result_certification_id").references(() => certifications.id, {
