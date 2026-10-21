@@ -10,7 +10,7 @@ import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, questions, reviewItems, sections, users } from "@/lib/server/db/schema";
 import { extractSimulationSources, simulationIndex, stripSimulations } from "@/lib/markdown/simulation";
 import { processSyncEvents } from "@/lib/server/sync/service";
-import { listSimulationProgress, recordSimulationSolved, SimulationNotFoundError } from "./service";
+import { listSimulationProgress, pickPracticeSimulation, recordSimulationSolved, SimulationNotFoundError } from "./service";
 
 const SIM = '```simulation\n{"type":"terminal","title":"T","scenario":"S","steps":[{"goal":"g","accept":["a"],"output":"","hint":"h"}],"success":"ok"}\n```';
 const TEXT = `## Einleitung\n\nText\n\n${SIM}\n\n## Ende\n\nMehr`;
@@ -57,6 +57,16 @@ run("Simulationsfortschritt (echte DB)", () => {
     await d.insert(reviewItems).values({ userId: u.id, questionId: q.id, dueAt: later });
     return { sectionId: sec.id, userId: u.id, questionId: q.id };
   }
+
+  it("Praxisaufgabe für die Übungssitzung: ungelöst oder mühsam gelöst, sicher gelöste nicht", async () => {
+    const { sectionId, userId, questionId } = await setup();
+    expect(await pickPracticeSimulation(userId, [], "s")).toBeNull();
+    expect(await pickPracticeSimulation(userId, [questionId], "s")).toMatchObject({ sectionId, simIndex: 0 });
+    await recordSimulationSolved(userId, sectionId, 0, 3);
+    expect(await pickPracticeSimulation(userId, [questionId], "s")).toMatchObject({ sectionId });
+    await recordSimulationSolved(userId, sectionId, 0, 0);
+    expect(await pickPracticeSimulation(userId, [questionId], "s")).toBeNull();
+  });
 
   it("offline gelöste Simulation kommt über die Sync-Warteschlange an, genau einmal", async () => {
     const { sectionId, userId } = await setup();

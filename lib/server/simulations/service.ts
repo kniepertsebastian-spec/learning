@@ -1,7 +1,8 @@
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { lessons, questions, reviewItems, sections, simulationResults } from "@/lib/server/db/schema";
-import { extractSimulationSources } from "@/lib/markdown/simulation";
+import { extractSimulationSources, parseSimulation } from "@/lib/markdown/simulation";
+import type { Localized } from "@/lib/types";
 
 /** Ab so vielen Hilfen (Tipp, Lösung, Fehlversuche) gilt eine Simulation als „mit Mühe gelöst“ und kommt in die Wiederholung. */
 export const STRUGGLE_HELPS = 2;
@@ -64,4 +65,47 @@ export async function recordSimulationSolved(userId: string, sectionId: string, 
     }
   }
   return { struggled, pulledForward };
+}
+
+export type PracticeSimulation = { sectionId: string; title: Localized<string>; content: Localized<string>; simIndex: number };
+
+/**
+ * Praxisaufgabe für eine Übungssitzung (roadmap3.md, kleinere offene Punkte): eine Simulation aus den Lektionen der
+ * Lernziele, deren Fragen in der Sitzung vorkommen. Zuerst noch nie gelöste, dann mühsam gelöste (Bestwert ab
+ * STRUGGLE_HELPS Hilfen); sicher gelöste kommen nicht. `seed` (z. B. die Sitzungs-ID) wählt stabil unter
+ * Gleichrangigen, damit ein Neuladen dieselbe Aufgabe zeigt.
+ */
+export async function pickPracticeSimulation(userId: string, questionIds: string[], seed: string): Promise<PracticeSimulation | null> {
+  if (questionIds.length === 0) return null;
+  const db = getDb();
+  const objectiveIds = [...new Set((await db.select({ o: questions.objectiveId }).from(questions).where(inArray(questions.id, questionIds))).map((r) => r.o))];
+  if (objectiveIds.length === 0) return null;
+  const rows = await db
+    .select({ sectionId: sections.id, title: sections.title, content: lessons.content })
+    .from(sections)
+    .innerJoin(lessons, eq(lessons.sectionId, sections.id))
+    .where(and(inArray(sections.objectiveId, objectiveIds), sql`${lessons.content}::text like '%simulation%'`))
+    .orderBy(asc(sections.id));
+  if (rows.length === 0) return null;
+  const progress = await db
+    .select({ sectionId: simulationResults.sectionId, simIndex: simulationResults.simIndex, bestHelps: simulationResults.bestHelps })
+    .from(simulationResults)
+    .where(and(eq(simulationResults.userId, userId), inArray(simulationResults.sectionId, rows.map((r) => r.sectionId))));
+  const best = new Map(progress.map((p) => [`${p.sectionId}:${p.simIndex}`, p.bestHelps]));
+
+  const candidates: Array<PracticeSimulation & { rank: number }> = [];
+  for (const r of rows) {
+    extractSimulationSources(r.content.de).forEach((src, simIndex) => {
+      if (!parseSimulation(src).ok) return;
+      const b = best.get(`${r.sectionId}:${simIndex}`);
+      if (b !== undefined && b < STRUGGLE_HELPS) return;
+      candidates.push({ sectionId: r.sectionId, title: r.title, content: r.content, simIndex, rank: b === undefined ? 0 : 1 });
+    });
+  }
+  if (candidates.length === 0) return null;
+  const top = candidates.filter((c) => c.rank === Math.min(...candidates.map((x) => x.rank)));
+  let h = 0;
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const pick = top[h % top.length];
+  return { sectionId: pick.sectionId, title: pick.title, content: pick.content, simIndex: pick.simIndex };
 }

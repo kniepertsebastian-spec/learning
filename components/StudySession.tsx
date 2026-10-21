@@ -16,7 +16,10 @@ import { useQuizHotkeys } from "@/components/quiz/useQuizHotkeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SegmentState } from "@/components/ui/progress";
+import { LessonSimulationsProvider } from "@/components/lesson/LessonSimulations";
+import { RichText } from "@/components/RichText";
 import { useLocale } from "@/lib/i18n";
+import { extractSimulationSources } from "@/lib/markdown/simulation";
 import { fmt } from "@/lib/quiz/keys";
 
 interface SessionQuestionItem {
@@ -50,6 +53,8 @@ interface StudySessionProps {
    * eines Live-POST in die lokale Sync-Warteschlange ein und berechnet den
    * Score direkt clientseitig aus den mitgelieferten isCorrect-Werten. */
   offline?: { userId: string };
+  /** Praxisaufgabe nach den Fragen: eine Simulation aus einer Lektion derselben Lernziele (nur online). */
+  practice?: { sectionId: string; title: { de: string; en: string }; content: { de: string; en: string }; simIndex: number } | null;
 }
 
 
@@ -66,6 +71,7 @@ export function StudySession({
   lessonItems,
   locale,
   offline,
+  practice,
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
@@ -185,6 +191,7 @@ export function StudySession({
           offlineNote={Boolean(offline)}
           actions={[{ href: exitHref, label: t.quiz.backToCourse, primary: true }]}
         >
+          {practice && !offline && <PracticeTask certSlug={certSlug} practice={practice} locale={locale} />}
           {lessonItems.length > 0 && (
             <div>
               <h2 className="mb-2 text-sm font-semibold">{t.quiz.lessonsRecommended}</h2>
@@ -279,5 +286,28 @@ function LessonList({
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Praxisaufgabe am Ende der Sitzung: die Simulation zum Selbstlösen, mit „Zum Text“ auf die Lektion und gespeichertem
+ * Ergebnis wie in der Lektion (mühsam gelöst → Wiederholungsfragen vorgezogen).
+ */
+function PracticeTask({ certSlug, practice, locale }: { certSlug: string; practice: NonNullable<StudySessionProps["practice"]>; locale: Locale }) {
+  const text = practice.content[locale];
+  const source = extractSimulationSources(text)[practice.simIndex];
+  if (!source) return null;
+  return (
+    <section className="text-left" data-testid="session-practice">
+      <h2 className="mb-1 text-sm font-semibold">{locale === "de" ? "Praxisaufgabe" : "Hands-on task"}</h2>
+      <p className="mb-3 text-xs text-subtle">
+        {locale === "de" ? "Aus der Lektion " : "From the lesson "}
+        <Link href={`/cert/${certSlug}/section/${practice.sectionId}`} className="text-link hover:underline">{practice.title[locale]}</Link>
+        {locale === "de" ? ": wende das Gelernte selbst an." : ": apply what you've learned."}
+      </p>
+      <LessonSimulationsProvider text={text} sectionId={practice.sectionId} persist initialProgress={[]}>
+        <RichText text={"````simulation\n" + source + "\n````"} />
+      </LessonSimulationsProvider>
+    </section>
   );
 }
