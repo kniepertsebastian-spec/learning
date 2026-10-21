@@ -50,8 +50,8 @@ Kurses wird nicht automatisch nachgezogen.
   mindestens 10 Antworten, aggregiert), weniger Fragen als empfohlen (Blueprint, sonst 4), praxisnahe Lektion ohne
   Simulation, Lektion ohne „Prüfungsrelevant“-Hinweis, sehr kurze Lektion.
 
-**Noch offen:** Die Erkennung der Nummern an echten Prüfungsleitfäden prüfen (hier kein Netz); Prüfungsleitfaden als
-Hauptquelle nie kürzen (heute wird jede Quelle bei 60.000 Zeichen gekappt, jetzt immerhin sichtbar).
+**Noch offen:** Die Erkennung der Nummern an echten Prüfungsleitfäden prüfen (hier kein Netz). Der Prüfungsleitfaden
+als Hauptquelle wird nicht mehr gekürzt; die übrigen Quellen werden bei 60.000 Zeichen gekappt und das wird gemeldet.
 
 ## Schritt 3: Mit KI nachbessern ✅
 
