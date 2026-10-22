@@ -6,7 +6,7 @@ import type { AnswerConfidence } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 /** „Wie sicher bist du?“ – erst danach wird aufgedeckt. */
-export function ConfidenceBar({ onPick }: { onPick: (level: AnswerConfidence) => void }) {
+export function ConfidenceBar({ onPick, onSkip }: { onPick: (level: AnswerConfidence) => void; onSkip?: () => void }) {
   const { t } = useLocale();
   const levels: Array<[AnswerConfidence, string]> = [
     ["guessed", t.quiz.guessed],
@@ -22,6 +22,11 @@ export function ConfidenceBar({ onPick }: { onPick: (level: AnswerConfidence) =>
             {label}
           </Button>
         ))}
+        {onSkip && (
+          <Button variant="ghost" size="sm" onClick={onSkip} data-testid="confidence-skip">
+            {t.quiz.skipConfidence}
+          </Button>
+        )}
       </div>
       <p className="mt-2.5 flex items-center gap-1.5 text-xs text-faint">
         <Info className="h-3.5 w-3.5" aria-hidden="true" />

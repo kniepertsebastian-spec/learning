@@ -6,6 +6,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import type { AnswerConfidence, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 import { ConfidenceBar } from "@/components/quiz/ConfidenceBar";
+import { FeedbackPanel } from "@/components/quiz/FeedbackPanel";
 import { FocusFrame } from "@/components/quiz/FocusFrame";
 import type { OptionState } from "@/components/quiz/OptionTile";
 import { QuestionBody } from "@/components/quiz/QuestionBody";
@@ -19,6 +20,8 @@ import type { SegmentState } from "@/components/ui/progress";
 import { LessonSimulationsProvider } from "@/components/lesson/LessonSimulations";
 import { RichText } from "@/components/RichText";
 import { useLocale } from "@/lib/i18n";
+import { useFeedbackMode } from "@/lib/client/use-feedback-mode";
+import type { OfflineQuestion } from "@/lib/server/offline/manifest";
 import { extractSimulationSources } from "@/lib/markdown/simulation";
 import { fmt } from "@/lib/quiz/keys";
 
@@ -43,6 +46,15 @@ interface StudySessionResult {
   results: Array<{ itemId: string; isCorrect: boolean }>;
 }
 
+/** Antwort-Aufdeckung je Frage (Server: /reveal, offline: aus dem Kurspaket berechnet). */
+interface QuestionReveal {
+  correctOptionId: string;
+  explanation: { de: string; en: string };
+  rationales: Record<string, { de: string; en: string }>;
+  sourceReference: string | null;
+  reviewSectionId: string | null;
+}
+
 interface StudySessionProps {
   certSlug: string;
   sessionId: string;
@@ -53,6 +65,8 @@ interface StudySessionProps {
    * eines Live-POST in die lokale Sync-Warteschlange ein und berechnet den
    * Score direkt clientseitig aus den mitgelieferten isCorrect-Werten. */
   offline?: { userId: string };
+  /** Offline: Fragen des Kurspakets (Erklärung, Begründungen) für das Sofort-Feedback, nach Frage-ID. */
+  offlineQuestions?: Record<string, OfflineQuestion>;
   /** Praxisaufgabe nach den Fragen: eine Simulation aus einer Lektion derselben Lernziele (nur online). */
   practice?: { sectionId: string; title: { de: string; en: string }; content: { de: string; en: string }; simIndex: number } | null;
 }
@@ -71,6 +85,7 @@ export function StudySession({
   lessonItems,
   locale,
   offline,
+  offlineQuestions,
   practice,
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -81,7 +96,65 @@ export function StudySession({
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<StudySessionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Sofort-Feedback: Antwort sperren, Sicherheit vor dem Aufdecken abfragen, dann aufdecken.
+  const [feedbackMode, setFeedbackMode] = useFeedbackMode();
+  const instant = feedbackMode === "instant";
+  const [reveals, setReveals] = useState<Array<QuestionReveal | "failed" | "loading" | null>>(() =>
+    questionItems.map(() => null),
+  );
   const { t } = useLocale();
+
+  async function revealAnswer(index: number, selectedOptionId: string) {
+    const item = questionItems[index];
+    const setReveal = (value: QuestionReveal | "failed" | "loading") =>
+      setReveals((prev) => {
+        const next = [...prev];
+        next[index] = value;
+        return next;
+      });
+    setReveal("loading");
+
+    if (offline) {
+      const q = offlineQuestions?.[item.questionId];
+      const correct = item.options.find((o) => o.isCorrect);
+      if (!q || !correct) return setReveal("failed");
+      const rationales: QuestionReveal["rationales"] = {};
+      for (const option of q.options) {
+        if (!option.isCorrect && option.rationale) rationales[option.id] = option.rationale;
+      }
+      return setReveal({
+        correctOptionId: correct.id,
+        explanation: q.explanation,
+        rationales,
+        sourceReference: q.sourceReference,
+        reviewSectionId: null,
+      });
+    }
+
+    try {
+      const response = await fetch(`/api/study-sessions/${sessionId}/reveal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.itemId, selectedOptionId }),
+      });
+      if (!response.ok) return setReveal("failed");
+      setReveal((await response.json()) as QuestionReveal);
+    } catch {
+      setReveal("failed");
+    }
+  }
+
+  function chooseConfidence(index: number, level: AnswerConfidence | null) {
+    if (reveals[index] !== null) return;
+    if (level) {
+      setConfidences((prev) => {
+        const next = [...prev];
+        next[index] = level;
+        return next;
+      });
+    }
+    void revealAnswer(index, answers[index] ?? "");
+  }
 
   async function handleSubmit() {
     if (submitting || result) return;
@@ -142,6 +215,7 @@ export function StudySession({
     const sorted = [...item.options].sort((a, b) => a.orderNum - b.orderNum);
     const option = sorted[index];
     if (!option) return;
+    if (instant && answers[currentIndex]) return; // Antwort ist nach dem Wählen gesperrt
     setAnswers((prev) => {
       const next = [...prev];
       next[currentIndex] = option.id;
@@ -149,11 +223,13 @@ export function StudySession({
     });
   };
   const isLast = currentIndex + 1 >= questionItems.length;
+  const currentReveal = reveals[currentIndex] ?? null;
+  const canAdvance = currentReveal !== null && currentReveal !== "loading";
   useQuizHotkeys(
     4,
     (action) => {
       if (action.type === "pick") pickOption(action.index);
-      else if (action.type === "enter" && answers[currentIndex] && !isLast) setCurrentIndex((i) => i + 1);
+      else if (action.type === "enter" && answers[currentIndex] && !isLast && (!instant || canAdvance)) setCurrentIndex((i) => i + 1);
     },
     questionItems.length > 0 && !result,
   );
@@ -205,7 +281,15 @@ export function StudySession({
 
   const item = questionItems[currentIndex];
   const sortedOptions = [...item.options].sort((a, b) => a.orderNum - b.orderNum);
-  const states: OptionState[] = sortedOptions.map((o) => (answers[currentIndex] === o.id ? "selected" : "neutral"));
+  const reveal = typeof currentReveal === "object" && currentReveal !== null ? currentReveal : null;
+  const states: OptionState[] = sortedOptions.map((o) => {
+    if (instant && reveal) {
+      if (o.id === reveal.correctOptionId) return "correct";
+      if (o.id === answers[currentIndex]) return "wrong";
+      return "dimmed";
+    }
+    return answers[currentIndex] === o.id ? "selected" : "neutral";
+  });
   const segments: SegmentState[] = questionItems.map((_, i) => (answers[i] ? "current" : "open"));
   const navStates: NavState[] = questionItems.map((_, i) => (answers[i] ? "answered" : "open"));
   const answeredCount = answers.filter(Boolean).length;
@@ -231,35 +315,84 @@ export function StudySession({
         options={sortedOptions.map((o) => o.text[locale])}
         states={states}
         onPick={pickOption}
+        locked={instant && Boolean(answers[currentIndex])}
       />
 
-      {answers[currentIndex] && (
+      {answers[currentIndex] && instant && currentReveal === null && (
+        <div className="mt-4">
+          <ConfidenceBar onPick={(level) => chooseConfidence(currentIndex, level)} onSkip={() => chooseConfidence(currentIndex, null)} />
+        </div>
+      )}
+      {answers[currentIndex] && !instant && (
         <div className="mt-4">
           <ConfidenceBar onPick={(level) => setConfidences((prev) => { const next = [...prev]; next[currentIndex] = level; return next; })} />
           {confidences[currentIndex] && <p className="mt-2 text-xs text-subtle">{t.quiz[confidences[currentIndex] as AnswerConfidence]}</p>}
         </div>
       )}
+      {instant && currentReveal === "loading" && (
+        <p className="mt-4 flex items-center gap-2 text-sm text-subtle" role="status">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          {t.quiz.checkingAnswer}
+        </p>
+      )}
+      {instant && reveal && (
+        <div className="mt-4">
+          <FeedbackPanel
+            correct={answers[currentIndex] === reveal.correctOptionId}
+            correctIndex={sortedOptions.findIndex((o) => o.id === reveal.correctOptionId)}
+            explanation={reveal.explanation[locale]}
+            rationales={sortedOptions.map((o) => reveal.rationales[o.id]?.[locale] ?? null)}
+            options={sortedOptions.map((o) => o.text[locale])}
+            selectedIndex={sortedOptions.findIndex((o) => o.id === answers[currentIndex])}
+            confidence={confidences[currentIndex]}
+            sourceReference={reveal.sourceReference}
+            questionId={item.questionId}
+            rereadHref={reveal.reviewSectionId ? `/cert/${certSlug}/section/${reveal.reviewSectionId}` : null}
+            nextLabel={isLast ? t.quiz.finish : t.quiz.nextShort}
+            onNext={isLast ? () => void handleSubmit() : () => setCurrentIndex((i) => i + 1)}
+            nextDisabled={submitting}
+          />
+        </div>
+      )}
 
-      <div className="mt-4">
-        <ReportProblem questionId={item.questionId} />
-      </div>
+      {!(instant && reveal) && (
+        <div className="mt-4">
+          <ReportProblem questionId={item.questionId} />
+        </div>
+      )}
 
       <div className="mt-6 flex items-center justify-between gap-3">
         <Button variant="secondary" onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))} disabled={currentIndex === 0}>
           {t.quiz.previous}
         </Button>
-        {isLast ? (
-          <Button onClick={() => void handleSubmit()} disabled={submitting} iconLeft={submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : undefined} data-testid="submit-session">
+        {instant && reveal ? (
+          <span />
+        ) : isLast ? (
+          <Button onClick={() => void handleSubmit()} disabled={submitting || (instant && !canAdvance)} iconLeft={submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : undefined} data-testid="submit-session">
             {t.quiz.finish}
           </Button>
         ) : (
-          <Button onClick={() => setCurrentIndex((i) => Math.min(questionItems.length - 1, i + 1))} iconRight={<ArrowRight className="h-4 w-4" aria-hidden="true" />}>
+          <Button onClick={() => setCurrentIndex((i) => Math.min(questionItems.length - 1, i + 1))} disabled={instant && !canAdvance} iconRight={<ArrowRight className="h-4 w-4" aria-hidden="true" />}>
             {t.quiz.nextShort}
           </Button>
         )}
       </div>
 
       {error && <p role="alert" className="mt-3 text-sm text-danger-text">{error}</p>}
+
+      <label className="mt-6 flex items-start gap-2 text-xs text-subtle" title={t.quiz.feedbackAtEndHint}>
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={!instant}
+          onChange={(e) => setFeedbackMode(e.target.checked ? "end" : "instant")}
+          data-testid="feedback-at-end"
+        />
+        <span>
+          {t.quiz.feedbackAtEnd}
+          <span className="block text-faint">{t.quiz.feedbackAtEndHint}</span>
+        </span>
+      </label>
     </FocusFrame>
   );
 }

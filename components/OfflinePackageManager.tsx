@@ -10,6 +10,7 @@ import {
   type StoredOfflinePackage,
 } from "@/lib/client/offline-db";
 import { downloadOfflinePackage, fetchOfflinePackageVersion, type DownloadProgress } from "@/lib/client/offline-download";
+import { getStorageStatus, type StorageStatus } from "@/lib/client/storage-status";
 import { SectionContent } from "@/components/SectionContent";
 import { StudySession } from "@/components/StudySession";
 
@@ -53,6 +54,17 @@ export function OfflinePackageManager({
   const [remoteVersion, setRemoteVersion] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [showSession, setShowSession] = useState(false);
+  const [storage, setStorage] = useState<StorageStatus | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getStorageStatus().then((status) => {
+      if (!cancelled) setStorage(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [record]);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,6 +186,9 @@ export function OfflinePackageManager({
           lessonItems={[]}
           locale={locale}
           offline={{ userId }}
+          offlineQuestions={Object.fromEntries(
+            record.data.domains.flatMap((d) => d.objectives.flatMap((o) => o.questions.map((q) => [q.id, q] as const))),
+          )}
         />
       </div>
     );
@@ -211,6 +226,27 @@ export function OfflinePackageManager({
               ? "Dieser Kurs ist noch nicht für offline gespeichert."
               : "This course is not yet saved for offline use."}
           </p>
+        )}
+
+        {record && storage && (storage.usageBytes !== null || storage.persisted !== null) && (
+          <div className="mt-2 flex flex-col gap-1 text-xs text-foreground/60" data-testid="offline-storage-status">
+            {storage.usageBytes !== null && storage.quotaBytes !== null && (
+              <p>
+                {locale === "de" ? "Speicher belegt" : "Storage used"}: {formatBytes(storage.usageBytes)}{" "}
+                {locale === "de" ? "von" : "of"} {formatBytes(storage.quotaBytes)}
+              </p>
+            )}
+            {storage.persisted === true && (
+              <p>{locale === "de" ? "Speicher dauerhaft gesichert." : "Storage is persistent."}</p>
+            )}
+            {storage.persisted === false && (
+              <p className="text-amber-600 dark:text-amber-400">
+                {locale === "de"
+                  ? "Der Browser kann Offline-Daten bei Speichermangel löschen. Tipp: App installieren, damit Offline-Daten erhalten bleiben."
+                  : "The browser may delete offline data when storage runs low. Tip: install the app to keep offline data."}
+              </p>
+            )}
+          </div>
         )}
 
         {downloading && (
