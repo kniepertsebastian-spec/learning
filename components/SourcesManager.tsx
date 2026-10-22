@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Link as LinkIcon, Loader2, UploadCloud } from "lucide-react";
 import { BlueprintPanel } from "./BlueprintPanel";
+import { BulkSourceImport } from "./BulkSourceImport";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
 
 interface Source {
@@ -59,6 +60,8 @@ export function SourcesManager({
   const online = useOnlineStatus();
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [sourceKind, setSourceKind] = useState<"pdf" | "url">("pdf");
+  const [addMode, setAddMode] = useState<"single" | "bulk">("single");
+  const [parsingAll, setParsingAll] = useState<{ done: number; total: number } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [parsingId, setParsingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -115,13 +118,46 @@ export function SourcesManager({
     }
   }
 
+  /** Text aller noch nicht (oder fehlgeschlagen) extrahierten Quellen nacheinander extrahieren. */
+  async function handleParseAll() {
+    const todo = sources.filter((s) => s.status === "uploaded" || s.status === "failed");
+    if (todo.length === 0) return;
+    setError(null);
+    let failed = 0;
+    for (const [i, source] of todo.entries()) {
+      setParsingAll({ done: i, total: todo.length });
+      const response = await fetch(`/api/admin/sources/${source.id}/parse`, { method: "POST" }).catch(() => null);
+      if (!response?.ok) failed++;
+    }
+    setParsingAll(null);
+    if (failed > 0) setError(locale === "de" ? `${failed} von ${todo.length} Quellen ließen sich nicht extrahieren (Details bei der jeweiligen Quelle).` : `${failed} of ${todo.length} sources could not be extracted (details on each source).`);
+    await refresh();
+  }
+
+  const pendingExtraction = sources.filter((s) => s.status === "uploaded" || s.status === "failed").length;
+
   return (
     <div className="flex flex-col gap-6">
       <section className="rounded-lg border border-border bg-surface p-4">
-        <h2 className="mb-3 font-medium">
-          {locale === "de" ? "Quelle hochladen" : "Upload source"}
-        </h2>
-        <form
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-medium">{locale === "de" ? "Quelle hinzufügen" : "Add source"}</h2>
+          <div className="flex gap-1 rounded-md border border-border p-0.5" role="group" aria-label={locale === "de" ? "Art des Hinzufügens" : "How to add"}>
+            {(["single", "bulk"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={addMode === m}
+                onClick={() => setAddMode(m)}
+                data-testid={`add-mode-${m}`}
+                className={`rounded px-2.5 py-1 text-xs font-medium ${addMode === m ? "bg-accent text-on-accent" : "hover:bg-background"}`}
+              >
+                {m === "single" ? (locale === "de" ? "Einzeln" : "Single") : locale === "de" ? "Mehrere auf einmal" : "Many at once"}
+              </button>
+            ))}
+          </div>
+        </div>
+        {addMode === "bulk" && <BulkSourceImport certificationId={certificationId} locale={locale} online={online} onDone={async () => { await refresh(); router.refresh(); }} />}
+        {addMode === "single" && <form
           action={(formData) => void handleUpload(formData)}
           className="grid gap-3 sm:grid-cols-2"
         >
@@ -231,7 +267,7 @@ export function SourcesManager({
             )}
             {locale === "de" ? "Hochladen" : "Upload"}
           </button>
-        </form>
+        </form>}
         {/* R4.4 (roadmap.md): "Quellenimport ausdrücklich nicht offline anbieten". */}
         {!online && (
           <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
@@ -244,9 +280,23 @@ export function SourcesManager({
       </section>
 
       <section>
-        <h2 className="mb-3 font-medium">
-          {locale === "de" ? "Vorhandene Quellen" : "Existing sources"}
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-medium">{locale === "de" ? "Vorhandene Quellen" : "Existing sources"}</h2>
+          {pendingExtraction > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleParseAll()}
+              disabled={parsingAll !== null || !online}
+              data-testid="parse-all"
+              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {parsingAll && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+              {parsingAll
+                ? locale === "de" ? `Extrahiere ${parsingAll.done + 1} von ${parsingAll.total} …` : `Extracting ${parsingAll.done + 1} of ${parsingAll.total} …`
+                : locale === "de" ? `Alle ${pendingExtraction} offenen extrahieren` : `Extract all ${pendingExtraction} pending`}
+            </button>
+          )}
+        </div>
         {sources.length === 0 ? (
           <div className="rounded-lg border border-border bg-surface px-4 py-8 text-center">
             <p className="text-sm text-foreground/70">
