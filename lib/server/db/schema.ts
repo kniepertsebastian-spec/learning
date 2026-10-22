@@ -2560,6 +2560,8 @@ export const reviewLog = pgTable(
     responseTimeMs: integer("response_time_ms"),
     reviewType: text("review_type").$type<ReviewLogType>().notNull().default("card"),
     probeVariantId: uuid("probe_variant_id"),
+    /** Variantenrotation: gezeigte Variante (questions.id), wenn nicht das Original selbst; `item_id` bleibt das Original. Ohne FK, da review_log unveränderlich ist. */
+    variantQuestionId: uuid("variant_question_id"),
     /** Abrufwahrscheinlichkeit laut FSRS unmittelbar vor diesem Review (null bei erstem Review). */
     predictedR: numeric("predicted_r", { precision: 6, scale: 5, mode: "number" }),
   },
@@ -2623,6 +2625,34 @@ export const probeVariants = pgTable(
       "probe_variant_format_check",
       sql`${table.format} in ('embedded_step', 'distractor', 'error_spotting', 'transfer')`,
     ),
+  ],
+);
+
+export type ItemVariantSource = "original" | "probe" | "generated";
+
+/**
+ * Varianten eines Wiederholungs-Items (roadmap_didaktik Phase 1): `itemId` ist das Original (FSRS-Item, `item_state`/`review_log`),
+ * `questionId` die Frage, die gezeigt wird. Das Original steht selbst als Variante mit `source = original` darin; ein Trigger
+ * (Migration 0072) legt sie für jede neue Frage an. Der Zustand bleibt am Original, die Variante wird nur mitgeloggt.
+ */
+export const itemVariants = pgTable(
+  "item_variant",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    questionId: uuid("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    source: text("source").$type<ItemVariantSource>().notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("item_variant_item_question_unique").on(table.itemId, table.questionId),
+    index("item_variant_question_idx").on(table.questionId),
+    check("item_variant_source_check", sql`${table.source} in ('original', 'probe', 'generated')`),
   ],
 );
 
