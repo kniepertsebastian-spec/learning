@@ -8,6 +8,7 @@ import { getUserStudyStreak } from "@/lib/server/study/session-service";
 import { LocaleProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
 import { getCurrentUser } from "@/lib/server/auth-guards";
+import { isOfflineShellPath } from "@/lib/pwa/offline-routes";
 import {
   getCompanyMembership,
   ASSIGN_ROLES,
@@ -72,7 +73,9 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const user = await getCurrentUser();
+  // Offline-Einstieg (/offline, /~offline): wird vorab zwischengespeichert und darf keinen Nutzer enthalten.
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const user = isOfflineShellPath(pathname) ? null : await getCurrentUser();
   const membership = user ? await getCompanyMembership(user.id) : null;
   const hasCompanyAccess = isRoleAllowed(membership, STATUS_VIEW_ROLES);
   // Kontexte ermittelt der Server aus den Rechten; die Seiten prüfen ihre Rechte zusätzlich selbst.

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { reconcileCacheOwner, clearPagesCache } from "@/lib/client/cache-owner";
+import { setLastUserId } from "@/lib/client/last-user";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "@/components/ui/toaster";
 
@@ -19,6 +20,7 @@ export function ServiceWorkerManager({ userId }: { userId: string | null }) {
   }, [t]);
 
   useEffect(() => {
+    if (userId) setLastUserId(userId); // Offline-Einstieg (/offline) weiß so, welche Pakete zu zeigen sind
     let storage: Storage | null = null;
     try {
       storage = window.localStorage;
