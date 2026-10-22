@@ -1,10 +1,13 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+
+const TEST_DB = process.env.TEST_DATABASE_URL;
+if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 import { getDb } from "@/lib/server/db/client";
 import { itemVariants, questions } from "@/lib/server/db/schema";
 import { seedCourse } from "./test-db";
 
-describe.skipIf(!process.env.TEST_DATABASE_URL)("item_variant (DB)", () => {
+describe.skipIf(!TEST_DB)("item_variant (DB)", () => {
   it("legt für jede neue Frage die Original-Variante an", async () => {
     const { questionIds } = await seedCourse(2);
     const rows = await getDb().select().from(itemVariants).where(eq(itemVariants.itemId, questionIds[0]));

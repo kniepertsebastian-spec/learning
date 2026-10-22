@@ -1,5 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+
+const TEST_DB = process.env.TEST_DATABASE_URL;
+if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 import { getDb } from "@/lib/server/db/client";
 import { concepts, itemVariants, probeVariants, questionOptions, questions } from "@/lib/server/db/schema";
 import { seedCourse } from "@/lib/server/psrp/test-db";
@@ -11,7 +14,7 @@ const make = (q: string): GeneratedVariant => ({
   explanation: { de: "E", en: "E" },
 });
 
-describe.skipIf(!process.env.TEST_DATABASE_URL)("backfillVariants (DB)", () => {
+describe.skipIf(!TEST_DB)("backfillVariants (DB)", () => {
   it("erzeugt zwei Varianten als probe_only-Fragen, am Original hängend, und ist wiederholbar", async () => {
     const { certId, questionIds } = await seedCourse(1);
     let calls = 0;
