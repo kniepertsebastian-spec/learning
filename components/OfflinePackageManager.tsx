@@ -240,7 +240,7 @@ export function OfflinePackageManager({
               <p>{locale === "de" ? "Speicher dauerhaft gesichert." : "Storage is persistent."}</p>
             )}
             {storage.persisted === false && (
-              <p className="text-amber-600 dark:text-amber-400">
+              <p className="text-warning-text">
                 {locale === "de"
                   ? "Der Browser kann Offline-Daten bei Speichermangel löschen. Tipp: App installieren, damit Offline-Daten erhalten bleiben."
                   : "The browser may delete offline data when storage runs low. Tip: install the app to keep offline data."}
