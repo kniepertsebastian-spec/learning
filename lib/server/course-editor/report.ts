@@ -38,6 +38,10 @@ export type Improvement = {
   objectiveId: string | null;
   objectiveCode: string | null;
   sectionId: string | null;
+  /** Nur bei Punkten zu einer einzelnen Frage (offene Meldung, hohe Fehlerquote). */
+  questionId?: string;
+  /** Nur bei „few_questions“: wie viele Fragen zur Empfehlung fehlen. */
+  needed?: number;
   text: { de: string; en: string };
   /** Nur bei „missing_objective“: das offizielle Lernziel und die Domain, in die es vermutlich gehört (gleiche erste Stelle der Nummer). */
   missing?: { code: string; title: string; domainId: string | null };
@@ -162,7 +166,7 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
       push({ kind: "one_question_type", severity: "low", objectiveId: o.id, objectiveCode: o.code, sectionId: null, text: { de: `${o.code} ${o.title}: alle ${qCount} Fragen sind vom Typ „${only}“.`, en: `${o.code} ${o.title}: all ${qCount} questions are of type “${only}”.` } });
     }
     if (qCount < target) {
-      push({ kind: "few_questions", severity: "medium", objectiveId: o.id, objectiveCode: o.code, sectionId: null, text: { de: `${o.code} ${o.title}: ${qCount} Fragen, empfohlen sind ${target}.`, en: `${o.code} ${o.title}: ${qCount} questions, ${target} recommended.` } });
+      push({ kind: "few_questions", severity: "medium", objectiveId: o.id, objectiveCode: o.code, sectionId: null, needed: target - qCount, text: { de: `${o.code} ${o.title}: ${qCount} Fragen, empfohlen sind ${target}.`, en: `${o.code} ${o.title}: ${qCount} questions, ${target} recommended.` } });
     }
   }
   for (const s of secs) {
@@ -177,11 +181,11 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
   for (const q of qs) {
     const o = objById.get(q.objectiveId)!;
     const r = questionReports.get(q.id) ?? 0;
-    if (r > 0) push({ kind: "open_report", severity: "high", objectiveId: o.id, objectiveCode: o.code, sectionId: null, text: { de: `Frage ${q.humanId}: ${r} offene Meldung(en) von Lernenden.`, en: `Question ${q.humanId}: ${r} open report(s) from learners.` } });
+    if (r > 0) push({ kind: "open_report", severity: "high", objectiveId: o.id, objectiveCode: o.code, sectionId: null, questionId: q.id, text: { de: `Frage ${q.humanId}: ${r} offene Meldung(en) von Lernenden.`, en: `Question ${q.humanId}: ${r} open report(s) from learners.` } });
     const st = stats.get(q.id);
     if (st && st.n >= HARD_QUESTION_MIN_ANSWERS && st.correct / st.n < HARD_QUESTION_MAX_ACCURACY) {
       const wrong = Math.round((1 - st.correct / st.n) * 100);
-      push({ kind: "hard_question", severity: "medium", objectiveId: o.id, objectiveCode: o.code, sectionId: null, text: { de: `Frage ${q.humanId} wird von ${wrong} % falsch beantwortet (${st.n} Antworten). Unklar formuliert oder falsche Lösung?`, en: `Question ${q.humanId} is answered wrongly by ${wrong}% (${st.n} answers). Unclear wording or wrong answer?` } });
+      push({ kind: "hard_question", severity: "medium", objectiveId: o.id, objectiveCode: o.code, sectionId: null, questionId: q.id, text: { de: `Frage ${q.humanId} wird von ${wrong} % falsch beantwortet (${st.n} Antworten). Unklar formuliert oder falsche Lösung?`, en: `Question ${q.humanId} is answered wrongly by ${wrong}% (${st.n} answers). Unclear wording or wrong answer?` } });
     }
   }
 

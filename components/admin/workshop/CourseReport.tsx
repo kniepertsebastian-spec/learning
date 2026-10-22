@@ -8,6 +8,7 @@ import { StatTile } from "@/components/ui/stat-tile";
 import type { Improvement, ImprovementKind, CourseReport as Report, Severity } from "@/lib/server/course-editor/report";
 import { cn } from "@/lib/cn";
 import { AI_ACTION_LABELS, type AiAction } from "@/lib/workshop-ai";
+import { AiBatchPanel } from "@/components/admin/AiBatchPanel";
 import { MissingObjective } from "./MissingObjective";
 import { api, formatDate, Problems, useTr, type Lang } from "./shared";
 
@@ -20,6 +21,19 @@ function aiActionFor(i: Improvement): AiAction | null {
   if (i.kind === "few_questions" || i.kind === "one_question_type") return "add_questions";
   return i.sectionId ? (LESSON_AI[i.kind] ?? null) : null;
 }
+
+/** Arten von Punkten, die die KI im Sammellauf bearbeiten kann (Reihenfolge wie in der Auswahl). */
+const BATCH_LABELS: Array<{ kind: ImprovementKind; de: string; en: string }> = [
+  { kind: "open_report", de: "Gemeldete Fehler beheben", en: "Fix reported problems" },
+  { kind: "hard_question", de: "Schwierige Fragen verbessern", en: "Improve hard questions" },
+  { kind: "few_questions", de: "Fehlende Fragen ergänzen", en: "Add missing questions" },
+  { kind: "one_question_type", de: "Fragetypen mischen", en: "Mix question types" },
+  { kind: "hands_on_without_simulation", de: "Simulationen bei praxisnahen Lektionen", en: "Simulations for hands-on lessons" },
+  { kind: "no_exam_callout", de: "Prüfungshinweise ergänzen", en: "Add exam callouts" },
+  { kind: "thin_lesson", de: "Sehr kurze Lektionen ausbauen", en: "Expand very short lessons" },
+  { kind: "missing_objective", de: "Fehlende Lernziele anlegen (aufwendig)", en: "Create missing objectives (expensive)" },
+];
+const DEFAULT_BATCH_KINDS: ImprovementKind[] = BATCH_LABELS.map((l) => l.kind).filter((k) => k !== "missing_objective");
 
 export type OpenTarget = { objectiveId: string; sectionId: string | null; ai?: AiAction | null };
 
@@ -35,6 +49,13 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
   const [filter, setFilter] = React.useState<Severity | "all">("all");
   const [missingOpen, setMissingOpen] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [batchKinds, setBatchKinds] = React.useState<ImprovementKind[]>(DEFAULT_BATCH_KINDS);
+
+  const load = React.useCallback(async () => {
+    const r = await api<Report>(`/api/admin/certifications/${certId}/workshop/report`);
+    if (r.ok) setReport(r.data);
+    else setError(r.error);
+  }, [certId]);
 
   React.useEffect(() => {
     void (async () => {
@@ -186,6 +207,38 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
             ))}
           </div>
         </div>
+        <details className="mb-3 rounded-2xl border border-border bg-surface p-4" data-testid="batch-quality">
+          <summary className="cursor-pointer text-sm font-semibold">{tr("Alle von der KI bearbeiten lassen", "Let the AI handle all of them")}</summary>
+          <fieldset className="mt-3">
+            <legend className="mb-1.5 text-sm text-subtle">{tr("Welche Punkte soll die KI bearbeiten?", "Which items should the AI handle?")}</legend>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {BATCH_LABELS.map((l) => {
+                const n = report.improvements.filter((i) => i.kind === l.kind).length;
+                return (
+                  <label key={l.kind} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={batchKinds.includes(l.kind)}
+                      onChange={(e) => setBatchKinds((cur) => (e.target.checked ? [...cur, l.kind] : cur.filter((k) => k !== l.kind)))}
+                    />
+                    <span>{tr(l.de, l.en)} <span className="text-faint">({n})</span></span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          <AiBatchPanel
+            kind="quality"
+            certificationId={certId}
+            locale={locale}
+            title={tr("Qualitätsbericht abarbeiten", "Work through the quality report")}
+            description={tr("Die KI bearbeitet die gewählten Punkte nacheinander (höchstens 100 je Lauf) und übernimmt die Ergebnisse. Vorher wird der Kursstand automatisch gemerkt.", "The AI works through the selected items one after another (at most 100 per run) and applies the results. The course state is saved automatically first.")}
+            startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+            params={{ kinds: batchKinds, maxItems: 100 }}
+            disabled={batchKinds.length === 0}
+            onFinished={() => void load()}
+          />
+        </details>
         {shown.length === 0 && <p className="rounded-xl border border-border p-4 text-sm text-subtle">{tr("Nichts gefunden. Das ist ein gutes Zeichen.", "Nothing found. That's a good sign.")}</p>}
         <ul className="flex flex-col gap-1.5">
           {shown.map((i) => {
@@ -232,6 +285,26 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
           })}
         </ul>
         {report.improvements.length >= 300 && <p className="mt-2 text-xs text-faint">{tr("Die ersten 300 Einträge, nach Wichtigkeit sortiert.", "The first 300 entries, sorted by importance.")}</p>}
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-2" data-testid="batch-backfills">
+        <AiBatchPanel
+          kind="simulations"
+          certificationId={certId}
+          locale={locale}
+          title={tr("Simulationen ergänzen", "Add simulations")}
+          description={tr("Ergänzt in allen Lektionen ohne Simulation eine interaktive Übung, wo sich das Thema eignet. Der Lektionstext bleibt unverändert.", "Adds an interactive exercise to every lesson without a simulation where the topic suits it. The lesson text stays as it is.")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+          onFinished={() => void load()}
+        />
+        <AiBatchPanel
+          kind="concepts"
+          certificationId={certId}
+          locale={locale}
+          title={tr("Konzepte und Abfragen ergänzen", "Add concepts and probes")}
+          description={tr("Ordnet den Fragen Konzepte zu und erzeugt Abfragevarianten für die Wiederholungsplanung (Selbsteinschätzung). Für Kurse, die davor entstanden sind.", "Tags questions with concepts and creates probe variants for review scheduling (self-assessment). For courses created before this feature.")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+        />
       </section>
     </div>
   );

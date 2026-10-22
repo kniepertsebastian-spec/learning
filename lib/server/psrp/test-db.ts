@@ -48,3 +48,19 @@ export async function seedUser(timezone = "Europe/Berlin") {
     .returning({ id: users.id });
   return u.id;
 }
+
+/** Lektionen (Abschnitt + Lektion) zu einem Lernziel anlegen; `content` je Lektion (de = en, einsprachig). */
+export async function seedLessons(objectiveId: string, contents: string[]) {
+  const { sections, lessons } = await import("@/lib/server/db/schema");
+  const db = getDb();
+  const sectionIds: string[] = [];
+  for (const [i, content] of contents.entries()) {
+    const [section] = await db
+      .insert(sections)
+      .values({ objectiveId, orderNum: i + 1, title: { de: `Lektion ${i + 1}`, en: `Lesson ${i + 1}` }, estimatedMinutes: 10, difficulty: "beginner" })
+      .returning();
+    await db.insert(lessons).values({ sectionId: section.id, content: { de: content, en: content }, keyTakeaways: { de: ["a"], en: ["a"] }, examFocusPoints: { de: ["b"], en: ["b"] }, modelVersion: "test" });
+    sectionIds.push(section.id);
+  }
+  return sectionIds;
+}

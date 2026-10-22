@@ -3,13 +3,17 @@ export const dynamic = "force-dynamic";
 import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getCatalogOverview } from "@/lib/server/admin/catalog-overview";
 import { AdminCatalog } from "@/components/admin/AdminCatalog";
+import { AdminAiBatches } from "@/components/admin/AdminAiBatches";
+import { getServerLocale } from "@/lib/server/locale";
 import { isCourseTranslationActive } from "@/lib/server/course-translation/runner";
 
 export default async function AdminDashboard() {
   await requireAdminPage("/admin");
-  const overview = await getCatalogOverview();
+  const [overview, locale] = await Promise.all([getCatalogOverview(), getServerLocale()]);
 
   return (
+    <>
+    <AdminAiBatches locale={locale} />
     <AdminCatalog
       certs={overview.certifications.map((c) => ({
         id: c.id,
@@ -37,5 +41,6 @@ export default async function AdminDashboard() {
       openReports={overview.openReports}
       aiCostMonthUsd={overview.aiCostMonthUsd}
     />
+    </>
   );
 }

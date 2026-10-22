@@ -1,0 +1,448 @@
+/**
+ * Sammelläufe der KI-Nachbesserung (nur allgemeine Kurse, nur Admins):
+ *  - quality:     alle Verbesserungspunkte des Qualitätsberichts eines Kurses von der KI bearbeiten lassen und direkt übernehmen
+ *  - simulations: Simulationen in Lektionen ergänzen, die noch keine haben (ein Kurs oder alle Kurse)
+ *  - concepts:    Konzepte und Abfragevarianten (Wiederholungsplanung) ergänzen (ein Kurs oder alle Kurse)
+ *
+ * Die KI-Aktionen sind dieselben wie in der Kurs-Werkstatt; hier werden die Vorschläge ohne Einzelprüfung übernommen. Das
+ * Sicherheitsnetz bleibt: vor dem Lauf ein automatisch gemerkter Kursstand, jede Änderung als Version mit Herkunft „KI“ bzw.
+ * „Nachtrag“, Kostenschätzung vorab, Budget-Prüfung und Abbruch jederzeit.
+ */
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { z } from "zod";
+import { LESSONS_MODEL } from "@/lib/claude";
+import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/content-generation";
+import { recordAuditEvent } from "@/lib/server/audit/service";
+import { clientFor } from "@/lib/server/course-translation/service";
+import { getDb } from "@/lib/server/db/client";
+import { aiBatchRuns, certifications, domains, lessons, objectives, sections, type AiBatchKind, type AiBatchStatus } from "@/lib/server/db/schema";
+import { createSimulationGenerator, backfillSimulations, HAS_SIMULATION, type SimulationGenerator } from "@/lib/server/lessons/simulations-backfill";
+import { createConceptTagger, objectivesToTag, tagCourseConcepts, type ConceptTagger } from "@/lib/server/psrp/concepts";
+import { MAX_NEW_QUESTIONS } from "@/lib/workshop-ai";
+import {
+  aiNote,
+  createObjectiveWithContent,
+  ensureAiCheckpoint,
+  estimateAi,
+  finishAiAccept,
+  proposeAi,
+  type AiProposal,
+  type AiRequest,
+  type Generate,
+} from "./ai";
+import { getCourseReport, type Improvement, type ImprovementKind } from "./report";
+import { createQuestion, editableCourse, saveQuestion, saveSection } from "./service";
+
+export const BATCH_KINDS = ["quality", "simulations", "concepts"] as const;
+
+/** Arten von Verbesserungspunkten, die die KI bearbeiten kann. */
+export const QUALITY_KINDS = [
+  "open_report",
+  "hard_question",
+  "few_questions",
+  "one_question_type",
+  "hands_on_without_simulation",
+  "no_exam_callout",
+  "thin_lesson",
+  "missing_objective",
+] as const satisfies readonly ImprovementKind[];
+
+export const qualityParamsSchema = z.object({
+  kinds: z.array(z.enum(QUALITY_KINDS)).min(1),
+  /** Obergrenze je Lauf (Schutz vor unerwartet hohen Kosten). */
+  maxItems: z.number().int().min(1).max(300).default(100),
+});
+export type QualityParams = z.infer<typeof qualityParamsSchema>;
+
+export const batchTargetSchema = z.object({ kind: z.enum(BATCH_KINDS), certificationId: z.string().uuid().nullable().default(null) });
+
+export class BatchAlreadyRunningError extends Error {}
+export class BatchNothingToDoError extends Error {}
+
+/* ------------------------------------------------------------------ Planung (rein) */
+
+export type QualityTask = { key: string; request: AiRequest; improvementKinds: ImprovementKind[]; label: string };
+
+const ORDER: Record<string, number> = { fix_reports: 0, improve: 1, expand: 2, example: 3, simulation: 4, exam: 5, add_questions: 6, add_objective: 7 };
+const ONE_TYPE_NOTE = "Verwende bei den neuen Fragen andere Fragetypen als die vorhandenen (z. B. Anwendung, Szenario, Fehlersuche), damit der Fragenpool abwechslungsreicher wird.";
+
+/**
+ * Verbesserungspunkte → KI-Anfragen. Doppelte werden zusammengelegt (je Lektion und Aktion, je Lernziel einmal „Fragen
+ * ergänzen“ mit der größeren Anzahl). Reihenfolge: erst Fehlermeldungen, dann Qualität, Ergänzungen, zuletzt neue Lernziele.
+ */
+export function planQualityTasks(improvements: Improvement[], kinds: readonly ImprovementKind[], maxItems = 100): QualityTask[] {
+  const wanted = new Set(kinds);
+  const tasks = new Map<string, QualityTask>();
+  const add = (key: string, request: AiRequest, kind: ImprovementKind, label: string) => {
+    const existing = tasks.get(key);
+    if (existing) {
+      if (!existing.improvementKinds.includes(kind)) existing.improvementKinds.push(kind);
+      if (request.target === "objective" && existing.request.target === "objective") {
+        existing.request = { ...existing.request, count: Math.max(existing.request.count, request.count), instruction: existing.request.instruction ?? request.instruction };
+      }
+      return;
+    }
+    tasks.set(key, { key, request, improvementKinds: [kind], label });
+  };
+  for (const i of improvements) {
+    if (!wanted.has(i.kind)) continue;
+    const label = i.text.de;
+    switch (i.kind) {
+      case "open_report":
+        if (i.sectionId) add(`section:${i.sectionId}:fix_reports`, { target: "section", id: i.sectionId, action: "fix_reports" }, i.kind, label);
+        else if (i.questionId) add(`question:${i.questionId}:fix_reports`, { target: "question", id: i.questionId, action: "fix_reports" }, i.kind, label);
+        break;
+      case "hard_question":
+        if (i.questionId) add(`question:${i.questionId}:improve`, { target: "question", id: i.questionId, action: "improve" }, i.kind, label);
+        break;
+      case "few_questions":
+        if (i.objectiveId) add(`objective:${i.objectiveId}`, { target: "objective", id: i.objectiveId, action: "add_questions", count: Math.min(MAX_NEW_QUESTIONS, Math.max(1, i.needed ?? 4)) }, i.kind, label);
+        break;
+      case "one_question_type":
+        if (i.objectiveId) add(`objective:${i.objectiveId}`, { target: "objective", id: i.objectiveId, action: "add_questions", count: 3, instruction: ONE_TYPE_NOTE }, i.kind, label);
+        break;
+      case "hands_on_without_simulation":
+        if (i.sectionId) add(`section:${i.sectionId}:simulation`, { target: "section", id: i.sectionId, action: "simulation" }, i.kind, label);
+        break;
+      case "no_exam_callout":
+        if (i.sectionId) add(`section:${i.sectionId}:exam`, { target: "section", id: i.sectionId, action: "exam" }, i.kind, label);
+        break;
+      case "thin_lesson":
+        if (i.sectionId) add(`section:${i.sectionId}:expand`, { target: "section", id: i.sectionId, action: "expand" }, i.kind, label);
+        break;
+      case "missing_objective":
+        if (i.missing?.domainId) add(`missing:${i.missing.code}`, { target: "missing-objective", domainId: i.missing.domainId, code: i.missing.code, title: i.missing.title, action: "add_objective" }, i.kind, label);
+        break;
+    }
+  }
+  return [...tasks.values()].sort((a, b) => (ORDER[a.request.action] ?? 9) - (ORDER[b.request.action] ?? 9)).slice(0, maxItems);
+}
+
+/* ------------------------------------------------------------------ Übernehmen */
+
+export type Applied = { sections: string[]; questions: string[]; created: number };
+
+/** Einen KI-Vorschlag ohne Einzelprüfung speichern (dieselben Speicherwege wie in der Werkstatt, Herkunft „KI“). */
+export async function applyProposal(certId: string, proposal: AiProposal, userId: string | null): Promise<Applied> {
+  const note = aiNote(proposal.action, "Sammellauf");
+  const out: Applied = { sections: [], questions: [], created: 0 };
+  if (proposal.kind === "section") {
+    const r = await saveSection(certId, proposal.sectionId, proposal.snapshot, proposal.baseFingerprint, { userId, origin: "ai", note });
+    if (r.changed) out.sections.push(proposal.sectionId);
+  } else if (proposal.kind === "question") {
+    const r = await saveQuestion(certId, proposal.questionId, proposal.snapshot, proposal.baseFingerprint, { userId, origin: "ai", note });
+    if (r.changed) out.questions.push(proposal.questionId);
+  } else if (proposal.kind === "questions") {
+    for (const q of proposal.questions) {
+      const r = await createQuestion(certId, proposal.objectiveId, q);
+      out.questions.push(r.questionId);
+    }
+  } else {
+    await createObjectiveWithContent(certId, {
+      domainId: proposal.domainId,
+      code: proposal.code,
+      title: proposal.title,
+      description: proposal.description,
+      sections: proposal.sections,
+      questions: proposal.questions,
+    });
+    out.created++;
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ Kostenschätzung */
+
+const SYSTEM_TOKENS = 3500;
+const tokens = (chars: number) => Math.ceil(chars / 3.5);
+
+export type BatchEstimate = { kind: AiBatchKind; items: number; usd: number | null; courses: number };
+
+async function generalCourses(certId: string | null) {
+  const rows = await getDb()
+    .select({ id: certifications.id, name: certifications.name, kind: certifications.kind, ownerOrganizationId: certifications.ownerOrganizationId })
+    .from(certifications)
+    .where(certId ? and(eq(certifications.id, certId), eq(certifications.kind, "general")) : eq(certifications.kind, "general"))
+    .orderBy(asc(certifications.name));
+  return rows;
+}
+
+async function lessonsWithoutSimulation(certIds: string[]) {
+  if (!certIds.length) return [];
+  const rows = await getDb()
+    .select({ certId: domains.certificationId, content: lessons.content })
+    .from(lessons)
+    .innerJoin(sections, eq(sections.id, lessons.sectionId))
+    .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .where(inArray(domains.certificationId, certIds));
+  return rows.filter((r) => !HAS_SIMULATION.test(r.content.de) && !HAS_SIMULATION.test(r.content.en));
+}
+
+export async function estimateBatch(kind: AiBatchKind, certId: string | null, params?: unknown): Promise<BatchEstimate> {
+  if (kind === "quality") {
+    if (!certId) throw new BatchNothingToDoError("Der Qualitätsbericht gilt für einen Kurs.");
+    const p = qualityParamsSchema.parse(params);
+    const tasks = planQualityTasks((await getCourseReport(certId)).improvements, p.kinds, p.maxItems);
+    let usd: number | null = 0;
+    for (const t of tasks) {
+      const r = t.request;
+      const est = await estimateAi(certId, r.target === "section" ? { target: "section", id: r.id } : r.target === "question" ? { target: "question", id: r.id } : r.target === "objective" ? { target: "objective", count: r.count } : { target: "missing-objective" }).catch(() => []);
+      const match = est.find((e) => e.action === r.action);
+      usd = usd !== null && match?.usd != null ? usd + match.usd : null;
+    }
+    return { kind, items: tasks.length, usd: tasks.length ? usd : 0, courses: 1 };
+  }
+  const courses = await generalCourses(certId);
+  if (kind === "simulations") {
+    const todo = await lessonsWithoutSimulation(courses.map((c) => c.id));
+    const usd = todo.reduce<number | null>((sum, l) => {
+      const c = estimateCostUsd(SYSTEM_TOKENS + tokens(l.content.de.length + l.content.en.length), tokens(4500), LESSONS_MODEL);
+      return sum !== null && c !== null ? sum + c : null;
+    }, 0);
+    return { kind, items: todo.length, usd, courses: new Set(todo.map((l) => l.certId)).size };
+  }
+  let items = 0;
+  let withWork = 0;
+  for (const c of courses) {
+    const n = (await objectivesToTag(c.id)).length;
+    items += n;
+    if (n) withWork++;
+  }
+  return { kind, items, usd: estimateCostUsd(SYSTEM_TOKENS + tokens(12_000), tokens(9000), LESSONS_MODEL) === null ? null : items * (estimateCostUsd(SYSTEM_TOKENS + tokens(12_000), tokens(9000), LESSONS_MODEL) ?? 0), courses: withWork };
+}
+
+/* ------------------------------------------------------------------ Läufe */
+
+export type BatchRunView = {
+  id: string;
+  kind: AiBatchKind;
+  certificationId: string | null;
+  status: AiBatchStatus;
+  total: number;
+  processed: number;
+  applied: number;
+  skipped: number;
+  failed: number;
+  costUsd: number | null;
+  message: string | null;
+  startedAt: Date;
+  finishedAt: Date | null;
+};
+
+type Row = typeof aiBatchRuns.$inferSelect;
+const view = (r: Row): BatchRunView => ({
+  id: r.id, kind: r.kind, certificationId: r.certificationId, status: r.status, total: r.total, processed: r.processed, applied: r.applied,
+  skipped: r.skipped, failed: r.failed, costUsd: r.costUsd === null ? null : Number(r.costUsd), message: r.message, startedAt: r.startedAt, finishedAt: r.finishedAt,
+});
+
+const globalForBatch = globalThis as unknown as { aiBatchActive?: Map<string, Promise<void>> };
+const active = globalForBatch.aiBatchActive ?? new Map<string, Promise<void>>();
+globalForBatch.aiBatchActive = active;
+
+export const isBatchActive = (runId: string) => active.has(runId);
+/** Wartet, bis der Hintergrundlauf fertig ist (für Tests). */
+export const awaitBatch = (runId: string) => active.get(runId) ?? Promise.resolve();
+
+async function patch(runId: string, values: Partial<typeof aiBatchRuns.$inferInsert>) {
+  await getDb().update(aiBatchRuns).set({ ...values, updatedAt: new Date() }).where(eq(aiBatchRuns.id, runId));
+}
+const cancelled = async (runId: string) => {
+  const [r] = await getDb().select({ status: aiBatchRuns.status }).from(aiBatchRuns).where(eq(aiBatchRuns.id, runId)).limit(1);
+  return r?.status === "cancelled";
+};
+
+/** Letzter Lauf einer Art (für einen Kurs oder alle Kurse). Ein „laufender“ Lauf ohne aktiven Prozess ging durch einen Neustart verloren. */
+export async function getBatchStatus(kind: AiBatchKind, certId: string | null): Promise<BatchRunView | null> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(aiBatchRuns)
+    .where(and(eq(aiBatchRuns.kind, kind), certId ? eq(aiBatchRuns.certificationId, certId) : isNull(aiBatchRuns.certificationId)))
+    .orderBy(desc(aiBatchRuns.startedAt))
+    .limit(1);
+  if (!row) return null;
+  if (row.status === "running" && !active.has(row.id)) {
+    const message = "Der Lauf wurde nicht beendet (Server neu gestartet?). Bereits Übernommenes bleibt; bitte erneut starten.";
+    await db.update(aiBatchRuns).set({ status: "failed", message, finishedAt: new Date(), updatedAt: new Date() }).where(eq(aiBatchRuns.id, row.id));
+    return view({ ...row, status: "failed", message, finishedAt: new Date() });
+  }
+  return view(row);
+}
+
+export async function cancelBatch(kind: AiBatchKind, certId: string | null): Promise<boolean> {
+  const rows = await getDb()
+    .update(aiBatchRuns)
+    .set({ status: "cancelled", message: "Abgebrochen. Bereits Übernommenes bleibt.", updatedAt: new Date() })
+    .where(and(eq(aiBatchRuns.kind, kind), eq(aiBatchRuns.status, "running"), certId ? eq(aiBatchRuns.certificationId, certId) : isNull(aiBatchRuns.certificationId)))
+    .returning({ id: aiBatchRuns.id });
+  return rows.length > 0;
+}
+
+export type BatchDeps = { generate?: Generate; simulationGenerator?: SimulationGenerator; conceptTagger?: ConceptTagger };
+
+function isUniqueViolation(error: unknown): boolean {
+  // Drizzle verpackt den Datenbankfehler; der Postgres-Code steht je nach Version am Fehler oder an `cause`.
+  const code = (e: unknown) => (typeof e === "object" && e !== null && "code" in e ? (e as { code?: unknown }).code : undefined);
+  return code(error) === "23505" || code((error as { cause?: unknown } | null)?.cause) === "23505";
+}
+
+/** Startet einen Sammellauf im Hintergrund; gibt sofort die Lauf-ID zurück. */
+export async function startBatch(
+  input: { kind: AiBatchKind; certificationId: string | null; params?: unknown; userId: string | null },
+  deps: BatchDeps = {},
+): Promise<{ runId: string }> {
+  if (input.certificationId) await editableCourse(input.certificationId);
+  if (input.kind === "quality" && !input.certificationId) throw new BatchNothingToDoError("Der Qualitätsbericht gilt für einen Kurs.");
+  const params = input.kind === "quality" ? qualityParamsSchema.parse(input.params) : {};
+  const estimate = await estimateBatch(input.kind, input.certificationId, params);
+  if (estimate.items === 0) throw new BatchNothingToDoError("Es gibt nichts zu tun.");
+  if (!deps.generate && !deps.simulationGenerator && !deps.conceptTagger) {
+    const budget = await getAiBudgetStatus();
+    if (budget?.exceeded) throw new BatchNothingToDoError(`Das KI-Budget ist ausgeschöpft (${budget.spentUsd.toFixed(2)} von ${budget.limitUsd.toFixed(2)} USD).`);
+  }
+  let run: Row;
+  try {
+    [run] = await getDb()
+      .insert(aiBatchRuns)
+      .values({ kind: input.kind, certificationId: input.certificationId, startedByUserId: input.userId, params, total: estimate.items })
+      .returning();
+  } catch (error) {
+    if (isUniqueViolation(error)) throw new BatchAlreadyRunningError("Dazu läuft schon ein Lauf.");
+    throw error;
+  }
+  const done = execute(run, input.userId, params, deps)
+    .catch(async (error) => {
+      console.error("KI-Sammellauf fehlgeschlagen:", error);
+      await patch(run.id, { status: "failed", message: `Fehler: ${error instanceof Error ? error.message.slice(0, 300) : "unbekannt"}`, finishedAt: new Date() }).catch(() => {});
+    })
+    .finally(() => active.delete(run.id));
+  active.set(run.id, done);
+  return { runId: run.id };
+}
+
+async function finish(run: Row, counts: { processed: number; applied: number; skipped: number; failed: number; costUsd: number | null }, aborted: boolean, userId: string | null) {
+  const wasCancelled = await cancelled(run.id);
+  const status: AiBatchStatus = wasCancelled ? "cancelled" : aborted ? "failed" : "done";
+  const message = wasCancelled
+    ? "Abgebrochen. Bereits Übernommenes bleibt."
+    : aborted
+      ? "Abgebrochen, weil die ersten Aufrufe alle fehlgeschlagen sind (KI-Zugang oder Budget prüfen)."
+      : `Fertig: ${counts.applied} übernommen, ${counts.skipped} übersprungen, ${counts.failed} fehlgeschlagen.`;
+  await patch(run.id, { status, message, finishedAt: new Date(), ...counts, costUsd: counts.costUsd === null ? null : String(counts.costUsd) });
+  await recordAuditEvent({ actorUserId: userId, action: "course.ai_batch", targetType: "certification", targetId: run.certificationId ?? run.id, metadata: { kind: run.kind, runId: run.id, ...counts, status } }).catch(() => {});
+}
+
+async function execute(run: Row, userId: string | null, params: unknown, deps: BatchDeps): Promise<void> {
+  if (run.kind === "quality") return executeQuality(run, userId, qualityParamsSchema.parse(params), deps);
+  if (run.kind === "simulations") return executeSimulations(run, userId, deps);
+  return executeConcepts(run, userId, deps);
+}
+
+const ABORT_AFTER_FAILURES = 3;
+
+async function executeQuality(run: Row, userId: string | null, params: QualityParams, deps: BatchDeps) {
+  const certId = run.certificationId!;
+  const tasks = planQualityTasks((await getCourseReport(certId)).improvements, params.kinds, params.maxItems);
+  const counts = { processed: 0, applied: 0, skipped: 0, failed: 0, costUsd: null as number | null };
+  const changedSections = new Set<string>();
+  const changedQuestions = new Set<string>();
+  const reportSections = new Set<string>();
+  const reportQuestions = new Set<string>();
+  let streak = 0;
+  let aborted = false;
+  await ensureAiCheckpoint(certId, userId);
+  for (const task of tasks) {
+    if (await cancelled(run.id)) break;
+    if (!deps.generate) {
+      const budget = await getAiBudgetStatus();
+      if (budget?.exceeded) { aborted = true; break; }
+    }
+    try {
+      const proposal = await proposeAi(certId, task.request, { generate: deps.generate });
+      counts.costUsd = (counts.costUsd ?? 0) + (proposal.costUsd ?? 0);
+      const applied = await applyProposal(certId, proposal, userId);
+      streak = 0;
+      const changed = applied.sections.length + applied.questions.length + applied.created;
+      if (changed === 0) counts.skipped++;
+      else counts.applied++;
+      for (const id of applied.sections) { changedSections.add(id); if (task.request.action === "fix_reports") reportSections.add(id); }
+      for (const id of applied.questions) { changedQuestions.add(id); if (task.request.action === "fix_reports") reportQuestions.add(id); }
+    } catch (error) {
+      console.error("Sammellauf: Verbesserung fehlgeschlagen:", task.key, error instanceof Error ? error.message : error);
+      counts.failed++;
+      streak++;
+      if (streak >= ABORT_AFTER_FAILURES && counts.applied === 0) { aborted = true; counts.processed++; break; }
+    }
+    counts.processed++;
+    await patch(run.id, { processed: counts.processed, applied: counts.applied, skipped: counts.skipped, failed: counts.failed, costUsd: counts.costUsd === null ? null : String(counts.costUsd) });
+  }
+  // Gemeldete Fehler als erledigt schließen, andere Sprache nachziehen (einmal am Ende).
+  const reported = { sections: [...reportSections], questions: [...reportQuestions] };
+  const others = { sections: [...changedSections].filter((id) => !reportSections.has(id)), questions: [...changedQuestions].filter((id) => !reportQuestions.has(id)) };
+  if (reported.sections.length || reported.questions.length) await finishAiAccept(certId, reported, { userId, resolveReports: true, checkpoint: null, startTranslation: false });
+  await finishAiAccept(certId, others, { userId, checkpoint: null });
+  await finish(run, counts, aborted, userId);
+}
+
+async function executeSimulations(run: Row, userId: string | null, deps: BatchDeps) {
+  const courses = await generalCourses(run.certificationId);
+  const counts = { processed: 0, applied: 0, skipped: 0, failed: 0, costUsd: null as number | null };
+  let aborted = false;
+  for (const course of courses) {
+    if (await cancelled(run.id)) break;
+    if (!deps.simulationGenerator) {
+      const budget = await getAiBudgetStatus();
+      if (budget?.exceeded) { aborted = true; break; }
+    }
+    const usage = { prompt: 0, completion: 0 };
+    const generator = deps.simulationGenerator ?? createSimulationGenerator(await clientFor(course), (u) => { usage.prompt += u.promptTokens; usage.completion += u.completionTokens; });
+    const base = { ...counts };
+    const result = await backfillSimulations(course.id, generator, {
+      usage,
+      shouldStop: () => cancelled(run.id),
+      onProgress: (c) => {
+        void patch(run.id, {
+          processed: base.processed + c.added + c.unsuitable + c.failed,
+          applied: base.applied + c.added,
+          skipped: base.skipped + c.unsuitable,
+          failed: base.failed + c.failed,
+          costUsd: String((base.costUsd ?? 0) + (c.costUsd ?? 0)),
+        });
+      },
+    });
+    counts.processed += result.added + result.unsuitable + result.failed;
+    counts.applied += result.added;
+    counts.skipped += result.unsuitable;
+    counts.failed += result.failed;
+    const spent = estimateCostUsd(usage.prompt, usage.completion, LESSONS_MODEL);
+    counts.costUsd = spent === null ? counts.costUsd : (counts.costUsd ?? 0) + spent;
+    if (result.aborted && result.added === 0) aborted = true;
+    if (aborted) break;
+  }
+  await finish(run, counts, aborted, userId);
+}
+
+async function executeConcepts(run: Row, userId: string | null, deps: BatchDeps) {
+  const courses = await generalCourses(run.certificationId);
+  const counts = { processed: 0, applied: 0, skipped: 0, failed: 0, costUsd: null as number | null };
+  let aborted = false;
+  for (const course of courses) {
+    if (await cancelled(run.id)) break;
+    if (!deps.conceptTagger) {
+      const budget = await getAiBudgetStatus();
+      if (budget?.exceeded) { aborted = true; break; }
+    }
+    const tagger = deps.conceptTagger ?? createConceptTagger(await clientFor(course));
+    const base = { ...counts };
+    const result = await tagCourseConcepts(course.id, tagger, {
+      shouldStop: () => cancelled(run.id),
+      onProgress: (c) => void patch(run.id, { processed: base.processed + c.objectives + c.failed, applied: base.applied + c.objectives, failed: base.failed + c.failed }),
+    });
+    counts.processed += result.objectives + result.failed;
+    counts.applied += result.objectives;
+    counts.failed += result.failed;
+    if (result.failed > 0 && result.objectives === 0 && courses.length === 1) aborted = true;
+  }
+  await finish(run, counts, aborted, userId);
+}

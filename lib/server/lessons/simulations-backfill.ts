@@ -104,7 +104,7 @@ export type SimulationCounts = { added: number; unsuitable: number; skipped: num
 export async function backfillSimulations(
   certificationId: string,
   generate: SimulationGenerator,
-  opts: { limit?: number; onProgress?: (c: SimulationCounts) => void; usage?: { prompt: number; completion: number } } = {},
+  opts: { limit?: number; onProgress?: (c: SimulationCounts) => void; usage?: { prompt: number; completion: number }; shouldStop?: () => Promise<boolean> | boolean } = {},
 ): Promise<SimulationCounts> {
   const db = getDb();
   const rows = await db
@@ -119,6 +119,7 @@ export async function backfillSimulations(
   const counts: SimulationCounts = { added: 0, unsuitable: 0, skipped: rows.length - todo.length, failed: 0, costUsd: null, aborted: false };
   let streak = 0;
   for (let i = 0; i < todo.length && !counts.aborted; i += 2) {
+    if (await opts.shouldStop?.()) break;
     await Promise.all(
       todo.slice(i, i + 2).map(async (row) => {
         try {

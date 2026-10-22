@@ -118,6 +118,7 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "company_invitations.created_by_user_id": "Einladung betrifft die eingeladene Person; bei Löschung anonymisiert",
   "content_generation_jobs.started_by_user_id": OPERATIONAL_REASON,
   "content_reports.resolved_by_user_id": OPERATIONAL_REASON,
+  "ai_batch_runs.started_by_user_id": OPERATIONAL_REASON,
   "course_generation_jobs.requested_by_user_id": OPERATIONAL_REASON,
 };
 
