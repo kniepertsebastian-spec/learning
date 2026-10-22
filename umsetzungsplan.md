@@ -57,8 +57,8 @@ Quelle: `roadmap_didaktik.md`, Phase 1
 
 ### Paket 2.3 – Datenschutz im Cache und Updates · M
 Quelle: `roadmap_pwa.md`, Phase 3
-- [ ] Getrennte Caches mit Ablauf, Admin-/Firmenseiten nicht cachen, Cache bei Nutzerwechsel leeren
-- [ ] Update-Toast statt `skipWaiting`, `ChunkLoadError` abfangen
+- [x] Getrennte Caches mit Ablauf, Admin-/Firmenseiten nicht cachen, Cache bei Nutzerwechsel leeren
+- [x] Update-Toast statt `skipWaiting`, `ChunkLoadError` abfangen
 
 Vor den Pilotkunden, weil Firmenkunden geteilte Geräte nutzen können und Updates dann häufig kommen.
 
