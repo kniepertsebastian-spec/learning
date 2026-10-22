@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getCurrentUser } from "@/lib/server/auth-guards";
-import { deletePlan, PlanNotFoundError, setPlanShared, setPlanStatus } from "@/lib/server/exams/planner";
+import { deletePlan, PlanNotFoundError, setPlanShared, setPlanStatus, snoozeResultPrompt } from "@/lib/server/exams/planner";
 
 export const dynamic = "force-dynamic";
 
-const schema = z.union([z.object({ status: z.enum(["planned", "passed", "failed", "cancelled"]) }), z.object({ shareWithCompany: z.boolean() })]);
+const schema = z.union([z.object({ status: z.enum(["planned", "passed", "failed", "cancelled"]) }), z.object({ shareWithCompany: z.boolean() }), z.object({ resultSnooze: z.literal(true) })]);
 
 /** Ergebnis eintragen („bestanden“/„nicht bestanden“) oder den Plan absagen. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +16,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const body = schema.parse(await request.json());
     if ("status" in body) await setPlanStatus(user.id, id, body.status);
+    else if ("resultSnooze" in body) await snoozeResultPrompt(user.id, id);
     else await setPlanShared(user.id, id, body.shareWithCompany);
     return new NextResponse(null, { status: 204 });
   } catch (error) {

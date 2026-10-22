@@ -20,6 +20,7 @@
     "mandatory:run": "tsx scripts/mandatory-run.ts",
     "cheatsheets:backfill": "tsx scripts/backfill-cheat-sheets.ts",
     "rationales:backfill": "tsx scripts/backfill-option-rationales.ts",
+    "variants:backfill": "tsx scripts/backfill-variants.ts",
     "exams:remind": "tsx scripts/exam-reminders.ts",
     "lessons:blocks": "tsx scripts/backfill-lesson-blocks.ts",
     "lessons:simulations": "tsx scripts/backfill-simulations.ts",

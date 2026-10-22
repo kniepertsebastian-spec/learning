@@ -3,9 +3,10 @@
  * (Nutzer erscheinen nur als gesalzener Hash, nie mit ID, E-Mail oder Namen).
  */
 import { createHash } from "node:crypto";
-import { asc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { probeResults, reviewLog, users, type EvaluationGroup } from "@/lib/server/db/schema";
+import { examAttempts, examPlans, exams, probeResults, reviewLog, users, type EvaluationGroup } from "@/lib/server/db/schema";
+import { readiness } from "@/lib/exams/plan";
 import { DEFAULT_PSRP_CONFIG } from "./config";
 import { calibrationHistory, type ProbeObservation } from "./calibration";
 
@@ -94,6 +95,36 @@ export function computeGroupMetrics(
   });
 }
 
+export interface ExamResultInput {
+  userId: string;
+  group: EvaluationGroup | null;
+  status: "passed" | "failed";
+  scheduledAt: Date;
+  /** Simulationsergebnisse (%) dieses Kurses vor dem Prüfungstermin, älteste zuerst. */
+  scoresBeforeExam: number[];
+}
+
+export interface ExamResultMetric {
+  user: string;
+  group: EvaluationGroup | null;
+  result: "passed" | "failed";
+  /** Bereitschaftswert vor der Prüfung (Engine aus lib/exams/plan.ts); Grundlage, um ihn gegen das echte Ergebnis zu kalibrieren. */
+  readiness: { reached: number; ready: boolean; lastScore: number | null };
+}
+
+/** Prüfungsergebnis je Nutzer samt Bereitschaft vor der Prüfung, anonymisiert (roadmap_didaktik Phase 7). */
+export function computeExamResults(rows: ExamResultInput[], salt: string): ExamResultMetric[] {
+  return rows.map((r) => {
+    const { reached, ready } = readiness(r.scoresBeforeExam);
+    return {
+      user: anonymize(r.userId, salt),
+      group: r.group,
+      result: r.status,
+      readiness: { reached, ready, lastScore: r.scoresBeforeExam.length ? r.scoresBeforeExam[r.scoresBeforeExam.length - 1] : null },
+    };
+  });
+}
+
 export function anonymize(userId: string, salt: string): string {
   return createHash("sha256").update(`${salt}:${userId}`).digest("hex").slice(0, 16);
 }
@@ -145,5 +176,32 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     user: anonymize(userId, salt),
     history: calibrationHistory(observations),
   }));
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), calibration };
+
+  const planRows = await db
+    .select({ userId: examPlans.userId, certificationId: examPlans.certificationId, status: examPlans.status, scheduledAt: examPlans.scheduledAt, group: users.evaluationGroup })
+    .from(examPlans)
+    .innerJoin(users, eq(users.id, examPlans.userId))
+    .where(and(inArray(examPlans.status, ["passed", "failed"]), isNotNull(examPlans.scheduledAt)));
+  const finished = planRows.filter((p) => p.scheduledAt && p.scheduledAt <= asOf);
+  const attemptRows = finished.length
+    ? await db
+        .select({ userId: examAttempts.userId, certificationId: exams.certificationId, score: examAttempts.score, at: examAttempts.completedAt })
+        .from(examAttempts)
+        .innerJoin(exams, eq(exams.id, examAttempts.examId))
+        .where(and(inArray(examAttempts.userId, [...new Set(finished.map((p) => p.userId))]), isNotNull(examAttempts.completedAt)))
+        .orderBy(asc(examAttempts.completedAt))
+    : [];
+  const examResults = computeExamResults(
+    finished.map((p) => ({
+      userId: p.userId,
+      group: p.group as EvaluationGroup | null,
+      status: p.status as "passed" | "failed",
+      scheduledAt: p.scheduledAt as Date,
+      scoresBeforeExam: attemptRows
+        .filter((a) => a.userId === p.userId && a.certificationId === p.certificationId && a.at && a.at <= (p.scheduledAt as Date))
+        .map((a) => Number(a.score ?? 0)),
+    })),
+    salt,
+  );
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), calibration, examResults };
 }

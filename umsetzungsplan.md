@@ -41,15 +41,15 @@ Quelle: `roadmap_didaktik.md`, Phase 2
 
 ### Paket 2.1 – Prüfungsergebnis erfragen · S
 Quelle: `roadmap_didaktik.md`, Phase 7 (nur der erste Punkt und der Export des Ergebnisses)
-- [ ] Nachfrage 1 Tag nach Prüfungstermin, Erinnerung nach 7 Tagen
-- [ ] `psrp:metrics` um Prüfungsergebnis erweitern
+- [x] Nachfrage 1 Tag nach Prüfungstermin, Erinnerung nach 7 Tagen
+- [x] `psrp:metrics` um Prüfungsergebnis erweitern
 
 Vorgezogen, weil Ergebnisse erst Wochen nach der Prüfung vorliegen.
 
 ### Paket 2.2 – Varianten statt derselben Frage · L
 Quelle: `roadmap_didaktik.md`, Phase 1
-- [ ] 2.2a Datenmodell `item_variant`, Migration, Backfill der Originale, Spalte `review_log.variant_question_id` · M
-- [ ] 2.2b Varianten-Generierung inkl. Validierung und `npm run variants:backfill` mit Kostenschätzung · M
+- [x] 2.2a Datenmodell `item_variant`, Migration, Backfill der Originale, Spalte `review_log.variant_question_id` · M
+- [x] 2.2b Varianten-Generierung inkl. Validierung und `npm run variants:backfill` mit Kostenschätzung · M
 - [ ] 2.2c Variantenauswahl in Session und Offline-Paket, Feature-Flag `variant_rotation`, auffällige Varianten in die Prüfliste · M
 
 **Zuschnitt:** drei PRs in der Reihenfolge a → b → c. Nach 2.2a ändert sich für Nutzer noch nichts.
