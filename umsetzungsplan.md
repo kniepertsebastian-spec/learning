@@ -1,6 +1,6 @@
-# Umsetzungsplan: PWA-Härtung und Didaktik
+# Umsetzungsplan: PWA-Härtung, Didaktik und Prüfer
 
-Legt fest, in welcher Reihenfolge die Punkte aus `roadmap_pwa.md`, `roadmap_didaktik.md` und `roadmap_pruefer.md` umgesetzt werden. Die Inhalte, Regeln und Akzeptanzkriterien stehen in den beiden Roadmaps. Dieses Dokument regelt nur Reihenfolge, Zuschnitt in PRs und Abhängigkeiten. Stand: 22.10.2026.
+Legt fest, in welcher Reihenfolge die Punkte aus `roadmap_pwa.md`, `roadmap_didaktik.md` und `roadmap_pruefer.md` umgesetzt werden. Die Inhalte, Regeln und Akzeptanzkriterien stehen in den Roadmaps. Dieses Dokument regelt nur Reihenfolge, Zuschnitt in PRs und Abhängigkeiten. Stand: 23.10.2026.
 
 **Voraussetzung:** PR #117 (beide Roadmaps) ist gemergt.
 
