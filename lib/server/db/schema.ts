@@ -2742,3 +2742,46 @@ export const taskItems = pgTable(
     check("task_item_type_check", sql`${table.taskType} in ('simulation', 'practice')`),
   ],
 );
+
+export type AiBatchKind = "quality" | "simulations" | "concepts";
+export type AiBatchStatus = "running" | "done" | "failed" | "cancelled";
+
+/**
+ * Sammelläufe der KI-Nachbesserung (nur allgemeine Kurse, nur Admins): „Qualitätsbericht komplett abarbeiten“, „Simulationen
+ * ergänzen“ und „Konzepte und Abfragen ergänzen“, für einen Kurs oder für alle. Läuft im Hintergrund des Servers; der Stand
+ * steht hier, damit die Oberfläche Fortschritt zeigen und ein Neustart des Servers erkannt werden kann.
+ */
+export const aiBatchRuns = pgTable(
+  "ai_batch_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").$type<AiBatchKind>().notNull(),
+    /** null = alle allgemeinen Kurse. */
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "cascade" }),
+    startedByUserId: uuid("started_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    status: text("status").$type<AiBatchStatus>().notNull().default("running"),
+    /** Auswahl bei „quality“ (welche Arten von Verbesserungen), sonst leer. */
+    params: jsonb("params").$type<Record<string, unknown>>().notNull().default({}),
+    total: integer("total").notNull().default(0),
+    /** Bearbeitete Einträge (Lektionen, Verbesserungen oder Lernziele). */
+    processed: integer("processed").notNull().default(0),
+    applied: integer("applied").notNull().default(0),
+    /** Nicht passend (z. B. Thema eignet sich nicht für eine Simulation) oder schon vorhanden. */
+    skipped: integer("skipped").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    costUsd: numeric("cost_usd", { precision: 10, scale: 4 }),
+    message: text("message"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Lebenszeichen; ein „laufender“ Lauf ohne Lebenszeichen gilt als abgebrochen (Neustart). */
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    check("ai_batch_runs_kind_check", sql`${table.kind} in ('quality', 'simulations', 'concepts')`),
+    check("ai_batch_runs_status_check", sql`${table.status} in ('running', 'done', 'failed', 'cancelled')`),
+    index("ai_batch_runs_kind_idx").on(table.kind, table.startedAt),
+    // Höchstens ein laufender Lauf je Art und Kurs, und einer je Art für „alle Kurse“.
+    uniqueIndex("ai_batch_runs_one_running_cert").on(table.kind, table.certificationId).where(sql`${table.status} = 'running' and ${table.certificationId} is not null`),
+    uniqueIndex("ai_batch_runs_one_running_all").on(table.kind).where(sql`${table.status} = 'running' and ${table.certificationId} is null`),
+  ],
+);

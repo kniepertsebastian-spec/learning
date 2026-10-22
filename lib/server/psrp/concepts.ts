@@ -289,11 +289,12 @@ export interface TaggingCounts { objectives: number; concepts: number; variants:
 export async function tagCourseConcepts(
   certificationId: string,
   tagger: ConceptTagger,
-  opts: { limit?: number; onProgress?: (c: TaggingCounts) => void } = {},
+  opts: { limit?: number; onProgress?: (c: TaggingCounts) => void; shouldStop?: () => Promise<boolean> | boolean } = {},
 ): Promise<TaggingCounts> {
   const counts: TaggingCounts = { objectives: 0, concepts: 0, variants: 0, failed: 0 };
   const todo = (await objectivesToTag(certificationId)).slice(0, opts.limit ?? Infinity);
   for (const input of todo) {
+    if (await opts.shouldStop?.()) break;
     try {
       const plan = buildTaggingPlan(input, await tagger(input));
       counts.variants += await savePlan(certificationId, input.topicArea, plan);
