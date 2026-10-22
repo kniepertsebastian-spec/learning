@@ -175,8 +175,8 @@ Quelle: `roadmap_pruefer.md`, Phase 5
 | 1.2 | Sofortiges Feedback ✅ | Didaktik 2 | S | Sofort | – |
 | 2.1 | Prüfungsergebnis erfragen ✅ | Didaktik 7 (Teil) | S | Vor Pilot | – |
 | 2.2 | Varianten statt derselben Frage ✅ | Didaktik 1 | L | Vor Pilot | – |
-| 2.3 | Cache-Datenschutz & Updates | PWA 3 | M | Vor Pilot | – |
-| 3.1 | Offline-Navigation | PWA 2 | M | Offline | 2.3 |
+| 2.3 | Cache-Datenschutz & Updates ✅ | PWA 3 | M | Vor Pilot | – |
+| 3.1 | Offline-Navigation | PWA 2 | M | Offline | 2.3 ✅ |
 | 3.2 | Vorabfragen & Einstiegstest | Didaktik 4 | M | Didaktik | 2.2 ✅ |
 | 3.3 | PWA-Tests | PWA 7 | M | Offline | 3.1 |
 | 3.4 | Rückblick „Was weißt du noch?“ | Didaktik 8 | M | Didaktik | 2.2 ✅ |
@@ -193,4 +193,4 @@ Quelle: `roadmap_pruefer.md`, Phase 5
 
 Pakete ohne Abhängigkeit innerhalb einer Stufe können parallel bearbeitet werden.
 
-**Nächste Schritte (Stand 23.10.2026):** 2.3 abschließen; danach in Stufe 3 die didaktischen Pakete in der Reihenfolge 3.4 → 3.5a → 3.2 → 3.5d → 3.5b → 3.5c, parallel dazu die PWA-Pakete 3.1 → 3.3.
+**Nächste Schritte (Stand 23.10.2026):** Stufe 1 und 2 sind erledigt. In Stufe 3 die didaktischen Pakete in der Reihenfolge 3.4 → 3.5a → 3.2 → 3.5d → 3.5b → 3.5c, parallel dazu die PWA-Pakete 3.1 → 3.3. Vor der ersten Freigabe durch einen externen Experten zusätzlich 4.6a.
