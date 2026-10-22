@@ -521,6 +521,13 @@ export const uiStrings = {
       simBlank: "Lücke {n}",
       simWhy: "Warum",
     },
+    pwa: {
+      updateAvailable: "Neue Version verfügbar",
+      updateReload: "Neu laden",
+      errorTitle: "Etwas ist schiefgelaufen",
+      errorBody: "Die Seite konnte nicht angezeigt werden. Dein Lernfortschritt ist nicht betroffen.",
+      errorRetry: "Erneut versuchen",
+    },
     quiz: {
       close: "Schließen",
       leaveTitle: "Sitzung verlassen?",
@@ -1248,6 +1255,13 @@ export const uiStrings = {
       simChoose: "choose",
       simBlank: "Blank {n}",
       simWhy: "Why",
+    },
+    pwa: {
+      updateAvailable: "New version available",
+      updateReload: "Reload",
+      errorTitle: "Something went wrong",
+      errorBody: "The page could not be displayed. Your study progress is not affected.",
+      errorRetry: "Try again",
     },
     quiz: {
       close: "Close",
