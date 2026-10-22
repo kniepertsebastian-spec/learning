@@ -14,6 +14,7 @@ import {
   isRoleAllowed,
   STATUS_VIEW_ROLES,
 } from "@/lib/server/company/access";
+import { ServiceWorkerManager } from "@/components/ServiceWorkerManager";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -104,6 +105,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 {children}
               </AppShell>
               <Toaster />
+              <ServiceWorkerManager userId={user?.id ?? null} />
             </TooltipProvider>
           </ThemeProvider>
         </LocaleProvider>

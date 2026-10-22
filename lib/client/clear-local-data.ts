@@ -1,3 +1,4 @@
+import { clearPagesCache } from "@/lib/client/cache-owner";
 import { clearOfflineDataForUser } from "@/lib/client/offline-db";
 
 /**
@@ -7,7 +8,5 @@ import { clearOfflineDataForUser } from "@/lib/client/offline-db";
  */
 export async function clearLocalUserData(userId: string): Promise<void> {
   await clearOfflineDataForUser(userId).catch(() => {});
-  if ("caches" in window) {
-    await caches.delete("ui-cache").catch(() => {});
-  }
+  await clearPagesCache();
 }
