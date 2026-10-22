@@ -66,8 +66,9 @@ export function ServiceWorkerManager({ userId }: { userId: string | null }) {
         });
       });
     };
-    void navigator.serviceWorker.getRegistration().then((registration) => {
-      if (registration && !cancelled) watch(registration);
+    // `ready` statt `getRegistration()`: beim ersten Besuch wird der Worker erst nach dem Laden der Seite registriert.
+    void navigator.serviceWorker.ready.then((registration) => {
+      if (!cancelled) watch(registration);
     });
 
     return () => {
