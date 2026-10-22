@@ -22,15 +22,15 @@ Aufwand: **S** = bis 1 Tag, **M** = 2–4 Tage, **L** = 1–2 Wochen (Schätzung
 
 ### Paket 1.1 – Offline-Datenverlust verhindern · S
 Quelle: `roadmap_pwa.md`, Phase 1
-- [ ] `reloadOnOnline: false`
-- [ ] `navigator.storage.persist()` beim ersten Offline-Download, Speicherstatus in `OfflinePackageManager`
-- [ ] Logout mit ausstehenden Sync-Ereignissen: erst synchronisieren, sonst warnen
+- [x] `reloadOnOnline: false`
+- [x] `navigator.storage.persist()` beim ersten Offline-Download, Speicherstatus in `OfflinePackageManager`
+- [x] Logout mit ausstehenden Sync-Ereignissen: erst synchronisieren, sonst warnen
 
 ### Paket 1.2 – Sofortiges Feedback in Übungssessions · S
 Quelle: `roadmap_didaktik.md`, Phase 2
-- [ ] `FeedbackPanel` in `StudySession`, Sicherheitsangabe vor dem Aufdecken
-- [ ] „Nochmal nachlesen“-Link, Einstellung „Feedback erst am Ende“
-- [ ] `ExamSession` unverändert
+- [x] `FeedbackPanel` in `StudySession`, Sicherheitsangabe vor dem Aufdecken
+- [x] „Nochmal nachlesen“-Link, Einstellung „Feedback erst am Ende“
+- [x] `ExamSession` unverändert
 
 **Zuschnitt:** 1.1 und 1.2 können ein gemeinsamer PR sein (beide klein, keine Überschneidung) oder zwei getrennte.
 **Fertig, wenn:** beide Akzeptanzkriterien der Roadmaps erfüllt sind und CI grün ist.

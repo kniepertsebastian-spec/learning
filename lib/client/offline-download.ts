@@ -1,4 +1,5 @@
 import type { OfflinePackage } from "@/lib/server/offline/manifest";
+import { requestPersistentStorage } from "@/lib/client/storage-status";
 import { saveOfflinePackage, type StoredOfflinePackage } from "@/lib/client/offline-db";
 
 export interface DownloadProgress {
@@ -50,7 +51,11 @@ export async function downloadOfflinePackage(
   const json = new TextDecoder().decode(combined);
   const pkg = JSON.parse(json) as OfflinePackage;
 
-  return saveOfflinePackage(userId, pkg, loadedBytes);
+  const stored = await saveOfflinePackage(userId, pkg, loadedBytes);
+  // Nach dem ersten erfolgreichen Download dauerhaften Speicher anfragen, damit der
+  // Browser (v. a. iOS/Safari) die Offline-Daten nicht still räumt. Ergebnis ist optional.
+  await requestPersistentStorage();
+  return stored;
 }
 
 export async function fetchOfflinePackageVersion(certificationId: string): Promise<string | null> {

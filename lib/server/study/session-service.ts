@@ -19,6 +19,7 @@ import {
   type StudySessionStatus,
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
+import { buildAnswerReveal, type AnswerReveal } from "./answer-reveal";
 import {
   buildDailyQueue,
   persistSessionPlan,
@@ -656,6 +657,66 @@ export async function completeStudySession(
 
   const score = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
   return { score, results };
+}
+
+export interface StudySessionRevealResult extends AnswerReveal {
+  /** Lektion zum Nachlesen (erste Section des Lernziels der Frage), falls vorhanden. */
+  reviewSectionId: string | null;
+}
+
+/**
+ * Sofort-Feedback (roadmap_didaktik Phase 2): Korrektheit, Erklärung und Begründungen für
+ * EINE Frage einer eigenen, noch aktiven Session. Schreibt nichts - die Wertung entsteht
+ * weiterhin erst in completeStudySession().
+ */
+export async function revealStudySessionAnswer(
+  sessionId: string,
+  userId: string,
+  itemId: string,
+  selectedOptionId: string,
+): Promise<StudySessionRevealResult> {
+  const db = getDb();
+  const [session] = await db
+    .select()
+    .from(studySessions)
+    .where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId)))
+    .limit(1);
+  if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
+  if (session.status !== "planned" && session.status !== "in_progress") {
+    throw new StudySessionNotActiveError("Diese Session ist bereits abgeschlossen oder ausgesetzt.");
+  }
+
+  const [item] = await db
+    .select()
+    .from(studySessionItems)
+    .where(
+      and(
+        eq(studySessionItems.id, itemId),
+        eq(studySessionItems.sessionId, sessionId),
+        eq(studySessionItems.referenceType, "question"),
+      ),
+    )
+    .limit(1);
+  if (!item) throw new StudySessionNotFoundError(`Item ${itemId} nicht gefunden.`);
+
+  const [[question], optionRows] = await Promise.all([
+    db.select().from(questions).where(eq(questions.id, item.referenceId)).limit(1),
+    db.select().from(questionOptions).where(eq(questionOptions.questionId, item.referenceId)),
+  ]);
+  if (!question) throw new StudySessionNotFoundError(`Frage ${item.referenceId} nicht gefunden.`);
+
+  const [section] = await db
+    .select({ id: sections.id })
+    .from(sections)
+    .innerJoin(lessons, eq(lessons.sectionId, sections.id))
+    .where(eq(sections.objectiveId, question.objectiveId))
+    .orderBy(asc(sections.orderNum))
+    .limit(1);
+
+  return {
+    ...buildAnswerReveal(question, optionRows, selectedOptionId),
+    reviewSectionId: section?.id ?? null,
+  };
 }
 
 /** R2.4: "Heute aussetzen" - beendet die Session ohne sie als erledigt zu

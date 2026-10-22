@@ -27,6 +27,7 @@ export function FeedbackPanel({
   nextLabel,
   onNext,
   nextDisabled,
+  rereadHref,
 }: {
   correct: boolean;
   correctIndex: number;
@@ -41,6 +42,8 @@ export function FeedbackPanel({
   nextLabel: string;
   onNext: () => void;
   nextDisabled?: boolean;
+  /** Link zur passenden Lektion, nur bei falscher Antwort gezeigt. */
+  rereadHref?: string | null;
 }) {
   const { t, locale } = useLocale();
   const given = (rationales ?? []).some((r, i) => r && i !== correctIndex);
@@ -95,6 +98,11 @@ export function FeedbackPanel({
             <p className="text-xs text-faint">
               {t.quiz.source}: {sourceReference}
             </p>
+          )}
+          {!correct && rereadHref && (
+            <a href={rereadHref} target="_blank" rel="noopener noreferrer" className="text-xs text-link hover:underline" data-testid="reread-link">
+              {t.quiz.reread}
+            </a>
           )}
           <ReportProblem questionId={questionId} />
         </div>
