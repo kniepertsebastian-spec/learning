@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
 
-type ReportReason = "incorrect" | "unclear" | "outdated";
+type ReportReason = "incorrect" | "unclear" | "outdated" | "variant_outlier";
 
 const REASON_LABEL: Record<ReportReason, { de: string; en: string }> = {
   incorrect: { de: "Falsch", en: "Incorrect" },
   unclear: { de: "Unklar", en: "Unclear" },
   outdated: { de: "Veraltet", en: "Outdated" },
+  variant_outlier: { de: "Variante auffällig", en: "Variant outlier" },
 };
 
 interface OpenQuestionReport {

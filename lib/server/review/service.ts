@@ -10,6 +10,8 @@ export interface ReviewOutcomeInput {
   isCorrect: boolean;
   confidence?: AnswerConfidence | null;
   responseTimeMs?: number | null;
+  /** Gezeigte Variante (questions.id); `questionId` bleibt das Original, an dem der FSRS-Zustand hängt. */
+  variantQuestionId?: string | null;
 }
 
 /**
@@ -54,6 +56,7 @@ export async function recordReviewOutcomes(
         itemId: r.questionId,
         rawRating: ratingFromOutcome(r.isCorrect, r.confidence),
         responseTimeMs: r.responseTimeMs ?? null,
+        variantQuestionId: r.variantQuestionId ?? null,
       })),
     options,
   );

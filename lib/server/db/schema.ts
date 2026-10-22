@@ -770,6 +770,8 @@ export const studySessionItems = pgTable("study_session_items", {
   /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - wie bei
    * quizAnswers.confidence, nur für "question"-Items relevant. */
   confidence: text("confidence").$type<AnswerConfidence>(),
+  /** Variantenrotation: gezeigte Variante (questions.id) statt des Originals in `referenceId`; null = Original. Bewertet und verbucht wird weiter am Original. */
+  variantQuestionId: uuid("variant_question_id").references(() => questions.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -1186,7 +1188,8 @@ export const sessionRecommendationFeedback = pgTable(
  * Meldungen zur selben Frage sind ein zusätzliches Signal (mehr Lerner sehen
  * dasselbe Problem), keine Korrektur eines einzelnen Werts. */
 export type ContentReportTargetType = "question" | "lesson";
-export type ContentReportReason = "incorrect" | "unclear" | "outdated";
+/** `variant_outlier`: automatisch erzeugt, wenn eine Variante auffällig andere Erfolgsquote hat als die übrigen (kein Nutzer meldet). */
+export type ContentReportReason = "incorrect" | "unclear" | "outdated" | "variant_outlier";
 export type ContentReportStatus = "open" | "resolved" | "dismissed";
 
 export const contentReports = pgTable(
@@ -1206,7 +1209,7 @@ export const contentReports = pgTable(
     index("content_reports_target_idx").on(table.targetType, table.targetId),
     index("content_reports_status_idx").on(table.status),
     check("content_reports_target_type_check", sql`${table.targetType} in ('question', 'lesson')`),
-    check("content_reports_reason_check", sql`${table.reason} in ('incorrect', 'unclear', 'outdated')`),
+    check("content_reports_reason_check", sql`${table.reason} in ('incorrect', 'unclear', 'outdated', 'variant_outlier')`),
     check("content_reports_status_check", sql`${table.status} in ('open', 'resolved', 'dismissed')`),
   ],
 );

@@ -39,6 +39,7 @@ export interface RatedReview {
   responseTimeMs?: number | null;
   reviewType?: ReviewLogType;
   probeVariantId?: string | null;
+  variantQuestionId?: string | null;
 }
 
 export interface RecordOptions {
@@ -156,6 +157,7 @@ export async function recordRatedReviews(
           responseTimeMs: review.responseTimeMs,
           reviewType: review.reviewType,
           probeVariantId: review.probeVariantId,
+          variantQuestionId: review.variantQuestionId,
           predictedR: result.predictedR,
         }),
       );

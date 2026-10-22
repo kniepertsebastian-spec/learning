@@ -12,3 +12,16 @@ describe("computeExamResults", () => {
     expect(r.readiness).toEqual({ reached: 0, ready: false, lastScore: null });
   });
 });
+
+import { computeVariantMetrics, type MetricReview } from "@/lib/server/psrp/metrics";
+
+describe("computeVariantMetrics", () => {
+  const review = (userHash: string, rotation: boolean, variantShown: boolean, rawRating: number): MetricReview => ({
+    userHash, group: "planning", timestamp: new Date(), rawRating, predictedR: null, rotation, variantShown,
+  });
+  it("trennt Nutzer mit und ohne Rotation sowie Variante und Original", () => {
+    const m = computeVariantMetrics([review("a", true, true, 3), review("a", true, false, 1), review("b", false, false, 4)]);
+    expect(m.enabled).toMatchObject({ users: 1, reviews: 2, reviewsWithVariant: 1, retentionVariant: 1, retentionOriginal: 0 });
+    expect(m.disabled).toMatchObject({ users: 1, reviews: 1, reviewsWithVariant: 0, retentionVariant: null, retentionOriginal: 1 });
+  });
+});
