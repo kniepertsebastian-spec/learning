@@ -1,6 +1,6 @@
 # Umsetzungsplan: PWA-Härtung und Didaktik
 
-Legt fest, in welcher Reihenfolge die Punkte aus `roadmap_pwa.md` und `roadmap_didaktik.md` umgesetzt werden. Die Inhalte, Regeln und Akzeptanzkriterien stehen in den beiden Roadmaps. Dieses Dokument regelt nur Reihenfolge, Zuschnitt in PRs und Abhängigkeiten. Stand: 22.10.2026.
+Legt fest, in welcher Reihenfolge die Punkte aus `roadmap_pwa.md`, `roadmap_didaktik.md` und `roadmap_pruefer.md` umgesetzt werden. Die Inhalte, Regeln und Akzeptanzkriterien stehen in den beiden Roadmaps. Dieses Dokument regelt nur Reihenfolge, Zuschnitt in PRs und Abhängigkeiten. Stand: 22.10.2026.
 
 **Voraussetzung:** PR #117 (beide Roadmaps) ist gemergt.
 
@@ -136,6 +136,26 @@ Quelle: `roadmap_didaktik.md`, Phase 3
 
 **Abhängigkeit:** nach 2.2 (Varianten-Generierung wird erweitert) und 3.5 (Verstehens-Modus zuerst). Die neuen Formate werten danach auch Rückblick (3.4) und Verstehens-Modus auf.
 
+### Paket 4.6 – Prüfer-Rolle und Freigabe je Inhaltsstand · L
+Quelle: `roadmap_pruefer.md`, Phase 1 und 2
+- [ ] 4.6a Freigabe an Inhaltsstand binden: `course_approvals`, `content_hash`, Änderungserkennung mit Diff, Migration von `approvedByName` · M
+- [ ] 4.6b Rolle `reviewer`, Einladung, Zuweisung je allgemeinem Kurs, eingeschränkte Werkstatt mit Kommentaren und Freigabe · M
+
+**Abhängigkeit:** keine. **Spätestens bevor der erste externe Experte einen Kurs freigibt**, auch wenn das vor dem Launch passiert; sonst steht sein Name unter späteren Änderungen.
+
+### Paket 4.7 – Expertenprofil und Siegel am Kurs · M
+Quelle: `roadmap_pruefer.md`, Phase 3 und 4 (rechtliche Punkte aus Phase 7 vorher klären)
+- [ ] Profil mit Einwilligung je Feld, Erfahrung, Zertifikate mit Nachweis-Link und Ablaufdatum, öffentliche Seite `/experts/<slug>`, Rückzug
+- [ ] Siegel „Fachlich geprüft von …“ auf Kursseite, Katalog, Offline-Paket und Bescheinigung
+
+**Abhängigkeit:** 4.6. Ein fertiges Profil ist zugleich Material für Landingpage und Vertrieb.
+
+### Paket 4.8 – Probe-Review für neue Prüfer · M
+Quelle: `roadmap_pruefer.md`, Phase 5
+- [ ] Probe-Sets mit von Menschen festgelegten Fehlern, regelbasierte Auswertung, schaltet Freigaberechte frei
+
+**Abhängigkeit:** 4.6b. Erst nötig, wenn mehr als ein, zwei Experten gewonnen werden; den ersten Experten wählst du persönlich aus.
+
 ---
 
 ## Stufe 5 – Nach Bedarf
@@ -143,6 +163,7 @@ Quelle: `roadmap_didaktik.md`, Phase 3
 - [ ] Wirkung messen, restliche Punkte (`roadmap_didaktik.md`, Phase 7): Export nach Feature-Flags, Readiness gegen Prüfungsergebnis; sobald genug Prüfungsergebnisse vorliegen
 - [ ] Web Push (`roadmap_pwa.md`, Phase 6), sinnvoll zusammen mit PSRP-HR-Erinnerungszeiten
 - [ ] Didaktik „Später“ (`roadmap_didaktik.md`, Phase 11)
+- [ ] Qualität der Prüfer im Betrieb (`roadmap_pruefer.md`, Phase 6): Kennzahlen je Prüfer, Zweitprüfung als Stichprobe, Wiedervorlage bei neuer Prüfungsversion; sobald freigegebene Kurse Nutzer haben
 
 ---
 
@@ -165,7 +186,10 @@ Quelle: `roadmap_didaktik.md`, Phase 3
 | 4.3 | Installation & Background Sync | PWA 5 | M | Vor Launch | 4.2 |
 | 4.4 | Schwächen einweben | Didaktik 10 | M | Vor Launch | 3.5a, 3.5c |
 | 4.5 | Neue Antwortformate | Didaktik 3 | L | Vor Launch | 2.2 ✅, 3.5 |
-| 5 | Messung, Push, Später | Didaktik 7, 11; PWA 6 | – | Nach Bedarf | Daten |
+| 4.6 | Prüfer-Rolle & Freigabe je Inhaltsstand | Prüfer 1, 2 | L | Vor Launch / vor 1. Experten | – |
+| 4.7 | Expertenprofil & Siegel | Prüfer 3, 4 | M | Vor Launch | 4.6, Recht |
+| 4.8 | Probe-Review | Prüfer 5 | M | Vor Launch | 4.6b |
+| 5 | Messung, Push, Später, Prüfer-Qualität | Didaktik 7, 11; PWA 6; Prüfer 6 | – | Nach Bedarf | Daten |
 
 Pakete ohne Abhängigkeit innerhalb einer Stufe können parallel bearbeitet werden.
 
