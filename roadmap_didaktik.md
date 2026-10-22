@@ -18,6 +18,8 @@ Die Plattform bereitet auf IT-Zertifikate vor. Bereits vorhanden:
 - **Lernserie:** `computeStreak` in `lib/server/study/session-builder.ts`; ein Tag ohne abgeschlossene Session setzt die Serie auf 0.
 - **Prüfungsplan** (`exam_plans.status`: `planned` / `passed` / `failed` / `cancelled`): Nutzer kann im `ExamPlanner` von Hand „bestanden“ setzen; nicht in `psrp:metrics` enthalten.
 
+**Umsetzungsstand (23.10.2026):** Phase 1 (Varianten: `item_variant`, `lib/server/variants/`), Phase 2 (Sofort-Feedback) und die Prüfungsnachfrage aus Phase 7 sind umgesetzt; die Beschreibung oben zeigt den Stand vor dieser Umsetzung. Phasen 8–10 wurden nachträglich ergänzt.
+
 **Hinweis:** Vor Änderungen an Next.js-Routen die passende Anleitung in `node_modules/next/dist/docs/` lesen (siehe `AGENTS.md`).
 
 ## Architektur-Regeln (verbindlich)
@@ -45,6 +47,12 @@ Die Plattform bereitet auf IT-Zertifikate vor. Bereits vorhanden:
 | Serienmodell | Wochenziel (Lerntage pro Woche, Standard 4) |
 | Nachfrage zum Prüfungsergebnis | 1 Tag nach Prüfungstermin, Erinnerung nach 7 Tagen |
 | Einführung der Zusatz-Eingaben (Check-in, Sicherheit) | ab der 3. abgeschlossenen Session |
+| Rückblick: Abstand zur Lektion | frühestens 1 Tag, höchstens 14 Tage |
+| Rückblick: Fragen | 2–3, immer als Variante |
+| Verstehens-Modus: Auslösung | mind. 2 verschiedene Signale je Konzept innerhalb von 14 Tagen, oder 2× „falsch + sicher“ |
+| Verstehens-Modus: Item ohne Fortschritt | ≥ 3 Fehlschläge (Rating 1) und Stabilität < 2 Tage |
+| Häufung für die Werkstatt | ≥ 30 % der Lernenden eines Konzepts im Verstehens-Modus, bei mind. 20 Lernenden |
+| Eingewebte Fragen je Lektionstest | max. 2 bzw. 20 % |
 
 ---
 
@@ -152,13 +160,80 @@ Ziel: Grundsätze „Lernen beginnt mit Handeln“ und „Gute Lernende bekommen
 - [ ] `psrp:metrics` um Prüfungsergebnis, Bereitschaftswert (`readiness`) vor der Prüfung und Feature-Flags dieser Roadmap erweitern (anonymisiert, wie bisher mit `PSRP_EXPORT_SALT`).
 - [ ] Auswertung: Wie gut sagt der Bereitschaftswert das echte Ergebnis vorher? Ergebnis als Grundlage, um die Readiness-Engine zu kalibrieren.
 - [ ] Kennzahlen je Feature-Flag: Behaltensquote nach 30 Tagen, Anteil richtig + „sicher“ bei Varianten vs. Originalen, Abbruchquote, Bestehensquote.
+- [ ] Auswertung Rückblick (Phase 8): vorhergesagte vs. tatsächliche Abrufwahrscheinlichkeit beim ersten Abstand; Einfluss der Tagesform (Φ) und Tageszeit **beim Lernen** auf das Behalten. Ergebnis als Grundlage für die Frage, ob die Planungsschicht neuen Stoff an schlechten Tagen zurückhalten soll (Entscheidung als eigene Aufgabe, nicht automatisch).
+- [ ] Auswertung Verstehens-Modus (Phase 9): Anteil `resolved`, Dauer bis `resolved`, Abbruchquote von Nutzern mit vs. ohne Verstehens-Modus.
 - [ ] Da Nutzerzahlen anfangs klein sind: Auswertung als beschreibender Bericht, keine automatische Übernahme von Änderungen.
 
 **Akzeptanzkriterium:** Für jeden Nutzer mit vergangenem Prüfungstermin ist das Ergebnis erfragt; der Export enthält es und lässt sich nach Feature-Flags aufschlüsseln.
 
 ---
 
-## Phase 8 – Später
+## Phase 8 – Rückblick „Was weißt du noch?“ (Priorität: hoch)
+
+Ziel: Frisch Gelerntes am Anfang der nächsten Session kurz abrufen. Das festigt das Wissen (Abrufen ist selbst Lernen) und liefert Messwerte für den ersten Abstand nach dem Lernen, bei dem das Gedächtnismodell am wenigsten über den Nutzer weiß.
+
+- [ ] Auswahl: Lektionen, die der Nutzer seit der letzten Session abgeschlossen hat, frühestens 1 Tag, höchstens 14 Tage zurück; je Rückblick 2–3 Fragen aus den Kernpunkten dieser Lektionen.
+- [ ] Immer eine **Variante**, nie die Frage aus dem Lektionstest (Rotation aus Phase 1, `lib/server/variants/rotation.ts`). Bevorzugt Formate zum Selbst-Erinnern, sobald Phase 3 sie liefert.
+- [ ] Erscheint am Anfang der Session als „Kurzer Rückblick auf <Lektion>“, Ergebnis freundlich formuliert („2 von 3 sitzen schon“), mit Link zur Textstelle bei Fehlern.
+- [ ] Wird **unabhängig von der Tagesform** angeboten (sonst sind die Messdaten verzerrt), dafür kurz: höchstens 3 Fragen, Teil des Zeitbudgets der Session.
+- [ ] Logging als normales FSRS-Review mit neuem `review_type = recall_check`; rohes Rating wie gewohnt über `ratingFromOutcome`. Zusätzlich speichern: Abstand zur Lektion in Stunden, Φ und Tageszeit **beim Lernen** der Lektion sowie beim Rückblick.
+- [ ] Überspringbar; ein übersprungener Rückblick wird geloggt (Abbruchquote ist selbst eine Kennzahl).
+- [ ] Feature-Flag `recall_check`.
+
+**Akzeptanzkriterium:** Nach Abschluss einer Lektion erhält der Nutzer in der nächsten Session (≥ 1 Tag später) einen Rückblick mit Varianten; der Eintrag im `review_log` trägt `recall_check`, Abstand und Tagesform beim Lernen.
+
+---
+
+## Phase 9 – Verstehens-Modus (Priorität: hoch)
+
+Ziel: Unterscheiden zwischen **Vergessen** (hilft: Wiederholen) und **Nicht-Verstehen** (hilft: anders erklären, Grundlagen schließen). Wer etwas nicht verstanden hat, bekommt es nicht einfach öfter vorgelegt.
+
+### 9.1 Erkennen
+- [ ] Signale je Nutzer und Konzept (über `item_concept`) sammeln:
+  - falsche Antwort mit Angabe „sicher“ (stärkstes Signal: Fehlvorstellung)
+  - wiederholt dieselbe falsche Option bei einem Item oder dessen Varianten
+  - Fehler bei mindestens 2 **verschiedenen** Varianten desselben Konzepts
+  - Item mit wiederholten Fehlschlägen, dessen Stabilität nicht wächst (Schwelle siehe Platzhalter)
+  - Simulation zum Lernziel nur mit ≥ 2 Hilfen gelöst (vorhandenes Signal aus `simulation_results`)
+- [ ] Auslösung nur bei einem Muster (Schwelle konfigurierbar), nicht bei Einzelfehlern. Zustand je Nutzer und Konzept speichern (`concept_struggle`: Signale, Status `detected` / `in_progress` / `resolved`), getrennt von Rohdaten.
+
+### 9.2 Reagieren: Verstehens-Leiter
+- [ ] **Wiederholen pausieren:** Items des Konzepts kommen nicht mehr als normale Wiederholung in die Session, solange der Verstehens-Modus läuft (nur Planungsschicht, FSRS-Zustand bleibt unverändert).
+- [ ] **Verwechslung ansprechen:** Wurde wiederholt dieselbe falsche Option gewählt, deren Begründung (`rationale`) als „Häufige Verwechslung“ zeigen.
+- [ ] **Anders erklären:** je Lernziel 1–2 Alternativerklärungen (anderes Beispiel, Vergleich aus dem Alltag, vollständig gelöstes Beispiel). **Vorab** per KI erzeugt und durch den normalen Prüfprozess der Werkstatt freigegeben, nie live generiert. Backfill-Skript mit Kostenschätzung.
+- [ ] **Vormachen, dann selbst machen:** gelöstes Beispiel → Beispiel mit Lücken → eigene Aufgabe (neue Variante).
+- [ ] **Abschluss:** Konzept gilt als `resolved`, wenn eine neue Variante richtig beantwortet wird; danach normale Wiederholung.
+- [ ] Einstieg sichtbar und freundlich: „Das scheint noch nicht ganz zu sitzen. Sollen wir es anders angehen?“, jederzeit ablehnbar.
+
+### 9.3 Grundlagen prüfen
+- [ ] Konzeptmodell um Voraussetzungen erweitern: Tabelle `concept_prerequisite` (concept_id, requires_concept_id). Erzeugung per KI im Tagging-Schritt nach der Kursgenerierung, Prüfung in der Werkstatt; nachträglich per Skript.
+- [ ] Im Verstehens-Modus 2–3 kurze Fragen zu den Voraussetzungen. Ist eine schwach, zuerst eine kurze Brückenlektion bzw. die passende Lektion, dann zurück zum Ausgangskonzept.
+
+### 9.4 Menschen einbeziehen
+- [ ] Firmenbereich: Knopf „Mentor fragen“, **nur durch den Lernenden ausgelöst**. Übergibt Lernziel und die Frage des Lernenden, keine Fehlerhistorie. Niemals automatische Meldung an Arbeitgeber oder Mentor (Grundsatz „Arbeitgeber sieht nur den Status“).
+- [ ] **Häufung erkennen:** Scheitern viele Lernende am selben Konzept (Schwelle siehe Platzhalter), landet es automatisch in der Werkstatt-Prüfliste (`ContentReportQueue`, neuer Grund `concept_struggle`), inkl. der am häufigsten gewählten falschen Option. Anonymisiert, ohne Personenbezug.
+
+**Akzeptanzkriterium:** Ein synthetischer Nutzer, der dieselbe falsche Option mit „sicher“ wählt und bei zwei Varianten scheitert, landet im Verstehens-Modus; die Items des Konzepts erscheinen bis zum Abschluss nicht als normale Wiederholung; nach richtiger Antwort auf eine neue Variante ist der Status `resolved`. Ein Nutzer mit einem einzelnen Fehler löst nichts aus.
+
+---
+
+## Phase 10 – Schwächen in spätere Lektionen einweben (Priorität: mittel)
+
+Ziel: Schwache oder fällige Inhalte tauchen in neuem Zusammenhang wieder auf, z. B. als Teil des Lektionstests oder einer Simulation einer späteren Lektion. Gemischtes Üben in neuem Kontext festigt stärker als dieselbe Karte erneut und wirkt nicht wie Pflicht-Wiederholung.
+
+- [ ] Kandidaten: fällige oder schwache Items (niedrige Abrufwahrscheinlichkeit, Kategorie „schwach“), deren Konzept mit der aktuellen Lektion verbunden ist (gemeinsames Konzept, Voraussetzung aus 9.3 oder gleiches Themengebiet).
+- [ ] Einbau in Lektionstests (`SectionQuiz`): höchstens 2 Fragen bzw. 20 % des Tests, als Variante, optisch wie normale Fragen.
+- [ ] Einbau in Simulationen: vorhandene Verknüpfung `task_item` nutzen; Generierung neuer Simulationen kann Items früherer Lektionen als Schritt einbauen (`embedded_step`).
+- [ ] **Eingewebte Fragen zählen nicht für das Bestehen der aktuellen Lektion**, nur für das Gedächtnismodell. Sonst scheitert jemand an Lektion 8 wegen Lektion 3.
+- [ ] Logging als `review_type = interleaved` (vorhanden), mit Kennzeichnung der Herkunft (`woven_into_lesson_id`).
+- [ ] Items im Verstehens-Modus (Phase 9) werden nicht eingewebt.
+- [ ] Feature-Flag `woven_reviews`.
+
+**Akzeptanzkriterium:** Ein Lektionstest enthält bei vorhandenen passenden Schwächen bis zu 2 eingewebte Varianten; ihr Ergebnis aktualisiert den FSRS-Zustand, ändert aber nicht das Bestehen der Lektion.
+
+---
+
+## Phase 11 – Später
 
 - [ ] Planung zusätzlich auf Konzept-Ebene: Ein schwaches Konzept zieht verwandte Items vor (über `item_concept`), auch wenn sie noch nicht fällig sind.
 - [ ] Gemischte Sessions über mehrere Domains hinweg gezielt erzwingen (Interleaving), wenn ein Nutzer lange nur eine Domain übt.
@@ -169,8 +244,12 @@ Ziel: Grundsätze „Lernen beginnt mit Handeln“ und „Gute Lernende bekommen
 
 ## Reihenfolge
 
-1. Phase 2 (klein, sofort spürbar) und Phase 1 (größter Hebel für „bestanden heißt beherrscht“).
-2. Phase 4: macht zwei Grundsätze aus dem Konzept erstmals wahr und nutzt vorhandenen Code (`applyChapterSkip`).
-3. Phase 3: mehr Aufwand in Generierung und Werkstatt, daher nach Phase 1 (die Varianten-Generierung lässt sich erweitern).
+Die verbindliche Reihenfolge über PWA- und Didaktik-Roadmap steht in `umsetzungsplan.md`. Kurzfassung für diese Roadmap:
+
+1. Phase 2 und Phase 1 (umgesetzt), Prüfungsnachfrage aus Phase 7 (umgesetzt).
+2. Phase 4 (Vorabfragen, Einstiegstest) und Phase 8 (Rückblick): beide nutzen die Varianten aus Phase 1.
+3. Phase 9 (Verstehens-Modus): verhindert, dass Lernende frustriert aussteigen; vor den neuen Antwortformaten.
 4. Phase 5 und 6 parallel, vor dem Launch.
-5. Phase 7 begleitend ab Phase 1, Prüfungsnachfrage so früh wie möglich, weil Daten Zeit brauchen.
+5. Phase 10 (Einweben): nach Phase 9, weil es dessen Signale und die Voraussetzungen im Konzeptmodell nutzt.
+6. Phase 3 (neue Antwortformate): größter Aufwand in Generierung und Werkstatt.
+7. Phase 7 begleitend; Auswertung des Rückblicks, sobald genug Daten vorliegen.

@@ -64,7 +64,7 @@ Vor den Pilotkunden, weil Firmenkunden geteilte Geräte nutzen können und Updat
 
 ---
 
-## Stufe 3 – Offline vollständig und „Handeln vor Lesen“
+## Stufe 3 – Offline vollständig, „Handeln vor Lesen“ und Verstehen
 
 ### Paket 3.1 – Offline-Navigation · M
 Quelle: `roadmap_pwa.md`, Phase 2
@@ -84,6 +84,22 @@ Quelle: `roadmap_pwa.md`, Phase 7
 - [ ] Playwright-E2E für Offline-Fluss, Update-Toast und Cache-Regeln, `docs/PWA.md`
 
 Direkt nach 3.1, damit die Offline-Navigation abgesichert ist.
+
+### Paket 3.4 – Rückblick „Was weißt du noch?“ · M
+Quelle: `roadmap_didaktik.md`, Phase 8
+- [ ] Auswahl der Lektionen, Rückblick am Session-Anfang mit Varianten, `review_type = recall_check`, Tagesform beim Lernen mitloggen, Flag `recall_check`
+
+**Abhängigkeit:** 2.2 (erledigt). Früh einplanen, weil die Messdaten Zeit brauchen.
+
+### Paket 3.5 – Verstehens-Modus · L
+Quelle: `roadmap_didaktik.md`, Phase 9
+- [ ] 3.5a Signale erkennen, `concept_struggle`, Wiederholen pausieren, häufige Verwechslung ansprechen · M
+- [ ] 3.5b Alternativerklärungen je Lernziel: Generierung, Werkstatt-Freigabe, Backfill · M
+- [ ] 3.5c Voraussetzungen im Konzeptmodell (`concept_prerequisite`), Diagnosefragen, Brückenlektion · L
+- [ ] 3.5d „Mentor fragen“ (nur durch Lernende ausgelöst), Häufung in die Werkstatt-Prüfliste · S
+
+**Zuschnitt:** vier PRs in der Reihenfolge a → d → b → c. Schon 3.5a allein verhindert, dass Unverstandenes stur wiederholt wird; 3.5d ist klein und verbessert die Inhalte früh.
+**Abhängigkeit:** 2.2 (erledigt). Vor 4.5 (neue Antwortformate).
 
 ---
 
@@ -106,13 +122,19 @@ Quelle: `roadmap_pwa.md`, Phase 5
 
 **Abhängigkeit:** nach 4.2 (Screenshots für den Installationsdialog).
 
-### Paket 4.4 – Neue Antwortformate · L
-Quelle: `roadmap_didaktik.md`, Phase 3
-- [ ] 4.4a Datenmodell `answer_format`, Formate `ordering`, `short_answer`, `matching` in Session, Lektionstest und Offline-Leser · L
-- [ ] 4.4b Generierung und Werkstatt für die neuen Formate · M
-- [ ] 4.4c Modus „Antwort zuerst überlegen“ und Selbsterklärung · S
+### Paket 4.4 – Schwächen in spätere Lektionen einweben · M
+Quelle: `roadmap_didaktik.md`, Phase 10
+- [ ] Kandidaten über gemeinsame Konzepte bzw. Voraussetzungen, bis zu 2 eingewebte Varianten im Lektionstest, Einbau in Simulationen, zählt nicht fürs Bestehen, Flag `woven_reviews`
 
-**Abhängigkeit:** nach 2.2 (Varianten-Generierung wird erweitert).
+**Abhängigkeit:** nach 3.5a (Items im Verstehens-Modus werden nicht eingewebt) und 3.5c (Voraussetzungen als Brücke).
+
+### Paket 4.5 – Neue Antwortformate · L
+Quelle: `roadmap_didaktik.md`, Phase 3
+- [ ] 4.5a Datenmodell `answer_format`, Formate `ordering`, `short_answer`, `matching` in Session, Lektionstest und Offline-Leser · L
+- [ ] 4.5b Generierung und Werkstatt für die neuen Formate · M
+- [ ] 4.5c Modus „Antwort zuerst überlegen“ und Selbsterklärung · S
+
+**Abhängigkeit:** nach 2.2 (Varianten-Generierung wird erweitert) und 3.5 (Verstehens-Modus zuerst). Die neuen Formate werten danach auch Rückblick (3.4) und Verstehens-Modus auf.
 
 ---
 
@@ -120,7 +142,7 @@ Quelle: `roadmap_didaktik.md`, Phase 3
 
 - [ ] Wirkung messen, restliche Punkte (`roadmap_didaktik.md`, Phase 7): Export nach Feature-Flags, Readiness gegen Prüfungsergebnis; sobald genug Prüfungsergebnisse vorliegen
 - [ ] Web Push (`roadmap_pwa.md`, Phase 6), sinnvoll zusammen mit PSRP-HR-Erinnerungszeiten
-- [ ] Didaktik „Später“ (`roadmap_didaktik.md`, Phase 8)
+- [ ] Didaktik „Später“ (`roadmap_didaktik.md`, Phase 11)
 
 ---
 
@@ -128,18 +150,23 @@ Quelle: `roadmap_didaktik.md`, Phase 3
 
 | # | Paket | Quelle | Aufwand | Stufe | Abhängig von |
 |---|---|---|---|---|---|
-| 1.1 | Offline-Datenverlust verhindern | PWA 1 | S | Sofort | – |
-| 1.2 | Sofortiges Feedback | Didaktik 2 | S | Sofort | – |
-| 2.1 | Prüfungsergebnis erfragen | Didaktik 7 (Teil) | S | Vor Pilot | – |
-| 2.2 | Varianten statt derselben Frage | Didaktik 1 | L | Vor Pilot | – |
+| 1.1 | Offline-Datenverlust verhindern ✅ | PWA 1 | S | Sofort | – |
+| 1.2 | Sofortiges Feedback ✅ | Didaktik 2 | S | Sofort | – |
+| 2.1 | Prüfungsergebnis erfragen ✅ | Didaktik 7 (Teil) | S | Vor Pilot | – |
+| 2.2 | Varianten statt derselben Frage ✅ | Didaktik 1 | L | Vor Pilot | – |
 | 2.3 | Cache-Datenschutz & Updates | PWA 3 | M | Vor Pilot | – |
 | 3.1 | Offline-Navigation | PWA 2 | M | Offline | 2.3 |
-| 3.2 | Vorabfragen & Einstiegstest | Didaktik 4 | M | Offline/Didaktik | 2.2 |
+| 3.2 | Vorabfragen & Einstiegstest | Didaktik 4 | M | Didaktik | 2.2 ✅ |
 | 3.3 | PWA-Tests | PWA 7 | M | Offline | 3.1 |
+| 3.4 | Rückblick „Was weißt du noch?“ | Didaktik 8 | M | Didaktik | 2.2 ✅ |
+| 3.5 | Verstehens-Modus | Didaktik 9 | L | Didaktik | 2.2 ✅ |
 | 4.1 | Einstieg & Motivation | Didaktik 5, 6 | M | Vor Launch | – |
 | 4.2 | Manifest, Icons, iOS | PWA 4 | M | Vor Launch | Branding |
 | 4.3 | Installation & Background Sync | PWA 5 | M | Vor Launch | 4.2 |
-| 4.4 | Neue Antwortformate | Didaktik 3 | L | Vor Launch | 2.2 |
-| 5 | Messung, Push, Später | Didaktik 7, 8; PWA 6 | – | Nach Bedarf | Daten |
+| 4.4 | Schwächen einweben | Didaktik 10 | M | Vor Launch | 3.5a, 3.5c |
+| 4.5 | Neue Antwortformate | Didaktik 3 | L | Vor Launch | 2.2 ✅, 3.5 |
+| 5 | Messung, Push, Später | Didaktik 7, 11; PWA 6 | – | Nach Bedarf | Daten |
 
 Pakete ohne Abhängigkeit innerhalb einer Stufe können parallel bearbeitet werden.
+
+**Nächste Schritte (Stand 23.10.2026):** 2.3 abschließen; danach in Stufe 3 die didaktischen Pakete in der Reihenfolge 3.4 → 3.5a → 3.2 → 3.5d → 3.5b → 3.5c, parallel dazu die PWA-Pakete 3.1 → 3.3.
