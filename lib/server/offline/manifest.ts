@@ -71,6 +71,9 @@ export interface OfflineSessionQuestionItem {
    * bewusste Abweichung wie beim Abschnittsquiz im Offline-Paket: ohne
    * Netzverbindung muss der Score sofort clientseitig berechenbar sein. */
   options: OfflineQuestionOption[];
+  /** Sofort-Feedback offline: Erklärung und Begründungen der gezeigten Frage (Original oder Variante; Variantenfragen stehen nicht im Kurspaket). */
+  explanation: Localized<string>;
+  sourceReference: string | null;
 }
 
 export interface OfflineSessionLessonItem {
@@ -160,7 +163,8 @@ async function getOfflineStudySession(
     .where(eq(studySessionItems.sessionId, session.id))
     .orderBy(asc(studySessionItems.orderNum));
 
-  const questionItemIds = itemRows.filter((i) => i.referenceType === "question").map((i) => i.referenceId);
+  // Gezeigt wird die gewählte Variante, sonst das Original (Variantenrotation).
+  const questionItemIds = itemRows.filter((i) => i.referenceType === "question").map((i) => i.variantQuestionId ?? i.referenceId);
   const sectionItemIds = itemRows.filter((i) => i.referenceType === "section").map((i) => i.referenceId);
 
   const [questionRows, optionRows, sectionRows] = await Promise.all([
@@ -188,18 +192,20 @@ async function getOfflineStudySession(
   const lessonItems: OfflineSessionLessonItem[] = [];
   for (const item of itemRows) {
     if (item.referenceType === "question") {
-      const q = questionById.get(item.referenceId);
+      const q = questionById.get(item.variantQuestionId ?? item.referenceId);
       if (!q) continue;
-      const options = (optionsByQuestionId.get(item.referenceId) ?? [])
+      const options = (optionsByQuestionId.get(q.id) ?? [])
         .slice()
         .sort((a, b) => a.orderNum - b.orderNum)
-        .map((o) => ({ id: o.id, text: o.text, orderNum: o.orderNum, isCorrect: o.isCorrect }));
+        .map((o) => ({ id: o.id, text: o.text, orderNum: o.orderNum, isCorrect: o.isCorrect, rationale: o.isCorrect ? null : o.rationale }));
       questionItems.push({
         itemId: item.id,
         category: item.category as "review" | "weak" | "new",
         questionId: q.id,
         question: q.question,
         options,
+        explanation: q.explanation,
+        sourceReference: q.sourceReference,
       });
     } else {
       const s = sectionById.get(item.referenceId);

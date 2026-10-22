@@ -1,0 +1,4 @@
+ALTER TABLE "content_reports" DROP CONSTRAINT "content_reports_reason_check";--> statement-breakpoint
+ALTER TABLE "study_session_items" ADD COLUMN "variant_question_id" uuid;--> statement-breakpoint
+ALTER TABLE "study_session_items" ADD CONSTRAINT "study_session_items_variant_question_id_questions_id_fk" FOREIGN KEY ("variant_question_id") REFERENCES "public"."questions"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "content_reports" ADD CONSTRAINT "content_reports_reason_check" CHECK ("content_reports"."reason" in ('incorrect', 'unclear', 'outdated', 'variant_outlier'));

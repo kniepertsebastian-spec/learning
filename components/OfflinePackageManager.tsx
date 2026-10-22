@@ -186,9 +186,6 @@ export function OfflinePackageManager({
           lessonItems={[]}
           locale={locale}
           offline={{ userId }}
-          offlineQuestions={Object.fromEntries(
-            record.data.domains.flatMap((d) => d.objectives.flatMap((o) => o.questions.map((q) => [q.id, q] as const))),
-          )}
         />
       </div>
     );

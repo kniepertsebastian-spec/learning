@@ -19,6 +19,8 @@ import {
   type StudySessionStatus,
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
+import { chooseSessionVariants } from "@/lib/server/variants/rotation";
+import { flagOutlierVariants } from "@/lib/server/variants/outliers";
 import { buildAnswerReveal, type AnswerReveal } from "./answer-reveal";
 import {
   buildDailyQueue,
@@ -238,9 +240,10 @@ export async function getStudySessionWithContent(
     .where(eq(studySessionItems.sessionId, sessionId))
     .orderBy(asc(studySessionItems.orderNum));
 
+  // Gezeigt wird die gewählte Variante, sonst das Original.
   const questionItemIds = itemRows
     .filter((i) => i.referenceType === "question")
-    .map((i) => i.referenceId);
+    .map((i) => i.variantQuestionId ?? i.referenceId);
   const sectionItemIds = itemRows
     .filter((i) => i.referenceType === "section")
     .map((i) => i.referenceId);
@@ -277,9 +280,10 @@ export async function getStudySessionWithContent(
   const items: StudySessionItemContent[] = [];
   for (const item of itemRows) {
     if (item.referenceType === "question") {
-      const q = questionById.get(item.referenceId);
+      const shownId = item.variantQuestionId ?? item.referenceId;
+      const q = questionById.get(shownId);
       if (!q) continue; // Referenz verwaist (Frage seither gelöscht) - überspringen statt zu crashen.
-      const options = (optionsByQuestion.get(item.referenceId) ?? [])
+      const options = (optionsByQuestion.get(shownId) ?? [])
         .slice()
         .sort((a, b) => a.orderNum - b.orderNum);
       items.push({
@@ -469,6 +473,12 @@ async function buildAndPersistSession(
   await persistSessionPlan(session.id, userId, plan, now);
 
   if (items.length > 0) {
+    // Variantenrotation: für Wiederholungen eine andere Variante des Items zeigen; neue Fragen starten immer mit dem Original.
+    const variantByItem = await chooseSessionVariants(
+      userId,
+      items.filter((item) => item.referenceType === "question").map((item) => ({ itemId: item.referenceId, isNew: item.category === "new" })),
+      now,
+    ).catch(() => new Map<string, string>());
     await db.insert(studySessionItems).values(
       items.map((item, index) => ({
         sessionId: session.id,
@@ -476,6 +486,7 @@ async function buildAndPersistSession(
         category: item.category,
         referenceType: item.referenceType,
         referenceId: item.referenceId,
+        variantQuestionId: item.referenceType === "question" ? (variantByItem.get(item.referenceId) ?? null) : null,
       })),
     );
   }
@@ -603,7 +614,9 @@ export async function completeStudySession(
       ),
     );
   const itemById = new Map(items.map((item) => [item.id, item]));
-  const questionIds = items.map((item) => item.referenceId);
+  // Richtig ist die Option der GEZEIGTEN Frage (Variante oder Original); verbucht wird am Original.
+  const shownQuestionId = (item: (typeof items)[number]) => item.variantQuestionId ?? item.referenceId;
+  const questionIds = items.map(shownQuestionId);
 
   const optionRows =
     questionIds.length > 0
@@ -611,11 +624,12 @@ export async function completeStudySession(
       : [];
 
   const results: StudySessionAttemptResult["results"] = [];
+  const variantByItemId = new Map(items.filter((i) => i.variantQuestionId).map((i) => [i.id, i.variantQuestionId as string]));
   let correctCount = 0;
   for (const answer of answers) {
     const item = itemById.get(answer.itemId);
     if (!item) continue;
-    const correctOption = optionRows.find((o) => o.questionId === item.referenceId && o.isCorrect);
+    const correctOption = optionRows.find((o) => o.questionId === shownQuestionId(item) && o.isCorrect);
     const isCorrect = !!correctOption && correctOption.id === answer.selectedOptionId;
     if (isCorrect) correctCount++;
     results.push({
@@ -645,9 +659,12 @@ export async function completeStudySession(
         questionId: r.questionId,
         isCorrect: r.isCorrect,
         confidence: confidenceByItemId.get(r.itemId) ?? null,
+        variantQuestionId: variantByItemId.get(r.itemId) ?? null,
       })),
       { sessionId },
     );
+    // Auffällige Varianten in die Prüfliste legen (best effort, blockiert die Auswertung nie).
+    await flagOutlierVariants(results.map((r) => r.questionId)).catch((error) => console.error("Varianten-Prüfung fehlgeschlagen:", error));
   }
 
   await db
@@ -699,11 +716,12 @@ export async function revealStudySessionAnswer(
     .limit(1);
   if (!item) throw new StudySessionNotFoundError(`Item ${itemId} nicht gefunden.`);
 
+  const shownId = item.variantQuestionId ?? item.referenceId;
   const [[question], optionRows] = await Promise.all([
-    db.select().from(questions).where(eq(questions.id, item.referenceId)).limit(1),
-    db.select().from(questionOptions).where(eq(questionOptions.questionId, item.referenceId)),
+    db.select().from(questions).where(eq(questions.id, shownId)).limit(1),
+    db.select().from(questionOptions).where(eq(questionOptions.questionId, shownId)),
   ]);
-  if (!question) throw new StudySessionNotFoundError(`Frage ${item.referenceId} nicht gefunden.`);
+  if (!question) throw new StudySessionNotFoundError(`Frage ${shownId} nicht gefunden.`);
 
   const [section] = await db
     .select({ id: sections.id })

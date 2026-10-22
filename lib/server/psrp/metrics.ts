@@ -7,6 +7,7 @@ import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { examAttempts, examPlans, exams, probeResults, reviewLog, users, type EvaluationGroup } from "@/lib/server/db/schema";
 import { readiness } from "@/lib/exams/plan";
+import { variantRotationEnabled } from "@/lib/server/variants/rotation";
 import { DEFAULT_PSRP_CONFIG } from "./config";
 import { calibrationHistory, type ProbeObservation } from "./calibration";
 
@@ -38,6 +39,9 @@ export interface MetricReview {
   timestamp: Date;
   rawRating: number;
   predictedR: number | null;
+  /** Feature-Flag `variant_rotation` des Nutzers und ob in diesem Review eine Variante statt des Originals gezeigt wurde. */
+  rotation?: boolean;
+  variantShown?: boolean;
 }
 
 export interface GroupMetrics {
@@ -125,6 +129,31 @@ export function computeExamResults(rows: ExamResultInput[], salt: string): ExamR
   });
 }
 
+export interface VariantArmMetrics {
+  users: number;
+  reviews: number;
+  /** Anteil Reviews mit Rating > 1. */
+  retention: number | null;
+  reviewsWithVariant: number;
+  retentionVariant: number | null;
+  retentionOriginal: number | null;
+}
+
+const rate = (rows: MetricReview[]) => (rows.length ? rows.filter((r) => r.rawRating > 1).length / rows.length : null);
+
+/** Feature-Flag `variant_rotation`: Kennzahlen getrennt nach Nutzern mit und ohne Rotation sowie nach Variante vs. Original. */
+export function computeVariantMetrics(reviews: MetricReview[]): { enabled: VariantArmMetrics; disabled: VariantArmMetrics } {
+  const arm = (rows: MetricReview[]): VariantArmMetrics => ({
+    users: new Set(rows.map((r) => r.userHash)).size,
+    reviews: rows.length,
+    retention: rate(rows),
+    reviewsWithVariant: rows.filter((r) => r.variantShown).length,
+    retentionVariant: rate(rows.filter((r) => r.variantShown)),
+    retentionOriginal: rate(rows.filter((r) => !r.variantShown)),
+  });
+  return { enabled: arm(reviews.filter((r) => r.rotation)), disabled: arm(reviews.filter((r) => !r.rotation)) };
+}
+
 export function anonymize(userId: string, salt: string): string {
   return createHash("sha256").update(`${salt}:${userId}`).digest("hex").slice(0, 16);
 }
@@ -141,6 +170,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       timestamp: reviewLog.timestampUtc,
       rawRating: reviewLog.rawRating,
       predictedR: reviewLog.predictedR,
+      variantQuestionId: reviewLog.variantQuestionId,
     })
     .from(reviewLog)
     .innerJoin(users, eq(users.id, reviewLog.userId))
@@ -154,6 +184,8 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       timestamp: r.timestamp,
       rawRating: r.rawRating,
       predictedR: r.predictedR,
+      rotation: variantRotationEnabled(r.userId),
+      variantShown: r.variantQuestionId !== null,
     }));
 
   const probeRows = await db
@@ -203,5 +235,5 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     })),
     salt,
   );
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), calibration, examResults };
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), calibration, examResults };
 }

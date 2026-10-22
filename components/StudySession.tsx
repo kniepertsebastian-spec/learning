@@ -21,7 +21,6 @@ import { LessonSimulationsProvider } from "@/components/lesson/LessonSimulations
 import { RichText } from "@/components/RichText";
 import { useLocale } from "@/lib/i18n";
 import { useFeedbackMode } from "@/lib/client/use-feedback-mode";
-import type { OfflineQuestion } from "@/lib/server/offline/manifest";
 import { extractSimulationSources } from "@/lib/markdown/simulation";
 import { fmt } from "@/lib/quiz/keys";
 
@@ -32,7 +31,10 @@ interface SessionQuestionItem {
   question: { de: string; en: string };
   /** isCorrect ist nur im Offline-Paket gesetzt (siehe offline-Prop unten) -
    * im Live-Fall bleibt Korrektheit serverseitig geprüft. */
-  options: Array<{ id: string; text: { de: string; en: string }; orderNum: number; isCorrect?: boolean }>;
+  options: Array<{ id: string; text: { de: string; en: string }; orderNum: number; isCorrect?: boolean; rationale?: { de: string; en: string } | null }>;
+  /** Nur im Offline-Paket: Erklärung für das Sofort-Feedback ohne Server. */
+  explanation?: { de: string; en: string };
+  sourceReference?: string | null;
 }
 
 interface SessionLessonItem {
@@ -65,8 +67,6 @@ interface StudySessionProps {
    * eines Live-POST in die lokale Sync-Warteschlange ein und berechnet den
    * Score direkt clientseitig aus den mitgelieferten isCorrect-Werten. */
   offline?: { userId: string };
-  /** Offline: Fragen des Kurspakets (Erklärung, Begründungen) für das Sofort-Feedback, nach Frage-ID. */
-  offlineQuestions?: Record<string, OfflineQuestion>;
   /** Praxisaufgabe nach den Fragen: eine Simulation aus einer Lektion derselben Lernziele (nur online). */
   practice?: { sectionId: string; title: { de: string; en: string }; content: { de: string; en: string }; simIndex: number } | null;
 }
@@ -85,7 +85,6 @@ export function StudySession({
   lessonItems,
   locale,
   offline,
-  offlineQuestions,
   practice,
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -115,18 +114,17 @@ export function StudySession({
     setReveal("loading");
 
     if (offline) {
-      const q = offlineQuestions?.[item.questionId];
       const correct = item.options.find((o) => o.isCorrect);
-      if (!q || !correct) return setReveal("failed");
+      if (!item.explanation || !correct) return setReveal("failed");
       const rationales: QuestionReveal["rationales"] = {};
-      for (const option of q.options) {
+      for (const option of item.options) {
         if (!option.isCorrect && option.rationale) rationales[option.id] = option.rationale;
       }
       return setReveal({
         correctOptionId: correct.id,
-        explanation: q.explanation,
+        explanation: item.explanation,
         rationales,
-        sourceReference: q.sourceReference,
+        sourceReference: item.sourceReference ?? null,
         reviewSectionId: null,
       });
     }

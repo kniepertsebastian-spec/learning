@@ -46,6 +46,8 @@ export interface ReviewLogInput {
   responseTimeMs?: number | null;
   reviewType?: ReviewLogType;
   probeVariantId?: string | null;
+  /** Gezeigte Variante (questions.id), wenn nicht das Original. */
+  variantQuestionId?: string | null;
   predictedR?: number | null;
 }
 
@@ -63,6 +65,7 @@ export function buildReviewLogRow(input: ReviewLogInput): typeof reviewLog.$infe
     responseTimeMs: input.responseTimeMs ?? null,
     reviewType: input.reviewType ?? "card",
     probeVariantId: input.probeVariantId ?? null,
+    variantQuestionId: input.variantQuestionId ?? null,
     predictedR: input.predictedR ?? null,
   };
 }

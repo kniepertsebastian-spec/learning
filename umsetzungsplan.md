@@ -50,7 +50,7 @@ Vorgezogen, weil Ergebnisse erst Wochen nach der Prüfung vorliegen.
 Quelle: `roadmap_didaktik.md`, Phase 1
 - [x] 2.2a Datenmodell `item_variant`, Migration, Backfill der Originale, Spalte `review_log.variant_question_id` · M
 - [x] 2.2b Varianten-Generierung inkl. Validierung und `npm run variants:backfill` mit Kostenschätzung · M
-- [ ] 2.2c Variantenauswahl in Session und Offline-Paket, Feature-Flag `variant_rotation`, auffällige Varianten in die Prüfliste · M
+- [x] 2.2c Variantenauswahl in Session und Offline-Paket, Feature-Flag `variant_rotation`, auffällige Varianten in die Prüfliste · M
 
 **Zuschnitt:** drei PRs in der Reihenfolge a → b → c. Nach 2.2a ändert sich für Nutzer noch nichts.
 **Abhängigkeit:** Das Offline-Paket (`lib/server/offline/manifest.ts`) muss in 2.2c die Varianten mitliefern.
