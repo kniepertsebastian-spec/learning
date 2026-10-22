@@ -9,6 +9,7 @@ import { getCompanyMembership } from "@/lib/server/company/access";
 import { canViewCertification, type Viewer } from "@/lib/server/catalog/visibility";
 import { getTopWeakObjectives } from "@/lib/server/study/session-service";
 import { shortCodeOf } from "@/lib/dashboard/logic";
+import { RESULT_SNOOZE_KEY, resultPromptDue, snoozeUntil } from "@/lib/exams/result-prompt";
 import { buildStudyPlan, DEFAULT_WEEKLY_HOURS, mondayOf, readiness, type PlanWeek } from "@/lib/exams/plan";
 
 /** Prüfungsplaner (UI U8): Pläne gehören der Person; jede Abfrage filtert nach `userId`. */
@@ -50,6 +51,24 @@ export async function setPlanStatus(userId: string, planId: string, status: Exam
   if (!row) throw new PlanNotFoundError();
   // „Bestanden“ legt das Zertifikat der Person an (UI U9); freigegeben ist es erst, wenn sie es selbst freigibt.
   if (status === "passed") await createFromPassedExam(userId, row.certificationId);
+}
+
+/** Pläne, bei denen der Prüfungstermin vorbei ist und das Ergebnis noch fehlt (Nachfrage im Dashboard). */
+export async function getPendingResultPrompts(userId: string, now: Date = new Date()): Promise<Array<{ planId: string; certName: string }>> {
+  const rows = await getDb()
+    .select({ plan: examPlans, certName: certifications.name })
+    .from(examPlans)
+    .innerJoin(certifications, eq(certifications.id, examPlans.certificationId))
+    .where(and(eq(examPlans.userId, userId), eq(examPlans.status, "planned"), isNotNull(examPlans.scheduledAt)))
+    .orderBy(asc(examPlans.scheduledAt));
+  return rows.filter((r) => resultPromptDue(r.plan, now)).map((r) => ({ planId: r.plan.id, certName: r.certName }));
+}
+
+/** „Noch nicht“: Nachfrage 7 Tage später erneut. */
+export async function snoozeResultPrompt(userId: string, planId: string, now: Date = new Date()): Promise<void> {
+  const [plan] = await getDb().select({ remindersSent: examPlans.remindersSent }).from(examPlans).where(and(eq(examPlans.id, planId), eq(examPlans.userId, userId))).limit(1);
+  if (!plan) throw new PlanNotFoundError();
+  await getDb().update(examPlans).set({ remindersSent: { ...plan.remindersSent, [RESULT_SNOOZE_KEY]: snoozeUntil(now) }, updatedAt: now }).where(and(eq(examPlans.id, planId), eq(examPlans.userId, userId)));
 }
 
 /** Termin für die Firma freigeben oder zurücknehmen (Standard: nicht freigegeben). */

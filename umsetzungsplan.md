@@ -41,8 +41,8 @@ Quelle: `roadmap_didaktik.md`, Phase 2
 
 ### Paket 2.1 – Prüfungsergebnis erfragen · S
 Quelle: `roadmap_didaktik.md`, Phase 7 (nur der erste Punkt und der Export des Ergebnisses)
-- [ ] Nachfrage 1 Tag nach Prüfungstermin, Erinnerung nach 7 Tagen
-- [ ] `psrp:metrics` um Prüfungsergebnis erweitern
+- [x] Nachfrage 1 Tag nach Prüfungstermin, Erinnerung nach 7 Tagen
+- [x] `psrp:metrics` um Prüfungsergebnis erweitern
 
 Vorgezogen, weil Ergebnisse erst Wochen nach der Prüfung vorliegen.
 

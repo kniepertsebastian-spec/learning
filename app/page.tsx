@@ -4,12 +4,14 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { auth } from "@/lib/server/auth";
 import { Dashboard, type DashboardData } from "@/components/dashboard/Dashboard";
+import { ExamResultPrompt } from "@/components/ExamResultPrompt";
 import { MyPracticeTasks } from "@/components/MyPracticeTasks";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { listMyAssignments } from "@/lib/server/assignments/sync";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { getCompanyMembership, isRoleAllowed, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
+import { getPendingResultPrompts } from "@/lib/server/exams/planner";
 import { listMyPracticeTasks } from "@/lib/server/company/practice-tasks";
 import { getLearnerDashboard } from "@/lib/server/dashboard/service";
 import { getServerLocale } from "@/lib/server/locale";
@@ -34,10 +36,11 @@ export default async function HomePage() {
     );
   }
 
-  const [dash, assignments, membership] = await Promise.all([
+  const [dash, assignments, membership, resultPrompts] = await Promise.all([
     getLearnerDashboard({ id: user.id, role: user.role }),
     listMyAssignments(user.id),
     getCompanyMembership(user.id),
+    getPendingResultPrompts(user.id),
   ]);
   const practiceTasks = membership ? await listMyPracticeTasks(membership.organizationId, membership.userId) : [];
   // Firmen-Admin und Mentor kommen von der Startseite direkt in den Firmenbereich.
@@ -69,6 +72,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
+      {resultPrompts[0] && <ExamResultPrompt planId={resultPrompts[0].planId} certName={resultPrompts[0].certName} locale={locale} />}
       {companyMembership && (
         <Link href="/company" className="flex items-center justify-between gap-3 rounded-2xl border border-warning/40 bg-warning-soft p-5 hover:border-warning" data-testid="company-entry">
           <span>
