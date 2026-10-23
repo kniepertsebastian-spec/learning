@@ -24,6 +24,8 @@ import {
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { loadBridges, planPrereqCheck, recordPrereqResults } from "@/lib/server/prerequisites/service";
+import { platformStatText } from "@/lib/feedback/platform-stat";
+import { firstTryStats } from "@/lib/server/stats/first-try";
 import { approvedExplanationForQuestion } from "@/lib/server/explanations/service";
 import { createWinSession, planWinItems, recordExit } from "@/lib/server/exit/service";
 import { afterDeescalatedSession, declineDeescalation, orderEasiestFirst, refreshEngagement } from "@/lib/server/engagement/service";
@@ -879,6 +881,8 @@ export async function completeStudySession(
 export interface StudySessionRevealResult extends AnswerReveal {
   /** Lektion zum Nachlesen (erste Section des Lernziels der Frage), falls vorhanden. */
   reviewSectionId: string | null;
+  /** Echte Plattformstatistik („x von 10 lösen das nicht gleich“) nur bei nicht gelöster Frage und ausreichender Datenbasis, sonst null. */
+  platformNote: Localized<string> | null;
 }
 
 /**
@@ -931,9 +935,14 @@ export async function revealStudySessionAnswer(
     .orderBy(asc(sections.orderNum))
     .limit(1);
 
+  const reveal = buildAnswerReveal(question, optionRows, selectedOptionId);
+  const stats = reveal.isCorrect ? null : await firstTryStats(item.referenceId).catch(() => null);
+  const de = platformStatText(stats, "de");
+  const en = platformStatText(stats, "en");
   return {
-    ...buildAnswerReveal(question, optionRows, selectedOptionId),
+    ...reveal,
     reviewSectionId: section?.id ?? null,
+    platformNote: de && en ? { de, en } : null,
   };
 }
 

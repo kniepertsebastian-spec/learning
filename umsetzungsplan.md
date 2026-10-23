@@ -111,7 +111,7 @@ Quelle: `roadmap_motivation.md`, Phase 1
 Quelle: `roadmap_motivation.md`, Phase 2, 3 und 8
 - [x] 3.7a Frühwarnung für stille Abbrüche mit Deeskalation in der Planungsschicht, Flag `dropout_guard` · M
 - [x] 3.7b Notausstieg „Heute reicht's“ mit 2–3 Erfolgsaufgaben, Flag `exit_with_win` · S
-- [ ] 3.7c Leitfaden für Rückmeldungen ohne Schuldzuweisung, Texte und Prompts überarbeiten · S
+- [x] 3.7c Leitfaden für Rückmeldungen ohne Schuldzuweisung, Texte und Prompts überarbeiten · S
 
 **Abhängigkeit:** nach 3.5a (gemeinsame Signale mit dem Verstehens-Modus). 3.7c ist reine Textarbeit und kann jederzeit parallel laufen.
 

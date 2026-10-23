@@ -62,6 +62,7 @@ interface QuestionReveal {
   rationales: Record<string, { de: string; en: string }>;
   sourceReference: string | null;
   reviewSectionId: string | null;
+  platformNote?: { de: string; en: string } | null;
 }
 
 interface StudySessionProps {
@@ -505,6 +506,7 @@ export function StudySession({
             confidence={confidences[currentIndex]}
             sourceReference={reveal.sourceReference}
             questionId={item.questionId}
+            note={reveal.platformNote?.[locale] ?? null}
             rereadHref={reveal.reviewSectionId ? `/cert/${certSlug}/section/${reveal.reviewSectionId}` : null}
             nextLabel={isLast ? t.quiz.finish : t.quiz.nextShort}
             onNext={isLast ? () => void handleSubmit() : () => setCurrentIndex((i) => i + 1)}

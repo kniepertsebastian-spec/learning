@@ -20,6 +20,7 @@ import {
 } from "./schemas";
 import { OPTION_RATIONALE_PROMPT } from "@/lib/server/ai/option-rationale";
 import type { FetchedSource, SourceExcerpt } from "./sources";
+import { FEEDBACK_TONE_PROMPT } from "@/lib/server/ai/feedback-tone";
 import { QUESTION_VARIETY_PROMPT } from "./variety";
 
 /**
@@ -336,6 +337,7 @@ export const CONTENT_SYSTEM_PROMPT_TEMPLATE = (input: Pick<ObjectiveGenerationIn
           "Fragen: genau die im Objective angegebene `recommendedQuestions`-Anzahl, Mischung aus knowledge/comprehension/application/scenario/troubleshooting,",
           "genau 4 Antwortoptionen pro Frage, genau EINE davon korrekt, mit Frage, Antworten und Erklärung.",
           ...QUESTION_VARIETY_PROMPT,
+          FEEDBACK_TONE_PROMPT,
           inlineRationales() ? OPTION_RATIONALE_PROMPT.replace("(bilingual, ", "(") : "Lass `rationale` bei allen Optionen weg.",
           "Jede Frage MUSS `sourceLocator` setzen (Locator eines mitgelieferten Auszugs) oder `null`, wenn kein Auszug sie belegt.",
         ]
@@ -389,6 +391,7 @@ const QUESTIONS_ONLY_SYSTEM_PROMPT = (input: ObjectiveGenerationInput) =>
     "Erzeuge ausschließlich NEUE Fragen zum Objective, die sich von den bereits vorhandenen deutlich unterscheiden.",
     "Genau 4 Antwortoptionen pro Frage, genau EINE davon korrekt, mit Erklärung. Lass `rationale` bei allen Optionen weg.",
     ...QUESTION_VARIETY_PROMPT,
+    FEEDBACK_TONE_PROMPT,
     "Jede Frage MUSS `sourceLocator` setzen (Locator eines mitgelieferten Auszugs) oder `null`, wenn kein Auszug sie belegt.",
     ...(input.practical ? PRACTICAL_PROMPT : []),
   ].join("\n");

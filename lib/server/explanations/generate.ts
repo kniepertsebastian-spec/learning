@@ -11,6 +11,7 @@ import { LESSONS_MODEL } from "@/lib/claude";
 import { getDb } from "@/lib/server/db/client";
 import { estimateCostUsd } from "@/lib/server/admin/content-generation";
 import { domains, lessons, objectiveExplanations, objectives, sections, type ExplanationKind } from "@/lib/server/db/schema";
+import { FEEDBACK_TONE_PROMPT } from "@/lib/server/ai/feedback-tone";
 import { similarity } from "@/lib/server/psrp/concepts";
 
 /** Pro Lernziel angestrebte Arten (1-2 Alternativerklärungen laut Roadmap). */
