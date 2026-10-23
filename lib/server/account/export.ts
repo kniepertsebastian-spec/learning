@@ -51,6 +51,7 @@ import {
 export const EXPORTED_USER_REFERENCES: readonly string[] = [
   "organization_memberships.user_id",
   "lesson_completions.user_id",
+  "lesson_skips.user_id",
   "simulation_results.user_id",
   "learning_time.user_id",
   "user_profiles.user_id",

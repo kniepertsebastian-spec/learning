@@ -75,7 +75,7 @@ Quelle: `roadmap_pwa.md`, Phase 2
 ### Paket 3.2 – Vorabfragen und Einstiegstest · M
 Quelle: `roadmap_didaktik.md`, Phase 4
 - [x] 3.2a Vorabfragen vor Lektionen (Flag `pretest_questions`) · S
-- [ ] 3.2b Einstiegstest je Kapitel mit `applyChapterSkip`, Regel für Pflichtkurse · M
+- [x] 3.2b Einstiegstest je Kapitel mit `applyChapterSkip`, Regel für Pflichtkurse · M
 
 **Abhängigkeit:** nach 2.2, damit Einstiegstest und spätere Wiederholungen unterschiedliche Varianten zeigen.
 
