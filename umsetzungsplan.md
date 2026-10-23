@@ -87,7 +87,7 @@ Direkt nach 3.1, damit die Offline-Navigation abgesichert ist.
 
 ### Paket 3.4 – Rückblick „Was weißt du noch?“ · M
 Quelle: `roadmap_didaktik.md`, Phase 8
-- [ ] Auswahl der Lektionen, Rückblick am Session-Anfang mit Varianten, `review_type = recall_check`, Tagesform beim Lernen mitloggen, Flag `recall_check`
+- [x] Auswahl der Lektionen, Rückblick am Session-Anfang mit Varianten, `review_type = recall_check`, Tagesform beim Lernen mitloggen, Flag `recall_check`
 
 **Abhängigkeit:** 2.2 (erledigt). Früh einplanen, weil die Messdaten Zeit brauchen.
 

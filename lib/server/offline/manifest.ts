@@ -63,7 +63,7 @@ export interface OfflineSessionQuestionItem {
   /** Immer "review"/"weak"/"new" - "lesson"-Items sind per Konstruktion
    * immer referenceType "section" (siehe buildAndPersistSession() in
    * session-service.ts) und landen daher nie hier, sondern in lessonItems. */
-  category: "review" | "weak" | "new";
+  category: "review" | "weak" | "new" | "recall";
   questionId: string;
   question: Localized<string>;
   /** Anders als das Live-Session-Endergebnis (siehe getStudySessionWithContent
@@ -200,7 +200,7 @@ async function getOfflineStudySession(
         .map((o) => ({ id: o.id, text: o.text, orderNum: o.orderNum, isCorrect: o.isCorrect, rationale: o.isCorrect ? null : o.rationale }));
       questionItems.push({
         itemId: item.id,
-        category: item.category as "review" | "weak" | "new",
+        category: item.category as "review" | "weak" | "new" | "recall",
         questionId: q.id,
         question: q.question,
         options,

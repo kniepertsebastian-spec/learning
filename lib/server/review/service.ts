@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { domains, objectives, questions, reviewItems } from "@/lib/server/db/schema";
+import { domains, objectives, questions, reviewItems, type ReviewLogType } from "@/lib/server/db/schema";
 import type { AnswerConfidence } from "@/lib/types";
 import { probeVariantsByQuestion, recordProbeAnswer } from "@/lib/server/psrp/probes";
 import { ratingFromOutcome, recordRatedReviews } from "@/lib/server/psrp/service";
@@ -12,6 +12,8 @@ export interface ReviewOutcomeInput {
   responseTimeMs?: number | null;
   /** Gezeigte Variante (questions.id); `questionId` bleibt das Original, an dem der FSRS-Zustand hängt. */
   variantQuestionId?: string | null;
+  /** Standard `card`; der Rückblick loggt `recall_check`. */
+  reviewType?: ReviewLogType;
 }
 
 /**
@@ -57,6 +59,7 @@ export async function recordReviewOutcomes(
         rawRating: ratingFromOutcome(r.isCorrect, r.confidence),
         responseTimeMs: r.responseTimeMs ?? null,
         variantQuestionId: r.variantQuestionId ?? null,
+        reviewType: r.reviewType,
       })),
     options,
   );

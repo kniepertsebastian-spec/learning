@@ -746,7 +746,8 @@ export const studySessions = pgTable(
 
 /** R2.3: die drei Session-Builder-Kategorien plus der Lesson-Fallback ("Bei
  * zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen"). */
-export type StudySessionItemCategory = "review" | "weak" | "new" | "lesson";
+/** `recall`: Rückblick auf eine kürzlich gelernte Lektion am Session-Anfang (roadmap_didaktik Phase 8). */
+export type StudySessionItemCategory = "review" | "weak" | "new" | "lesson" | "recall";
 
 /**
  * R2.3: eine einzelne Position innerhalb einer study_sessions-Zeile.
@@ -772,8 +773,50 @@ export const studySessionItems = pgTable("study_session_items", {
   confidence: text("confidence").$type<AnswerConfidence>(),
   /** Variantenrotation: gezeigte Variante (questions.id) statt des Originals in `referenceId`; null = Original. Bewertet und verbucht wird weiter am Original. */
   variantQuestionId: uuid("variant_question_id").references(() => questions.id, { onDelete: "set null" }),
+  /** Rückblick (category = recall): zu welchem Rückblick die Frage gehört. */
+  recallCheckId: uuid("recall_check_id").references((): AnyPgColumn => recallChecks.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export type RecallCheckStatus = "offered" | "answered" | "skipped";
+
+/**
+ * Rückblick „Was weißt du noch?“ (roadmap_didaktik Phase 8): ein Rückblick je Session und Lektion mit den Messwerten, die das
+ * Gedächtnismodell für den ersten Abstand nach dem Lernen braucht - Abstand in Stunden sowie Tagesform (Φ) und Tageszeit
+ * beim Lernen der Lektion und beim Rückblick. Ein übersprungener Rückblick wird ebenfalls festgehalten (Abbruchquote).
+ */
+export const recallChecks = pgTable(
+  "recall_checks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => studySessions.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => sections.id, { onDelete: "cascade" }),
+    status: text("status").$type<RecallCheckStatus>().notNull().default("offered"),
+    questionCount: integer("question_count").notNull(),
+    correctCount: integer("correct_count"),
+    lessonCompletedAt: timestamp("lesson_completed_at", { withTimezone: true }).notNull(),
+    hoursSinceLesson: numeric("hours_since_lesson", { precision: 8, scale: 2, mode: "number" }).notNull(),
+    /** Φ der letzten Session höchstens 24 h vor dem Abschluss der Lektion; null, wenn es keine gab. */
+    phiAtLearning: numeric("phi_at_learning", { precision: 5, scale: 4, mode: "number" }),
+    hourAtLearning: integer("hour_at_learning").notNull(),
+    phiAtRecall: numeric("phi_at_recall", { precision: 5, scale: 4, mode: "number" }).notNull(),
+    hourAtRecall: integer("hour_at_recall").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("recall_checks_session_section_unique").on(table.sessionId, table.sectionId),
+    index("recall_checks_user_section_idx").on(table.userId, table.sectionId),
+    check("recall_checks_status_check", sql`${table.status} in ('offered', 'answered', 'skipped')`),
+    check("recall_checks_hours_check", sql`${table.hourAtLearning} between 0 and 23 and ${table.hourAtRecall} between 0 and 23`),
+  ],
+);
 
 export const contentGenerationJobs = pgTable(
   "content_generation_jobs",
@@ -2532,7 +2575,7 @@ export const careerSuggestions = pgTable("career_suggestions", {
 // (dort liegen Prüfungsdatum und leichte Tage bereits je Nutzer und Kurs).
 // ---------------------------------------------------------------------------
 
-export type ReviewLogType = "card" | "interleaved" | "probe";
+export type ReviewLogType = "card" | "interleaved" | "probe" | "recall_check";
 
 /** FSRS-Zustand je (Nutzer, Frage). Abgeleitet aus dem Review-Log, wird mit jedem Review fortgeschrieben. */
 export const itemStates = pgTable(
@@ -2594,7 +2637,7 @@ export const reviewLog = pgTable(
     index("review_log_user_time_idx").on(table.userId, table.timestampUtc),
     index("review_log_item_idx").on(table.itemId),
     check("review_log_raw_rating_check", sql`${table.rawRating} between 1 and 4`),
-    check("review_log_type_check", sql`${table.reviewType} in ('card', 'interleaved', 'probe')`),
+    check("review_log_type_check", sql`${table.reviewType} in ('card', 'interleaved', 'probe', 'recall_check')`),
     check("review_log_hour_check", sql`${table.localHour} between 0 and 23`),
     check("review_log_weekday_check", sql`${table.weekday} between 1 and 7`),
   ],

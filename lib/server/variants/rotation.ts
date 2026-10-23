@@ -57,23 +57,14 @@ export async function chooseSessionVariants(
   const ids = items.filter((i) => !i.isNew).map((i) => i.itemId);
   if (ids.length === 0 || !variantRotationEnabled(userId)) return chosen;
   const db = getDb();
-  const [variantRows, shownRows] = await Promise.all([
+  const [variantRows, lastShown] = await Promise.all([
     db
       .select({ itemId: itemVariants.itemId, questionId: itemVariants.questionId, source: itemVariants.source })
       .from(itemVariants)
       .innerJoin(questions, eq(questions.id, itemVariants.questionId))
       .where(and(inArray(itemVariants.itemId, ids), eq(itemVariants.active, true), eq(questions.stale, false))),
-    db
-      .select({
-        itemId: reviewLog.itemId,
-        shown: sql<string>`coalesce(${reviewLog.variantQuestionId}, ${reviewLog.itemId})`,
-        last: sql<Date>`max(${reviewLog.timestampUtc})`,
-      })
-      .from(reviewLog)
-      .where(and(eq(reviewLog.userId, userId), inArray(reviewLog.itemId, ids)))
-      .groupBy(reviewLog.itemId, sql`coalesce(${reviewLog.variantQuestionId}, ${reviewLog.itemId})`),
+    lastShownByQuestion(userId, ids),
   ]);
-  const lastShown = new Map(shownRows.map((r) => [`${r.itemId}:${r.shown}`, new Date(r.last)]));
   const byItem = new Map<string, typeof variantRows>();
   for (const v of variantRows) byItem.set(v.itemId, [...(byItem.get(v.itemId) ?? []), v]);
   for (const itemId of ids) {
@@ -82,4 +73,19 @@ export async function chooseSessionVariants(
     if (picked && picked !== itemId) chosen.set(itemId, picked);
   }
   return chosen;
+}
+
+/** Wann wurde dem Nutzer welche Frage (Original oder Variante) eines Items zuletzt gezeigt? Schlüssel: `<itemId>:<gezeigteFrageId>`. */
+export async function lastShownByQuestion(userId: string, itemIds: string[]): Promise<Map<string, Date>> {
+  if (itemIds.length === 0) return new Map();
+  const rows = await getDb()
+    .select({
+      itemId: reviewLog.itemId,
+      shown: sql<string>`coalesce(${reviewLog.variantQuestionId}, ${reviewLog.itemId})`,
+      last: sql<Date>`max(${reviewLog.timestampUtc})`,
+    })
+    .from(reviewLog)
+    .where(and(eq(reviewLog.userId, userId), inArray(reviewLog.itemId, itemIds)))
+    .groupBy(reviewLog.itemId, sql`coalesce(${reviewLog.variantQuestionId}, ${reviewLog.itemId})`);
+  return new Map(rows.map((r) => [`${r.itemId}:${r.shown}`, new Date(r.last)]));
 }

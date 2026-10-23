@@ -7,6 +7,7 @@ import {
   objectives,
   questionOptions,
   questions,
+  recallChecks,
   reviewItems,
   sections,
   sessionRecommendationFeedback,
@@ -19,6 +20,8 @@ import {
   type StudySessionStatus,
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
+import { isFeatureEnabled } from "@/lib/server/feature-flags";
+import { createRecallCheck, planRecallCheck, recordRecallResults } from "@/lib/server/recall/service";
 import { chooseSessionVariants } from "@/lib/server/variants/rotation";
 import { flagOutlierVariants } from "@/lib/server/variants/outliers";
 import { buildAnswerReveal, type AnswerReveal } from "./answer-reveal";
@@ -214,6 +217,12 @@ export interface StudySessionItemContent {
     sectionId: string;
     title: Localized<string>;
   };
+  /** Nur bei category = recall: die Lektion, auf die sich der Rückblick bezieht. */
+  recall?: {
+    recallCheckId: string;
+    sectionId: string;
+    lessonTitle: Localized<string>;
+  };
 }
 
 /**
@@ -277,6 +286,17 @@ export async function getStudySessionWithContent(
   }
   const sectionById = new Map(sectionRows.map((s) => [s.id, s]));
 
+  const recallIds = [...new Set(itemRows.map((i) => i.recallCheckId).filter((id): id is string => id !== null))];
+  const recallRows =
+    recallIds.length > 0
+      ? await db
+          .select({ id: recallChecks.id, sectionId: recallChecks.sectionId, title: sections.title })
+          .from(recallChecks)
+          .innerJoin(sections, eq(sections.id, recallChecks.sectionId))
+          .where(inArray(recallChecks.id, recallIds))
+      : [];
+  const recallById = new Map(recallRows.map((r) => [r.id, r]));
+
   const items: StudySessionItemContent[] = [];
   for (const item of itemRows) {
     if (item.referenceType === "question") {
@@ -291,6 +311,9 @@ export async function getStudySessionWithContent(
         category: item.category,
         outcome: item.outcome,
         question: { questionId: q.id, question: q.question, options },
+        ...(item.recallCheckId && recallById.has(item.recallCheckId)
+          ? { recall: { recallCheckId: item.recallCheckId, sectionId: recallById.get(item.recallCheckId)!.sectionId, lessonTitle: recallById.get(item.recallCheckId)!.title } }
+          : {}),
       });
     } else {
       const s = sectionById.get(item.referenceId);
@@ -472,6 +495,50 @@ async function buildAndPersistSession(
     .returning();
   await persistSessionPlan(session.id, userId, plan, now);
 
+  // Rückblick „Was weißt du noch?“ am Session-Anfang (Flag recall_check): unabhängig von der Tagesform, höchstens drei Varianten-Fragen,
+  // Teil des Zeitbudgets - die übrigen Fragen werden um dieselbe Zahl gekürzt.
+  let recallItems: Array<{ referenceId: string; variantQuestionId: string; recallCheckId: string }> = [];
+  if (isFeatureEnabled("recall_check", userId)) {
+    const recall = await planRecallCheck(userId, certificationId, now, new Set()).catch((error) => {
+      console.error("Rückblick konnte nicht geplant werden:", error);
+      return null;
+    });
+    if (recall) {
+      const recallCheckId = await createRecallCheck({ userId, sessionId: session.id, plan: recall, phiAtRecall: plan.phi, now });
+      recallItems = recall.picks.map((pick) => ({ referenceId: pick.itemId, variantQuestionId: pick.variantQuestionId, recallCheckId }));
+      // Ein Item, das schon regulär dran wäre, wird stattdessen im Rückblick abgefragt (ein Review je Item und Session).
+      const inRecall = new Set(recallItems.map((r) => r.referenceId));
+      let toTrim = recallItems.length;
+      for (let i = items.length - 1; i >= 0; i--) {
+        if (items[i].referenceType === "question" && inRecall.has(items[i].referenceId)) {
+          items.splice(i, 1);
+          toTrim--;
+        }
+      }
+      // Den Rest kürzen: von hinten, nur Fragen, und nur so weit, dass noch etwas Reguläres bleibt (Rückblick zählt zum Zeitbudget).
+      for (let i = items.length - 1; i >= 0 && toTrim > 0 && items.filter((x) => x.referenceType === "question").length > 1; i--) {
+        if (items[i].referenceType === "question") {
+          items.splice(i, 1);
+          toTrim--;
+        }
+      }
+    }
+  }
+
+  if (recallItems.length > 0) {
+    await db.insert(studySessionItems).values(
+      recallItems.map((item, index) => ({
+        sessionId: session.id,
+        orderNum: index + 1,
+        category: "recall" as const,
+        referenceType: "question" as const,
+        referenceId: item.referenceId,
+        variantQuestionId: item.variantQuestionId,
+        recallCheckId: item.recallCheckId,
+      })),
+    );
+  }
+
   if (items.length > 0) {
     // Variantenrotation: für Wiederholungen eine andere Variante des Items zeigen; neue Fragen starten immer mit dem Original.
     const variantByItem = await chooseSessionVariants(
@@ -482,7 +549,7 @@ async function buildAndPersistSession(
     await db.insert(studySessionItems).values(
       items.map((item, index) => ({
         sessionId: session.id,
-        orderNum: index + 1,
+        orderNum: recallItems.length + index + 1,
         category: item.category,
         referenceType: item.referenceType,
         referenceId: item.referenceId,
@@ -491,7 +558,7 @@ async function buildAndPersistSession(
     );
   }
 
-  return toSummary(session, items.length);
+  return toSummary(session, recallItems.length + items.length);
 }
 
 async function selectWeakObjectiveQuestions(
@@ -625,6 +692,7 @@ export async function completeStudySession(
 
   const results: StudySessionAttemptResult["results"] = [];
   const variantByItemId = new Map(items.filter((i) => i.variantQuestionId).map((i) => [i.id, i.variantQuestionId as string]));
+  const recallByItemId = new Map(items.filter((i) => i.recallCheckId).map((i) => [i.id, i.recallCheckId as string]));
   let correctCount = 0;
   for (const answer of answers) {
     const item = itemById.get(answer.itemId);
@@ -660,9 +728,11 @@ export async function completeStudySession(
         isCorrect: r.isCorrect,
         confidence: confidenceByItemId.get(r.itemId) ?? null,
         variantQuestionId: variantByItemId.get(r.itemId) ?? null,
+        reviewType: recallByItemId.has(r.itemId) ? ("recall_check" as const) : undefined,
       })),
       { sessionId },
     );
+    await recordRecallResults(results.flatMap((r) => (recallByItemId.has(r.itemId) ? [{ recallCheckId: recallByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
     // Auffällige Varianten in die Prüfliste legen (best effort, blockiert die Auswertung nie).
     await flagOutlierVariants(results.map((r) => r.questionId)).catch((error) => console.error("Varianten-Prüfung fehlgeschlagen:", error));
   }
@@ -842,7 +912,7 @@ export async function getSessionCategoryBreakdown(
     .where(eq(studySessionItems.sessionId, sessionId))
     .groupBy(studySessionItems.category);
 
-  const breakdown: Record<StudySessionItemCategory, number> = { review: 0, weak: 0, new: 0, lesson: 0 };
+  const breakdown: Record<StudySessionItemCategory, number> = { review: 0, weak: 0, new: 0, lesson: 0, recall: 0 };
   for (const row of rows) breakdown[row.category] = row.count;
   return breakdown;
 }

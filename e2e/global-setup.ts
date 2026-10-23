@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
-import { certifications, domains, lessons, objectives, questionOptions, questions, sections, users } from "../lib/server/db/schema";
+import { certifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, users } from "../lib/server/db/schema";
 
 export const PASSWORD = "E2e-Passw0rd!";
 export const USERS = {
@@ -9,6 +9,8 @@ export const USERS = {
   learnerB: { email: "e2e-learner-b@test.example", role: "learner" },
   admin: { email: "e2e-admin@test.example", role: "admin" },
   placement: { email: "e2e-placement@test.example", role: "learner" },
+  recallAnswer: { email: "e2e-recall-answer@test.example", role: "learner" },
+  recallSkip: { email: "e2e-recall-skip@test.example", role: "learner" },
 } as const;
 export const COURSE_SLUG = "e2e-demo";
 export const COURSE_NAME = "E2E Demo Course";
@@ -43,6 +45,34 @@ export default async function globalSetup() {
     objectiveId = await createCourse();
   }
   await ensureQuestions(objectiveId);
+  await ensureVariants(objectiveId);
+
+  // Rückblick-Nutzer starten jeden Lauf neu (Nutzer löschen entfernt auch das unveränderliche review_log): Lektion vor 2 Tagen abgeschlossen.
+  const [section] = await db.select({ id: sections.id }).from(sections).where(eq(sections.objectiveId, objectiveId)).limit(1);
+  for (const { email } of [USERS.recallAnswer, USERS.recallSkip]) {
+    await db.delete(users).where(eq(users.email, email));
+    const [user] = await db.insert(users).values({ email, passwordHash, role: "learner", emailVerifiedAt: new Date() }).returning({ id: users.id });
+    await db.insert(lessonCompletions).values({ userId: user.id, sectionId: section.id, completedAt: new Date(Date.now() - 48 * 3_600_000) });
+  }
+}
+
+/** Je Frage eine Variante (für den Rückblick und die Variantenrotation). */
+async function ensureVariants(objectiveId: string) {
+  const db = getDb();
+  const originals = await db.select({ id: questions.id, humanId: questions.humanId }).from(questions).where(eq(questions.objectiveId, objectiveId));
+  for (const original of originals.filter((q) => !q.humanId.includes("-V"))) {
+    const existing = await db.select({ id: itemVariants.id }).from(itemVariants).where(eq(itemVariants.itemId, original.id));
+    if (existing.length > 1) continue; // Original + mindestens eine Variante
+    const [variant] = await db
+      .insert(questions)
+      .values({ humanId: `${original.humanId}-V1`, objectiveId, difficulty: "beginner", type: "knowledge", question: { de: "Variante?", en: "Variant?" }, explanation: { de: "Weil.", en: "Because." }, probeOnly: true })
+      .returning({ id: questions.id });
+    await db.insert(questionOptions).values([
+      { questionId: variant.id, orderNum: 1, text: { de: "Richtig", en: "Right" }, isCorrect: true },
+      { questionId: variant.id, orderNum: 2, text: { de: "Falsch", en: "Wrong" }, isCorrect: false },
+    ]);
+    await db.insert(itemVariants).values({ itemId: original.id, questionId: variant.id, source: "generated" });
+  }
 }
 
 async function createCourse(): Promise<string> {
