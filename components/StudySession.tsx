@@ -27,9 +27,11 @@ import { fmt } from "@/lib/quiz/keys";
 
 interface SessionQuestionItem {
   itemId: string;
-  category: "review" | "weak" | "new" | "recall";
+  category: "review" | "weak" | "new" | "recall" | "understand";
   /** Nur bei category = recall (online): die Lektion, auf die sich der Rückblick bezieht. */
   recall?: { sectionId: string; lessonTitle: { de: string; en: string } };
+  /** Nur bei category = understand (online): das Konzept und die häufige Verwechslung. */
+  understand?: { conceptStruggleId: string; conceptName: string; confusion: { optionText: { de: string; en: string }; rationale: { de: string; en: string } | null } | null };
   questionId: string;
   question: { de: string; en: string };
   /** isCorrect ist nur im Offline-Paket gesetzt (siehe offline-Prop unten) -
@@ -168,6 +170,16 @@ export function StudySession({
     }
   }
 
+  const [decliningUnderstand, setDecliningUnderstand] = useState(false);
+  async function declineUnderstand() {
+    setDecliningUnderstand(true);
+    try {
+      await fetch(`/api/study-sessions/${sessionId}/understand-decline`, { method: "POST" });
+    } finally {
+      window.location.reload();
+    }
+  }
+
   async function handleSubmit() {
     if (submitting || result) return;
     setSubmitting(true);
@@ -267,6 +279,8 @@ export function StudySession({
     // Rückblick: freundlich zusammengefasst ("2 von 3 sitzen schon"), mit Link zur Lektion bei Fehlern.
     const recallItems = questionItems.filter((q) => q.category === "recall" && q.recall);
     const recallCorrect = recallItems.filter((q) => result.results.find((r) => r.itemId === q.itemId)?.isCorrect).length;
+    const understandItem = questionItems.find((q) => q.category === "understand" && q.understand);
+    const understandCorrect = understandItem ? result.results.find((r) => r.itemId === understandItem.itemId)?.isCorrect === true : false;
     const recallSummary = recallItems.length > 0 ? { sectionId: recallItems[0].recall!.sectionId, lessonTitle: recallItems[0].recall!.lessonTitle, total: recallItems.length, correct: recallCorrect } : null;
     return (
       <FocusFrame
@@ -283,6 +297,11 @@ export function StudySession({
           offlineNote={Boolean(offline)}
           actions={[{ href: exitHref, label: t.quiz.backToCourse, primary: true }]}
         >
+          {understandItem?.understand && (
+            <p className="text-left text-sm" role="status" data-testid="understand-result">
+              {fmt(understandCorrect ? t.quiz.understandResultOk : t.quiz.understandResultAgain, { concept: understandItem.understand.conceptName })}
+            </p>
+          )}
           {recallSummary && (
             <p className="text-left text-sm" role="status" data-testid="recall-result">
               {recallSummary.correct > 0
@@ -340,9 +359,24 @@ export function StudySession({
           )}
         </Card>
       )}
+      {item.category === "understand" && item.understand && (
+        <Card variant="inset" className="mb-4" data-testid="understand-intro">
+          <p className="text-sm font-semibold">{fmt(t.quiz.understandTitle, { concept: item.understand.conceptName })}</p>
+          <p className="mt-1 text-xs text-subtle">{t.quiz.understandHint}</p>
+          {item.understand.confusion && (
+            <p className="mt-2 text-xs" data-testid="understand-confusion">
+              {fmt(t.quiz.understandConfusion, { option: item.understand.confusion.optionText[locale] })}
+              {item.understand.confusion.rationale ? ` ${item.understand.confusion.rationale[locale]}` : ""}
+            </p>
+          )}
+          {!offline && answers.every((a) => a === null) && (
+            <Button className="mt-3" variant="ghost" size="sm" onClick={() => void declineUnderstand()} disabled={decliningUnderstand} data-testid="understand-decline">{t.quiz.understandDecline}</Button>
+          )}
+        </Card>
+      )}
       <div className="mb-3">
-        <Badge tone={item.category === "weak" ? "warning" : item.category === "review" || item.category === "recall" ? "info" : "accent"}>
-          {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : item.category === "recall" ? t.quiz.categoryRecall : t.quiz.categoryNew}
+        <Badge tone={item.category === "weak" ? "warning" : item.category === "review" || item.category === "recall" || item.category === "understand" ? "info" : "accent"}>
+          {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : item.category === "recall" ? t.quiz.categoryRecall : item.category === "understand" ? t.quiz.categoryUnderstand : t.quiz.categoryNew}
         </Badge>
       </div>
       <QuestionBody

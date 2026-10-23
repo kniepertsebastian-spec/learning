@@ -747,7 +747,8 @@ export const studySessions = pgTable(
 /** R2.3: die drei Session-Builder-Kategorien plus der Lesson-Fallback ("Bei
  * zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen"). */
 /** `recall`: Rückblick auf eine kürzlich gelernte Lektion am Session-Anfang (roadmap_didaktik Phase 8). */
-export type StudySessionItemCategory = "review" | "weak" | "new" | "lesson" | "recall";
+/** `understand`: Verstehens-Aufgabe (neue Variante) für ein Konzept im Verstehens-Modus (roadmap_didaktik Phase 9). */
+export type StudySessionItemCategory = "review" | "weak" | "new" | "lesson" | "recall" | "understand";
 
 /**
  * R2.3: eine einzelne Position innerhalb einer study_sessions-Zeile.
@@ -775,8 +776,53 @@ export const studySessionItems = pgTable("study_session_items", {
   variantQuestionId: uuid("variant_question_id").references(() => questions.id, { onDelete: "set null" }),
   /** Rückblick (category = recall): zu welchem Rückblick die Frage gehört. */
   recallCheckId: uuid("recall_check_id").references((): AnyPgColumn => recallChecks.id, { onDelete: "set null" }),
+  /** Verstehens-Aufgabe (category = understand): zu welchem Konzept im Verstehens-Modus sie gehört. */
+  conceptStruggleId: uuid("concept_struggle_id").references((): AnyPgColumn => conceptStruggles.id, { onDelete: "set null" }),
+  /** Gewählte Antwortoption der gezeigten Frage (Grundlage für „wiederholt dieselbe falsche Option“). */
+  selectedOptionId: uuid("selected_option_id").references((): AnyPgColumn => questionOptions.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export type ConceptStruggleStatus = "detected" | "in_progress" | "resolved" | "declined";
+
+/** Ein Signal, das auf Nicht-Verstehen hindeutet (roadmap_didaktik Phase 9.1). */
+export type StruggleSignalKind = "sure_wrong" | "repeated_wrong_option" | "distinct_variant_failures" | "stalled_item" | "simulation_help";
+export interface StruggleSignal {
+  kind: StruggleSignalKind;
+  at: string;
+  /** Bei repeated_wrong_option: Frage und immer wieder gewählte falsche Option (für „Häufige Verwechslung“). */
+  questionId?: string;
+  optionId?: string;
+}
+
+/**
+ * Verstehens-Modus je Nutzer und Konzept (roadmap_didaktik Phase 9): getrennt von den Rohdaten (review_log, Session-Items).
+ * `detected` = Muster erkannt, Angebot offen; `in_progress` = Verstehens-Aufgabe läuft (nach einer falsch beantworteten);
+ * `resolved` = neue Variante richtig beantwortet, danach normale Wiederholung; `declined` = Person hat abgelehnt.
+ * Solange `detected` oder `in_progress`, kommen die Items des Konzepts nicht als normale Wiederholung (nur Planungsschicht).
+ */
+export const conceptStruggles = pgTable(
+  "concept_struggle",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    conceptId: uuid("concept_id")
+      .notNull()
+      .references(() => concepts.id, { onDelete: "cascade" }),
+    status: text("status").$type<ConceptStruggleStatus>().notNull().default("detected"),
+    signals: jsonb("signals").$type<StruggleSignal[]>().notNull().default(sql`'[]'::jsonb`),
+    detectedAt: timestamp("detected_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("concept_struggle_user_concept_unique").on(table.userId, table.conceptId),
+    index("concept_struggle_user_status_idx").on(table.userId, table.status),
+    check("concept_struggle_status_check", sql`${table.status} in ('detected', 'in_progress', 'resolved', 'declined')`),
+  ],
+);
 
 export type RecallCheckStatus = "offered" | "answered" | "skipped";
 
