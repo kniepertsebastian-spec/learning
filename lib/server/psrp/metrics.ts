@@ -5,7 +5,7 @@
 import { createHash } from "node:crypto";
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { examAttempts, examPlans, exams, probeResults, recallChecks, reviewLog, users, type EvaluationGroup } from "@/lib/server/db/schema";
+import { energyModeEvents, examAttempts, examPlans, exams, probeResults, recallChecks, reviewLog, users, type EvaluationGroup } from "@/lib/server/db/schema";
 import { readiness } from "@/lib/exams/plan";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { variantRotationEnabled } from "@/lib/server/variants/rotation";
@@ -53,6 +53,8 @@ export interface MetricReview {
   dropoutGuard?: boolean;
   /** Feature-Flag `exit_with_win` des Nutzers. */
   exitWithWin?: boolean;
+  /** Feature-Flag `energy_modes` des Nutzers. */
+  energyModes?: boolean;
 }
 
 export interface GroupMetrics {
@@ -208,7 +210,29 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       understanding: isFeatureEnabled("understanding_mode", r.userId),
       dropoutGuard: isFeatureEnabled("dropout_guard", r.userId),
       exitWithWin: isFeatureEnabled("exit_with_win", r.userId),
+      energyModes: isFeatureEnabled("energy_modes", r.userId),
     }));
+
+  // Energie-Alternativen: Anteil gewählter Alternativen an den Abenden mit niedriger Energie oder Entlastung, und ob am Folgetag gelernt wurde.
+  const energyRows = (
+    await db
+      .select({ userId: energyModeEvents.userId, mode: energyModeEvents.mode, createdAt: energyModeEvents.createdAt })
+      .from(energyModeEvents)
+      .orderBy(asc(energyModeEvents.createdAt))
+  ).filter((e) => e.createdAt <= asOf);
+  const reviewDays = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const set = reviewDays.get(r.userId) ?? new Set<string>();
+    set.add(r.timestamp.toISOString().slice(0, 10));
+    reviewDays.set(r.userId, set);
+  }
+  const nextDay = (d: Date) => new Date(d.getTime() + 86_400_000).toISOString().slice(0, 10);
+  const energyChoices = {
+    events: energyRows.length,
+    alternativeChosen: energyRows.filter((e) => e.mode !== "normal").length,
+    alternativeShare: energyRows.length ? energyRows.filter((e) => e.mode !== "normal").length / energyRows.length : null,
+    returnedNextDay: energyRows.filter((e) => reviewDays.get(e.userId)?.has(nextDay(e.createdAt))).length,
+  };
 
   const probeRows = await db
     .select({
@@ -279,5 +303,5 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     })),
     salt,
   );
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults };
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), energyModes: { arms: computeFlagArms(reviews, (r) => Boolean(r.energyModes)), choices: energyChoices }, recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults };
 }

@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Sparkles, Zap } from "lucide-react";
+import Link from "next/link";
 import type { Locale } from "@/lib/types";
+import { alternativeHref, ENERGY_ALTERNATIVES, offerEnergyAlternatives, type EnergyAlternative } from "@/lib/study/energy-modes";
 
 const TIME_BUDGETS = [2, 5, 10, 20];
 
@@ -29,6 +31,8 @@ export function StartSessionPicker({
   locale,
   intro = { firstSession: false, offerCheckin: true },
   welcomeBack = false,
+  energyModes = false,
+  deescalated = false,
 }: {
   certSlug: string;
   certificationId: string;
@@ -37,6 +41,9 @@ export function StartSessionPicker({
   intro?: { firstSession: boolean; offerCheckin: boolean };
   /** Nach längerer Pause: „Willkommen zurück – heute nur 5 Minuten“. */
   welcomeBack?: boolean;
+  /** Flag `energy_modes`: bei niedriger Energie oder in der Entlastung Alternativen anbieten (nie Zwang). */
+  energyModes?: boolean;
+  deescalated?: boolean;
 }) {
   const router = useRouter();
   const [starting, setStarting] = useState<string | null>(null);
@@ -44,7 +51,15 @@ export function StartSessionPicker({
   const [energy, setEnergy] = useState<number | null>(null);
   const [workday, setWorkday] = useState<boolean | null>(null);
 
-  async function handleStart(key: string, goalType: "minutes" | "questions", goalValue: number) {
+  const showAlternatives = offerEnergyAlternatives({ enabled: energyModes, energy, deescalated });
+
+  /** Wahl festhalten (nur wenn die Alternativen angeboten wurden); ein Fehler hier blockiert nie den Start. */
+  function logChoice(mode: "normal" | EnergyAlternative) {
+    if (!showAlternatives) return;
+    void fetch("/api/energy-mode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ certificationId, mode, energy, deescalated }), keepalive: true }).catch(() => {});
+  }
+
+  async function handleStart(key: string, goalType: "minutes" | "questions", goalValue: number, mode?: "reviews_only") {
     if (starting !== null) return;
     setStarting(key);
     setError(null);
@@ -52,7 +67,7 @@ export function StartSessionPicker({
       const response = await fetch("/api/study-sessions/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ certificationId, goalValue, goalType, checkin: { energyLevel: energy ?? undefined, hadWorkday: workday ?? undefined } }),
+        body: JSON.stringify({ certificationId, goalValue, goalType, mode, checkin: { energyLevel: energy ?? undefined, hadWorkday: workday ?? undefined } }),
       });
       if (!response.ok && response.status !== 409) {
         throw new Error(`Status ${response.status}`);
@@ -107,7 +122,7 @@ export function StartSessionPicker({
             <button
               key={key}
               type="button"
-              onClick={() => void handleStart(key, "minutes", minutes)}
+              onClick={() => { logChoice("normal"); void handleStart(key, "minutes", minutes); }}
               disabled={starting !== null}
               className={`flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium hover:border-accent hover:bg-background disabled:cursor-not-allowed disabled:opacity-60 ${
                 welcomeBack && minutes === 5 ? "border-accent bg-accent/10 text-link" : "border-border bg-surface"
@@ -120,7 +135,7 @@ export function StartSessionPicker({
         })}
         <button
           type="button"
-          onClick={() => void handleStart("single", "questions", 1)}
+          onClick={() => { logChoice("single_task"); void handleStart("single", "questions", 1); }}
           disabled={starting !== null}
           className="flex items-center gap-1.5 rounded-md border border-dashed border-border bg-surface px-4 py-2 text-sm font-medium hover:border-accent hover:bg-background disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -184,6 +199,39 @@ export function StartSessionPicker({
       <p className="mt-3 text-xs text-foreground/50">
         <a href="/how-i-learn" className="text-link hover:underline" data-testid="how-i-learn-link">{de ? "Wie ich lerne" : "How I learn"}</a>
       </p>
+
+      {showAlternatives && (
+        <div className="mt-4 rounded-md border border-border bg-surface p-3" data-testid="energy-alternatives">
+          <p className="text-sm font-medium">{de ? "Wenig Energie? Du kannst heute auch anders lernen:" : "Low on energy? You can also learn differently today:"}</p>
+          <p className="mb-2 text-xs text-foreground/60">{de ? "Alles optional. Die normale Session bleibt oben jederzeit wählbar." : "All optional. The normal session stays available above."}</p>
+          <div className="flex flex-wrap gap-2">
+            {ENERGY_ALTERNATIVES.map((mode) => {
+              const href = alternativeHref(mode, certSlug);
+              const label = { simulation: de ? "Kurze Simulation (5 Min.)" : "Short simulation (5 min)", cheat_sheet: de ? "Spickzettel durchgehen" : "Browse cheat sheets", reviews_only: de ? "Nur Wiederholungen" : "Reviews only", single_task: de ? "Nur eine Aufgabe" : "Just one task" }[mode];
+              const cls = "rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:border-accent";
+              return href ? (
+                <Link key={mode} href={href} onClick={() => logChoice(mode)} className={cls} data-testid={`energy-${mode}`}>
+                  {label}
+                </Link>
+              ) : (
+                <button
+                  key={mode}
+                  type="button"
+                  disabled={starting !== null}
+                  onClick={() => {
+                    logChoice(mode);
+                    void (mode === "single_task" ? handleStart("single", "questions", 1) : handleStart(mode, "minutes", 10, "reviews_only"));
+                  }}
+                  className={`${cls} disabled:cursor-not-allowed disabled:opacity-60`}
+                  data-testid={`energy-${mode}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {error && <p className="mt-2 text-xs text-danger-text">{error}</p>}
     </div>

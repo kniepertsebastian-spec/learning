@@ -103,3 +103,9 @@ export async function orderEasiestFirst<T extends { questionId: string }>(userId
 }
 
 export type { EngagementSignal };
+
+/** Ist die Person gerade entlastet (nur lesen, ohne neu auszuwerten)? Für Hinweise wie die Alternativen bei wenig Energie. */
+export async function isDeescalated(userId: string, now: Date = new Date()): Promise<boolean> {
+  const [state] = await getDb().select().from(engagementStates).where(eq(engagementStates.userId, userId)).limit(1);
+  return state?.status === "deescalated" && state.until !== null && state.until > now && state.sessionsLeft > 0;
+}

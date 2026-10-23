@@ -22,6 +22,8 @@ const startSessionSchema = z.object({
   checkin: z
     .object({ energyLevel: z.number().int().min(1).max(5).optional(), hadWorkday: z.boolean().optional() })
     .optional(),
+  /** Aufgabenart nach Energie: nur Wiederholungen. */
+  mode: z.enum(["reviews_only"]).optional(),
 });
 
 function isUniqueViolation(error: unknown): boolean {
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
-  const { certificationId, goalValue, goalType, energyLevel, checkin } = parsed.data;
+  const { certificationId, goalValue, goalType, energyLevel, checkin, mode } = parsed.data;
   if (await isCertificationHidden(session.user.id, certificationId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const built = await startStudySession(session.user.id, certificationId, goalValue, goalType, energyLevel, checkin);
+    const built = await startStudySession(session.user.id, certificationId, goalValue, goalType, energyLevel, checkin, mode === "reviews_only");
     return NextResponse.json({ session: built }, { status: 201 });
   } catch (error) {
     if (isUniqueViolation(error)) {

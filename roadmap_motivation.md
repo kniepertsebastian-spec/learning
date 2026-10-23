@@ -106,10 +106,10 @@ Ziel: Abbrüche kündigen sich an. Der Human Layer liest die Tagesform nicht nur
 
 Ziel: Bei wenig Energie nicht nur weniger, sondern anders lernen. Das stärkt das Gefühl, selbst zu entscheiden.
 
-- [ ] Bei niedriger Energie im Check-in (oder in der Deeskalation) bietet der Session-Start Alternativen an: kurze Simulation (5 Minuten), Spickzettel durchgehen, nur Wiederholungen, „nur eine Aufgabe“.
-- [ ] Die Wahl ist eine Option, kein Zwang; „normale Session“ bleibt immer wählbar.
-- [ ] Gelöste Simulationen zählen über die vorhandenen impliziten Reviews (`review_type = interleaved`); Spickzettel-Lesen zählt nicht als Review, wird aber als Aktivität gezählt (wichtig für das Wochenziel).
-- [ ] Feature-Flag `energy_modes`; Auswertung: Anteil gewählter Alternativen, Rückkehr am Folgetag.
+- [x] Bei niedriger Energie im Check-in (oder in der Deeskalation) bietet der Session-Start Alternativen an: kurze Simulation (5 Minuten), Spickzettel durchgehen, nur Wiederholungen, „nur eine Aufgabe“.
+- [x] Die Wahl ist eine Option, kein Zwang; „normale Session“ bleibt immer wählbar.
+- [x] Gelöste Simulationen zählen über die vorhandenen impliziten Reviews (`review_type = interleaved`); Spickzettel-Lesen zählt nicht als Review, wird aber als Aktivität gezählt (wichtig für das Wochenziel).
+- [x] Feature-Flag `energy_modes`; Auswertung: Anteil gewählter Alternativen, Rückkehr am Folgetag.
 
 **Akzeptanzkriterium:** Bei Energie 1–2 sieht der Nutzer mindestens drei Alternativen; jede führt zu einer abgeschlossenen Session.
 
@@ -139,9 +139,9 @@ Ziel: Bei wenig Energie nicht nur weniger, sondern anders lernen. Das stärkt da
 ## Phase 7 – Fortschritt sichtbar machen (Priorität: mittel)
 
 - [ ] Rückblick im Profil und im Dashboard: „Vor 3 Wochen: 2 von 12 Lernzielen sicher. Heute: 9.“ Nur echte Werte aus Lernzielstand und Behaltensquote, keine geschätzten Prozentangaben.
-- [ ] Verlauf je Kurs als kleine Grafik (Lernziele sicher über die Zeit).
-- [ ] Persönliche Planbarkeit: Bei aktivem Prüfungstermin sieht **nur der Lernende** eine Einschätzung („bei deinem Tempo wird es knapp, sollen wir den Plan anpassen?“) mit Vorschlag (Wochenziel erhöhen, Termin verschieben). Im Firmenbereich erscheint davon nichts (Regel 2).
-- [ ] Kein Vergleich mit anderen Personen.
+- [x] Verlauf je Kurs als kleine Grafik (Lernziele sicher über die Zeit).
+- [x] Persönliche Planbarkeit: Bei aktivem Prüfungstermin sieht **nur der Lernende** eine Einschätzung („bei deinem Tempo wird es knapp, sollen wir den Plan anpassen?“) mit Vorschlag (Wochenziel erhöhen, Termin verschieben). Im Firmenbereich erscheint davon nichts (Regel 2).
+- [x] Kein Vergleich mit anderen Personen.
 
 **Akzeptanzkriterium:** Ein Nutzer mit mindestens 3 Wochen Verlauf sieht seinen Zuwachs mit echten Zahlen; die Einschätzung zum Prüfungstermin ist im Firmenbereich nicht abrufbar (Test).
 

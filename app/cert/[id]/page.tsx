@@ -27,6 +27,10 @@ import { getReadiness } from "@/lib/server/readiness/service";
 import type { ReadinessResult } from "@/lib/server/readiness/engine";
 import { StudyGoalPanel, type StudyGoalState } from "@/components/StudyGoalPanel";
 import { TodayDashboard, type TodayDashboardData } from "@/components/TodayDashboard";
+import { isDeescalated } from "@/lib/server/engagement/service";
+import { isFeatureEnabled } from "@/lib/server/feature-flags";
+import { getProgressView, type ProgressView } from "@/lib/server/progress/snapshots";
+import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { StartSessionPicker } from "@/components/StartSessionPicker";
 import { SelfAssessmentCard } from "@/components/SelfAssessmentCard";
@@ -143,6 +147,9 @@ export default async function CertDetailPage({
   let readiness: ReadinessResult | null = null;
   let learningIntro = { firstSession: false, offerCheckin: true };
   let learningWelcomeBack = false;
+  let energyModesOn = false;
+  let progressView: ProgressView | null = null;
+  let deescalatedNow = false;
   let selfAssessment: SelfAssessmentTopic[] = [];
   if (session?.user?.id) {
     selfAssessment = await getSelfAssessment(session.user.id, cert.id).catch(() => []);
@@ -173,6 +180,9 @@ export default async function CertDetailPage({
     readiness = readinessResult;
     learningIntro = { firstSession: learning.intro.firstSession, offerCheckin: learning.intro.offerCheckin };
     learningWelcomeBack = learning.welcomeBack;
+    energyModesOn = isFeatureEnabled("energy_modes", session.user.id);
+    progressView = await getProgressView(session.user.id, cert.id).catch(() => null);
+    deescalatedNow = await isDeescalated(session.user.id).catch(() => false);
     progressData = Object.fromEntries(
       progress.map((p) => [p.objectiveId, { masteryScore: Number(p.masteryScore), status: p.status }])
     );
@@ -365,8 +375,10 @@ export default async function CertDetailPage({
       )}
 
       {session && quizzes && !todayDashboard && (
-        <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} intro={learningIntro} welcomeBack={learningWelcomeBack} />
+        <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} intro={learningIntro} welcomeBack={learningWelcomeBack} energyModes={energyModesOn} deescalated={deescalatedNow} />
       )}
+
+      {session && quizzes && progressView && <ProgressReviewCard review={progressView.review} outlook={progressView.outlook} series={progressView.series} locale={locale} certSlug={slug} />}
 
       {session && quizzes && readiness && <ReadinessCard locale={locale} readiness={readiness} />}
 

@@ -1,7 +1,7 @@
 /** „Wie ich lerne“ und Einstieg: Einstellungen der Person plus der daraus abgeleitete Stand (Wochenziel, Serie, Einführung, Willkommen zurück). */
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { learningPreferences, studyProfiles, studySessions, users } from "@/lib/server/db/schema";
+import { learningActivities, learningPreferences, simulationResults, studyProfiles, studySessions, users } from "@/lib/server/db/schema";
 import {
   DEFAULT_PREFERENCES,
   introStage,
@@ -43,7 +43,7 @@ export async function saveLearningPreferences(userId: string, input: Partial<Lea
 
 export async function getLearningContext(userId: string, now: Date = new Date()): Promise<LearningContext> {
   const db = getDb();
-  const [preferences, completed, [user], profiles] = await Promise.all([
+  const [preferences, completed, [user], profiles, simulations, activities] = await Promise.all([
     getLearningPreferences(userId),
     db
       .select({ completedAt: studySessions.completedAt })
@@ -52,18 +52,22 @@ export async function getLearningContext(userId: string, now: Date = new Date())
       .orderBy(desc(studySessions.completedAt)),
     db.select({ timezone: users.timezone }).from(users).where(eq(users.id, userId)).limit(1),
     db.select({ light: studyProfiles.lightWeekdays }).from(studyProfiles).where(eq(studyProfiles.userId, userId)),
+    db.select({ at: simulationResults.lastSolvedAt }).from(simulationResults).where(eq(simulationResults.userId, userId)),
+    db.select({ at: learningActivities.createdAt }).from(learningActivities).where(eq(learningActivities.userId, userId)),
   ]);
-  const dates = completed.map((r) => r.completedAt).filter((d): d is Date => d !== null);
+  const sessionDates = completed.map((r) => r.completedAt).filter((d): d is Date => d !== null);
+  // Lerntage zählen auch gelöste Simulationen und durchgesehene Spickzettel (Aktivität, kein Review); die Einführung zählt nur Sessions.
+  const dates = [...sessionDates, ...simulations.map((r) => r.at), ...activities.map((r) => r.at)];
   const timeZone = user?.timezone ?? "UTC";
   // Leichte Tage gelten, wenn die Person sie in jedem ihrer Lernpfade als leicht eingetragen hat.
   const lightWeekdays = profiles.length > 0 ? profiles.map((p) => p.light).reduce((a, b) => a.filter((d) => b.includes(d))) : [];
   return {
     preferences,
-    intro: introStage(dates.length, preferences),
-    completedSessions: dates.length,
+    intro: introStage(sessionDates.length, preferences),
+    completedSessions: sessionDates.length,
     weekly: weeklyProgress({ completedAt: dates, now, timeZone, lightWeekdays, goalDays: preferences.weeklyGoalDays }),
     streak: protectedStreak({ completedAt: dates, now, timeZone, lightWeekdays }),
-    welcomeBack: isWelcomeBack(dates[0] ?? null, now),
+    welcomeBack: isWelcomeBack(dates.length > 0 ? new Date(Math.max(...dates.map((d) => d.getTime()))) : null, now),
   };
 }
 

@@ -64,6 +64,7 @@ export default async function HomePage() {
           domains: dash.main.domains,
           recommendation: dash.main.recommendation,
           dueCount: dash.main.dueCount,
+          progress: dash.main.progress,
         }
       : null,
     hero: dash.hero ? { ...dash.hero, lastAtIso: dash.hero.lastAt ? dash.hero.lastAt.toISOString() : null } : null,
