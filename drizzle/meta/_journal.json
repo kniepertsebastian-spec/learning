@@ -589,6 +589,13 @@
       "when": 1792766866372,
       "tag": "0083_concept_prerequisite",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1792770829105,
+      "tag": "0084_explanation_gapped_example",
+      "breakpoints": true
     }
   ]
 }

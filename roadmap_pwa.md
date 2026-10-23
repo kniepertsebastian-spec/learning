@@ -43,10 +43,10 @@ Die Plattform ist eine Next.js-16-App mit Serwist (`@serwist/next`). Vorhanden s
 
 ## Phase 1 – Datenverlust verhindern (Priorität: hoch)
 
-- [ ] `reloadOnOnline: false` in `withSerwistInit` (`next.config.ts`) setzen, damit ein Netzwechsel keine laufende `StudySession` per Reload beendet
-- [ ] `navigator.storage.persist()` beim ersten erfolgreichen Offline-Download anfragen (`lib/client/offline-download.ts`); Ergebnis über `navigator.storage.persisted()` prüfen
-- [ ] In `OfflinePackageManager` den Speicherstatus anzeigen: belegt/verfügbar via `navigator.storage.estimate()` und ob der Speicher dauerhaft ist; wenn nicht, ein Hinweis (iOS: „App installieren, damit Offline-Daten erhalten bleiben“)
-- [ ] Ausstehende Sync-Ereignisse beim Logout nicht stillschweigend löschen: vor `clearLocalUserData` synchronisieren versuchen; gelingt das nicht, warnen („X Lernergebnisse noch nicht übertragen“) und den Nutzer entscheiden lassen
+- [x] `reloadOnOnline: false` in `withSerwistInit` (`next.config.ts`) setzen, damit ein Netzwechsel keine laufende `StudySession` per Reload beendet
+- [x] `navigator.storage.persist()` beim ersten erfolgreichen Offline-Download anfragen (`lib/client/offline-download.ts`); Ergebnis über `navigator.storage.persisted()` prüfen
+- [x] In `OfflinePackageManager` den Speicherstatus anzeigen: belegt/verfügbar via `navigator.storage.estimate()` und ob der Speicher dauerhaft ist; wenn nicht, ein Hinweis (iOS: „App installieren, damit Offline-Daten erhalten bleiben“)
+- [x] Ausstehende Sync-Ereignisse beim Logout nicht stillschweigend löschen: vor `clearLocalUserData` synchronisieren versuchen; gelingt das nicht, warnen („X Lernergebnisse noch nicht übertragen“) und den Nutzer entscheiden lassen
 
 **Akzeptanzkriterium:** Offline begonnene Session → Netz an/aus → Session läuft ohne Reload weiter, das Ergebnis landet in der Warteschlange und wird synchronisiert. Tests decken den Logout mit ausstehenden Ereignissen ab.
 
@@ -54,12 +54,12 @@ Die Plattform ist eine Next.js-16-App mit Serwist (`@serwist/next`). Vorhanden s
 
 ## Phase 2 – Offline-Navigation (Priorität: hoch)
 
-- [ ] Offline-Fallback-Seite `/~offline` anlegen (statisch, ohne DB- oder Session-Zugriff) und über Serwist `fallbacks` für `request.destination === "document"` einbinden; die Seite muss im Precache landen
-- [ ] Seite `/offline` „Meine Offline-Kurse“: rein clientseitig, liest alle Pakete des zuletzt angemeldeten Nutzers aus IndexedDB (`listOfflinePackages`) und öffnet den Offline-Leser. Precachen.
-- [ ] Offline-Leser von der serverseitigen Route lösen: `/cert/[id]/offline` braucht heute `auth()` und DB, lädt also offline nur, wenn die Seite zufällig im Cache liegt. Der Leser muss aus `/offline` heraus ohne Server funktionieren (z. B. `/offline?cert=<id>` oder Client-Route).
-- [ ] Die User-ID für den Offline-Fall clientseitig vorhalten (z. B. `localStorage` „zuletzt angemeldet“), damit `/offline` ohne Session weiß, welche Pakete gezeigt werden. Beim Logout entfernen.
-- [ ] Offline-Navigation: Ist `navigator.onLine === false`, führen Links zu Offline-Zielen eine harte Navigation aus, damit nicht RSC-Requests ins Leere laufen. Zentraler Hinweisbalken „Du bist offline – zu deinen Offline-Kursen“ in der `AppShell` (`lib/client/use-online-status.ts` existiert bereits).
-- [ ] Die Fallback-Seite verlinkt auf `/offline`
+- [x] Offline-Fallback-Seite `/~offline` anlegen (statisch, ohne DB- oder Session-Zugriff) und über Serwist `fallbacks` für `request.destination === "document"` einbinden; die Seite muss im Precache landen
+- [x] Seite `/offline` „Meine Offline-Kurse“: rein clientseitig, liest alle Pakete des zuletzt angemeldeten Nutzers aus IndexedDB (`listOfflinePackages`) und öffnet den Offline-Leser. Precachen.
+- [x] Offline-Leser von der serverseitigen Route lösen: `/cert/[id]/offline` braucht heute `auth()` und DB, lädt also offline nur, wenn die Seite zufällig im Cache liegt. Der Leser muss aus `/offline` heraus ohne Server funktionieren (z. B. `/offline?cert=<id>` oder Client-Route).
+- [x] Die User-ID für den Offline-Fall clientseitig vorhalten (z. B. `localStorage` „zuletzt angemeldet“), damit `/offline` ohne Session weiß, welche Pakete gezeigt werden. Beim Logout entfernen.
+- [x] Offline-Navigation: Ist `navigator.onLine === false`, führen Links zu Offline-Zielen eine harte Navigation aus, damit nicht RSC-Requests ins Leere laufen. Zentraler Hinweisbalken „Du bist offline – zu deinen Offline-Kursen“ in der `AppShell` (`lib/client/use-online-status.ts` existiert bereits).
+- [x] Die Fallback-Seite verlinkt auf `/offline`
 
 **Akzeptanzkriterium:** Installierte App im Flugmodus starten → `/offline` bzw. Fallback erscheint → heruntergeladenen Kurs öffnen → Lektion lesen und Quiz abschließen → Ergebnis in der Warteschlange. Funktioniert auch, wenn vorher keine Seite außer dem Download besucht wurde.
 
@@ -67,11 +67,11 @@ Die Plattform ist eine Next.js-16-App mit Serwist (`@serwist/next`). Vorhanden s
 
 ## Phase 3 – Caching & Updates (Priorität: mittel)
 
-- [ ] Seiten und Assets in getrennte Caches aufteilen (`pages-cache`, `assets-cache`), jeweils mit `ExpirationPlugin` (Werte siehe Platzhalter). `clearLocalUserData` löscht `pages-cache`.
-- [ ] Navigationen unter `/admin` und dem Firmenbereich vom Seiten-Cache ausnehmen (`NetworkOnly`)
-- [ ] Wechselt der angemeldete Nutzer (Login mit anderer ID als „zuletzt angemeldet“), Seiten-Cache leeren, auch bei abgelaufener Session ohne aktiven Logout
-- [ ] Update-Fluss: `skipWaiting: false`; Client-Komponente lauscht auf einen wartenden Service Worker (`serwist`-Window-Events oder `registration.waiting`) und zeigt per Sonner-Toast „Neue Version verfügbar – neu laden“. Klick sendet `SKIP_WAITING`, danach Reload bei `controllerchange`. Während einer aktiven Session keinen Reload erzwingen.
-- [ ] `ChunkLoadError` abfangen (Error-Boundary): einmalig neu laden statt Fehlerseite
+- [x] Seiten und Assets in getrennte Caches aufteilen (`pages-cache`, `assets-cache`), jeweils mit `ExpirationPlugin` (Werte siehe Platzhalter). `clearLocalUserData` löscht `pages-cache`.
+- [x] Navigationen unter `/admin` und dem Firmenbereich vom Seiten-Cache ausnehmen (`NetworkOnly`)
+- [x] Wechselt der angemeldete Nutzer (Login mit anderer ID als „zuletzt angemeldet“), Seiten-Cache leeren, auch bei abgelaufener Session ohne aktiven Logout
+- [x] Update-Fluss: `skipWaiting: false`; Client-Komponente lauscht auf einen wartenden Service Worker (`serwist`-Window-Events oder `registration.waiting`) und zeigt per Sonner-Toast „Neue Version verfügbar – neu laden“. Klick sendet `SKIP_WAITING`, danach Reload bei `controllerchange`. Während einer aktiven Session keinen Reload erzwingen.
+- [x] `ChunkLoadError` abfangen (Error-Boundary): einmalig neu laden statt Fehlerseite
 
 **Akzeptanzkriterium:** Nach einem Deploy sieht ein offener Tab den Update-Toast; ohne Klick bleibt die alte Version funktionsfähig. Admin-Seiten tauchen nie in einem Cache auf (Test über Cache-Inspektion im Playwright-Test).
 
@@ -116,11 +116,11 @@ Die Plattform ist eine Next.js-16-App mit Serwist (`@serwist/next`). Vorhanden s
 
 ## Phase 7 – Tests & Qualitätssicherung
 
-- [ ] Playwright-E2E gegen den Produktions-Build (SW ist im Dev deaktiviert): Kurs herunterladen → offline → `/offline` → Lektion + Quiz → online → Sync erfolgreich
-- [ ] Test: Update-Toast erscheint nach neuem SW-Build, kein erzwungener Reload während einer Session
-- [ ] Test: Admin-/Firmenseiten landen nicht im Cache; Logout bzw. Nutzerwechsel leert den Seiten-Cache
-- [ ] Lighthouse-PWA-/Best-Practices-Check in CI (Warnschwelle, kein harter Fehler)
-- [ ] Kurze Doku `docs/PWA.md`: Caching-Strategie, Offline-Fluss, Update-Fluss, bekannte iOS-Einschränkungen
+- [x] Playwright-E2E gegen den Produktions-Build (SW ist im Dev deaktiviert): Kurs herunterladen → offline → `/offline` → Lektion + Quiz → online → Sync erfolgreich
+- [x] Test: Update-Toast erscheint nach neuem SW-Build, kein erzwungener Reload während einer Session
+- [x] Test: Admin-/Firmenseiten landen nicht im Cache; Logout bzw. Nutzerwechsel leert den Seiten-Cache
+- [x] Lighthouse-PWA-/Best-Practices-Check in CI (Warnschwelle, kein harter Fehler)
+- [x] Kurze Doku `docs/PWA.md`: Caching-Strategie, Offline-Fluss, Update-Fluss, bekannte iOS-Einschränkungen
 
 **Akzeptanzkriterium:** Die E2E-Tests laufen in CI grün.
 

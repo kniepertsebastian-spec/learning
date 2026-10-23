@@ -33,7 +33,7 @@ interface SessionQuestionItem {
   /** Nur bei category = recall (online): die Lektion, auf die sich der Rückblick bezieht. */
   recall?: { sectionId: string; lessonTitle: { de: string; en: string } };
   /** Nur bei category = understand (online): das Konzept und die häufige Verwechslung. */
-  understand?: { conceptStruggleId: string; conceptName: string; confusion: { optionText: { de: string; en: string }; rationale: { de: string; en: string } | null } | null; explanation?: { kind: "worked_example" | "analogy" | "example"; content: { de: string; en: string } } | null; bridge?: { conceptName: string; sectionId: string; title: { de: string; en: string } } | null };
+  understand?: { conceptStruggleId: string; conceptName: string; confusion: { optionText: { de: string; en: string }; rationale: { de: string; en: string } | null } | null; help?: { ladder: Array<{ kind: "worked_example" | "gapped_example"; content: { de: string; en: string }; solution: { de: string; en: string } | null }>; extra: { kind: "analogy" | "example"; content: { de: string; en: string } } | null } | null; bridge?: { conceptName: string; sectionId: string; title: { de: string; en: string } } | null };
   questionId: string;
   question: { de: string; en: string };
   /** isCorrect ist nur im Offline-Paket gesetzt (siehe offline-Prop unten) -
@@ -183,6 +183,9 @@ export function StudySession({
   }
 
   const [decliningUnderstand, setDecliningUnderstand] = useState(false);
+  // „Vormachen, dann selbst machen“: Stufe der Leiter in der Verstehens-Aufgabe (gelöstes Beispiel, Beispiel mit Lücken, danach die eigene Aufgabe)
+  const [ladderStep, setLadderStep] = useState(0);
+  const [solutionShown, setSolutionShown] = useState(false);
   async function declineUnderstand() {
     setDecliningUnderstand(true);
     try {
@@ -385,6 +388,8 @@ export function StudySession({
 
   const item = questionItems[currentIndex];
   const sortedOptions = [...item.options].sort((a, b) => a.orderNum - b.orderNum);
+  const ladder = item.category === "understand" ? (item.understand?.help?.ladder ?? []) : [];
+  const laddering = ladder.length > ladderStep;
   const reveal = typeof currentReveal === "object" && currentReveal !== null ? currentReveal : null;
   const states: OptionState[] = sortedOptions.map((o) => {
     if (instant && reveal) {
@@ -452,10 +457,33 @@ export function StudySession({
               <Link href={`/cert/${certSlug}/section/${item.understand.bridge.sectionId}`} className="text-link hover:underline">{fmt(t.quiz.bridgeRead, { lesson: item.understand.bridge.title[locale] })}</Link>
             </p>
           )}
-          {item.understand.explanation && (
+          {laddering && ladder[ladderStep] && (
+            <div className="mt-3 rounded-md border border-border bg-background p-3 text-sm" data-testid="understand-ladder" data-step={ladderStep}>
+              <p className="mb-1 text-xs font-semibold">
+                {fmt(t.quiz.ladderStep, { n: ladderStep + 1, m: ladder.length + 1 })} · {ladder[ladderStep].kind === "worked_example" ? t.quiz.explainWorked : t.quiz.explainGapped}
+              </p>
+              <RichText text={ladder[ladderStep].content[locale]} />
+              {ladder[ladderStep].kind === "gapped_example" && ladder[ladderStep].solution && (
+                <div className="mt-2">
+                  {solutionShown ? (
+                    <div className="rounded-md bg-surface p-2" data-testid="ladder-solution">
+                      <p className="mb-1 text-xs font-semibold">{t.quiz.ladderSolution}</p>
+                      <RichText text={ladder[ladderStep].solution![locale]} />
+                    </div>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => setSolutionShown(true)} data-testid="ladder-show-solution">{t.quiz.ladderShowSolution}</Button>
+                  )}
+                </div>
+              )}
+              <Button className="mt-3" size="sm" onClick={() => { setLadderStep((n) => n + 1); setSolutionShown(false); }} data-testid="ladder-next">
+                {ladderStep + 1 >= ladder.length ? t.quiz.ladderToTask : t.quiz.ladderNext}
+              </Button>
+            </div>
+          )}
+          {!laddering && item.understand.help?.extra && (
             <div className="mt-3 rounded-md border border-border bg-background p-3 text-sm" data-testid="understand-explanation">
-              <p className="mb-1 text-xs font-semibold">{item.understand.explanation.kind === "worked_example" ? t.quiz.explainWorked : item.understand.explanation.kind === "analogy" ? t.quiz.explainAnalogy : t.quiz.explainExample}</p>
-              <RichText text={item.understand.explanation.content[locale]} />
+              <p className="mb-1 text-xs font-semibold">{item.understand.help.extra.kind === "analogy" ? t.quiz.explainAnalogy : t.quiz.explainExample}</p>
+              <RichText text={item.understand.help.extra.content[locale]} />
             </div>
           )}
           {mentorAsk && !offline && <MentorAskForm topic={item.understand.conceptName} certificationId={mentorAsk.certificationId} locale={locale} />}
@@ -464,6 +492,8 @@ export function StudySession({
           )}
         </Card>
       )}
+      {!laddering && (
+      <>
       <div className="mb-3">
         <Badge tone={item.category === "weak" ? "warning" : item.category === "review" || item.category === "recall" || item.category === "understand" || item.category === "win" || item.category === "prereq" ? "info" : "accent"}>
           {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : item.category === "recall" ? t.quiz.categoryRecall : item.category === "understand" ? t.quiz.categoryUnderstand : item.category === "win" ? t.quiz.categoryWin : item.category === "prereq" ? t.quiz.categoryPrereq : t.quiz.categoryNew}
@@ -559,6 +589,8 @@ export function StudySession({
           <span className="block text-faint">{t.quiz.feedbackAtEndHint}</span>
         </span>
       </label>
+      </>
+      )}
     </FocusFrame>
   );
 }

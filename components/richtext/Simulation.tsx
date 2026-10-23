@@ -2,6 +2,7 @@
 
 import { BookOpen, CheckCircle2, GitBranch, Lightbulb, RotateCcw, SlidersHorizontal, SquareTerminal, XCircle } from "lucide-react";
 import * as React from "react";
+import { MentorAskForm } from "@/components/MentorAskForm";
 import { useLessonSimulations } from "@/components/lesson/LessonSimulations";
 import { RichText } from "@/components/RichText";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +45,7 @@ export function SimulationBlock({ spec }: { spec: string }) {
 const ICONS = { terminal: SquareTerminal, decision: GitBranch, config: SlidersHorizontal } as const;
 
 function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () => void; children: React.ReactNode }) {
-  const { t } = useLocaleOptional();
+  const { t, locale } = useLocaleOptional();
   const Icon = ICONS[sim.type];
   const lesson = useLessonSimulations();
   const kind = { terminal: t.lesson_blocks.simTerminal, decision: t.lesson_blocks.simDecision, config: t.lesson_blocks.simConfig }[sim.type];
@@ -74,6 +75,7 @@ function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () =>
         <RichText text={sim.scenario} />
       </div>
       <div className="mt-3">{children}</div>
+      {lesson?.mentorAsk && <MentorAskForm topic={`${lesson.mentorAsk.topic} · ${sim.title}`.slice(0, 200)} certificationId={lesson.mentorAsk.certificationId} locale={locale} />}
     </section>
   );
 }

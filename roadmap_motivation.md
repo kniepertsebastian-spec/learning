@@ -56,13 +56,13 @@ Lernabbrüche sind selten fehlende Disziplin, sondern Schutzreaktionen gegen Üb
 
 Ziel: Den Human Layer in zehn Sekunden zeigen: Nach einer Pause wartet kein Berg, sondern höchstens das gewohnte Zeitbudget.
 
-- [ ] Simulator um einen Modus erweitern: `mode: "vanilla" | "planning"`. `vanilla` = reines FSRS wie eine klassische Lernkarten-App: alle fälligen Karten werden am selben Tag bearbeitet, neue Karten fix pro Tag, kein Tageslimit, kein Rückstau-Abbau. `planning` = bisheriges Verhalten.
-- [ ] Ergebnis je Tag zusätzlich: fällige Karten (auch nicht bearbeitete), bearbeitete Karten, Minuten (bearbeitete × Sekunden je Karte).
-- [ ] Szenario-Funktion `simulatePause(params)`: beide Modi mit identischem Seed und Parametern (siehe Platzhalter); Ausgabe als JSON mit Annahmen.
-- [ ] Kennzahlen: Spitzenlast am ersten Tag nach der Pause (Karten und Minuten) je Modus; Tage bis der Rückstand abgebaut ist (Planungsmodus); Behaltensquote 30 Tage nach der Pause je Modus.
-- [ ] Skript `npm run psrp:pause-demo` schreibt die JSON-Datei und eine statische Grafik (SVG): Minuten pro Tag als zwei Linien, Zeitbudget als waagerechte Linie, Pause als hinterlegter Bereich, Annahmen als Fußzeile.
-- [ ] Optional: dieselbe Grafik als Seite im Admin-Bereich bzw. als öffentliche Demo-Seite mit Schiebereglern für Pausenlänge und Zeitbudget (berechnet im Browser, keine Nutzerdaten).
-- [ ] Unit-Tests: Planungsmodus überschreitet an keinem Tag das Zeitbudget; Vanilla-Modus hat am ersten Tag nach der Pause mehr fällige Karten als vor der Pause; gleiche Parameter ergeben gleiche Ergebnisse.
+- [x] Simulator um einen Modus erweitern: `mode: "vanilla" | "planning"`. `vanilla` = reines FSRS wie eine klassische Lernkarten-App: alle fälligen Karten werden am selben Tag bearbeitet, neue Karten fix pro Tag, kein Tageslimit, kein Rückstau-Abbau. `planning` = bisheriges Verhalten.
+- [x] Ergebnis je Tag zusätzlich: fällige Karten (auch nicht bearbeitete), bearbeitete Karten, Minuten (bearbeitete × Sekunden je Karte).
+- [x] Szenario-Funktion `simulatePause(params)`: beide Modi mit identischem Seed und Parametern (siehe Platzhalter); Ausgabe als JSON mit Annahmen.
+- [x] Kennzahlen: Spitzenlast am ersten Tag nach der Pause (Karten und Minuten) je Modus; Tage bis der Rückstand abgebaut ist (Planungsmodus); Behaltensquote 30 Tage nach der Pause je Modus.
+- [x] Skript `npm run psrp:pause-demo` schreibt die JSON-Datei und eine statische Grafik (SVG): Minuten pro Tag als zwei Linien, Zeitbudget als waagerechte Linie, Pause als hinterlegter Bereich, Annahmen als Fußzeile.
+- [ ] Optional: dieselbe Grafik als Seite im Admin-Bereich bzw. als öffentliche Demo-Seite mit Schiebereglern für Pausenlänge und Zeitbudget (berechnet im Browser, keine Nutzerdaten). _(optional, noch nicht umgesetzt)_
+- [x] Unit-Tests: Planungsmodus überschreitet an keinem Tag das Zeitbudget; Vanilla-Modus hat am ersten Tag nach der Pause mehr fällige Karten als vor der Pause; gleiche Parameter ergeben gleiche Ergebnisse.
 
 **Akzeptanzkriterium:** `npm run psrp:pause-demo` erzeugt reproduzierbar eine Grafik und eine JSON-Datei mit allen Annahmen; die Kennzahlen stehen in der Ausgabe.
 
@@ -72,18 +72,18 @@ Ziel: Den Human Layer in zehn Sekunden zeigen: Nach einer Pause wartet kein Berg
 
 Ziel: Abbrüche kündigen sich an. Der Human Layer liest die Tagesform nicht nur aus dem Check-in, sondern auch aus dem Verhalten, und nimmt Druck heraus, bevor jemand aufgibt.
 
-- [ ] Signale je Nutzer im Beobachtungsfenster:
+- [x] Signale je Nutzer im Beobachtungsfenster:
   - mehrere Sessions mit Status `abandoned` oder unter 2 Minuten
   - Fehlerquote deutlich über dem persönlichen Durchschnitt
   - Antwortzeiten deutlich über dem persönlichen Median (Ausreißerregel aus PSRP-HR beachten)
   - Check-ins werden plötzlich übersprungen, nachdem sie vorher regelmäßig ausgefüllt wurden
   - Notausstieg (Phase 3) genutzt
-- [ ] Auslösung nur bei Muster (siehe Platzhalter); Zustand in eigener Tabelle `engagement_state` (user_id, signals jsonb, status `normal` / `deescalated`, since, until), getrennt von Rohdaten.
-- [ ] Deeskalation in der Planungsschicht: Tageslimit-Faktor (Platzhalter), keine neuen Karten, schwierige Items nach hinten, Session mit 1–2 leichten Erfolgen beginnen. FSRS-Zustand und Ratings bleiben unverändert.
-- [ ] Sichtbar, aber freundlich: „Wir machen es heute etwas leichter.“ Mit Möglichkeit „Nein danke, normal weiter“.
-- [ ] Rückkehr zum Normalzustand automatisch (Platzhalter).
-- [ ] Nie im Firmenbereich sichtbar, nie in Exporten für Firmen (Regel 2). Im anonymen Metrik-Export als Kennzahl.
-- [ ] Feature-Flag `dropout_guard`; Auswertung: Abbruchquote und Lernfortschritt mit vs. ohne.
+- [x] Auslösung nur bei Muster (siehe Platzhalter); Zustand in eigener Tabelle `engagement_state` (user_id, signals jsonb, status `normal` / `deescalated`, since, until), getrennt von Rohdaten.
+- [x] Deeskalation in der Planungsschicht: Tageslimit-Faktor (Platzhalter), keine neuen Karten, schwierige Items nach hinten, Session mit 1–2 leichten Erfolgen beginnen. FSRS-Zustand und Ratings bleiben unverändert.
+- [x] Sichtbar, aber freundlich: „Wir machen es heute etwas leichter.“ Mit Möglichkeit „Nein danke, normal weiter“.
+- [x] Rückkehr zum Normalzustand automatisch (Platzhalter).
+- [x] Nie im Firmenbereich sichtbar, nie in Exporten für Firmen (Regel 2). Im anonymen Metrik-Export als Kennzahl.
+- [x] Feature-Flag `dropout_guard`; Auswertung: Abbruchquote und Lernfortschritt mit vs. ohne.
 
 **Akzeptanzkriterium:** Ein synthetischer Nutzer mit drei abgebrochenen Kurz-Sessions und erhöhter Fehlerquote in 7 Tagen wird deeskaliert; ein Nutzer mit einem einzelnen übersprungenen Check-in nicht. Ein Test belegt, dass FSRS-Zustände dabei unverändert bleiben.
 
@@ -91,12 +91,12 @@ Ziel: Abbrüche kündigen sich an. Der Human Layer liest die Tagesform nicht nur
 
 ## Phase 3 – Notausstieg mit Erfolgserlebnis (Priorität: hoch)
 
-- [ ] Button „Heute reicht's“ in jeder Übungssession und jedem Lektionstest (nicht in der Prüfungssimulation).
-- [ ] Danach 2–3 Aufgaben, die der Nutzer sehr wahrscheinlich kann und die ohnehin bald fällig wären (Platzhalter). So entstehen keine unnötig frühen Wiederholungen, die das Gedächtnismodell verzerren.
-- [ ] Die Session endet mit einer positiven Zusammenfassung („3 von 3 sicher, morgen geht es leichter weiter“).
-- [ ] Die abgebrochene Aufgabe wird nicht als falsch gewertet, wenn noch keine Antwort gegeben wurde; sie bleibt fällig.
-- [ ] Der Notausstieg zählt als Signal für die Frühwarnung (Phase 2) und, wenn er mehrfach beim selben Konzept passiert, für den Verstehens-Modus (`roadmap_didaktik.md`, Phase 9).
-- [ ] Feature-Flag `exit_with_win`.
+- [x] Button „Heute reicht's“ in jeder Übungssession und jedem Lektionstest (nicht in der Prüfungssimulation).
+- [x] Danach 2–3 Aufgaben, die der Nutzer sehr wahrscheinlich kann und die ohnehin bald fällig wären (Platzhalter). So entstehen keine unnötig frühen Wiederholungen, die das Gedächtnismodell verzerren.
+- [x] Die Session endet mit einer positiven Zusammenfassung („3 von 3 sicher, morgen geht es leichter weiter“).
+- [x] Die abgebrochene Aufgabe wird nicht als falsch gewertet, wenn noch keine Antwort gegeben wurde; sie bleibt fällig.
+- [x] Der Notausstieg zählt als Signal für die Frühwarnung (Phase 2) und, wenn er mehrfach beim selben Konzept passiert, für den Verstehens-Modus (`roadmap_didaktik.md`, Phase 9).
+- [x] Feature-Flag `exit_with_win`.
 
 **Akzeptanzkriterium:** Nach „Heute reicht's“ folgen höchstens 3 Aufgaben mit hoher Abrufwahrscheinlichkeit; die abgebrochene Aufgabe hat kein Rating 1 erhalten.
 
@@ -149,9 +149,9 @@ Ziel: Bei wenig Energie nicht nur weniger, sondern anders lernen. Das stärkt da
 
 ## Phase 8 – Rückmeldungen ohne Schuldzuweisung (Priorität: mittel)
 
-- [ ] Leitfaden für alle Texte nach Fehlern: Fehler als fehlenden Schritt formulieren, nie als Eigenschaft der Person („Hier fehlt noch ein Zwischenschritt“ statt „Falsch“). Gilt für UI-Texte und für Prompts der Inhaltsgenerierung (Erklärungen, Begründungen der Optionen).
-- [ ] Plattformstatistik nur mit echter Datenbasis (Platzhalter): „4 von 10 Lernenden beantworten das beim ersten Mal falsch.“ Unterhalb der Schwelle keine Zahl.
-- [ ] Bestehende UI-Texte nach dem Leitfaden überarbeiten (Sessions, Lektionstests, Simulationen, Auswertung).
+- [x] Leitfaden für alle Texte nach Fehlern: Fehler als fehlenden Schritt formulieren, nie als Eigenschaft der Person („Hier fehlt noch ein Zwischenschritt“ statt „Falsch“). Gilt für UI-Texte und für Prompts der Inhaltsgenerierung (Erklärungen, Begründungen der Optionen).
+- [x] Plattformstatistik nur mit echter Datenbasis (Platzhalter): „4 von 10 Lernenden beantworten das beim ersten Mal falsch.“ Unterhalb der Schwelle keine Zahl.
+- [x] Bestehende UI-Texte nach dem Leitfaden überarbeiten (Sessions, Lektionstests, Simulationen, Auswertung).
 
 **Akzeptanzkriterium:** Keine Rückmeldung enthält eine Zahl ohne Datenbasis (Test über die Textbausteine); der Leitfaden liegt als `docs/RUECKMELDUNGEN.md` im Repository.
 
@@ -161,11 +161,11 @@ Ziel: Bei wenig Energie nicht nur weniger, sondern anders lernen. Das stärkt da
 
 Erweitert „Mentor fragen“ aus `roadmap_didaktik.md`, Phase 9.4.
 
-- [ ] Button „Ich hänge fest“ bei Praxisaufgaben und Simulationen im Firmenbereich.
-- [ ] Das System schlägt eine Zusammenfassung vor: Aufgabe, eigene Beschreibung des Problems, optional Fehlermeldung oder Log-Ausschnitt, den der Lernende selbst einfügt.
-- [ ] **Der Lernende sieht und bearbeitet die Zusammenfassung vor dem Senden.** Keine automatische Übertragung von Fehlversuchen, Antworten oder Lernzeit.
-- [ ] Zustellung an den zugewiesenen Mentor (Plattform-Benachrichtigung, optional E-Mail).
-- [ ] Kennzahl (anonym, aggregiert je Firma, nur ab Mindestgröße): wie oft Hilfe angefragt und wie schnell beantwortet wird.
+- [x] Button „Ich hänge fest“ bei Praxisaufgaben und Simulationen im Firmenbereich.
+- [x] Das System schlägt eine Zusammenfassung vor: Aufgabe, eigene Beschreibung des Problems, optional Fehlermeldung oder Log-Ausschnitt, den der Lernende selbst einfügt.
+- [x] **Der Lernende sieht und bearbeitet die Zusammenfassung vor dem Senden.** Keine automatische Übertragung von Fehlversuchen, Antworten oder Lernzeit.
+- [x] Zustellung an den zugewiesenen Mentor (Plattform-Benachrichtigung, optional E-Mail).
+- [x] Kennzahl (anonym, aggregiert je Firma, nur ab Mindestgröße): wie oft Hilfe angefragt und wie schnell beantwortet wird.
 
 **Akzeptanzkriterium:** Eine Anfrage erreicht den Mentor nur nach ausdrücklicher Bestätigung; ein Test belegt, dass keine Antwortdaten automatisch mitgesendet werden.
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { LessonSimulationsProvider } from "@/components/lesson/LessonSimulations";
 import { RichText } from "@/components/RichText";
 import { parseCodeMeta, parseLineRanges, terminalCommands } from "@/lib/markdown/blocks";
 
@@ -162,3 +163,37 @@ describe("Simulation", () => {
     expect(out).toContain('data-testid="code-block"');
   });
 });
+
+describe("Simulation: „Ich hänge fest“ im Firmenbereich", () => {
+  const sim = {
+    type: "decision",
+    title: "Shop down",
+    scenario: "Shop weg.",
+    start: "a",
+    nodes: [
+      { id: "a", text: "Was zuerst?", choices: [{ label: "Logs lesen", next: "b", feedback: "f" }, { label: "Neu aufsetzen", next: "c", feedback: "f" }] },
+      { id: "b", text: "Gefunden.", outcome: "success" },
+      { id: "c", text: "Weg.", outcome: "failure" },
+    ],
+  };
+  const text = "Vorher\n\n```simulation\n" + JSON.stringify(sim) + "\n```\n";
+  const render = (mentorAsk: { topic: string; certificationId: string } | null) =>
+    renderToStaticMarkup(
+      <LessonSimulationsProvider text={text} sectionId="s1" persist={false} initialProgress={[]} mentorAsk={mentorAsk}>
+        <RichText text={text} />
+      </LessonSimulationsProvider>,
+    );
+
+  it("mit zugeordnetem Mentor gibt es den Button, nur als Angebot ohne automatische Übertragung", () => {
+    const out = render({ topic: "Dienste prüfen", certificationId: "c1" });
+    expect(out).toContain('data-testid="mentor-ask-open"');
+    expect(out).not.toContain('data-testid="mentor-ask-form"'); // das Formular öffnet erst die Person selbst
+    expect(out).not.toContain('data-testid="mentor-ask-send"');
+  });
+
+  it("ohne Mentor oder außerhalb des Firmenbereichs gibt es keinen Button", () => {
+    expect(render(null)).not.toContain("mentor-ask-open");
+    expect(html(text)).not.toContain("mentor-ask-open");
+  });
+});
+

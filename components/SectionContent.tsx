@@ -53,6 +53,8 @@ interface SectionContentProps {
   quizEnabled?: boolean;
   /** Notausstieg „Heute reicht's“ im Lektionstest (Flag exit_with_win). */
   exitEnabled?: boolean;
+  /** Firmenbereich mit zugeordnetem Mentor: „Ich hänge fest“ bei Simulationen. */
+  mentorAsk?: { topic: string; certificationId: string } | null;
   signedIn?: boolean;
   initialCompleted?: boolean;
   /** Sprache, in der der Kurs erzeugt wurde; ohne Angabe (Offline-Reader) kein Hinweis auf eine fehlende Übersetzung. */
@@ -81,6 +83,7 @@ export function SectionContent({
   offline,
   quizEnabled = true,
   exitEnabled,
+  mentorAsk,
   signedIn = true,
   initialCompleted = false,
   contentLocale = null,
@@ -123,7 +126,7 @@ export function SectionContent({
   }
 
   return (
-    <LessonSimulationsProvider text={content} sectionId={sectionId} persist={signedIn && !offline} offlineUserId={offline?.userId} initialProgress={simulationProgress}>
+    <LessonSimulationsProvider text={content} sectionId={sectionId} persist={signedIn && !offline} offlineUserId={offline?.userId} initialProgress={simulationProgress} mentorAsk={offline ? null : (mentorAsk ?? null)}>
     <div className="flex flex-1 flex-col" data-testid="lesson-page">
       <ReadingProgress />
 
