@@ -60,12 +60,12 @@ Die Plattform bereitet auf IT-Zertifikate vor. Bereits vorhanden:
 
 Ziel: Wiederholungen prüfen Wissen, nicht das Wiedererkennen einer bekannten Frage.
 
-- [ ] Datenmodell: Varianten für die **Wiederholung** nutzbar machen, nicht nur für Kalibrierung. Neue Tabelle `item_variant` (item_id → question_id, `source`: `original` | `probe` | `generated`, `active`), Original-Frage als Variante mit `source = original` eintragen (Migration + Backfill).
-- [ ] Generierung: Pro Frage mindestens 2 Varianten erzeugen (anderer Kontext, andere Distraktoren, gleiches Wissen). Vorhandene `probe_variant`-Fragen mit `is_bottleneck = true` übernehmen. Backfill-Skript `npm run variants:backfill`, mit Kostenschätzung vor dem Lauf. Validierung wie bei Abfragevarianten: Variante darf Lösung oder Formulierung des Originals nicht wörtlich enthalten.
-- [ ] Auswahl in der Session: Für ein fälliges Item die Variante wählen, die am längsten nicht gezeigt wurde (mind. 30 Tage Abstand, sonst die älteste). Das Review wird dem Item zugeschrieben (`review_log.item_id` = Original), die gezeigte Variante wird mitgeloggt (neue Spalte `review_log.variant_question_id`).
-- [ ] Neue Fragen (Kategorie „neu“) zeigen immer zuerst das Original.
-- [ ] Variante mit auffällig anderer Erfolgsquote als die übrigen (> 25 Prozentpunkte Abweichung bei ≥ 30 Antworten) automatisch in die Werkstatt-Prüfliste (`ContentReportQueue`) legen.
-- [ ] Feature-Flag `variant_rotation`, im Metrik-Export getrennt auswertbar.
+- [x] Datenmodell: Varianten für die **Wiederholung** nutzbar machen, nicht nur für Kalibrierung. Neue Tabelle `item_variant` (item_id → question_id, `source`: `original` | `probe` | `generated`, `active`), Original-Frage als Variante mit `source = original` eintragen (Migration + Backfill).
+- [x] Generierung: Pro Frage mindestens 2 Varianten erzeugen (anderer Kontext, andere Distraktoren, gleiches Wissen). Vorhandene `probe_variant`-Fragen mit `is_bottleneck = true` übernehmen. Backfill-Skript `npm run variants:backfill`, mit Kostenschätzung vor dem Lauf. Validierung wie bei Abfragevarianten: Variante darf Lösung oder Formulierung des Originals nicht wörtlich enthalten.
+- [x] Auswahl in der Session: Für ein fälliges Item die Variante wählen, die am längsten nicht gezeigt wurde (mind. 30 Tage Abstand, sonst die älteste). Das Review wird dem Item zugeschrieben (`review_log.item_id` = Original), die gezeigte Variante wird mitgeloggt (neue Spalte `review_log.variant_question_id`).
+- [x] Neue Fragen (Kategorie „neu“) zeigen immer zuerst das Original.
+- [x] Variante mit auffällig anderer Erfolgsquote als die übrigen (> 25 Prozentpunkte Abweichung bei ≥ 30 Antworten) automatisch in die Werkstatt-Prüfliste (`ContentReportQueue`) legen.
+- [x] Feature-Flag `variant_rotation`, im Metrik-Export getrennt auswertbar.
 
 **Akzeptanzkriterium:** Ein Nutzer, der ein Item viermal wiederholt, sieht bei ≥ 2 vorhandenen Varianten nie zweimal hintereinander dieselbe Frage. Ein Test belegt, dass FSRS-Zustand und `review_log` am Original-Item hängen.
 
@@ -75,13 +75,13 @@ Ziel: Wiederholungen prüfen Wissen, nicht das Wiedererkennen einer bekannten Fr
 
 Ziel: Denkfehler werden korrigiert, solange der Kontext noch präsent ist.
 
-- [ ] `StudySession`: Nach Antwort und (optionaler) Sicherheitsangabe sofort Richtig/Falsch, Erklärung (`explanation`) und Begründung der gewählten falschen Option (`rationale`) anzeigen, wie in `SectionQuiz` (`FeedbackPanel` wiederverwenden). Antwort danach gesperrt.
-- [ ] Reihenfolge erzwingen: Sicherheitsangabe vor dem Aufdecken (sonst ist sie wertlos). Ohne Angabe gilt wie bisher Rating 3.
-- [ ] Bei falscher Antwort: Link „Nochmal nachlesen“ zur passenden Lektionsstelle (gleiches Muster wie Simulations-Auswertung, `review`-Überschriften bzw. Quellenverweis).
-- [ ] `ResultSummary` am Ende bleibt als Zusammenfassung erhalten.
-- [ ] Prüfungssimulation (`ExamSession`) bleibt unverändert: Feedback erst am Ende.
-- [ ] Einstellung „Feedback erst am Ende“ für Nutzer, die Prüfungsbedingungen üben wollen.
-- [ ] Offline-Leser: gleiches Verhalten, Antworten weiter über die Sync-Warteschlange.
+- [x] `StudySession`: Nach Antwort und (optionaler) Sicherheitsangabe sofort Richtig/Falsch, Erklärung (`explanation`) und Begründung der gewählten falschen Option (`rationale`) anzeigen, wie in `SectionQuiz` (`FeedbackPanel` wiederverwenden). Antwort danach gesperrt.
+- [x] Reihenfolge erzwingen: Sicherheitsangabe vor dem Aufdecken (sonst ist sie wertlos). Ohne Angabe gilt wie bisher Rating 3.
+- [x] Bei falscher Antwort: Link „Nochmal nachlesen“ zur passenden Lektionsstelle (gleiches Muster wie Simulations-Auswertung, `review`-Überschriften bzw. Quellenverweis).
+- [x] `ResultSummary` am Ende bleibt als Zusammenfassung erhalten.
+- [x] Prüfungssimulation (`ExamSession`) bleibt unverändert: Feedback erst am Ende.
+- [x] Einstellung „Feedback erst am Ende“ für Nutzer, die Prüfungsbedingungen üben wollen.
+- [x] Offline-Leser: gleiches Verhalten, Antworten weiter über die Sync-Warteschlange.
 
 **Akzeptanzkriterium:** In einer Übungssession erscheint die Erklärung direkt nach jeder Antwort; das gespeicherte Rating ist identisch zum bisherigen Verhalten bei gleicher Antwort und Sicherheit.
 
@@ -114,17 +114,17 @@ Ziel: Mehr Abfragen, bei denen die Antwort aktiv erzeugt werden muss. Das festig
 Ziel: Grundsätze „Lernen beginnt mit Handeln“ und „Gute Lernende bekommen einen kürzeren Weg“ tatsächlich umsetzen.
 
 ### 4.1 Vorabfragen vor der Lektion
-- [ ] Vor dem Lektionstext 2 Fragen zu den Kernpunkten der Lektion (aus dem vorhandenen Fragenpool des Lernziels, keine Wertung, kein FSRS-Review). Hinweis: „Rate ruhig – danach weißt du, worauf du achten musst.“
-- [ ] Nach dem Lesen dieselben Fragen im Lektionstest wieder vorlegen (dann gewertet).
-- [ ] Überspringbar; als eigener Schritt in `LessonPhases` vor „Verstehen“.
-- [ ] Feature-Flag `pretest_questions`.
+- [x] Vor dem Lektionstext 2 Fragen zu den Kernpunkten der Lektion (aus dem vorhandenen Fragenpool des Lernziels, keine Wertung, kein FSRS-Review). Hinweis: „Rate ruhig – danach weißt du, worauf du achten musst.“
+- [x] Nach dem Lesen dieselben Fragen im Lektionstest wieder vorlegen (dann gewertet).
+- [x] Überspringbar; als eigener Schritt in `LessonPhases` vor „Verstehen“.
+- [x] Feature-Flag `pretest_questions`.
 
 ### 4.2 Einstiegstest je Kapitel
-- [ ] Neuer Einstieg auf der Kursseite: „Kenne ich schon? Kapitel testen“ je Domain/Kapitel.
-- [ ] Test mit 1 Frage je Lernziel (max. 12), mit Sicherheitsangabe, Feedback am Ende.
-- [ ] Bestanden nach Schwelle (siehe Platzhalter) → `applyChapterSkip` aufrufen, Lektionen als „übersprungen“ markieren (nicht „abgeschlossen“), Lernziele mit niedriger Leistung bleiben offen.
-- [ ] Nicht bestanden → Ergebnis zeigt die schwachen Lernziele und startet dort.
-- [ ] Bei Firmen-Pflichtkursen: Überspringen nur, wenn der Firmenadmin es erlaubt (Statusanzeige im Firmenbereich bleibt „abgeschlossen ja/nein“, siehe Grundsatz „Arbeitgeber sieht nur den Status“).
+- [x] Neuer Einstieg auf der Kursseite: „Kenne ich schon? Kapitel testen“ je Domain/Kapitel.
+- [x] Test mit 1 Frage je Lernziel (max. 12), mit Sicherheitsangabe, Feedback am Ende.
+- [x] Bestanden nach Schwelle (siehe Platzhalter) → `applyChapterSkip` aufrufen, Lektionen als „übersprungen“ markieren (nicht „abgeschlossen“), Lernziele mit niedriger Leistung bleiben offen.
+- [x] Nicht bestanden → Ergebnis zeigt die schwachen Lernziele und startet dort.
+- [x] Bei Firmen-Pflichtkursen: Überspringen nur, wenn der Firmenadmin es erlaubt (Statusanzeige im Firmenbereich bleibt „abgeschlossen ja/nein“, siehe Grundsatz „Arbeitgeber sieht nur den Status“).
 
 **Akzeptanzkriterium:** Ein Nutzer mit Vorwissen kann ein Kapitel per Einstiegstest überspringen; die Items des Kapitels starten mit Rating 4 im FSRS-Zustand und erscheinen später als normale Wiederholungen.
 
@@ -156,8 +156,8 @@ Ziel: Grundsätze „Lernen beginnt mit Handeln“ und „Gute Lernende bekommen
 
 ## Phase 7 – Wirkung messen (Priorität: mittel, begleitend)
 
-- [ ] Nachfrage zum Prüfungsergebnis: 1 Tag nach `exam_plans.scheduledAt` Hinweis im Dashboard (und optional E-Mail über die vorhandene Erinnerungslogik): „Wie lief deine Prüfung?“ → `passed` / `failed` / „noch nicht“. Erinnerung nach 7 Tagen. Optional Punktzahl erfassen.
-- [ ] `psrp:metrics` um Prüfungsergebnis, Bereitschaftswert (`readiness`) vor der Prüfung und Feature-Flags dieser Roadmap erweitern (anonymisiert, wie bisher mit `PSRP_EXPORT_SALT`).
+- [x] Nachfrage zum Prüfungsergebnis: 1 Tag nach `exam_plans.scheduledAt` Hinweis im Dashboard (und optional E-Mail über die vorhandene Erinnerungslogik): „Wie lief deine Prüfung?“ → `passed` / `failed` / „noch nicht“. Erinnerung nach 7 Tagen. Optional Punktzahl erfassen.
+- [x] `psrp:metrics` um Prüfungsergebnis, Bereitschaftswert (`readiness`) vor der Prüfung und Feature-Flags dieser Roadmap erweitern (anonymisiert, wie bisher mit `PSRP_EXPORT_SALT`).
 - [ ] Auswertung: Wie gut sagt der Bereitschaftswert das echte Ergebnis vorher? Ergebnis als Grundlage, um die Readiness-Engine zu kalibrieren.
 - [ ] Kennzahlen je Feature-Flag: Behaltensquote nach 30 Tagen, Anteil richtig + „sicher“ bei Varianten vs. Originalen, Abbruchquote, Bestehensquote.
 - [ ] Auswertung Rückblick (Phase 8): vorhergesagte vs. tatsächliche Abrufwahrscheinlichkeit beim ersten Abstand; Einfluss der Tagesform (Φ) und Tageszeit **beim Lernen** auf das Behalten. Ergebnis als Grundlage für die Frage, ob die Planungsschicht neuen Stoff an schlechten Tagen zurückhalten soll (Entscheidung als eigene Aufgabe, nicht automatisch).
@@ -172,13 +172,13 @@ Ziel: Grundsätze „Lernen beginnt mit Handeln“ und „Gute Lernende bekommen
 
 Ziel: Frisch Gelerntes am Anfang der nächsten Session kurz abrufen. Das festigt das Wissen (Abrufen ist selbst Lernen) und liefert Messwerte für den ersten Abstand nach dem Lernen, bei dem das Gedächtnismodell am wenigsten über den Nutzer weiß.
 
-- [ ] Auswahl: Lektionen, die der Nutzer seit der letzten Session abgeschlossen hat, frühestens 1 Tag, höchstens 14 Tage zurück; je Rückblick 2–3 Fragen aus den Kernpunkten dieser Lektionen.
-- [ ] Immer eine **Variante**, nie die Frage aus dem Lektionstest (Rotation aus Phase 1, `lib/server/variants/rotation.ts`). Bevorzugt Formate zum Selbst-Erinnern, sobald Phase 3 sie liefert.
-- [ ] Erscheint am Anfang der Session als „Kurzer Rückblick auf <Lektion>“, Ergebnis freundlich formuliert („2 von 3 sitzen schon“), mit Link zur Textstelle bei Fehlern.
-- [ ] Wird **unabhängig von der Tagesform** angeboten (sonst sind die Messdaten verzerrt), dafür kurz: höchstens 3 Fragen, Teil des Zeitbudgets der Session.
-- [ ] Logging als normales FSRS-Review mit neuem `review_type = recall_check`; rohes Rating wie gewohnt über `ratingFromOutcome`. Zusätzlich speichern: Abstand zur Lektion in Stunden, Φ und Tageszeit **beim Lernen** der Lektion sowie beim Rückblick.
-- [ ] Überspringbar; ein übersprungener Rückblick wird geloggt (Abbruchquote ist selbst eine Kennzahl).
-- [ ] Feature-Flag `recall_check`.
+- [x] Auswahl: Lektionen, die der Nutzer seit der letzten Session abgeschlossen hat, frühestens 1 Tag, höchstens 14 Tage zurück; je Rückblick 2–3 Fragen aus den Kernpunkten dieser Lektionen.
+- [x] Immer eine **Variante**, nie die Frage aus dem Lektionstest (Rotation aus Phase 1, `lib/server/variants/rotation.ts`). Bevorzugt Formate zum Selbst-Erinnern, sobald Phase 3 sie liefert.
+- [x] Erscheint am Anfang der Session als „Kurzer Rückblick auf <Lektion>“, Ergebnis freundlich formuliert („2 von 3 sitzen schon“), mit Link zur Textstelle bei Fehlern.
+- [x] Wird **unabhängig von der Tagesform** angeboten (sonst sind die Messdaten verzerrt), dafür kurz: höchstens 3 Fragen, Teil des Zeitbudgets der Session.
+- [x] Logging als normales FSRS-Review mit neuem `review_type = recall_check`; rohes Rating wie gewohnt über `ratingFromOutcome`. Zusätzlich speichern: Abstand zur Lektion in Stunden, Φ und Tageszeit **beim Lernen** der Lektion sowie beim Rückblick.
+- [x] Überspringbar; ein übersprungener Rückblick wird geloggt (Abbruchquote ist selbst eine Kennzahl).
+- [x] Feature-Flag `recall_check`.
 
 **Akzeptanzkriterium:** Nach Abschluss einer Lektion erhält der Nutzer in der nächsten Session (≥ 1 Tag später) einen Rückblick mit Varianten; der Eintrag im `review_log` trägt `recall_check`, Abstand und Tagesform beim Lernen.
 
@@ -189,29 +189,29 @@ Ziel: Frisch Gelerntes am Anfang der nächsten Session kurz abrufen. Das festigt
 Ziel: Unterscheiden zwischen **Vergessen** (hilft: Wiederholen) und **Nicht-Verstehen** (hilft: anders erklären, Grundlagen schließen). Wer etwas nicht verstanden hat, bekommt es nicht einfach öfter vorgelegt.
 
 ### 9.1 Erkennen
-- [ ] Signale je Nutzer und Konzept (über `item_concept`) sammeln:
+- [x] Signale je Nutzer und Konzept (über `item_concept`) sammeln:
   - falsche Antwort mit Angabe „sicher“ (stärkstes Signal: Fehlvorstellung)
   - wiederholt dieselbe falsche Option bei einem Item oder dessen Varianten
   - Fehler bei mindestens 2 **verschiedenen** Varianten desselben Konzepts
   - Item mit wiederholten Fehlschlägen, dessen Stabilität nicht wächst (Schwelle siehe Platzhalter)
   - Simulation zum Lernziel nur mit ≥ 2 Hilfen gelöst (vorhandenes Signal aus `simulation_results`)
-- [ ] Auslösung nur bei einem Muster (Schwelle konfigurierbar), nicht bei Einzelfehlern. Zustand je Nutzer und Konzept speichern (`concept_struggle`: Signale, Status `detected` / `in_progress` / `resolved`), getrennt von Rohdaten.
+- [x] Auslösung nur bei einem Muster (Schwelle konfigurierbar), nicht bei Einzelfehlern. Zustand je Nutzer und Konzept speichern (`concept_struggle`: Signale, Status `detected` / `in_progress` / `resolved`), getrennt von Rohdaten.
 
 ### 9.2 Reagieren: Verstehens-Leiter
-- [ ] **Wiederholen pausieren:** Items des Konzepts kommen nicht mehr als normale Wiederholung in die Session, solange der Verstehens-Modus läuft (nur Planungsschicht, FSRS-Zustand bleibt unverändert).
-- [ ] **Verwechslung ansprechen:** Wurde wiederholt dieselbe falsche Option gewählt, deren Begründung (`rationale`) als „Häufige Verwechslung“ zeigen.
-- [ ] **Anders erklären:** je Lernziel 1–2 Alternativerklärungen (anderes Beispiel, Vergleich aus dem Alltag, vollständig gelöstes Beispiel). **Vorab** per KI erzeugt und durch den normalen Prüfprozess der Werkstatt freigegeben, nie live generiert. Backfill-Skript mit Kostenschätzung.
+- [x] **Wiederholen pausieren:** Items des Konzepts kommen nicht mehr als normale Wiederholung in die Session, solange der Verstehens-Modus läuft (nur Planungsschicht, FSRS-Zustand bleibt unverändert).
+- [x] **Verwechslung ansprechen:** Wurde wiederholt dieselbe falsche Option gewählt, deren Begründung (`rationale`) als „Häufige Verwechslung“ zeigen.
+- [x] **Anders erklären:** je Lernziel 1–2 Alternativerklärungen (anderes Beispiel, Vergleich aus dem Alltag, vollständig gelöstes Beispiel). **Vorab** per KI erzeugt und durch den normalen Prüfprozess der Werkstatt freigegeben, nie live generiert. Backfill-Skript mit Kostenschätzung.
 - [ ] **Vormachen, dann selbst machen:** gelöstes Beispiel → Beispiel mit Lücken → eigene Aufgabe (neue Variante).
-- [ ] **Abschluss:** Konzept gilt als `resolved`, wenn eine neue Variante richtig beantwortet wird; danach normale Wiederholung.
-- [ ] Einstieg sichtbar und freundlich: „Das scheint noch nicht ganz zu sitzen. Sollen wir es anders angehen?“, jederzeit ablehnbar.
+- [x] **Abschluss:** Konzept gilt als `resolved`, wenn eine neue Variante richtig beantwortet wird; danach normale Wiederholung.
+- [x] Einstieg sichtbar und freundlich: „Das scheint noch nicht ganz zu sitzen. Sollen wir es anders angehen?“, jederzeit ablehnbar.
 
 ### 9.3 Grundlagen prüfen
-- [ ] Konzeptmodell um Voraussetzungen erweitern: Tabelle `concept_prerequisite` (concept_id, requires_concept_id). Erzeugung per KI im Tagging-Schritt nach der Kursgenerierung, Prüfung in der Werkstatt; nachträglich per Skript.
-- [ ] Im Verstehens-Modus 2–3 kurze Fragen zu den Voraussetzungen. Ist eine schwach, zuerst eine kurze Brückenlektion bzw. die passende Lektion, dann zurück zum Ausgangskonzept.
+- [x] Konzeptmodell um Voraussetzungen erweitern: Tabelle `concept_prerequisite` (concept_id, requires_concept_id). Erzeugung per KI im Tagging-Schritt nach der Kursgenerierung, Prüfung in der Werkstatt; nachträglich per Skript.
+- [x] Im Verstehens-Modus 2–3 kurze Fragen zu den Voraussetzungen. Ist eine schwach, zuerst eine kurze Brückenlektion bzw. die passende Lektion, dann zurück zum Ausgangskonzept.
 
 ### 9.4 Menschen einbeziehen
-- [ ] Firmenbereich: Knopf „Mentor fragen“, **nur durch den Lernenden ausgelöst**. Übergibt Lernziel und die Frage des Lernenden, keine Fehlerhistorie. Niemals automatische Meldung an Arbeitgeber oder Mentor (Grundsatz „Arbeitgeber sieht nur den Status“).
-- [ ] **Häufung erkennen:** Scheitern viele Lernende am selben Konzept (Schwelle siehe Platzhalter), landet es automatisch in der Werkstatt-Prüfliste (`ContentReportQueue`, neuer Grund `concept_struggle`), inkl. der am häufigsten gewählten falschen Option. Anonymisiert, ohne Personenbezug.
+- [x] Firmenbereich: Knopf „Mentor fragen“, **nur durch den Lernenden ausgelöst**. Übergibt Lernziel und die Frage des Lernenden, keine Fehlerhistorie. Niemals automatische Meldung an Arbeitgeber oder Mentor (Grundsatz „Arbeitgeber sieht nur den Status“).
+- [x] **Häufung erkennen:** Scheitern viele Lernende am selben Konzept (Schwelle siehe Platzhalter), landet es automatisch in der Werkstatt-Prüfliste (`ContentReportQueue`, neuer Grund `concept_struggle`), inkl. der am häufigsten gewählten falschen Option. Anonymisiert, ohne Personenbezug.
 
 **Akzeptanzkriterium:** Ein synthetischer Nutzer, der dieselbe falsche Option mit „sicher“ wählt und bei zwei Varianten scheitert, landet im Verstehens-Modus; die Items des Konzepts erscheinen bis zum Abschluss nicht als normale Wiederholung; nach richtiger Antwort auf eine neue Variante ist der Status `resolved`. Ein Nutzer mit einem einzelnen Fehler löst nichts aus.
 
