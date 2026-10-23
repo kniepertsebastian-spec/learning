@@ -617,6 +617,13 @@
       "when": 1792774251512,
       "tag": "0087_practice_task_unlock",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1792797704700,
+      "tag": "0088_reactivation",
+      "breakpoints": true
     }
   ]
 }

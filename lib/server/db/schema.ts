@@ -114,6 +114,8 @@ export const users = pgTable(
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     /** UI U8: Opt-out für E-Mail-Erinnerungen des Prüfungsplaners. */
     examRemindersOptOut: boolean("exam_reminders_opt_out").notNull().default(false),
+    /** Motivation Phase 6: keine E-Mails „Schön, dass du da bist“ nach längerer Pause (Konto oder Abmeldelink in der Mail). */
+    reactivationOptOut: boolean("reactivation_opt_out").notNull().default(false),
     /** PSRP-HR (docs/roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
     ageRange: text("age_range").$type<AgeRange>(),
     /** IANA-Zeitzone für die lokale Tageszeit (Chronotyp) und Tagesgrenzen der Planung. */
@@ -943,6 +945,30 @@ export const objectiveSnapshots = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique("objective_snapshot_day_unique").on(table.userId, table.certificationId, table.day)],
+);
+
+export type ReactivationStage = "d5" | "d12" | "d26";
+
+/**
+ * Reaktivierungs-Mails ohne Beschämung (roadmap_motivation Phase 6): je Person höchstens eine Mail je Stufe und Pause,
+ * zusammen höchstens drei, dann Ruhe. `anchorAt` ist die letzte Aktivität zum Zeitpunkt des Versands; eine neue Pause
+ * beginnt mit neuer Aktivität. Nie an Arbeitgeber oder Mentor, die Mail geht nur an die Person selbst.
+ */
+export const reactivationMessages = pgTable(
+  "reactivation_message",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stage: text("stage").$type<ReactivationStage>().notNull(),
+    anchorAt: timestamp("anchor_at", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("reactivation_message_user_idx").on(table.userId, table.sentAt),
+    check("reactivation_message_stage_check", sql`${table.stage} in ('d5', 'd12', 'd26')`),
+  ],
 );
 
 export type ExplanationKind = "worked_example" | "gapped_example" | "analogy" | "example";

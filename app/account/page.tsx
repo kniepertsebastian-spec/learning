@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { AutoSkillsToggle } from "@/components/AutoSkillsToggle";
 import { AgeRangeSelect } from "@/components/AgeRangeSelect";
 import { ExamRemindersToggle } from "@/components/ExamRemindersToggle";
+import { ReactivationToggle } from "@/components/ReactivationToggle";
 import { getDb } from "@/lib/server/db/client";
 import { userProfiles, users } from "@/lib/server/db/schema";
 import { AccountForms } from "./account-forms-section";
@@ -17,7 +18,7 @@ export default async function AccountPage() {
   const [user, locale] = await Promise.all([getCurrentUser(), getServerLocale()]);
   if (!user) redirect("/login?from=%2Faccount");
   const membership = await getCompanyMembership(user.id);
-  const [prefs] = await getDb().select({ optOut: users.examRemindersOptOut, ageRange: users.ageRange }).from(users).where(eq(users.id, user.id)).limit(1);
+  const [prefs] = await getDb().select({ optOut: users.examRemindersOptOut, reactivationOptOut: users.reactivationOptOut, ageRange: users.ageRange }).from(users).where(eq(users.id, user.id)).limit(1);
   const [profile] = await getDb().select({ autoSkills: userProfiles.autoSkills }).from(userProfiles).where(eq(userProfiles.userId, user.id)).limit(1);
   return (
     <div className="flex flex-col gap-6">
@@ -28,6 +29,7 @@ export default async function AccountPage() {
         company={membership ? { name: membership.organizationName, role: membership.role } : null}
       />
       <ExamRemindersToggle initialOptOut={prefs?.optOut ?? false} />
+      <ReactivationToggle initialOptOut={prefs?.reactivationOptOut ?? false} />
       <AgeRangeSelect initial={prefs?.ageRange ?? null} />
       <AutoSkillsToggle initialEnabled={profile?.autoSkills ?? false} />
     </div>

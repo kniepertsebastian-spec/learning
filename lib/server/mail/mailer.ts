@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import { getMailConfig } from "./config";
 
-export type MailMessage = { to: string; subject: string; text: string };
+export type MailMessage = { to: string; subject: string; text: string; headers?: Record<string, string> };
 
 /**
  * Versendet eine Nur-Text-Mail. Gibt true bei Erfolg zurück, false bei fehlender Konfiguration
@@ -32,6 +32,7 @@ export async function sendMail(message: MailMessage): Promise<boolean> {
       to: message.to,
       subject: message.subject,
       text: message.text,
+      headers: message.headers,
     });
     transport.close();
     return true;

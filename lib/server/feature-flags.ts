@@ -5,7 +5,7 @@
  */
 import { createHash } from "node:crypto";
 
-export const FEATURE_FLAGS = ["pretest_questions", "recall_check", "understanding_mode", "dropout_guard", "exit_with_win", "energy_modes"] as const;
+export const FEATURE_FLAGS = ["pretest_questions", "recall_check", "understanding_mode", "dropout_guard", "exit_with_win", "energy_modes", "reactivation"] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
 export function isFeatureEnabled(flag: FeatureFlag, userId: string, env: Record<string, string | undefined> = process.env): boolean {

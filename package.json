@@ -24,6 +24,7 @@
     "explanations:backfill": "tsx scripts/backfill-explanations.ts",
     "prerequisites:backfill": "tsx scripts/backfill-prerequisites.ts",
     "exams:remind": "tsx scripts/exam-reminders.ts",
+    "reactivation:run": "tsx scripts/reactivation.ts",
     "lessons:blocks": "tsx scripts/backfill-lesson-blocks.ts",
     "lessons:simulations": "tsx scripts/backfill-simulations.ts",
     "courses:overviews": "tsx scripts/backfill-course-overviews.ts",

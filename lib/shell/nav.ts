@@ -21,6 +21,7 @@ const PUBLIC_PREFIXES = [
   "/invite",
   "/sso",
   "/confirm-company",
+  "/unsubscribe",
 ];
 
 export function isPublicPath(pathname: string): boolean {
