@@ -12,6 +12,7 @@ import { listMyAssignments } from "@/lib/server/assignments/sync";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { getCompanyMembership, isRoleAllowed, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
 import { getPendingResultPrompts } from "@/lib/server/exams/planner";
+import { findMentorUserId, listMyMentorRequests } from "@/lib/server/company/mentor-requests";
 import { listMyPracticeTasks } from "@/lib/server/company/practice-tasks";
 import { getLearnerDashboard } from "@/lib/server/dashboard/service";
 import { getServerLocale } from "@/lib/server/locale";
@@ -43,6 +44,8 @@ export default async function HomePage() {
     getPendingResultPrompts(user.id),
   ]);
   const practiceTasks = membership ? await listMyPracticeTasks(membership.organizationId, membership.userId) : [];
+  const canAskMentor = membership ? (await findMentorUserId(membership.organizationId, membership.userId)) !== null : false;
+  const myMentorRequests = membership ? await listMyMentorRequests(membership.organizationId, membership.userId) : [];
   // Firmen-Admin und Mentor kommen von der Startseite direkt in den Firmenbereich.
   const companyMembership = isRoleAllowed(membership, STATUS_VIEW_ROLES) ? membership : null;
   const de = locale === "de";
@@ -103,7 +106,20 @@ export default async function HomePage() {
         </Card>
       )}
 
-      {practiceTasks.length > 0 && <MyPracticeTasks tasks={practiceTasks} locale={locale} />}
+      {practiceTasks.length > 0 && <MyPracticeTasks tasks={practiceTasks} locale={locale} canAskMentor={canAskMentor} />}
+      {myMentorRequests.length > 0 && (
+        <Card className="mt-4" data-testid="my-mentor-requests">
+          <h2 className="font-semibold">{de ? "Meine Fragen an den Mentor" : "My questions to my mentor"}</h2>
+          <ul className="mt-2 flex flex-col gap-1 text-sm">
+            {myMentorRequests.map((r) => (
+              <li key={r.id}>
+                {r.topic}: {r.status === "answered" ? (de ? "beantwortet" : "answered") : de ? "offen" : "open"}
+                {r.answerNote ? ` – ${r.answerNote}` : ""}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </div>
   );
 }

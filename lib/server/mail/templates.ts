@@ -85,6 +85,15 @@ export function courseRequestStatusMessage(
   };
 }
 
+/** Mentor: eine lernende Person hat um Hilfe gebeten. Bewusst ohne den Inhalt der Anfrage (der steht nur im Firmenbereich). */
+export function mentorRequestMessage(to: string, input: { learner: string; topic: string; link: string }): MailMessage {
+  return {
+    to,
+    subject: `${input.learner} bittet um Hilfe: ${input.topic}`,
+    text: `Hallo,\n\n${input.learner} hat dich um Hilfe gebeten (Thema: ${input.topic}). Die Anfrage steht im Firmenbereich:\n\n${input.link}`,
+  };
+}
+
 const formatDate = (d: Date) => d.toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" });
 
 /** Lernende: die Frist eines zugewiesenen Lernpfads läuft bald ab. */

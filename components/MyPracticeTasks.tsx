@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { MentorAskForm } from "@/components/MentorAskForm";
 
 export type MyTaskRow = {
   taskId: string;
   title: string;
   description: string | null;
   learningPath: string;
+  certificationId?: string;
   status: "open" | "submitted" | "confirmed" | "rework";
   note: string | null;
   reviewerNote: string | null;
@@ -20,7 +22,7 @@ const LABELS = {
   rework: { de: "Bitte nacharbeiten", en: "Please rework" },
 } as const;
 
-function Task({ t, locale }: { t: MyTaskRow; locale: "de" | "en" }) {
+function Task({ t, locale, canAskMentor }: { t: MyTaskRow; locale: "de" | "en"; canAskMentor: boolean }) {
   const router = useRouter();
   const de = locale === "de";
   const [note, setNote] = useState(t.note ?? "");
@@ -70,12 +72,13 @@ function Task({ t, locale }: { t: MyTaskRow; locale: "de" | "en" }) {
         </div>
       )}
       {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
+      {canAskMentor && t.status !== "confirmed" && <MentorAskForm topic={t.title} certificationId={t.certificationId} locale={locale} />}
     </li>
   );
 }
 
 /** Eigene Praxisaufgaben (nur meine Lernpfade, nur mein Stand). */
-export function MyPracticeTasks({ tasks, locale }: { tasks: MyTaskRow[]; locale: "de" | "en" }) {
+export function MyPracticeTasks({ tasks, locale, canAskMentor = false }: { tasks: MyTaskRow[]; locale: "de" | "en"; canAskMentor?: boolean }) {
   const de = locale === "de";
   return (
     <section className="mb-6 rounded-xl border border-border bg-surface p-5" data-testid="my-practice-tasks">
@@ -87,7 +90,7 @@ export function MyPracticeTasks({ tasks, locale }: { tasks: MyTaskRow[]; locale:
       </p>
       <ul className="mt-3 flex flex-col gap-2">
         {tasks.map((t) => (
-          <Task key={t.taskId} t={t} locale={locale} />
+          <Task key={t.taskId} t={t} locale={locale} canAskMentor={canAskMentor} />
         ))}
       </ul>
     </section>

@@ -38,6 +38,8 @@ const ALLOWED_TABLES = new Set([
   "onboardingPlans",
   "onboardingPlanCourses",
   "onboardings",
+  // „Mentor fragen“: nur der Text, den die Person selbst geprüft und gesendet hat (kein Lernverlauf); sichtbar nur für den Empfänger-Mentor und Firmen-Admin
+  "mentorRequests",
   // Pflichtschulungen: Regeln je Firma und welche Erinnerungen verschickt wurden (nur Art und Zeitpunkt)
   "mandatoryRules",
   "assignmentNotices",

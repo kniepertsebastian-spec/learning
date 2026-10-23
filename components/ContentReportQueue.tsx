@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
 
-type ReportReason = "incorrect" | "unclear" | "outdated" | "variant_outlier";
+type ReportReason = "incorrect" | "unclear" | "outdated" | "variant_outlier" | "concept_struggle";
 
 const REASON_LABEL: Record<ReportReason, { de: string; en: string }> = {
   incorrect: { de: "Falsch", en: "Incorrect" },
   unclear: { de: "Unklar", en: "Unclear" },
   outdated: { de: "Veraltet", en: "Outdated" },
   variant_outlier: { de: "Variante auffällig", en: "Variant outlier" },
+  concept_struggle: { de: "Viele scheitern am Konzept", en: "Many learners struggle" },
 };
 
 interface OpenQuestionReport {
@@ -19,6 +20,7 @@ interface OpenQuestionReport {
   questionId: string;
   humanId: string;
   question: Record<"de" | "en", string>;
+  detail?: { conceptName: string; learners: number; struggling: number; topWrongOption: { text: Record<"de" | "en", string>; count: number } | null } | null;
 }
 
 /**
@@ -84,6 +86,17 @@ export function ContentReportQueue({ certificationId, locale }: { certificationI
                 <span className="font-mono text-xs text-foreground/40">{report.humanId}</span>
               </div>
               <p className="mb-2 text-sm">{report.question[locale]}</p>
+              {report.detail && (
+                <p className="mb-2 text-xs text-foreground/70" data-testid="report-detail">
+                  {locale === "de"
+                    ? `Konzept „${report.detail.conceptName}“: ${report.detail.struggling} von ${report.detail.learners} Lernenden im Verstehens-Modus.`
+                    : `Concept "${report.detail.conceptName}": ${report.detail.struggling} of ${report.detail.learners} learners in understanding mode.`}
+                  {report.detail.topWrongOption &&
+                    (locale === "de"
+                      ? ` Häufigste falsche Option: „${report.detail.topWrongOption.text.de}“ (${report.detail.topWrongOption.count}×).`
+                      : ` Most common wrong option: "${report.detail.topWrongOption.text.en}" (${report.detail.topWrongOption.count}×).`)}
+                </p>
+              )}
               <div className="flex gap-2">
                 <button
                   type="button"

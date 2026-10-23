@@ -178,6 +178,7 @@ export type MyTaskView = {
   description: string | null;
   learningPath: string;
   slug: string;
+  certificationId: string;
   status: PracticeSubmissionStatus | "open";
   note: string | null;
   reviewerNote: string | null;
@@ -192,6 +193,7 @@ export async function listMyPracticeTasks(organizationId: string, userId: string
       description: practiceTasks.description,
       learningPath: certifications.name,
       slug: certifications.slug,
+      certificationId: practiceTasks.certificationId,
       status: practiceTaskSubmissions.status,
       note: practiceTaskSubmissions.learnerNote,
       reviewerNote: practiceTaskSubmissions.reviewerNote,

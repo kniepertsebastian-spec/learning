@@ -190,3 +190,11 @@ const DOCUMENT_IMAGE_MAX_PER_WINDOW = 200;
 export function checkDocumentImageRateLimit(userId: string): RateLimitResult {
   return checkRateLimit("document-image", userId, DOCUMENT_IMAGE_WINDOW_MS, DOCUMENT_IMAGE_MAX_PER_WINDOW);
 }
+
+const MENTOR_REQUEST_WINDOW_MS = 60 * 60 * 1000;
+const MENTOR_REQUEST_MAX_PER_WINDOW = 10;
+
+/** „Mentor fragen“: je Nutzer, damit niemand einen Mentor mit Anfragen überflutet. */
+export function checkMentorRequestRateLimit(userId: string): RateLimitResult {
+  return checkRateLimit("mentor-request", userId, MENTOR_REQUEST_WINDOW_MS, MENTOR_REQUEST_MAX_PER_WINDOW);
+}

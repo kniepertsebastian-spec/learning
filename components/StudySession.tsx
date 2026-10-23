@@ -12,6 +12,7 @@ import type { OptionState } from "@/components/quiz/OptionTile";
 import { QuestionBody } from "@/components/quiz/QuestionBody";
 import { QuestionNavigator, type NavState } from "@/components/quiz/QuestionNavigator";
 import { ReportProblem } from "@/components/quiz/ReportProblem";
+import { MentorAskForm } from "@/components/MentorAskForm";
 import { ExitSummary } from "@/components/quiz/ExitSummary";
 import { ResultSummary } from "@/components/quiz/ResultSummary";
 import { useQuizHotkeys } from "@/components/quiz/useQuizHotkeys";
@@ -79,6 +80,8 @@ interface StudySessionProps {
   deescalated?: boolean;
   /** Notausstieg „Heute reicht's“ (Flag exit_with_win, nur online). */
   exitEnabled?: boolean;
+  /** Im Firmenbereich mit zugeordnetem Mentor: „Mentor fragen“ in der Verstehens-Aufgabe (nur online). */
+  mentorAsk?: { certificationId: string } | null;
 }
 
 
@@ -98,6 +101,7 @@ export function StudySession({
   practice,
   deescalated,
   exitEnabled,
+  mentorAsk,
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
@@ -429,6 +433,7 @@ export function StudySession({
               {item.understand.confusion.rationale ? ` ${item.understand.confusion.rationale[locale]}` : ""}
             </p>
           )}
+          {mentorAsk && !offline && <MentorAskForm topic={item.understand.conceptName} certificationId={mentorAsk.certificationId} locale={locale} />}
           {!offline && answers.every((a) => a === null) && (
             <Button className="mt-3" variant="ghost" size="sm" onClick={() => void declineUnderstand()} disabled={decliningUnderstand} data-testid="understand-decline">{t.quiz.understandDecline}</Button>
           )}
