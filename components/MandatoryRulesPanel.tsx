@@ -12,6 +12,7 @@ export type MandatoryRuleRow = {
   escalateAfterDays: number;
   repeatEveryMonths: number | null;
   applyOnChange: boolean;
+  allowPlacementSkip: boolean;
   departments: string[];
   /** Katalogkurs, der noch freigeschaltet werden muss. */
   pendingRelease: boolean;
@@ -66,6 +67,7 @@ export function MandatoryRulesPanel({
   const [repeat, setRepeat] = useState<number | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [applyOnChange, setApplyOnChange] = useState(true);
+  const [allowPlacementSkip, setAllowPlacementSkip] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -74,7 +76,7 @@ export function MandatoryRulesPanel({
     e.preventDefault();
     setBusy(true);
     setNotice(null);
-    const { error: err, data } = await call("/api/company/mandatory", "POST", { certificationId: pathId, roles, dueInDays, reminderDaysBefore: reminder, escalateAfterDays: escalate, departmentIds: depIds, repeatEveryMonths: repeat, confirmRepeatReset: repeat !== null && confirmReset, applyOnChange });
+    const { error: err, data } = await call("/api/company/mandatory", "POST", { certificationId: pathId, roles, dueInDays, reminderDaysBefore: reminder, escalateAfterDays: escalate, departmentIds: depIds, repeatEveryMonths: repeat, confirmRepeatReset: repeat !== null && confirmReset, applyOnChange, allowPlacementSkip });
     setBusy(false);
     setError(err);
     if (!err) {
@@ -123,6 +125,9 @@ export function MandatoryRulesPanel({
                   {r.reminderDaysBefore > 0 ? (de ? `Erinnerung ${r.reminderDaysBefore} Tage vorher` : `reminder ${r.reminderDaysBefore} days before`) : de ? "keine Erinnerung" : "no reminder"} ·{" "}
                   {de ? `Eskalation nach ${r.escalateAfterDays} Tagen` : `escalation after ${r.escalateAfterDays} days`}
                 </p>
+                {r.allowPlacementSkip && (
+                  <p className="text-foreground/70" data-testid="mandatory-skip-allowed">{de ? "Überspringen per Einstiegstest erlaubt" : "Skipping via placement test allowed"}</p>
+                )}
                 {(r.repeatEveryMonths !== null || !r.applyOnChange) && (
                   <p className="text-foreground/70" data-testid="mandatory-extras">
                     {r.repeatEveryMonths !== null && (de ? `Wiederholung ${r.repeatEveryMonths} Monate nach dem Abschluss (Status wird dann zurückgesetzt)` : `Repeats ${r.repeatEveryMonths} months after completion (status is reset)`)}
@@ -246,6 +251,14 @@ export function MandatoryRulesPanel({
               {de
                 ? "Auch zuweisen, wenn jemand Rolle oder Abteilung wechselt und dadurch unter diese Regel fällt (sonst nur beim Anlegen der Regel und beim Beitritt)."
                 : "Also assign when someone changes role or department and falls under this rule (otherwise only when the rule is created and on joining)."}
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={allowPlacementSkip} onChange={(e) => setAllowPlacementSkip(e.target.checked)} className="mt-0.5" data-testid="allow-placement-skip" />
+            <span>
+              {de
+                ? "Kapitel per Einstiegstest überspringen erlauben. Übersprungene Lektionen zählen nicht als abgeschlossen; Sie sehen weiter nur den Status (abgeschlossen ja/nein)."
+                : "Allow skipping chapters via a placement test. Skipped lessons do not count as completed; you still only see the status (completed yes/no)."}
             </span>
           </label>
           {error && (

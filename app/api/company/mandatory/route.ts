@@ -18,6 +18,7 @@ const createSchema = z.object({
   repeatEveryMonths: z.number().int().nullable().optional(),
   confirmRepeatReset: z.boolean().optional(),
   applyOnChange: z.boolean().optional(),
+  allowPlacementSkip: z.boolean().optional(),
 });
 
 /** Pflichtregeln der eigenen Firma mit Stand, dazu die zuweisbaren Lernpfade. */

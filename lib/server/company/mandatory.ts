@@ -109,6 +109,8 @@ export async function createMandatoryRule(input: {
   confirmRepeatReset?: boolean;
   /** Regel greift auch bei Wechsel von Rolle oder Abteilung (Standard ja). */
   applyOnChange?: boolean;
+  /** Dürfen Lernende Kapitel per Einstiegstest überspringen (Standard nein; der Firmenstatus zeigt weiter nur „abgeschlossen ja/nein“)? */
+  allowPlacementSkip?: boolean;
   now?: Date;
 }): Promise<{ id: string; assigned: number }> {
   const roles = [...new Set(input.roles)] as CompanyRole[];
@@ -145,7 +147,7 @@ export async function createMandatoryRule(input: {
         .insert(mandatoryRules)
         .values({
           organizationId: input.organizationId, certificationId: input.certificationId, roles, dueInDays: input.dueInDays,
-          reminderDaysBefore: reminder, escalateAfterDays: escalate, repeatEveryMonths: repeat, applyOnChange: input.applyOnChange ?? true,
+          reminderDaysBefore: reminder, escalateAfterDays: escalate, repeatEveryMonths: repeat, applyOnChange: input.applyOnChange ?? true, allowPlacementSkip: input.allowPlacementSkip ?? false,
           allDepartments, pendingRelease, createdByUserId: input.userId,
         })
         .returning({ id: mandatoryRules.id });
@@ -244,6 +246,7 @@ export type MandatoryRuleView = {
   escalateAfterDays: number;
   repeatEveryMonths: number | null;
   applyOnChange: boolean;
+  allowPlacementSkip: boolean;
   /** Namen der Abteilungen, auf die die Regel eingeschränkt ist; leer = alle. */
   departments: string[];
   /** Katalogkurs, der noch freigeschaltet werden muss: die Regel wartet und weist noch niemandem zu. */
@@ -265,6 +268,7 @@ export async function listMandatoryRules(organizationId: string, now: Date = new
       escalateAfterDays: mandatoryRules.escalateAfterDays,
       repeatEveryMonths: mandatoryRules.repeatEveryMonths,
       applyOnChange: mandatoryRules.applyOnChange,
+      allowPlacementSkip: mandatoryRules.allowPlacementSkip,
       allDepartments: mandatoryRules.allDepartments,
       pendingRelease: mandatoryRules.pendingRelease,
       assigned: sql<number>`count(${companyAssignments.id})::int`,

@@ -8,6 +8,7 @@ export const USERS = {
   learnerA: { email: "e2e-learner-a@test.example", role: "learner" },
   learnerB: { email: "e2e-learner-b@test.example", role: "learner" },
   admin: { email: "e2e-admin@test.example", role: "admin" },
+  placement: { email: "e2e-placement@test.example", role: "learner" },
 } as const;
 export const COURSE_SLUG = "e2e-demo";
 export const COURSE_NAME = "E2E Demo Course";

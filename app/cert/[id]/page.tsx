@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, domains, objectives, sections, lessons, lessonCompletions, objectiveProgress } from "@/lib/server/db/schema";
+import { certifications, domains, objectives, sections, lessons, lessonCompletions, lessonSkips, objectiveProgress, questions } from "@/lib/server/db/schema";
 import { getCompanyMembership } from "@/lib/server/company/access";
 import { listModulesForPath } from "@/lib/server/company/modules";
 import { CompanyModulesSection } from "@/components/CompanyModulesSection";
@@ -112,6 +112,27 @@ export default async function CertDetailPage({
       .from(lessonCompletions)
       .where(and(eq(lessonCompletions.userId, session.user.id), inArray(lessonCompletions.sectionId, sectionIds)));
     done.forEach((d) => completedSections.add(d.sectionId));
+  }
+
+  // Einstiegstest (Kapitel testen): nur mit Lektionstests und für Domains, deren Lernziele Fragen haben; übersprungene Lektionen anzeigen.
+  const skippedSections = new Set<string>();
+  const domainsWithQuestions = new Set<string>();
+  if (session?.user?.id && quizzes) {
+    if (sectionIds.length > 0) {
+      const skips = await db
+        .select({ sectionId: lessonSkips.sectionId })
+        .from(lessonSkips)
+        .where(and(eq(lessonSkips.userId, session.user.id), inArray(lessonSkips.sectionId, sectionIds)));
+      skips.forEach((s) => skippedSections.add(s.sectionId));
+    }
+    if (objectiveIds.length > 0) {
+      const withQuestions = await db
+        .selectDistinct({ objectiveId: questions.objectiveId })
+        .from(questions)
+        .where(and(inArray(questions.objectiveId, objectiveIds), eq(questions.stale, false), eq(questions.probeOnly, false)));
+      const objectiveHasQuestions = new Set(withQuestions.map((q) => q.objectiveId));
+      allObjectives.filter((o) => objectiveHasQuestions.has(o.id)).forEach((o) => domainsWithQuestions.add(o.domainId));
+    }
   }
 
   // Fetch progress data if user is authenticated
@@ -418,6 +439,11 @@ export default async function CertDetailPage({
                     )}
                   </h2>
                 </div>
+                {session && quizzes && domainsWithQuestions.has(domain.id) && (
+                  <Link href={`/cert/${slug}/placement/${domain.id}`} className="shrink-0 text-sm text-link hover:underline" data-testid="placement-entry">
+                    {locale === "de" ? "Kenne ich schon? Kapitel testen" : "Know this already? Test the chapter"}
+                  </Link>
+                )}
                 {session && quizzes && (
                   <div className="flex shrink-0 items-center gap-2">
                     <div className="h-2 w-24 rounded-full bg-gray-300">
@@ -467,6 +493,11 @@ export default async function CertDetailPage({
                                   </span>
                                 )}
                                 {section.title[locale]}
+                                {skippedSections.has(section.id) && (
+                                  <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs text-foreground/60" data-testid="skipped-badge">
+                                    {locale === "de" ? "übersprungen" : "skipped"}
+                                  </span>
+                                )}
                               </span>
                               <span className="shrink-0 text-xs text-foreground/50">
                                 {isReady
