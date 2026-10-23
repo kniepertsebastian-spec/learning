@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
-import { certifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, users } from "../lib/server/db/schema";
+import { certifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, studySessions, users } from "../lib/server/db/schema";
 
 export const PASSWORD = "E2e-Passw0rd!";
 export const USERS = {
@@ -49,10 +49,16 @@ export default async function globalSetup() {
 
   // Rückblick-Nutzer starten jeden Lauf neu (Nutzer löschen entfernt auch das unveränderliche review_log): Lektion vor 2 Tagen abgeschlossen.
   const [section] = await db.select({ id: sections.id }).from(sections).where(eq(sections.objectiveId, objectiveId)).limit(1);
+  const [course] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, COURSE_SLUG)).limit(1);
   for (const { email } of [USERS.recallAnswer, USERS.recallSkip]) {
     await db.delete(users).where(eq(users.email, email));
     const [user] = await db.insert(users).values({ email, passwordHash, role: "learner", emailVerifiedAt: new Date() }).returning({ id: users.id });
     await db.insert(lessonCompletions).values({ userId: user.id, sectionId: section.id, completedAt: new Date(Date.now() - 48 * 3_600_000) });
+    // Zwei abgeschlossene Sessions: erst ab der 3. Session fragt die Plattform „Wie sicher bist du?“ (Paket 4.1a), der Rückblick-Test klickt darauf.
+    for (const daysAgo of [4, 3]) {
+      const at = new Date(Date.now() - daysAgo * 86_400_000);
+      await db.insert(studySessions).values({ userId: user.id, certificationId: course.id, status: "completed", goalType: "minutes", goalValue: 10, plannedAt: at, completedAt: at });
+    }
   }
 }
 
