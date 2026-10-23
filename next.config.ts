@@ -29,7 +29,14 @@ const nextConfig: NextConfig = {
   },
 };
 
+// Offline-Einstieg vorab im Precache; die Revision wechselt mit jedem Build, damit er nach einem Deploy erneuert wird.
+const precacheRevision = process.env.GITHUB_SHA ?? String(Date.now());
+
 const withSerwist = withSerwistInit({
+  additionalPrecacheEntries: [
+    { url: "/offline", revision: precacheRevision },
+    { url: "/~offline", revision: precacheRevision },
+  ],
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
   disable: process.env.NODE_ENV === "development",

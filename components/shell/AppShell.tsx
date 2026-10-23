@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { SidebarContent, type ShellData } from "@/components/shell/Sidebar";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { SearchField } from "@/components/ui/search-field";
@@ -23,6 +24,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
   const btn = "flex h-10 items-center gap-1.5 rounded-md border border-border-strong bg-control px-2.5 text-sm font-medium hover:bg-surface-2";
   return (
     <div data-context="personal" className="flex min-h-dvh flex-col">
+      <OfflineBanner />
       <header className="flex h-16 items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 font-semibold">
           <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">P</span>
@@ -57,6 +59,7 @@ export function AppShell({ shell, streak, children }: { shell: ShellData | null;
   return (
     <div data-app-shell data-context={ctx} className="flex min-h-dvh flex-col bg-background text-foreground">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-on-accent">{t.shell.skipToContent}</a>
+      <OfflineBanner />
 
       {ctx === "admin" && (
         <div role="note" className="z-40 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning/40 bg-warning-soft px-4 py-2 text-sm text-warning-text md:sticky md:top-0 md:h-10 md:py-0" data-testid="admin-strip">
