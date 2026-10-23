@@ -575,6 +575,13 @@
       "when": 1792761756763,
       "tag": "0081_mentor_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1792763830684,
+      "tag": "0082_objective_explanation",
+      "breakpoints": true
     }
   ]
 }

@@ -857,6 +857,36 @@ export const engagementStates = pgTable(
   (table) => [check("engagement_state_status_check", sql`${table.status} in ('normal', 'deescalated')`)],
 );
 
+export type ExplanationKind = "worked_example" | "analogy" | "example";
+export type ExplanationStatus = "draft" | "approved" | "rejected";
+
+/**
+ * Alternativerklärung je Lernziel für den Verstehens-Modus (roadmap_didaktik 9.2): anderes Beispiel, Vergleich aus dem Alltag oder ein
+ * vollständig gelöstes Beispiel. Wird vorab per KI als `draft` erzeugt und erst nach Freigabe in der Werkstatt (`approved`) angezeigt;
+ * nie live generiert. `content` ist Markdown, zweisprachig.
+ */
+export const objectiveExplanations = pgTable(
+  "objective_explanation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    objectiveId: uuid("objective_id")
+      .notNull()
+      .references(() => objectives.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<ExplanationKind>().notNull(),
+    content: jsonb("content").$type<Localized<string>>().notNull(),
+    status: text("status").$type<ExplanationStatus>().notNull().default("draft"),
+    reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("objective_explanation_objective_kind_unique").on(table.objectiveId, table.kind),
+    index("objective_explanation_status_idx").on(table.status),
+    check("objective_explanation_kind_check", sql`${table.kind} in ('worked_example', 'analogy', 'example')`),
+    check("objective_explanation_status_check", sql`${table.status} in ('draft', 'approved', 'rejected')`),
+  ],
+);
+
 export type MentorRequestStatus = "open" | "answered";
 
 /**

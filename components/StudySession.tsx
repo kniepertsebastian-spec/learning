@@ -33,7 +33,7 @@ interface SessionQuestionItem {
   /** Nur bei category = recall (online): die Lektion, auf die sich der Rückblick bezieht. */
   recall?: { sectionId: string; lessonTitle: { de: string; en: string } };
   /** Nur bei category = understand (online): das Konzept und die häufige Verwechslung. */
-  understand?: { conceptStruggleId: string; conceptName: string; confusion: { optionText: { de: string; en: string }; rationale: { de: string; en: string } | null } | null };
+  understand?: { conceptStruggleId: string; conceptName: string; confusion: { optionText: { de: string; en: string }; rationale: { de: string; en: string } | null } | null; explanation?: { kind: "worked_example" | "analogy" | "example"; content: { de: string; en: string } } | null };
   questionId: string;
   question: { de: string; en: string };
   /** isCorrect ist nur im Offline-Paket gesetzt (siehe offline-Prop unten) -
@@ -432,6 +432,12 @@ export function StudySession({
               {fmt(t.quiz.understandConfusion, { option: item.understand.confusion.optionText[locale] })}
               {item.understand.confusion.rationale ? ` ${item.understand.confusion.rationale[locale]}` : ""}
             </p>
+          )}
+          {item.understand.explanation && (
+            <div className="mt-3 rounded-md border border-border bg-background p-3 text-sm" data-testid="understand-explanation">
+              <p className="mb-1 text-xs font-semibold">{item.understand.explanation.kind === "worked_example" ? t.quiz.explainWorked : item.understand.explanation.kind === "analogy" ? t.quiz.explainAnalogy : t.quiz.explainExample}</p>
+              <RichText text={item.understand.explanation.content[locale]} />
+            </div>
           )}
           {mentorAsk && !offline && <MentorAskForm topic={item.understand.conceptName} certificationId={mentorAsk.certificationId} locale={locale} />}
           {!offline && answers.every((a) => a === null) && (
