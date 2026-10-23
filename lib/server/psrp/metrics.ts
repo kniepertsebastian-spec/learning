@@ -5,7 +5,7 @@
 import { createHash } from "node:crypto";
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { examAttempts, examPlans, exams, probeResults, reviewLog, users, type EvaluationGroup } from "@/lib/server/db/schema";
+import { examAttempts, examPlans, exams, probeResults, recallChecks, reviewLog, users, type EvaluationGroup } from "@/lib/server/db/schema";
 import { readiness } from "@/lib/exams/plan";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { variantRotationEnabled } from "@/lib/server/variants/rotation";
@@ -45,6 +45,8 @@ export interface MetricReview {
   variantShown?: boolean;
   /** Feature-Flag `pretest_questions` des Nutzers. */
   pretest?: boolean;
+  /** Feature-Flag `recall_check` des Nutzers. */
+  recall?: boolean;
 }
 
 export interface GroupMetrics {
@@ -196,6 +198,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       rotation: variantRotationEnabled(r.userId),
       variantShown: r.variantQuestionId !== null,
       pretest: isFeatureEnabled("pretest_questions", r.userId),
+      recall: isFeatureEnabled("recall_check", r.userId),
     }));
 
   const probeRows = await db
@@ -218,6 +221,28 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     user: anonymize(userId, salt),
     history: calibrationHistory(observations),
   }));
+
+  // Rückblick „Was weißt du noch?“: Abstand zur Lektion, Tagesform (Φ) und Tageszeit beim Lernen und beim Rückblick, Ergebnis, übersprungen ja/nein.
+  const recallRows = await db
+    .select({
+      userId: recallChecks.userId,
+      group: users.evaluationGroup,
+      status: recallChecks.status,
+      questionCount: recallChecks.questionCount,
+      correctCount: recallChecks.correctCount,
+      hoursSinceLesson: recallChecks.hoursSinceLesson,
+      phiAtLearning: recallChecks.phiAtLearning,
+      hourAtLearning: recallChecks.hourAtLearning,
+      phiAtRecall: recallChecks.phiAtRecall,
+      hourAtRecall: recallChecks.hourAtRecall,
+      createdAt: recallChecks.createdAt,
+    })
+    .from(recallChecks)
+    .innerJoin(users, eq(users.id, recallChecks.userId))
+    .orderBy(asc(recallChecks.createdAt));
+  const recallMetrics = recallRows
+    .filter((r) => r.createdAt <= asOf)
+    .map(({ userId, createdAt: _createdAt, ...rest }) => ({ user: anonymize(userId, salt), ...rest }));
 
   const planRows = await db
     .select({ userId: examPlans.userId, certificationId: examPlans.certificationId, status: examPlans.status, scheduledAt: examPlans.scheduledAt, group: users.evaluationGroup })
@@ -245,5 +270,5 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     })),
     salt,
   );
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), calibration, examResults };
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults };
 }

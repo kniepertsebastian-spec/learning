@@ -16,6 +16,7 @@ import { ResultSummary } from "@/components/quiz/ResultSummary";
 import { useQuizHotkeys } from "@/components/quiz/useQuizHotkeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type { SegmentState } from "@/components/ui/progress";
 import { LessonSimulationsProvider } from "@/components/lesson/LessonSimulations";
 import { RichText } from "@/components/RichText";
@@ -26,7 +27,9 @@ import { fmt } from "@/lib/quiz/keys";
 
 interface SessionQuestionItem {
   itemId: string;
-  category: "review" | "weak" | "new";
+  category: "review" | "weak" | "new" | "recall";
+  /** Nur bei category = recall (online): die Lektion, auf die sich der Rückblick bezieht. */
+  recall?: { sectionId: string; lessonTitle: { de: string; en: string } };
   questionId: string;
   question: { de: string; en: string };
   /** isCorrect ist nur im Offline-Paket gesetzt (siehe offline-Prop unten) -
@@ -154,6 +157,17 @@ export function StudySession({
     void revealAnswer(index, answers[index] ?? "");
   }
 
+  const [skippingRecall, setSkippingRecall] = useState(false);
+  async function skipRecall() {
+    setSkippingRecall(true);
+    try {
+      await fetch(`/api/study-sessions/${sessionId}/recall-skip`, { method: "POST" });
+    } finally {
+      // Die Session wird neu geladen: ohne Rückblick-Fragen (und mit allen Zuständen zurückgesetzt).
+      window.location.reload();
+    }
+  }
+
   async function handleSubmit() {
     if (submitting || result) return;
     setSubmitting(true);
@@ -250,6 +264,10 @@ export function StudySession({
 
   if (result) {
     const correctCount = result.results.filter((r) => r.isCorrect).length;
+    // Rückblick: freundlich zusammengefasst ("2 von 3 sitzen schon"), mit Link zur Lektion bei Fehlern.
+    const recallItems = questionItems.filter((q) => q.category === "recall" && q.recall);
+    const recallCorrect = recallItems.filter((q) => result.results.find((r) => r.itemId === q.itemId)?.isCorrect).length;
+    const recallSummary = recallItems.length > 0 ? { sectionId: recallItems[0].recall!.sectionId, lessonTitle: recallItems[0].recall!.lessonTitle, total: recallItems.length, correct: recallCorrect } : null;
     return (
       <FocusFrame
         exitHref={exitHref}
@@ -265,6 +283,16 @@ export function StudySession({
           offlineNote={Boolean(offline)}
           actions={[{ href: exitHref, label: t.quiz.backToCourse, primary: true }]}
         >
+          {recallSummary && (
+            <p className="text-left text-sm" role="status" data-testid="recall-result">
+              {recallSummary.correct > 0
+                ? fmt(t.quiz.recallResult, { lesson: recallSummary.lessonTitle[locale], a: recallSummary.correct, b: recallSummary.total })
+                : fmt(t.quiz.recallResultNone, { lesson: recallSummary.lessonTitle[locale] })}
+              {recallSummary.correct < recallSummary.total && !offline && (
+                <>{" "}<Link href={`/cert/${certSlug}/section/${recallSummary.sectionId}`} className="text-link hover:underline">{t.quiz.recallReread}</Link></>
+              )}
+            </p>
+          )}
           {practice && !offline && <PracticeTask certSlug={certSlug} practice={practice} locale={locale} />}
           {lessonItems.length > 0 && (
             <div>
@@ -303,9 +331,18 @@ export function StudySession({
       scoreText={fmt(t.quiz.answeredXofY, { x: answeredCount, y: questionItems.length })}
       navigator={<QuestionNavigator mode="exam" hideNote states={navStates} currentIndex={currentIndex} flagged={new Set()} onJump={setCurrentIndex} />}
     >
+      {item.category === "recall" && item.recall && (currentIndex === 0 || questionItems[currentIndex - 1].category !== "recall") && (
+        <Card variant="inset" className="mb-4" data-testid="recall-intro">
+          <p className="text-sm font-semibold">{fmt(t.quiz.recallTitle, { lesson: item.recall.lessonTitle[locale] })}</p>
+          <p className="mt-1 text-xs text-subtle">{t.quiz.recallHint}</p>
+          {!offline && answers.every((a) => a === null) && (
+            <Button className="mt-3" variant="ghost" size="sm" onClick={() => void skipRecall()} disabled={skippingRecall} data-testid="recall-skip">{t.quiz.recallSkip}</Button>
+          )}
+        </Card>
+      )}
       <div className="mb-3">
-        <Badge tone={item.category === "weak" ? "warning" : item.category === "review" ? "info" : "accent"}>
-          {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : t.quiz.categoryNew}
+        <Badge tone={item.category === "weak" ? "warning" : item.category === "review" || item.category === "recall" ? "info" : "accent"}>
+          {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : item.category === "recall" ? t.quiz.categoryRecall : t.quiz.categoryNew}
         </Badge>
       </div>
       <QuestionBody

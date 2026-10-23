@@ -46,8 +46,9 @@ export default async function StudySessionPage({
       ? [
           {
             itemId: item.itemId,
-            category: item.category as "review" | "weak" | "new",
+            category: item.category as "review" | "weak" | "new" | "recall",
             questionId: item.question.questionId,
+            recall: item.recall ? { sectionId: item.recall.sectionId, lessonTitle: item.recall.lessonTitle } : undefined,
             question: item.question.question,
             options: item.question.options,
           },
