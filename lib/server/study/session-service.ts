@@ -6,6 +6,8 @@ import {
   objectiveProgress,
   objectives,
   questionOptions,
+  conceptStruggles,
+  concepts,
   questions,
   recallChecks,
   reviewItems,
@@ -22,6 +24,7 @@ import {
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { createRecallCheck, planRecallCheck, recordRecallResults } from "@/lib/server/recall/service";
+import { detectStruggles, loadConfusion, pausedItemIds, planUnderstandTask, recordUnderstandResults } from "@/lib/server/understanding/service";
 import { chooseSessionVariants } from "@/lib/server/variants/rotation";
 import { flagOutlierVariants } from "@/lib/server/variants/outliers";
 import { buildAnswerReveal, type AnswerReveal } from "./answer-reveal";
@@ -217,6 +220,12 @@ export interface StudySessionItemContent {
     sectionId: string;
     title: Localized<string>;
   };
+  /** Nur bei category = understand: das Konzept im Verstehens-Modus und die erkannte Verwechslung (falls vorhanden). */
+  understand?: {
+    conceptStruggleId: string;
+    conceptName: string;
+    confusion: { optionText: Localized<string>; rationale: Localized<string> | null } | null;
+  };
   /** Nur bei category = recall: die Lektion, auf die sich der Rückblick bezieht. */
   recall?: {
     recallCheckId: string;
@@ -296,6 +305,16 @@ export async function getStudySessionWithContent(
           .where(inArray(recallChecks.id, recallIds))
       : [];
   const recallById = new Map(recallRows.map((r) => [r.id, r]));
+  const struggleIds = [...new Set(itemRows.map((i) => i.conceptStruggleId).filter((id): id is string => id !== null))];
+  const struggleRows =
+    struggleIds.length > 0
+      ? await db
+          .select({ id: conceptStruggles.id, name: concepts.name, signals: conceptStruggles.signals })
+          .from(conceptStruggles)
+          .innerJoin(concepts, eq(concepts.id, conceptStruggles.conceptId))
+          .where(inArray(conceptStruggles.id, struggleIds))
+      : [];
+  const struggleById = new Map(await Promise.all(struggleRows.map(async (r) => [r.id, { name: r.name, confusion: await loadConfusion(r.signals) }] as const)));
 
   const items: StudySessionItemContent[] = [];
   for (const item of itemRows) {
@@ -311,6 +330,9 @@ export async function getStudySessionWithContent(
         category: item.category,
         outcome: item.outcome,
         question: { questionId: q.id, question: q.question, options },
+        ...(item.conceptStruggleId && struggleById.has(item.conceptStruggleId)
+          ? { understand: { conceptStruggleId: item.conceptStruggleId, conceptName: struggleById.get(item.conceptStruggleId)!.name, confusion: struggleById.get(item.conceptStruggleId)!.confusion } }
+          : {}),
         ...(item.recallCheckId && recallById.has(item.recallCheckId)
           ? { recall: { recallCheckId: item.recallCheckId, sectionId: recallById.get(item.recallCheckId)!.sectionId, lessonTitle: recallById.get(item.recallCheckId)!.title } }
           : {}),
@@ -408,14 +430,22 @@ async function buildAndPersistSession(
       getDueReviewItems(userId, certificationId, { limit: targetQuestionCount }),
     ]);
   }
+  const understandingOn = isFeatureEnabled("understanding_mode", userId);
+  // Verstehens-Modus: Items von Konzepten, die nicht verstanden sind, kommen nicht als normale Wiederholung (nur die Planung ändert sich).
+  const paused = understandingOn ? await pausedItemIds(userId, certificationId).catch(() => new Set<string>()) : new Set<string>();
+  if (paused.size > 0) {
+    const kept = dueItems.filter((item) => !paused.has(item.questionId));
+    dueCount = Math.max(0, dueCount - (dueItems.length - kept.length));
+    dueItems = kept;
+  }
   const dueQuestionIds = dueItems.map((item) => item.questionId);
 
-  const weakCandidates = await selectWeakObjectiveQuestions(
+  const weakCandidates = (await selectWeakObjectiveQuestions(
     userId,
     certificationId,
     dueQuestionIds,
     CANDIDATE_POOL_LIMIT,
-  );
+  )).filter((c) => !paused.has(c.questionId));
   const weakQuestionIds = weakCandidates.map((c) => c.questionId);
 
   // Rückstau-Abbau: solange mehr fällig ist als das Tageslimit, pausieren neue Karten.
@@ -525,6 +555,46 @@ async function buildAndPersistSession(
     }
   }
 
+  // Verstehens-Modus: eine Verstehens-Aufgabe (neue Variante) für das am längsten offene Konzept, nach dem Rückblick.
+  let understandItems: Array<{ referenceId: string; variantQuestionId: string; conceptStruggleId: string }> = [];
+  if (understandingOn) {
+    const task = await planUnderstandTask(userId, certificationId).catch((error) => {
+      console.error("Verstehens-Aufgabe konnte nicht geplant werden:", error);
+      return null;
+    });
+    if (task && !recallItems.some((r) => r.referenceId === task.itemId)) {
+      understandItems = [{ referenceId: task.itemId, variantQuestionId: task.variantQuestionId, conceptStruggleId: task.struggleId }];
+      // Das Item selbst kommt nicht zusätzlich regulär dran; sonst eine reguläre Frage weniger (zählt zum Zeitbudget).
+      let toTrim = 1;
+      for (let i = items.length - 1; i >= 0; i--) {
+        if (items[i].referenceType === "question" && items[i].referenceId === task.itemId) {
+          items.splice(i, 1);
+          toTrim--;
+        }
+      }
+      for (let i = items.length - 1; i >= 0 && toTrim > 0 && items.filter((x) => x.referenceType === "question").length > 1; i--) {
+        if (items[i].referenceType === "question") {
+          items.splice(i, 1);
+          toTrim--;
+        }
+      }
+    }
+  }
+
+  if (understandItems.length > 0) {
+    await db.insert(studySessionItems).values(
+      understandItems.map((item, index) => ({
+        sessionId: session.id,
+        orderNum: recallItems.length + index + 1,
+        category: "understand" as const,
+        referenceType: "question" as const,
+        referenceId: item.referenceId,
+        variantQuestionId: item.variantQuestionId,
+        conceptStruggleId: item.conceptStruggleId,
+      })),
+    );
+  }
+
   if (recallItems.length > 0) {
     await db.insert(studySessionItems).values(
       recallItems.map((item, index) => ({
@@ -549,7 +619,7 @@ async function buildAndPersistSession(
     await db.insert(studySessionItems).values(
       items.map((item, index) => ({
         sessionId: session.id,
-        orderNum: recallItems.length + index + 1,
+        orderNum: recallItems.length + understandItems.length + index + 1,
         category: item.category,
         referenceType: item.referenceType,
         referenceId: item.referenceId,
@@ -558,7 +628,7 @@ async function buildAndPersistSession(
     );
   }
 
-  return toSummary(session, recallItems.length + items.length);
+  return toSummary(session, recallItems.length + understandItems.length + items.length);
 }
 
 async function selectWeakObjectiveQuestions(
@@ -693,6 +763,8 @@ export async function completeStudySession(
   const results: StudySessionAttemptResult["results"] = [];
   const variantByItemId = new Map(items.filter((i) => i.variantQuestionId).map((i) => [i.id, i.variantQuestionId as string]));
   const recallByItemId = new Map(items.filter((i) => i.recallCheckId).map((i) => [i.id, i.recallCheckId as string]));
+  // Verstehens-Aufgaben (Konzept im Verstehens-Modus) erzeugen kein FSRS-Review: der Zustand bleibt unverändert bis zur Lösung.
+  const understandByItemId = new Map(items.filter((i) => i.conceptStruggleId).map((i) => [i.id, i.conceptStruggleId as string]));
   let correctCount = 0;
   for (const answer of answers) {
     const item = itemById.get(answer.itemId);
@@ -710,6 +782,7 @@ export async function completeStudySession(
 
   if (results.length > 0) {
     const confidenceByItemId = new Map(answers.map((a) => [a.itemId, a.confidence]));
+    const selectedByItemId = new Map(answers.map((a) => [a.itemId, a.selectedOptionId]));
     await Promise.all(
       results.map((r) =>
         db
@@ -717,13 +790,14 @@ export async function completeStudySession(
           .set({
             outcome: r.isCorrect ? "correct" : "incorrect",
             confidence: confidenceByItemId.get(r.itemId) ?? null,
+            selectedOptionId: selectedByItemId.get(r.itemId) || null,
           })
           .where(eq(studySessionItems.id, r.itemId)),
       ),
     );
     await recordReviewOutcomes(
       userId,
-      results.map((r) => ({
+      results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => ({
         questionId: r.questionId,
         isCorrect: r.isCorrect,
         confidence: confidenceByItemId.get(r.itemId) ?? null,
@@ -732,6 +806,7 @@ export async function completeStudySession(
       })),
       { sessionId },
     );
+    await recordUnderstandResults(results.flatMap((r) => (understandByItemId.has(r.itemId) ? [{ struggleId: understandByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
     await recordRecallResults(results.flatMap((r) => (recallByItemId.has(r.itemId) ? [{ recallCheckId: recallByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
     // Auffällige Varianten in die Prüfliste legen (best effort, blockiert die Auswertung nie).
     await flagOutlierVariants(results.map((r) => r.questionId)).catch((error) => console.error("Varianten-Prüfung fehlgeschlagen:", error));
@@ -741,6 +816,11 @@ export async function completeStudySession(
     .update(studySessions)
     .set({ status: "completed", completedAt: new Date(), updatedAt: new Date() })
     .where(eq(studySessions.id, sessionId));
+
+  // Verstehens-Modus (Flag understanding_mode): Muster erkennen, best effort, blockiert die Auswertung nie.
+  if (results.length > 0 && isFeatureEnabled("understanding_mode", userId)) {
+    await detectStruggles(userId, results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => r.questionId)).catch((error) => console.error("Verstehens-Erkennung fehlgeschlagen:", error));
+  }
 
   const score = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
   return { score, results };
@@ -912,7 +992,7 @@ export async function getSessionCategoryBreakdown(
     .where(eq(studySessionItems.sessionId, sessionId))
     .groupBy(studySessionItems.category);
 
-  const breakdown: Record<StudySessionItemCategory, number> = { review: 0, weak: 0, new: 0, lesson: 0, recall: 0 };
+  const breakdown: Record<StudySessionItemCategory, number> = { review: 0, weak: 0, new: 0, lesson: 0, recall: 0, understand: 0 };
   for (const row of rows) breakdown[row.category] = row.count;
   return breakdown;
 }
