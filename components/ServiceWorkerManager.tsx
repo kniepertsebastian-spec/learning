@@ -5,6 +5,7 @@ import { reconcileCacheOwner, clearPagesCache } from "@/lib/client/cache-owner";
 import { setLastUserId } from "@/lib/client/last-user";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "@/components/ui/toaster";
+import { startInstallCapture } from "@/lib/client/install-prompt";
 
 /**
  * Service-Worker-Verwaltung im Browser (roadmap_pwa Phase 3), ohne eigene Oberfläche:
@@ -18,6 +19,9 @@ export function ServiceWorkerManager({ userId }: { userId: string | null }) {
   useEffect(() => {
     label.current = { message: t.pwa.updateAvailable, action: t.pwa.updateReload };
   }, [t]);
+
+  // `beforeinstallprompt` feuert oft vor dem Öffnen einer Seite mit Installationshinweis: früh festhalten.
+  useEffect(() => startInstallCapture(), []);
 
   useEffect(() => {
     if (userId) setLastUserId(userId); // Offline-Einstieg (/offline) weiß so, welche Pakete zu zeigen sind

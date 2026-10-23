@@ -7,6 +7,9 @@ import {
   StaleWhileRevalidate,
 } from "serwist";
 import { OFFLINE_FALLBACK_PATH } from "../lib/pwa/offline-routes";
+import { userIdFromSyncTag } from "../lib/pwa/sync-tag";
+import { deletePendingSyncEvent, listPendingSyncEvents, savePendingSyncEvent } from "../lib/client/offline-db";
+import { transferPendingEvents } from "../lib/client/sync-core";
 import type { PrecacheEntry, RuntimeCaching, SerwistGlobalConfig } from "serwist";
 import {
   ASSETS_CACHE,
@@ -95,3 +98,31 @@ serwist.addEventListeners();
 self.addEventListener("activate", (event) => {
   event.waitUntil(caches.delete(LEGACY_CACHE));
 });
+
+// Background Sync (Chrome/Android): die Warteschlange aus IndexedDB übertragen, auch wenn die App geschlossen ist. Die
+// Anfrage läuft mit den Cookies der Person (gleicher Ursprung). Bei 401/403 bleiben die Ereignisse liegen; die Seite
+// zeigt dann „Anmeldung nötig“ und überträgt beim nächsten Öffnen. Ohne Netz schlägt der Auftrag fehl und der Browser
+// wiederholt ihn. Wo es Background Sync nicht gibt, übernehmen `online`, App-Start und manueller Sync.
+type SyncLikeEvent = ExtendableEvent & { tag: string };
+self.addEventListener("sync", ((event: SyncLikeEvent) => {
+  const userId = userIdFromSyncTag(event.tag);
+  if (!userId) return;
+  event.waitUntil(
+    (async () => {
+      const { networkFailed } = await transferPendingEvents(
+        userId,
+        {
+          list: listPendingSyncEvents,
+          save: savePendingSyncEvent,
+          remove: deletePendingSyncEvent,
+          post: (body) => fetch("/api/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), credentials: "same-origin" }),
+          onTransferred: async (id, at) => {
+            for (const client of await self.clients.matchAll({ includeUncontrolled: true })) client.postMessage({ type: "SYNC_TRANSFERRED", userId: id, at });
+          },
+        },
+        () => null,
+      );
+      if (networkFailed) throw new Error("Netzwerk nicht erreichbar, Wiederholung durch den Browser.");
+    })(),
+  );
+}) as EventListener);

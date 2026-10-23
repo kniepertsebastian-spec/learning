@@ -7,6 +7,7 @@ const summary = (p: number, f = 0, c = 0): SyncQueueSummary => ({
   failedCount: f,
   conflictCount: c,
   lastSyncedAt: null,
+  authRequired: false,
 });
 
 describe("countUnsyncedBeforeLogout", () => {

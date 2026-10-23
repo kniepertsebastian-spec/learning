@@ -1,5 +1,6 @@
 "use client";
 
+import { InstallBanner } from "@/components/InstallBanner";
 import { useEffect, useState } from "react";
 import { CheckCircle2, CloudDownload, RefreshCw, Trash2 } from "lucide-react";
 import type { Locale } from "@/lib/types";
@@ -193,6 +194,7 @@ export function OfflinePackageManager({
 
   return (
     <div className="flex flex-col gap-4">
+      <InstallBanner />
       <div className="rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-1 text-sm font-medium">{certName}</h2>
         {loadingRecord ? (

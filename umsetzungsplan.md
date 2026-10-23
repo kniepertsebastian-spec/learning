@@ -137,7 +137,7 @@ Quelle: `roadmap_pwa.md`, Phase 4
 
 ### Paket 4.3 – Installation und Hintergrund-Sync · M
 Quelle: `roadmap_pwa.md`, Phase 5
-- [ ] Install-Hinweis (Android/Desktop, iOS-Anleitung), Background Sync
+- [x] Install-Hinweis (Android/Desktop, iOS-Anleitung), Background Sync
 
 **Abhängigkeit:** nach 4.2 (Screenshots für den Installationsdialog).
 

@@ -1,4 +1,6 @@
 import type { SyncEventType } from "@/lib/server/db/schema";
+import { SYNC_TAG_PREFIX } from "@/lib/pwa/sync-tag";
+import { summarize, transferPendingEvents, type SyncQueueSummary } from "@/lib/client/sync-core";
 import {
   deletePendingSyncEvent,
   listPendingSyncEvents,
@@ -71,23 +73,13 @@ export async function enqueueSyncEvent(
   };
   await savePendingSyncEvent(event);
   notifyQueueChanged();
+  registerBackgroundSync(userId);
 }
 
-export interface SyncQueueSummary {
-  pendingCount: number;
-  failedCount: number;
-  conflictCount: number;
-  lastSyncedAt: string | null;
-}
+export type { SyncQueueSummary };
 
 export async function getSyncQueueSummary(userId: string): Promise<SyncQueueSummary> {
-  const events = await listPendingSyncEvents(userId);
-  return {
-    pendingCount: events.filter((e) => e.status === "pending" || e.status === "syncing").length,
-    failedCount: events.filter((e) => e.status === "failed").length,
-    conflictCount: events.filter((e) => e.status === "conflict").length,
-    lastSyncedAt: getLastSyncedAt(userId),
-  };
+  return summarize(await listPendingSyncEvents(userId), getLastSyncedAt(userId));
 }
 
 /** Ein dauerhafter Konflikt (z. B. Session anderswo bereits abgeschlossen)
@@ -96,13 +88,6 @@ export async function getSyncQueueSummary(userId: string): Promise<SyncQueueSumm
 export async function discardPendingSyncEvent(clientEventId: string): Promise<void> {
   await deletePendingSyncEvent(clientEventId);
   notifyQueueChanged();
-}
-
-interface SyncApiResult {
-  clientEventId: string;
-  status: "applied" | "already_applied" | "conflict" | "error";
-  resultSummary?: unknown;
-  error?: string;
 }
 
 const inFlightSyncs = new Map<string, Promise<SyncQueueSummary>>();
@@ -130,69 +115,42 @@ export function runSync(userId: string): Promise<SyncQueueSummary> {
 }
 
 async function runSyncNow(userId: string): Promise<SyncQueueSummary> {
-  const events = await listPendingSyncEvents(userId);
-  const toSync = events.filter((e) => e.status === "pending" || e.status === "failed");
-
-  if (toSync.length > 0) {
-    let apiResults: SyncApiResult[] | null = null;
-    try {
-      const response = await fetch("/api/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          events: toSync.map((e) => ({
-            clientEventId: e.clientEventId,
-            type: e.type,
-            clientCreatedAt: e.createdAt,
-            payload: e.payload,
-          })),
-        }),
-      });
-      if (response.ok) {
-        const data = (await response.json()) as { results: SyncApiResult[] };
-        apiResults = data.results;
-      }
-    } catch {
-      apiResults = null; // Netzwerkfehler - unten als fehlgeschlagen markieren.
-    }
-
-    if (apiResults) {
-      const resultByEventId = new Map(apiResults.map((r) => [r.clientEventId, r]));
-      let anySucceeded = false;
-      for (const event of toSync) {
-        const result = resultByEventId.get(event.clientEventId);
-        if (!result) continue;
-        if (result.status === "applied" || result.status === "already_applied") {
-          await deletePendingSyncEvent(event.clientEventId);
-          anySucceeded = true;
-        } else if (result.status === "conflict") {
-          await savePendingSyncEvent({
-            ...event,
-            status: "conflict",
-            lastError: result.error ?? null,
-          });
-        } else {
-          await savePendingSyncEvent({
-            ...event,
-            status: "failed",
-            attempts: event.attempts + 1,
-            lastError: result.error ?? "Sync fehlgeschlagen.",
-          });
-        }
-      }
-      if (anySucceeded) setLastSyncedAt(userId, new Date().toISOString());
-    } else {
-      for (const event of toSync) {
-        await savePendingSyncEvent({
-          ...event,
-          status: "failed",
-          attempts: event.attempts + 1,
-          lastError: "Netzwerkfehler beim Synchronisieren.",
-        });
-      }
-    }
-  }
-
+  const { summary } = await transferPendingEvents(
+    userId,
+    {
+      list: listPendingSyncEvents,
+      save: savePendingSyncEvent,
+      remove: deletePendingSyncEvent,
+      post: (body) => fetch("/api/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+      onTransferred: (id, at) => setLastSyncedAt(id, at),
+    },
+    () => getLastSyncedAt(userId),
+  );
   notifyQueueChanged();
-  return getSyncQueueSummary(userId);
+  return summary;
+}
+
+/** Meldet die Warteschlange beim Service Worker an (Background Sync, Chrome/Android): er überträgt sie, sobald wieder Netz da ist, auch bei geschlossener App. Wo es das nicht gibt (iOS, Firefox), bleibt es bei `online`, App-Start und manuellem Sync. */
+export function registerBackgroundSync(userId: string): void {
+  try {
+    if (!("serviceWorker" in navigator)) return;
+    void navigator.serviceWorker.ready
+      .then((registration) => (registration as ServiceWorkerRegistration & { sync?: { register(tag: string): Promise<void> } }).sync?.register(`${SYNC_TAG_PREFIX}${userId}`))
+      .catch(() => {});
+  } catch {
+    // Kein Service Worker oder gesperrt: der Rückfall übernimmt.
+  }
+}
+
+/** Nachricht des Service Workers nach einer Hintergrund-Übertragung: Anzeige aktualisieren. */
+export function listenForBackgroundSync(): () => void {
+  if (!("serviceWorker" in navigator)) return () => {};
+  const handler = (event: MessageEvent) => {
+    const data = event.data as { type?: string; userId?: string; at?: string } | undefined;
+    if (data?.type !== "SYNC_TRANSFERRED" || !data.userId || !data.at) return;
+    setLastSyncedAt(data.userId, data.at);
+    notifyQueueChanged();
+  };
+  navigator.serviceWorker.addEventListener("message", handler);
+  return () => navigator.serviceWorker.removeEventListener("message", handler);
 }

@@ -35,6 +35,8 @@ Der Service Worker ist im Dev-Server abgeschaltet (`disable` in `next.config.ts`
 4. Wieder online: Die Warteschlange wird beim App-Start, beim `online`-Ereignis, über den Sync-Knopf im Kopf oder auf `/offline` übertragen. Beim Logout wird erst synchronisiert, sonst gewarnt.
 5. Seiten, die offline weder im Cache liegen noch erreichbar sind, zeigen `/~offline` (Serwist-`fallbacks`).
 
+**Background Sync (Chrome/Android):** Beim Einreihen eines Ergebnisses meldet die Seite `sync-queue:<Nutzer-ID>` beim Service Worker an. Der überträgt die Warteschlange im `sync`-Ereignis direkt aus IndexedDB, auch bei geschlossener App (`app/sw.ts`, gemeinsame Logik in `lib/client/sync-core.ts`). Bei 401/403 bleiben die Ereignisse unverändert liegen und der Sync-Knopf zeigt „Anmeldung nötig“; ohne Netz wiederholt der Browser den Auftrag. Der Server lehnt Ereignisse einer anderen als der genannten Person ab (403). Wo es Background Sync nicht gibt (iOS, Firefox), bleibt es bei den Auslösern oben.
+
 Lernfortschritt geht nie verloren: Reload bei Netzwechsel ist abgeschaltet (`reloadOnOnline: false`), die Warteschlange wird nie still gelöscht.
 
 ## Update-Fluss
@@ -46,6 +48,8 @@ Lernfortschritt geht nie verloren: Reload bei Netzwechsel ist abgeschaltet (`rel
 - **Unit**: `npm test` (Vitest) deckt die reinen Teile ab (`lib/pwa`, `lib/client/*.test.ts`).
 - **E2E** (`e2e/`, Playwright gegen den Produktions-Build): `npm run build && npm run test:e2e`. Braucht eine migrierte Postgres-Datenbank (`E2E_DATABASE_URL` oder `DATABASE_URL`); `e2e/global-setup.ts` legt Testnutzer und einen kleinen Kurs an. Der Next-Server wird von Playwright gestartet (Port 3100).
   - `offline-flow.spec.ts`: herunterladen → offline → `/offline` → Lektion + Quiz → online → Sync.
+  - `background-sync.spec.ts`: Lektionstest offline, Seite zu, Netz an → der Service Worker überträgt (Headless-Chromium hat Background Sync abgeschaltet, der `sync`-Handler wird per DevTools-Protokoll angestoßen).
+  - `install.spec.ts`: iOS-Anleitung im Dashboard, nach „Nicht jetzt“ 30 Tage Ruhe.
   - `update-flow.spec.ts`: Update-Toast nach neuem Worker, kein Reload ohne Klick.
   - `cache-privacy.spec.ts`: Admin-/Firmenseiten nie im Cache; Nutzerwechsel und Logout leeren den Seiten-Cache.
   - Die Tests laufen über ein schaltbares Gateway (`e2e/gateway.ts`), weil Playwrights `setOffline` Anfragen des Service Workers nicht sperrt.
@@ -55,5 +59,5 @@ Lernfortschritt geht nie verloren: Reload bei Netzwechsel ist abgeschaltet (`rel
 
 - Safari kann IndexedDB und Caches einer Website nach etwa sieben Tagen ohne Nutzung löschen, außer die App ist zum Home-Bildschirm hinzugefügt. Deshalb zeigt der Offline-Manager den Speicherstatus und empfiehlt die Installation.
 - `navigator.storage.persist()` wird auf iOS oft verweigert oder ignoriert; die Anzeige „Speicher dauerhaft gesichert“ erscheint dann nicht.
-- Background Sync und Web Push gibt es dort nur eingeschränkt oder gar nicht (siehe `roadmap_pwa.md`, Phasen 5 und 6). Die Synchronisation läuft beim Öffnen der App.
-- Der Install-Hinweis (`beforeinstallprompt`) existiert nur auf Chromium; auf iOS gibt es nur den manuellen Weg über „Teilen → Zum Home-Bildschirm“.
+- Background Sync und Web Push gibt es dort nur eingeschränkt oder gar nicht (siehe `roadmap_pwa.md`, Phase 6). Die Synchronisation läuft beim Öffnen der App.
+- Der Install-Hinweis (`beforeinstallprompt`) existiert nur auf Chromium; auf iOS gibt es nur den manuellen Weg über „Teilen → Zum Home-Bildschirm“. `components/InstallBanner.tsx` zeigt dort in Safari die Anleitung; „Nicht jetzt“ pausiert den Hinweis 30 Tage (`lib/pwa/install.ts`), `appinstalled` wird lokal festgehalten.

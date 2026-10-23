@@ -13,6 +13,7 @@ import { StatTile } from "@/components/ui/stat-tile";
 import { cn } from "@/lib/cn";
 import { greetingPart, type CertState, type DomainLight } from "@/lib/dashboard/logic";
 import { useLocale } from "@/lib/i18n";
+import { InstallBanner } from "@/components/InstallBanner";
 import { fmt } from "@/lib/quiz/keys";
 import type { CourseCategoryColor } from "@/lib/server/db/schema";
 
@@ -76,6 +77,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
 
   return (
     <div className="flex flex-col gap-6" data-testid="dashboard">
+      <InstallBanner />
       <div>
         <h1 className="text-[28px] leading-tight font-semibold tracking-tight sm:text-[34px]" data-testid="greeting">{greeting}</h1>
         <p className="mt-1.5 text-[15px] text-subtle">{dueLine}{examLine}</p>
