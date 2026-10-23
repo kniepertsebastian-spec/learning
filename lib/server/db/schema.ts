@@ -2011,6 +2011,26 @@ export const lessonCompletions = pgTable(
 );
 
 /**
+ * Per Einstiegstest übersprungene Lektionen (roadmap_didaktik Phase 4.2). Bewusst getrennt von `lesson_completions`:
+ * „übersprungen“ ist nicht „abgeschlossen“ und zählt weder für Firmenstatus noch Abschlussstatistik.
+ */
+export const lessonSkips = pgTable(
+  "lesson_skips",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => sections.id, { onDelete: "cascade" }),
+    source: text("source").notNull().default("placement"),
+    skippedAt: timestamp("skipped_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("lesson_skips_user_section_unique").on(table.userId, table.sectionId)],
+);
+
+/**
  * Onboarding-Plan einer Firma (z. B. „Operations Infrastruktur“): welche Lernpfade absolviert werden, wer als Mentor
  * begleitet. Gehört der Firma. Fällt der Mentor weg, bleibt der Plan ohne Mentor bestehen (SET NULL).
  */
@@ -2109,6 +2129,8 @@ export const mandatoryRules = pgTable(
     allDepartments: boolean("all_departments").notNull().default(true),
     /** true = der Kurs ist ein Kurs aus unserem Katalog, der für die Firma noch nicht freigeschaltet ist; die Regel wirkt erst nach der Freischaltung. */
     pendingRelease: boolean("pending_release").notNull().default(false),
+    /** Dürfen Lernende Kapitel dieses Pflichtkurses per Einstiegstest überspringen (roadmap_didaktik Phase 4.2)? Standard nein. */
+    allowPlacementSkip: boolean("allow_placement_skip").notNull().default(false),
     createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
