@@ -8,6 +8,7 @@ import { certifications } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { getOrCreateStudySession, getStudySessionWithContent } from "@/lib/server/study/session-service";
 import { pickPracticeSimulation } from "@/lib/server/simulations/service";
+import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { StudySession } from "@/components/StudySession";
 
 export default async function StudySessionPage({
@@ -46,7 +47,7 @@ export default async function StudySessionPage({
       ? [
           {
             itemId: item.itemId,
-            category: item.category as "review" | "weak" | "new" | "recall" | "understand",
+            category: item.category as "review" | "weak" | "new" | "recall" | "understand" | "win",
             questionId: item.question.questionId,
             understand: item.understand ?? undefined,
             recall: item.recall ? { sectionId: item.recall.sectionId, lessonTitle: item.recall.lessonTitle } : undefined,
@@ -68,6 +69,8 @@ export default async function StudySessionPage({
   return (
     <div className="flex flex-1 flex-col">
       <StudySession
+        key={summary.id}
+        exitEnabled={isFeatureEnabled("exit_with_win", session.user.id)}
         practice={practice}
         certSlug={slug}
         sessionId={summary.id}

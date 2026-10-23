@@ -547,6 +547,20 @@
       "when": 1792756572170,
       "tag": "0077_engagement_state",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1792757949316,
+      "tag": "0078_exit_with_win",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1792760895589,
+      "tag": "0079_learning_exit",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import {
   itemConcepts,
   itemStates,
   itemVariants,
+  learningExits,
   questionOptions,
   questions,
   reviewLog,
@@ -114,6 +115,14 @@ async function collectSignals(userId: string, conceptItemIds: string[], now: Dat
       .limit(1);
     if (sims[0]) signals.push({ kind: "simulation_help", at: sims[0].at });
   }
+
+  // Notausstieg „Heute reicht's“ mehrfach bei Aufgaben desselben Konzepts (auch bei Varianten: die Frage ist das Original oder eine Variante)
+  const exits = await db
+    .select({ at: learningExits.createdAt })
+    .from(learningExits)
+    .where(and(eq(learningExits.userId, userId), inArray(learningExits.questionId, conceptItemIds), gte(learningExits.createdAt, from)))
+    .orderBy(desc(learningExits.createdAt));
+  if (exits.length >= config.repeatedExits) signals.push({ kind: "repeated_exit", at: exits[0].at });
   return signals;
 }
 
