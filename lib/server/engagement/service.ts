@@ -1,7 +1,7 @@
 /** Frühwarnung (roadmap_motivation Phase 2): Fakten sammeln, Muster erkennen, Entlastung in der Planungsschicht, Rückkehr zum Normalzustand. */
 import { and, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { engagementStates, itemStates, reviewLog, sessionCheckins, studySessions, type EngagementSignal } from "@/lib/server/db/schema";
+import { engagementStates, itemStates, learningExits, reviewLog, sessionCheckins, studySessions, type EngagementSignal } from "@/lib/server/db/schema";
 import { retrievability } from "@/lib/server/psrp/fsrs";
 import { DEFAULT_ENGAGEMENT_CONFIG, detectEngagementSignals, isPattern, type EngagementConfig, type EngagementFacts } from "./rules";
 
@@ -12,9 +12,9 @@ const CHECKIN_LIMIT = 8;
 export async function collectEngagementFacts(userId: string, now: Date, config: EngagementConfig = DEFAULT_ENGAGEMENT_CONFIG): Promise<EngagementFacts> {
   const db = getDb();
   const since = new Date(now.getTime() - config.windowDays * DAY_MS);
-  const [sessions, window, baseline, checkins] = await Promise.all([
+  const [sessions, window, baseline, checkins, exits] = await Promise.all([
     db
-      .select({ status: studySessions.status, plannedAt: studySessions.plannedAt, startedAt: studySessions.startedAt, completedAt: studySessions.completedAt, exitedAt: studySessions.exitedAt })
+      .select({ status: studySessions.status, plannedAt: studySessions.plannedAt, startedAt: studySessions.startedAt, completedAt: studySessions.completedAt })
       .from(studySessions)
       .where(and(eq(studySessions.userId, userId), gte(studySessions.plannedAt, since))),
     db
@@ -33,8 +33,9 @@ export async function collectEngagementFacts(userId: string, now: Date, config: 
       .where(eq(sessionCheckins.userId, userId))
       .orderBy(desc(sessionCheckins.timestamp))
       .limit(CHECKIN_LIMIT),
+    db.select({ id: learningExits.id }).from(learningExits).where(and(eq(learningExits.userId, userId), gte(learningExits.createdAt, since))),
   ]);
-  return { sessions, window, baseline, checkinsSkipped: checkins.map((c) => c.imputed), exits: sessions.filter((s) => s.exitedAt !== null).length };
+  return { sessions, window, baseline, checkinsSkipped: checkins.map((c) => c.imputed), exits: exits.length };
 }
 
 /**

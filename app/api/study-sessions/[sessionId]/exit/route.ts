@@ -20,10 +20,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!isFeatureEnabled("exit_with_win", session.user.id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { sessionId } = await params;
   if (await isStudySessionHidden(session.user.id, sessionId)) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const body = (await request.json()) as { answers?: StudySessionAnswerInput[] };
+  const body = (await request.json()) as { answers?: StudySessionAnswerInput[]; openItemId?: string };
 
   try {
-    return NextResponse.json(await exitStudySession(sessionId, session.user.id, body.answers ?? []));
+    return NextResponse.json(await exitStudySession(sessionId, session.user.id, body.answers ?? [], body.openItemId ?? null));
   } catch (error) {
     if (error instanceof StudySessionNotFoundError) return NextResponse.json({ error: error.message }, { status: 404 });
     if (error instanceof StudySessionNotActiveError) return NextResponse.json({ error: error.message }, { status: 409 });

@@ -12,6 +12,7 @@ import type { OptionState } from "@/components/quiz/OptionTile";
 import { QuestionBody } from "@/components/quiz/QuestionBody";
 import { QuestionNavigator, type NavState } from "@/components/quiz/QuestionNavigator";
 import { ReportProblem } from "@/components/quiz/ReportProblem";
+import { ExitSummary } from "@/components/quiz/ExitSummary";
 import { ResultSummary } from "@/components/quiz/ResultSummary";
 import { useQuizHotkeys } from "@/components/quiz/useQuizHotkeys";
 import { Badge } from "@/components/ui/badge";
@@ -208,6 +209,7 @@ export function StudySession({
         headers: { "Content-Type": "application/json" },
         // Nur beantwortete Aufgaben: die übrigen bekommen kein Rating und bleiben fällig.
         body: JSON.stringify({
+          openItemId: item.itemId,
           answers: questionItems.flatMap((q, i) => (answers[i] ? [{ itemId: q.itemId, selectedOptionId: answers[i], confidence: confidences[i] ?? undefined }] : [])),
         }),
       });
@@ -318,24 +320,7 @@ export function StudySession({
     );
   }
 
-  if (exitState) {
-    return (
-      <FocusFrame exitHref={exitHref} confirmLeave={false} contextLabel={t.quiz.session} mode="practice" segments={[]} counterText="">
-        <ResultSummary
-          score={100}
-          headline={t.quiz.exitHeadline}
-          offlineNote={false}
-          actions={
-            exitState.winSession
-              ? [{ href: `/cert/${certSlug}/session`, label: t.quiz.exitWinStart, primary: true }, { href: exitHref, label: t.quiz.backToCourse }]
-              : [{ href: exitHref, label: t.quiz.backToCourse, primary: true }]
-          }
-        >
-          <p className="text-left text-sm" role="status" data-testid="exit-result">{exitState.winSession ? t.quiz.exitWinHint : t.quiz.exitDoneHint}</p>
-        </ResultSummary>
-      </FocusFrame>
-    );
-  }
+  if (exitState) return <ExitSummary certSlug={certSlug} winSession={exitState.winSession} contextLabel={t.quiz.session} />;
 
   if (result) {
     const correctCount = result.results.filter((r) => r.isCorrect).length;

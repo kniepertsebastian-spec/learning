@@ -20,6 +20,8 @@ export interface UnderstandingConfig {
   stalledStabilityDays: number;
   /** Simulation nur mit mindestens so vielen Hilfen gelöst. */
   simulationHelps: number;
+  /** „Heute reicht's“ mindestens so oft bei Aufgaben desselben Konzepts. */
+  repeatedExits: number;
 }
 
 export const DEFAULT_UNDERSTANDING_CONFIG: UnderstandingConfig = {
@@ -31,6 +33,7 @@ export const DEFAULT_UNDERSTANDING_CONFIG: UnderstandingConfig = {
   stalledFailures: 3,
   stalledStabilityDays: 2,
   simulationHelps: 2,
+  repeatedExits: 2,
 };
 
 const DAY_MS = 86_400_000;

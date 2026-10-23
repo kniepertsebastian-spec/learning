@@ -51,6 +51,8 @@ interface SectionContentProps {
   offline?: { userId: string };
   /** false: Lernpfad ohne Lektionstests; statt des Quiz gibt es „Lektion abschließen“. Standard true. */
   quizEnabled?: boolean;
+  /** Notausstieg „Heute reicht's“ im Lektionstest (Flag exit_with_win). */
+  exitEnabled?: boolean;
   signedIn?: boolean;
   initialCompleted?: boolean;
   /** Sprache, in der der Kurs erzeugt wurde; ohne Angabe (Offline-Reader) kein Hinweis auf eine fehlende Übersetzung. */
@@ -78,6 +80,7 @@ export function SectionContent({
   estimatedMinutes = null,
   offline,
   quizEnabled = true,
+  exitEnabled,
   signedIn = true,
   initialCompleted = false,
   contentLocale = null,
@@ -279,6 +282,7 @@ export function SectionContent({
                   contextLabel={`${domainName} · ${objectiveCode} ${objectiveTitle}`}
                   objectiveLabel={objectiveCode}
                   offline={offline}
+                  exitEnabled={exitEnabled}
                 />
               )}
             </div>

@@ -140,6 +140,7 @@ export default async function SectionPage({
       initialCompleted={completed}
       contentLocale={certRow?.contentLocale ?? "de"}
       translationPending={certRow?.translationStatus === "running"}
+      exitEnabled={Boolean(session?.user?.id) && isFeatureEnabled("exit_with_win", session!.user!.id!)}
       pretestEnabled={Boolean(session?.user?.id) && isFeatureEnabled("pretest_questions", session!.user!.id!)}
       simulationProgress={session?.user?.id ? await listSimulationProgress(session.user.id, sectionId) : []}
     />

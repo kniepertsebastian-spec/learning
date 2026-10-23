@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
 import { FocusFrame } from "@/components/quiz/FocusFrame";
+import { Button } from "@/components/ui/button";
+import { ExitSummary } from "@/components/quiz/ExitSummary";
 import { ResultSummary } from "@/components/quiz/ResultSummary";
 import { useLocale } from "@/lib/i18n";
 import { fmt } from "@/lib/quiz/keys";
@@ -41,9 +43,11 @@ interface SectionQuizProps {
    * Warteschlange (lib/client/sync-queue.ts) eingereiht und beim nächsten
    * `online`/App-Start/manuellen Sync übertragen. */
   offline?: { userId: string };
+  /** Notausstieg „Heute reicht's“ (Flag exit_with_win, nur online). */
+  exitEnabled?: boolean;
 }
 
-export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLabel, objectiveLabel, offline }: SectionQuizProps) {
+export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLabel, objectiveLabel, offline, exitEnabled }: SectionQuizProps) {
   const { t } = useLocale();
   const [quizIndex, setQuizIndex] = useState(0);
   const [results, setResults] = useState<boolean[]>([]);
@@ -116,7 +120,33 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
     }
   }
 
+  const [exitState, setExitState] = useState<{ winSession: boolean } | null>(null);
+  const [exiting, setExiting] = useState(false);
+  const [exitError, setExitError] = useState(false);
+  async function exitToday() {
+    if (exiting) return;
+    setExiting(true);
+    setExitError(false);
+    try {
+      // Bisher beantwortet (inklusive der aktuellen, falls schon beantwortet); die offene Frage bekommt kein Rating.
+      const sent = pendingAnswer ? [...answers, pendingAnswer] : answers;
+      const response = await fetch(`/api/sections/${sectionId}/exit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: sent, openQuestionId: hasAnsweredCurrent ? undefined : questions[quizIndex]?.id }),
+      });
+      if (!response.ok) throw new Error("exit failed");
+      const data = (await response.json()) as { winSession?: boolean };
+      setExitState({ winSession: Boolean(data.winSession) });
+    } catch {
+      setExitError(true);
+    } finally {
+      setExiting(false);
+    }
+  }
+
   if (questions.length === 0) return null;
+  if (exitState) return <ExitSummary certSlug={certSlug} winSession={exitState.winSession} contextLabel={contextLabel ?? t.quiz.sectionQuiz} />;
 
   const correctCount = results.filter(Boolean).length;
   const wrongCount = results.length - correctCount;
@@ -166,6 +196,12 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
         objectiveLabel={objectiveLabel}
         difficulty={current.difficulty}
       />
+      {exitEnabled && !offline && (
+        <div className="mt-4">
+          <Button variant="ghost" size="sm" onClick={() => void exitToday()} disabled={exiting} data-testid="exit-today">{t.quiz.exitToday}</Button>
+          {exitError && <p role="alert" className="mt-2 text-sm text-danger-text">{t.quiz.exitError}</p>}
+        </div>
+      )}
     </FocusFrame>
   );
 }

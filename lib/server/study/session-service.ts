@@ -23,7 +23,7 @@ import {
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
-import { planWinItems } from "@/lib/server/exit/service";
+import { createWinSession, planWinItems, recordExit } from "@/lib/server/exit/service";
 import { afterDeescalatedSession, declineDeescalation, orderEasiestFirst, refreshEngagement } from "@/lib/server/engagement/service";
 import { DEFAULT_ENGAGEMENT_CONFIG } from "@/lib/server/engagement/rules";
 import { createRecallCheck, planRecallCheck, recordRecallResults } from "@/lib/server/recall/service";
@@ -914,24 +914,18 @@ export interface StudySessionExitResult extends StudySessionAttemptResult {
  * bekommen kein Rating und bleiben fällig. Danach höchstens drei Erfolgsaufgaben (sehr wahrscheinlich gekonnt, ohnehin bald fällig)
  * als kurze Folge-Session. Der Notausstieg zählt als Signal für die Frühwarnung.
  */
-export async function exitStudySession(sessionId: string, userId: string, answers: StudySessionAnswerInput[]): Promise<StudySessionExitResult> {
+export async function exitStudySession(sessionId: string, userId: string, answers: StudySessionAnswerInput[], openItemId?: string | null): Promise<StudySessionExitResult> {
   const db = getDb();
   const [session] = await db.select().from(studySessions).where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId))).limit(1);
   if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
   const answered = answers.filter((a) => a.selectedOptionId);
-  const items = await db.select({ referenceId: studySessionItems.referenceId }).from(studySessionItems).where(eq(studySessionItems.sessionId, sessionId));
+  const items = await db.select({ id: studySessionItems.id, referenceId: studySessionItems.referenceId }).from(studySessionItems).where(eq(studySessionItems.sessionId, sessionId));
   const result = await completeStudySession(sessionId, userId, answered);
   await db.update(studySessions).set({ exitedAt: new Date() }).where(eq(studySessions.id, sessionId));
+  const open = openItemId ? items.find((i) => i.id === openItemId && !answered.some((a) => a.itemId === i.id)) : undefined;
+  await recordExit({ userId, source: "session", sessionId, questionId: open?.referenceId ?? null });
   const winIds = await planWinItems(userId, session.certificationId, items.map((i) => i.referenceId)).catch(() => [] as string[]);
-  if (winIds.length === 0) return { ...result, winSession: false };
-  const [win] = await db
-    .insert(studySessions)
-    .values({ userId, certificationId: session.certificationId, status: "planned", goalType: "questions", goalValue: winIds.length, energyLevel: session.energyLevel })
-    .returning();
-  await db.insert(studySessionItems).values(
-    winIds.map((id, index) => ({ sessionId: win.id, orderNum: index + 1, category: "win" as const, referenceType: "question" as const, referenceId: id })),
-  );
-  return { ...result, winSession: true };
+  return { ...result, winSession: (await createWinSession(userId, session.certificationId, winIds, session.energyLevel)) !== null };
 }
 
 /**

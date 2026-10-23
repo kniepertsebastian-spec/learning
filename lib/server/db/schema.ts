@@ -790,7 +790,7 @@ export const studySessionItems = pgTable("study_session_items", {
 export type ConceptStruggleStatus = "detected" | "in_progress" | "resolved" | "declined";
 
 /** Ein Signal, das auf Nicht-Verstehen hindeutet (roadmap_didaktik Phase 9.1). */
-export type StruggleSignalKind = "sure_wrong" | "repeated_wrong_option" | "distinct_variant_failures" | "stalled_item" | "simulation_help";
+export type StruggleSignalKind = "sure_wrong" | "repeated_wrong_option" | "distinct_variant_failures" | "stalled_item" | "simulation_help" | "repeated_exit";
 export interface StruggleSignal {
   kind: StruggleSignalKind;
   at: string;
@@ -855,6 +855,31 @@ export const engagementStates = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [check("engagement_state_status_check", sql`${table.status} in ('normal', 'deescalated')`)],
+);
+
+export type LearningExitSource = "session" | "section_quiz";
+
+/**
+ * Notausstieg „Heute reicht's“ (roadmap_motivation Phase 3): ein Ereignis je Ausstieg. `questionId` = die Aufgabe, bei der abgebrochen
+ * wurde (unbeantwortet, ohne Rating). Signal für die Frühwarnung und, wenn mehrfach beim selben Konzept, für den Verstehens-Modus.
+ */
+export const learningExits = pgTable(
+  "learning_exit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    source: text("source").$type<LearningExitSource>().notNull(),
+    sessionId: uuid("session_id").references(() => studySessions.id, { onDelete: "set null" }),
+    sectionId: uuid("section_id").references(() => sections.id, { onDelete: "set null" }),
+    questionId: uuid("question_id").references(() => questions.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("learning_exit_user_time_idx").on(table.userId, table.createdAt),
+    check("learning_exit_source_check", sql`${table.source} in ('session', 'section_quiz')`),
+  ],
 );
 
 export type RecallCheckStatus = "offered" | "answered" | "skipped";
