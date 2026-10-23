@@ -269,18 +269,18 @@ run("Self-Service: Passwort, Löschen, Export (echte DB)", () => {
 
   describe("Konto löschen", () => {
     it("alle Fremdschlüssel auf users sind CASCADE oder SET NULL (nichts blockiert die Löschung)", async () => {
+      // pg_catalog statt information_schema: die Views sind bei vielen Tabellen langsam und rissen in der CI die 5-Sekunden-Grenze.
       const res = (await getDb().execute(sql`
-        select tc.table_name, kcu.column_name, rc.delete_rule
-        from information_schema.table_constraints tc
-        join information_schema.key_column_usage kcu on kcu.constraint_name = tc.constraint_name and kcu.table_schema = tc.table_schema
-        join information_schema.referential_constraints rc on rc.constraint_name = tc.constraint_name and rc.constraint_schema = tc.table_schema
-        join information_schema.constraint_column_usage ccu on ccu.constraint_name = tc.constraint_name
-        where tc.constraint_type = 'FOREIGN KEY' and ccu.table_name = 'users' and ccu.column_name = 'id'
+        select c.conrelid::regclass::text as table_name, a.attname as column_name,
+          case c.confdeltype when 'c' then 'CASCADE' when 'n' then 'SET NULL' when 'a' then 'NO ACTION' when 'r' then 'RESTRICT' else 'SET DEFAULT' end as delete_rule
+        from pg_constraint c
+        join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+        where c.contype = 'f' and c.confrelid = 'users'::regclass
       `)) as unknown as { table_name: string; column_name: string; delete_rule: string }[];
       expect(res.length).toBeGreaterThanOrEqual(20);
       const bad = res.filter((r) => !["CASCADE", "SET NULL"].includes(r.delete_rule));
       expect(bad, JSON.stringify(bad)).toEqual([]);
-    });
+    }, 30_000);
 
     it("falsches Passwort: nichts wird gelöscht", async () => {
       const id = await makeUser("del-wrong");
