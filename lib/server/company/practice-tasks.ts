@@ -8,9 +8,11 @@ import {
   objectives,
   practiceTaskSubmissions,
   practiceTasks,
+  sections,
   users,
   type PracticeSubmissionStatus,
 } from "@/lib/server/db/schema";
+import { completedSectionIds } from "@/lib/server/sections/completed";
 import { listAssignableLearningPaths } from "./assignments";
 
 /**
@@ -28,6 +30,7 @@ export const MAX_NOTE = 1000;
 export class InvalidTaskError extends Error {}
 export class UnknownPathError extends Error {}
 export class UnknownObjectiveError extends Error {}
+export class UnknownSectionError extends Error {}
 export class TaskNotFoundError extends Error {}
 export class NotAssignedError extends Error {}
 export class AlreadyConfirmedError extends Error {}
@@ -54,6 +57,8 @@ export async function createPracticeTask(input: {
   description?: string | null;
   /** Optional: Lernziel des Lernpfads, dessen Fragen die Aufgabe prüft. */
   objectiveId?: string | null;
+  /** Optional: Lektion des Lernpfads, nach deren Abschluss die Aufgabe erscheint. */
+  unlockSectionId?: string | null;
 }): Promise<{ id: string }> {
   const title = clean(input.title, MAX_TASK_TITLE);
   if (!title || title.length < 3) throw new InvalidTaskError();
@@ -74,9 +79,22 @@ export async function createPracticeTask(input: {
     objectiveId = objective.id;
   }
 
+  let unlockSectionId: string | null = null;
+  if (input.unlockSectionId) {
+    const [section] = await getDb()
+      .select({ id: sections.id })
+      .from(sections)
+      .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
+      .innerJoin(domains, eq(domains.id, objectives.domainId))
+      .where(and(eq(sections.id, input.unlockSectionId), eq(domains.certificationId, input.certificationId)))
+      .limit(1);
+    if (!section) throw new UnknownSectionError();
+    unlockSectionId = section.id;
+  }
+
   const [row] = await getDb()
     .insert(practiceTasks)
-    .values({ organizationId: input.organizationId, certificationId: input.certificationId, title, description, objectiveId, createdByUserId: input.userId })
+    .values({ organizationId: input.organizationId, certificationId: input.certificationId, title, description, objectiveId, unlockSectionId, createdByUserId: input.userId })
     .returning({ id: practiceTasks.id });
   await recordAuditEvent({
     actorUserId: input.userId,
@@ -194,6 +212,7 @@ export async function listMyPracticeTasks(organizationId: string, userId: string
       learningPath: certifications.name,
       slug: certifications.slug,
       certificationId: practiceTasks.certificationId,
+      unlockSectionId: practiceTasks.unlockSectionId,
       status: practiceTaskSubmissions.status,
       note: practiceTaskSubmissions.learnerNote,
       reviewerNote: practiceTaskSubmissions.reviewerNote,
@@ -211,7 +230,12 @@ export async function listMyPracticeTasks(organizationId: string, userId: string
     .leftJoin(practiceTaskSubmissions, and(eq(practiceTaskSubmissions.taskId, practiceTasks.id), eq(practiceTaskSubmissions.userId, userId)))
     .where(and(eq(practiceTasks.organizationId, organizationId), isNull(practiceTasks.archivedAt)))
     .orderBy(asc(certifications.name), asc(practiceTasks.createdAt));
-  return rows.map((r) => ({ ...r, status: r.status ?? "open" }));
+  // Aufgaben mit Freischaltung erscheinen erst, wenn die Lektion abgeschlossen ist (oder schon eine Abgabe existiert).
+  const gated = rows.flatMap((r) => (r.unlockSectionId ? [r.unlockSectionId] : []));
+  const done = await completedSectionIds(userId, [...new Set(gated)]);
+  return rows
+    .filter((r) => !r.unlockSectionId || done.has(r.unlockSectionId) || r.status !== null)
+    .map(({ unlockSectionId: _unlock, ...r }) => ({ ...r, status: r.status ?? ("open" as const) }));
 }
 
 /**
@@ -222,7 +246,7 @@ export async function submitPracticeTask(input: { organizationId: string; userId
   const note = clean(input.note, MAX_NOTE);
   await getDb().transaction(async (tx) => {
     const [task] = await tx
-      .select({ id: practiceTasks.id, certificationId: practiceTasks.certificationId })
+      .select({ id: practiceTasks.id, certificationId: practiceTasks.certificationId, unlockSectionId: practiceTasks.unlockSectionId })
       .from(practiceTasks)
       .where(and(eq(practiceTasks.id, input.taskId), eq(practiceTasks.organizationId, input.organizationId), isNull(practiceTasks.archivedAt)))
       .limit(1);
@@ -240,6 +264,15 @@ export async function submitPracticeTask(input: { organizationId: string; userId
       .limit(1);
     // Wer den Lernpfad nicht hat, erfährt nichts über die Aufgabe.
     if (!assignment) throw new TaskNotFoundError();
+    // Noch nicht freigeschaltet: wie nicht vorhanden (Abgaben, die vor einer späteren Verknüpfung entstanden, bleiben möglich).
+    if (task.unlockSectionId && !(await completedSectionIds(input.userId, [task.unlockSectionId])).has(task.unlockSectionId)) {
+      const [prior] = await tx
+        .select({ id: practiceTaskSubmissions.id })
+        .from(practiceTaskSubmissions)
+        .where(and(eq(practiceTaskSubmissions.taskId, task.id), eq(practiceTaskSubmissions.userId, input.userId)))
+        .limit(1);
+      if (!prior) throw new TaskNotFoundError();
+    }
 
     const [existing] = await tx
       .select({ id: practiceTaskSubmissions.id, status: practiceTaskSubmissions.status })
@@ -315,6 +348,44 @@ export async function reviewPracticeSubmission(input: {
     }).catch(logAuditFailure);
   }
   return found;
+}
+
+/**
+ * Praxisaufgaben, die diese Lektion freischaltet, für eine Person der Firma mit dem Lernpfad: nur wenn die Lektion
+ * abgeschlossen ist. Für den Hinweis „Praxisaufgabe freigeschaltet“ (und als Bezug in „Warum lerne ich das?“).
+ */
+export async function listTasksUnlockedBySection(organizationId: string, userId: string, sectionId: string): Promise<Array<{ taskId: string; title: string; unlocked: boolean }>> {
+  const rows = await getDb()
+    .select({ taskId: practiceTasks.id, title: practiceTasks.title })
+    .from(practiceTasks)
+    .innerJoin(
+      companyAssignments,
+      and(
+        eq(companyAssignments.organizationId, practiceTasks.organizationId),
+        eq(companyAssignments.certificationId, practiceTasks.certificationId),
+        eq(companyAssignments.userId, userId),
+      ),
+    )
+    .where(and(eq(practiceTasks.organizationId, organizationId), eq(practiceTasks.unlockSectionId, sectionId), isNull(practiceTasks.archivedAt)))
+    .orderBy(asc(practiceTasks.createdAt));
+  if (rows.length === 0) return [];
+  const unlocked = (await completedSectionIds(userId, [sectionId])).has(sectionId);
+  return rows.map((r) => ({ ...r, unlocked }));
+}
+
+/** Lektionen je Lernpfad für die Freischaltung einer Aufgabe (nur Kursstruktur). */
+export async function listSectionsForPaths(certificationIds: string[]): Promise<Record<string, Array<{ id: string; code: string; title: string }>>> {
+  if (certificationIds.length === 0) return {};
+  const rows = await getDb()
+    .select({ certificationId: domains.certificationId, id: sections.id, code: objectives.code, title: sections.title })
+    .from(sections)
+    .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .where(inArray(domains.certificationId, certificationIds))
+    .orderBy(asc(domains.orderNum), asc(objectives.code), asc(sections.orderNum));
+  const out: Record<string, Array<{ id: string; code: string; title: string }>> = {};
+  for (const r of rows) (out[r.certificationId] ??= []).push({ id: r.id, code: r.code, title: r.title.de });
+  return out;
 }
 
 /** Lernziele je Lernpfad für die Auswahl bei der Aufgabe (nur Kursstruktur, keine Lerndaten). */

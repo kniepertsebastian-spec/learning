@@ -34,6 +34,8 @@ const ALLOWED_TABLES = new Set([
   // Kursstruktur für die Lernziel-Auswahl der Praxisaufgaben (Domains und Lernziele, keine Lerndaten)
   "domains",
   "objectives",
+  // Lektionen als Kursstruktur (Praxisaufgabe wird nach einer Lektion freigeschaltet), keine Lerndaten
+  "sections",
   // Onboarding-Pläne (benötigte Lernpfade, Mentor) und der Stand je Person
   "onboardingPlans",
   "onboardingPlanCourses",
@@ -74,6 +76,8 @@ const ALLOWED_SERVER_MODULES = new Set([
   "mail/templates",
   "company",
   "locale",
+  // Freischaltung von Praxisaufgaben: fragt nur, ob die Person selbst die Lektion abgeschlossen hat; liefert der Firma nichts zurück (sie sieht nur „x von y bestätigt“)
+  "sections/completed",
   // Firmendokumente: PDF-Text, Upload-Prüfung und Secret-Scanner (reine Funktionen, keine Lerndaten)
   "documents",
   // KI-Zugang der Firma: Verschlüsselung der Schlüssel und Prüfung des Schlüssels (keine Lerndaten)

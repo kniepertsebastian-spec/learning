@@ -610,6 +610,13 @@
       "when": 1792773104116,
       "tag": "0086_energy_modes_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1792774251512,
+      "tag": "0087_practice_task_unlock",
+      "breakpoints": true
     }
   ]
 }

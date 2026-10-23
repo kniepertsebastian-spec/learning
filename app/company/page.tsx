@@ -27,7 +27,7 @@ import { getAiSettings, resolveAiAccess } from "@/lib/server/company/ai-settings
 import { isOverdue, listAssignableLearningPaths, listAssignableMembers } from "@/lib/server/company/assignments";
 import { listCourseRequests, listRequestableCourses } from "@/lib/server/company/course-requests";
 import { listModulesForOrg, listResponsibleCandidates } from "@/lib/server/company/modules";
-import { listObjectivesForPaths, listPracticeTasksForOrg } from "@/lib/server/company/practice-tasks";
+import { listObjectivesForPaths, listPracticeTasksForOrg, listSectionsForPaths } from "@/lib/server/company/practice-tasks";
 import { listInternalCourseJobs, listInternalCourses } from "@/lib/server/company/internal-courses-list";
 import { listCompanyDocuments } from "@/lib/server/company/documents";
 import { requireCompanyPage } from "@/lib/server/company/guard";
@@ -78,6 +78,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     canAssign ? listCatalogCoursesForRules(membership.organizationId) : [],
   ]);
   const objectivesByPath = await listObjectivesForPaths(paths.map((p) => p.id));
+  const sectionsByPath = await listSectionsForPaths(paths.map((p) => p.id));
   const [mentorRequestRows, mentorStats] = await Promise.all([
     listOpenMentorRequests(membership.organizationId, membership.userId, membership.role),
     isAdmin ? mentorRequestStats(membership.organizationId) : null,
@@ -205,6 +206,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
             pending={practice.pending.map((p) => ({ ...p, submittedAt: p.submittedAt.toISOString() }))}
             paths={paths.map((p) => ({ id: p.id, name: p.name }))}
             objectivesByPath={objectivesByPath}
+            sectionsByPath={sectionsByPath}
             locale={locale}
           />
           <CompanyModulesPanel

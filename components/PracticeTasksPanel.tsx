@@ -85,18 +85,21 @@ export function PracticeTasksPanel({
   pending,
   paths,
   objectivesByPath,
+  sectionsByPath,
   locale,
 }: {
   tasks: TaskRowView[];
   pending: PendingRowView[];
   paths: { id: string; name: string }[];
   objectivesByPath: Record<string, Array<{ id: string; code: string; title: string }>>;
+  sectionsByPath: Record<string, Array<{ id: string; code: string; title: string }>>;
   locale: "de" | "en";
 }) {
   const router = useRouter();
   const de = locale === "de";
   const [pathId, setPathId] = useState(paths[0]?.id ?? "");
   const [objectiveId, setObjectiveId] = useState("");
+  const [unlockSectionId, setUnlockSectionId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +108,7 @@ export function PracticeTasksPanel({
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const err = await call("/api/company/practice-tasks", "POST", { certificationId: pathId, objectiveId: objectiveId || null, title, description: description || null });
+    const err = await call("/api/company/practice-tasks", "POST", { certificationId: pathId, objectiveId: objectiveId || null, unlockSectionId: unlockSectionId || null, title, description: description || null });
     setBusy(false);
     setError(err);
     if (!err) {
@@ -132,7 +135,7 @@ export function PracticeTasksPanel({
       {paths.length > 0 ? (
         <form onSubmit={create} className="mt-4 flex flex-col gap-2">
           <div className="flex flex-col gap-2 sm:flex-row">
-            <select value={pathId} onChange={(e) => { setPathId(e.target.value); setObjectiveId(""); }} aria-label={de ? "Lernpfad" : "Learning path"} data-testid="practice-path" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
+            <select value={pathId} onChange={(e) => { setPathId(e.target.value); setObjectiveId(""); setUnlockSectionId(""); }} aria-label={de ? "Lernpfad" : "Learning path"} data-testid="practice-path" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
               {paths.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -165,6 +168,17 @@ export function PracticeTasksPanel({
             <select value={objectiveId} onChange={(e) => setObjectiveId(e.target.value)} aria-label={de ? "Lernziel" : "Objective"} data-testid="practice-objective" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
               <option value="">{de ? "Keins" : "None"}</option>
               {(objectivesByPath[pathId] ?? []).map((o) => (
+                <option key={o.id} value={o.id}>{o.code} {o.title}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-foreground/70">
+              {de ? "Freischalten nach Lektion (optional): Die Aufgabe erscheint erst, wenn die Person diese Lektion abgeschlossen hat" : "Unlock after lesson (optional): the task only appears once the person has finished this lesson"}
+            </span>
+            <select value={unlockSectionId} onChange={(e) => setUnlockSectionId(e.target.value)} aria-label={de ? "Freischalten nach Lektion" : "Unlock after lesson"} data-testid="practice-unlock" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
+              <option value="">{de ? "Sofort sichtbar" : "Visible right away"}</option>
+              {(sectionsByPath[pathId] ?? []).map((o) => (
                 <option key={o.id} value={o.id}>{o.code} {o.title}</option>
               ))}
             </select>
