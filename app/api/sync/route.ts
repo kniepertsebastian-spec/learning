@@ -18,9 +18,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as { events: SyncEventInput[] };
+  const body = (await request.json()) as { events: SyncEventInput[]; userId?: string };
   if (!Array.isArray(body.events)) {
     return NextResponse.json({ error: "events must be an array" }, { status: 400 });
+  }
+
+  // Der Client nennt die Person, der die Warteschlange gehört (Service Worker, Background Sync): bei einer anderen
+  // angemeldeten Person nichts übernehmen, die Ereignisse bleiben beim Absender liegen.
+  if (body.userId !== undefined && body.userId !== session.user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const results = await processSyncEvents(session.user.id, body.events);

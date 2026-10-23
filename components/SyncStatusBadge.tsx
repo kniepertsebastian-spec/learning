@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CloudOff, RefreshCw, WifiOff } from "lucide-react";
 import type { Locale } from "@/lib/types";
-import { getSyncQueueSummary, onSyncQueueChanged, runSync, type SyncQueueSummary } from "@/lib/client/sync-queue";
+import { getSyncQueueSummary, listenForBackgroundSync, onSyncQueueChanged, runSync, type SyncQueueSummary } from "@/lib/client/sync-queue";
 
 function formatTime(iso: string | null, locale: Locale): string {
   if (!iso) return locale === "de" ? "nie" : "never";
@@ -68,11 +68,13 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     const unsubscribe = onSyncQueueChanged(handleQueueChanged);
+    const stopBackground = listenForBackgroundSync();
     return () => {
       cancelled = true;
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       unsubscribe();
+      stopBackground();
     };
   }, [userId]);
 
@@ -121,6 +123,11 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
           <p className="mb-1 text-foreground/70">
             {locale === "de" ? "Ausstehend" : "Pending"}: {summary?.pendingCount ?? 0}
           </p>
+          {summary?.authRequired && (
+            <p className="mb-1 text-warning-text" data-testid="sync-auth-required">
+              {locale === "de" ? "Anmeldung nötig: melde dich an, dann werden die Ergebnisse übertragen." : "Sign-in needed: sign in and your results will be uploaded."}
+            </p>
+          )}
           {summary && summary.failedCount > 0 && (
             <p className="mb-1 text-amber-600 dark:text-amber-400">
               {locale === "de" ? "Fehlgeschlagen (wird erneut versucht)" : "Failed (will retry)"}: {summary.failedCount}

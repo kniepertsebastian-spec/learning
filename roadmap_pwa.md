@@ -94,10 +94,10 @@ Die Plattform ist eine Next.js-16-App mit Serwist (`@serwist/next`). Vorhanden s
 
 ## Phase 5 – Installation & Hintergrund-Sync (Priorität: mittel)
 
-- [ ] Install-Hinweis: `beforeinstallprompt` abfangen und einen eigenen Button/Banner zeigen (z. B. im Dashboard und beim Offline-Download). Nach Ablehnung 30 Tage pausieren. `appinstalled` erfassen.
-- [ ] iOS-Anleitung („Teilen → Zum Home-Bildschirm“) zeigen, wenn Safari auf iOS und nicht `display-mode: standalone`
-- [ ] Background Sync: Bei neuem Eintrag in der Warteschlange `registration.sync.register("sync-queue")` registrieren; der Service Worker arbeitet die Warteschlange im `sync`-Event direkt aus IndexedDB ab. Dafür die Sync-Logik aus `sync-queue.ts` in ein vom Window unabhängiges Modul ziehen, das SW und Seite gemeinsam nutzen. Rückfall: bisheriges `online`-Event.
-- [ ] Auth im Service Worker prüfen: Sync-Requests laufen mit Cookies (same-origin); bei 401 Ereignisse behalten und Status „Anmeldung nötig“ setzen
+- [x] Install-Hinweis: `beforeinstallprompt` abfangen und einen eigenen Button/Banner zeigen (z. B. im Dashboard und beim Offline-Download). Nach Ablehnung 30 Tage pausieren. `appinstalled` erfassen.
+- [x] iOS-Anleitung („Teilen → Zum Home-Bildschirm“) zeigen, wenn Safari auf iOS und nicht `display-mode: standalone`
+- [x] Background Sync: Bei neuem Eintrag in der Warteschlange `registration.sync.register("sync-queue")` registrieren; der Service Worker arbeitet die Warteschlange im `sync`-Event direkt aus IndexedDB ab. Dafür die Sync-Logik aus `sync-queue.ts` in ein vom Window unabhängiges Modul ziehen, das SW und Seite gemeinsam nutzen. Rückfall: bisheriges `online`-Event.
+- [x] Auth im Service Worker prüfen: Sync-Requests laufen mit Cookies (same-origin); bei 401 Ereignisse behalten und Status „Anmeldung nötig“ setzen
 
 **Akzeptanzkriterium:** Chrome/Android: Quiz offline abschließen, App schließen, Netz an → Ereignis wird ohne erneutes Öffnen übertragen. iOS: Übertragung beim nächsten Öffnen wie bisher.
 
