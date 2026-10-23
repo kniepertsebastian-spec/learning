@@ -126,11 +126,11 @@ Ziel: Bei wenig Energie nicht nur weniger, sondern anders lernen. Das stärkt da
 
 ## Phase 6 – Reaktivierung ohne Beschämung (Priorität: mittel)
 
-- [ ] Nach längerer Pause (Platzhalter) eine E-Mail, später zusätzlich Push: „Schön, dass du da bist, wenn du Zeit hast. 3 Minuten reichen heute.“ Kein Zähler, keine Rückstandszahl, keine roten Warnungen.
-- [ ] Link öffnet direkt eine 3-Minuten-Session; der Rückstand wird wie bisher über die Planungsschicht verteilt.
-- [ ] Höchstens drei Nachrichten, dann Ruhe; jederzeit abbestellbar; respektiert die Erinnerungseinstellungen und Ruhezeiten.
-- [ ] Niemals an Arbeitgeber oder Mentor; bei Pflichtschulungen gelten ausschließlich die vorhandenen Fristerinnerungen.
-- [ ] Feature-Flag `reactivation`; Auswertung: Rückkehrquote innerhalb von 7 Tagen nach Nachricht.
+- [x] Nach längerer Pause (Platzhalter) eine E-Mail, später zusätzlich Push: „Schön, dass du da bist, wenn du Zeit hast. 3 Minuten reichen heute.“ Kein Zähler, keine Rückstandszahl, keine roten Warnungen. (E-Mail; Push folgt mit Web Push)
+- [x] Link öffnet direkt eine 3-Minuten-Session; der Rückstand wird wie bisher über die Planungsschicht verteilt.
+- [x] Höchstens drei Nachrichten, dann Ruhe; jederzeit abbestellbar; respektiert die Erinnerungseinstellungen und Ruhezeiten.
+- [x] Niemals an Arbeitgeber oder Mentor; bei Pflichtschulungen gelten ausschließlich die vorhandenen Fristerinnerungen.
+- [x] Feature-Flag `reactivation`; Auswertung: Rückkehrquote innerhalb von 7 Tagen nach Nachricht.
 
 **Akzeptanzkriterium:** Ein Nutzer ohne Session seit 5 Tagen erhält genau eine Nachricht; nach Abbestellen keine weitere.
 

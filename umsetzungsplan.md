@@ -177,7 +177,7 @@ Quelle: `roadmap_pruefer.md`, Phase 5
 
 ### Paket 4.9 – Reaktivierung ohne Beschämung · S
 Quelle: `roadmap_motivation.md`, Phase 6
-- [ ] E-Mail nach 5, 12 und 26 Tagen Pause mit Link zu einer 3-Minuten-Session, abbestellbar, nie an Arbeitgeber, Flag `reactivation`
+- [x] E-Mail nach 5, 12 und 26 Tagen Pause mit Link zu einer 3-Minuten-Session, abbestellbar, nie an Arbeitgeber, Flag `reactivation`
 
 **Abhängigkeit:** 4.1 (Willkommen-zurück-Ablauf). Die Push-Variante folgt mit Web Push in Stufe 5.
 

@@ -165,3 +165,22 @@ export function certificateExpiryMessage(to: string, input: { title: string; exp
     text: `Hallo,\n\ndein Zertifikat „${input.title}“ ist bis ${input.expiresAt.toLocaleDateString("de-DE", { timeZone: "UTC" })} gültig.\n\nZu deinen Zertifikaten:\n\n${input.link}\n\nDiese Erinnerungen kannst du in deinem Konto abstellen.`,
   };
 }
+
+/** Reaktivierung nach einer Pause: freundlich, ohne Zähler, Rückstandszahl oder Warnung. Nie an Arbeitgeber oder Mentor. */
+export function reactivationMessage(to: string, input: { link: string; unsubscribeLink: string; stage: "d5" | "d12" | "d26" }): MailMessage {
+  const lead =
+    input.stage === "d5"
+      ? "Schön, dass du da bist, wenn du Zeit hast."
+      : input.stage === "d12"
+        ? "Deine Lernreihe läuft nicht weg. Wenn du magst, fang einfach klein an."
+        : "Das ist die letzte Nachricht dazu. Die Tür bleibt offen, du kannst jederzeit wieder einsteigen.";
+  return {
+    to,
+    subject: "3 Minuten reichen heute",
+    text:
+      `Hallo,\n\n${lead}\n\n3 Minuten reichen heute. Dieser Link startet direkt eine kurze Runde:\n\n${input.link}\n\n` +
+      `Was liegen geblieben ist, verteilt die Planung für dich ruhig über die nächsten Tage.\n\n` +
+      `Keine Erinnerungen dieser Art mehr? Hier abmelden:\n${input.unsubscribeLink}`,
+    headers: { "List-Unsubscribe": `<${input.unsubscribeLink}>` },
+  };
+}
