@@ -74,14 +74,14 @@ Quelle: `roadmap_pwa.md`, Phase 2
 
 ### Paket 3.2 – Vorabfragen und Einstiegstest · M
 Quelle: `roadmap_didaktik.md`, Phase 4
-- [ ] 3.2a Vorabfragen vor Lektionen (Flag `pretest_questions`) · S
-- [ ] 3.2b Einstiegstest je Kapitel mit `applyChapterSkip`, Regel für Pflichtkurse · M
+- [x] 3.2a Vorabfragen vor Lektionen (Flag `pretest_questions`) · S
+- [x] 3.2b Einstiegstest je Kapitel mit `applyChapterSkip`, Regel für Pflichtkurse · M
 
 **Abhängigkeit:** nach 2.2, damit Einstiegstest und spätere Wiederholungen unterschiedliche Varianten zeigen.
 
 ### Paket 3.3 – PWA-Tests · M
 Quelle: `roadmap_pwa.md`, Phase 7
-- [ ] Playwright-E2E für Offline-Fluss, Update-Toast und Cache-Regeln, `docs/PWA.md`
+- [x] Playwright-E2E für Offline-Fluss, Update-Toast und Cache-Regeln, `docs/PWA.md`
 
 Direkt nach 3.1, damit die Offline-Navigation abgesichert ist.
 

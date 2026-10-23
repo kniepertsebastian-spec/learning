@@ -40,7 +40,9 @@
     "psrp:simulate": "tsx scripts/psrp-simulate.ts",
     "psrp:fit-weights": "tsx scripts/psrp-fit-weights.ts",
     "concepts:tag": "tsx scripts/tag-concepts.ts",
-    "course:e2e": "tsx scripts/run-fake-course-generation.ts"
+    "course:e2e": "tsx scripts/run-fake-course-generation.ts",
+    "test:e2e": "playwright test",
+    "lighthouse": "node scripts/lighthouse-check.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.23.0",
@@ -73,6 +75,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/mailparser": "^3.9.0",

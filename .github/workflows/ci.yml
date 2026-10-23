@@ -51,3 +51,30 @@ jobs:
           AUTH_SECRET: ci-only-secret
       # Nach dem Build: Next generiert dort die globalen Typen (z. B. LayoutProps).
       - run: npx tsc --noEmit
+      # PWA-E2E gegen den Produktions-Build (Service Worker ist im Dev-Server abgeschaltet), siehe docs/PWA.md.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          E2E_DATABASE_URL: postgres://postgres:ci@localhost:5432/ci
+          AUTH_SECRET: ci-only-secret
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          if-no-files-found: ignore
+      # Lighthouse (Best Practices) nur als Warnung: ein Wert unter der Schwelle bricht CI nicht ab.
+      - name: Lighthouse (Warnung)
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgres://postgres:ci@localhost:5432/ci
+          AUTH_SECRET: ci-only-secret
+          AUTH_TRUST_HOST: "true"
+        run: |
+          node node_modules/next/dist/bin/next start -p 3100 &
+          SERVER=$!
+          for i in $(seq 1 30); do curl -sf http://localhost:3100/login >/dev/null && break; sleep 1; done
+          CHROME_PATH="$(node -e "console.log(require('@playwright/test').chromium.executablePath())")" npm run lighthouse
+          STATUS=$?
+          kill $SERVER
+          exit $STATUS

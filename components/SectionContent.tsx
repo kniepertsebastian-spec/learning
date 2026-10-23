@@ -10,6 +10,7 @@ import { SectionQuiz } from "@/components/SectionQuiz";
 import type { SectionQuizQuestion } from "@/components/SectionQuiz";
 import { ContentLanguageSwitch } from "@/components/lesson/ContentLanguageSwitch";
 import { LessonPhases } from "@/components/lesson/LessonPhases";
+import { LessonPretest } from "@/components/lesson/LessonPretest";
 import { LessonSimulationsProvider } from "@/components/lesson/LessonSimulations";
 import { OutlineList } from "@/components/lesson/OutlineList";
 import { ReadingProgress } from "@/components/lesson/ReadingProgress";
@@ -19,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { pickPretestQuestions } from "@/lib/lesson/pretest";
 import { extractToc, isHandsOn, readingMinutes } from "@/lib/markdown/toc";
 import { fmt } from "@/lib/quiz/keys";
 import type { SectionOutline } from "@/lib/server/sections/outline";
@@ -57,6 +59,8 @@ interface SectionContentProps {
   translationPending?: boolean;
   /** Gelöste Simulationen dieser Person in dieser Lektion. */
   simulationProgress?: Array<{ simIndex: number; bestHelps: number }>;
+  /** Feature-Flag `pretest_questions`: zwei Vorabfragen vor dem Lektionstext (ohne Wertung). */
+  pretestEnabled?: boolean;
 }
 
 export function SectionContent({
@@ -79,6 +83,7 @@ export function SectionContent({
   contentLocale = null,
   translationPending = false,
   simulationProgress = [],
+  pretestEnabled = false,
 }: SectionContentProps) {
   const { locale, t } = useLocale();
   const router = useRouter();
@@ -87,6 +92,9 @@ export function SectionContent({
   const [completed, setCompleted] = useState(initialCompleted);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
+  const pretestQuestions = pretestEnabled && quizEnabled && !initialCompleted ? pickPretestQuestions(questions, sectionId) : [];
+  const [pretestState, setPretestState] = useState<"pending" | "done">("pending");
+  const pretestPending = pretestQuestions.length > 0 && pretestState === "pending";
 
   const content = lesson.content[locale];
   // Einsprachig erzeugte Lektionen tragen denselben Text in beiden Feldern, bis der Übersetzungslauf sie füllt.
@@ -174,8 +182,11 @@ export function SectionContent({
               <p className="mt-2 text-sm text-subtle">{objectiveCode} · {objectiveTitle}</p>
             </header>
 
-            <LessonPhases quizStarted={showQuiz} completed={completed} hasEvaluation={hasQuiz || !quizEnabled} />
+            {pretestQuestions.length > 0 && pretestPending && <LessonPretest questions={pretestQuestions} onDone={() => setPretestState("done")} />}
 
+            <LessonPhases quizStarted={showQuiz} completed={completed} hasEvaluation={hasQuiz || !quizEnabled} pretest={pretestQuestions.length > 0 ? pretestState : undefined} />
+
+            {!pretestPending && (<>
             <div className="text-base leading-[1.7] text-text-2 [&_p:first-child]:text-[17px] [&_p]:my-3 [&_p]:whitespace-normal">
               <RichText text={content} headingIds />
             </div>
@@ -230,6 +241,7 @@ export function SectionContent({
                 </div>
               </section>
             )}
+            </>)}
 
             <div className="mt-8">
               {!quizEnabled ? (

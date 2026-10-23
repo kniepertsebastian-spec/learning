@@ -52,3 +52,7 @@ next-env.d.ts
 /data/sources
 docker-compose.override.yml
 .monitor-state/
+
+# playwright
+/test-results/
+/playwright-report/
