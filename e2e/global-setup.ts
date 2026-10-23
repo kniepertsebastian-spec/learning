@@ -12,7 +12,7 @@ export const USERS = {
 export const COURSE_SLUG = "e2e-demo";
 export const COURSE_NAME = "E2E Demo Course";
 
-/** Legt Testnutzer und einen kleinen, freigegebenen Kurs an (idempotent). */
+/** Legt Testnutzer und einen kleinen, freigegebenen Kurs an (idempotent: ein vorhandener Kurs bleibt unverändert). */
 export default async function globalSetup() {
   const url = process.env.E2E_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!url) throw new Error("E2E_DATABASE_URL oder DATABASE_URL fehlt (migrierte Postgres-Datenbank).");
@@ -27,7 +27,9 @@ export default async function globalSetup() {
       .onConflictDoUpdate({ target: users.email, set: { passwordHash, role, emailVerifiedAt: new Date() } });
   }
 
-  await db.delete(certifications).where(eq(certifications.slug, COURSE_SLUG));
+  // Nicht löschen und neu anlegen: review_log ist unveränderlich, ein Kurs mit Lernfortschritt lässt sich nicht entfernen.
+  const [existing] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, COURSE_SLUG)).limit(1);
+  if (existing) return;
   const [cert] = await db
     .insert(certifications)
     .values({ slug: COURSE_SLUG, name: COURSE_NAME, provider: "E2E", examName: "E2E", examVersion: "1", catalogStatus: "approved", includeSectionQuizzes: true })
