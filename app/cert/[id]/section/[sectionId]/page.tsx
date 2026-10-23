@@ -18,6 +18,8 @@ import {
 import { getCompanyMembership } from "@/lib/server/company/access";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { findMentorUserId } from "@/lib/server/company/mentor-requests";
+import { pickWovenQuestions } from "@/lib/server/weaving/candidates";
+import { interleave } from "@/lib/weaving/rules";
 import { listTasksUnlockedBySection } from "@/lib/server/company/practice-tasks";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { listSimulationProgress } from "@/lib/server/simulations/service";
@@ -130,6 +132,10 @@ export default async function SectionPage({
     sourceReference: q.sourceReference,
   }));
 
+  // Schwächen aus früheren Lektionen einweben (Flag woven_reviews): bis zu 2, sehen aus wie normale Fragen, zählen nicht fürs Ergebnis.
+  const woven = session?.user?.id && quizEnabled ? await pickWovenQuestions(session.user.id, sectionId, quizQuestions.length).catch(() => []) : [];
+  const quizWithWoven: SectionQuizQuestion[] = interleave<SectionQuizQuestion>(quizQuestions, woven);
+
   return (
     <SectionContent
       certSlug={certSlug}
@@ -148,7 +154,7 @@ export default async function SectionPage({
         examFocusPoints: lesson.examFocusPoints ?? null,
         cheatSheet: lesson.cheatSheet ?? null,
       }}
-      questions={quizEnabled ? quizQuestions : []}
+      questions={quizEnabled ? quizWithWoven : []}
       quizEnabled={quizEnabled}
       signedIn={Boolean(session?.user?.id)}
       initialCompleted={completed}

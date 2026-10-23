@@ -1,14 +1,18 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   domains,
+  itemVariants,
+  lessons,
   objectives,
   questionOptions,
+  questions,
   quizAnswers,
   quizAttempts,
   quizzes,
   sections,
 } from "@/lib/server/db/schema";
+import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { ObjectiveProgressService } from "@/lib/server/progress/service";
 import { recordReviewOutcomes } from "@/lib/server/review/service";
 import type { AnswerConfidence } from "@/lib/types";
@@ -21,6 +25,8 @@ export interface SectionQuizAnswerInput {
   /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - optional,
    * fehlt z. B. bei alten, noch nicht aktualisierten Offline-Paketen. */
   confidence?: AnswerConfidence;
+  /** Eingewebte Frage aus einer früheren Lektion (Flag `woven_reviews`): zählt nicht für das Ergebnis dieser Lektion, nur als Review. */
+  woven?: boolean;
 }
 
 export interface SectionQuizAttemptResult {
@@ -39,12 +45,15 @@ export interface SectionQuizAttemptResult {
 export async function recordSectionQuizAttempt(
   userId: string,
   sectionId: string,
-  answers: SectionQuizAnswerInput[],
+  allAnswers: SectionQuizAnswerInput[],
 ): Promise<SectionQuizAttemptResult> {
   const db = getDb();
+  // Eingewebte Antworten zählen nicht für Ergebnis und Lernzielstand dieser Lektion (nur wenn das Flag gilt, sonst werden sie verworfen).
+  const answers = allAnswers.filter((a) => !a.woven);
+  const wovenAnswers = isFeatureEnabled("woven_reviews", userId) ? allAnswers.filter((a) => a.woven) : [];
 
   const certInfo = await db
-    .select({ certificationId: domains.certificationId })
+    .select({ certificationId: domains.certificationId, objectiveId: sections.objectiveId })
     .from(sections)
     .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
     .innerJoin(domains, eq(domains.id, objectives.domainId))
@@ -116,5 +125,46 @@ export async function recordSectionQuizAttempt(
     })),
   );
 
+  if (wovenAnswers.length > 0) await recordWovenAnswers(userId, sectionId, certInfo[0], wovenAnswers);
+
   return { score, results, attemptId };
+}
+
+/**
+ * Eingewebte Antworten als Reviews des Original-Items (`interleaved`, mit der Lektion, in der sie gestellt wurden). Nur Fragen
+ * desselben Kurses aus einem anderen Lernziel; alles andere wird ignoriert.
+ */
+async function recordWovenAnswers(userId: string, sectionId: string, section: { certificationId: string; objectiveId: string }, answers: SectionQuizAnswerInput[]): Promise<void> {
+  const db = getDb();
+  const shownIds = [...new Set(answers.map((a) => a.questionId))];
+  const valid = await db
+    .select({ id: questions.id })
+    .from(questions)
+    .innerJoin(objectives, eq(objectives.id, questions.objectiveId))
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .where(and(inArray(questions.id, shownIds), eq(domains.certificationId, section.certificationId), ne(questions.objectiveId, section.objectiveId)));
+  const validIds = new Set(valid.map((v) => v.id));
+  const [variantRows, optionRows, [lesson]] = await Promise.all([
+    db.select({ itemId: itemVariants.itemId, questionId: itemVariants.questionId }).from(itemVariants).where(and(inArray(itemVariants.questionId, shownIds), ne(itemVariants.itemId, itemVariants.questionId))),
+    db.select().from(questionOptions).where(inArray(questionOptions.questionId, shownIds)),
+    db.select({ id: lessons.id }).from(lessons).where(eq(lessons.sectionId, sectionId)).limit(1),
+  ]);
+  const itemOf = new Map(variantRows.map((v) => [v.questionId, v.itemId]));
+  await recordReviewOutcomes(
+    userId,
+    answers
+      .filter((a) => validIds.has(a.questionId))
+      .map((a) => {
+        const correct = optionRows.find((o) => o.questionId === a.questionId && o.isCorrect);
+        const itemId = itemOf.get(a.questionId) ?? a.questionId;
+        return {
+          questionId: itemId,
+          variantQuestionId: itemId !== a.questionId ? a.questionId : null,
+          isCorrect: !!correct && correct.id === a.selectedOptionId,
+          confidence: a.confidence ?? null,
+          reviewType: "interleaved" as const,
+          wovenIntoLessonId: lesson?.id ?? null,
+        };
+      }),
+  );
 }

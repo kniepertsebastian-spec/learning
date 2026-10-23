@@ -104,7 +104,7 @@ export function SectionContent({
   const [completed, setCompleted] = useState(initialCompleted);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
-  const pretestQuestions = pretestEnabled && quizEnabled && !initialCompleted ? pickPretestQuestions(questions, sectionId) : [];
+  const pretestQuestions = pretestEnabled && quizEnabled && !initialCompleted ? pickPretestQuestions(questions.filter((q) => !q.woven), sectionId) : [];
   const [pretestState, setPretestState] = useState<"pending" | "done">("pending");
   const pretestPending = pretestQuestions.length > 0 && pretestState === "pending";
 
@@ -114,6 +114,7 @@ export function SectionContent({
   const toc = extractToc(content);
   const minutes = estimatedMinutes ?? readingMinutes(content);
   const hasQuiz = quizEnabled && questions.length > 0;
+  const regularCount = questions.filter((q) => !q.woven).length; // eingewebte Fragen zählen nicht mit
   const lp = t.lesson_page;
 
   async function completeLesson() {
@@ -305,7 +306,7 @@ export function SectionContent({
               ) : hasQuiz ? (
                 <Card variant="hero" data-testid="quiz-hero">
                   <h2 className="text-xl font-semibold">{lp.fits}</h2>
-                  <p className="mt-1 text-sm text-muted">{fmt(lp.fitsBody, { n: questions.length, m: Math.max(1, Math.round(questions.length * 0.7)) })}</p>
+                  <p className="mt-1 text-sm text-muted">{fmt(lp.fitsBody, { n: regularCount, m: Math.max(1, Math.round(regularCount * 0.7)) })}</p>
                   <Button className="mt-4" onClick={() => setShowQuiz(true)} iconRight={<ArrowRight className="h-4 w-4" aria-hidden="true" />} data-testid="start-quiz">
                     {lp.startQuiz}
                   </Button>

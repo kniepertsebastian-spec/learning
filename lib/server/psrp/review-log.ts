@@ -48,6 +48,7 @@ export interface ReviewLogInput {
   probeVariantId?: string | null;
   /** Gezeigte Variante (questions.id), wenn nicht das Original. */
   variantQuestionId?: string | null;
+  wovenIntoLessonId?: string | null;
   predictedR?: number | null;
 }
 
@@ -66,6 +67,7 @@ export function buildReviewLogRow(input: ReviewLogInput): typeof reviewLog.$infe
     reviewType: input.reviewType ?? "card",
     probeVariantId: input.probeVariantId ?? null,
     variantQuestionId: input.variantQuestionId ?? null,
+    wovenIntoLessonId: input.wovenIntoLessonId ?? null,
     predictedR: input.predictedR ?? null,
   };
 }

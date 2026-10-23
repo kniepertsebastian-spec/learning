@@ -1,0 +1,1 @@
+ALTER TABLE "review_log" ADD COLUMN "woven_into_lesson_id" uuid;

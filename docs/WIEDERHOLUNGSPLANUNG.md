@@ -44,3 +44,13 @@ Für `psrp:metrics` sollte `PSRP_EXPORT_SALT` gesetzt sein, damit die anonymen N
 - Standard-Szenario (Platzhalter aus `roadmap_motivation.md`): 1.000 Karten, 10 neue pro Tag, 15 Minuten Zeitbudget, 15 Sekunden je Karte, 60 Tage Vorlauf, 7 Tage Pause, 30 Tage danach, Ziel-Behaltensquote 0,90, Seed 1. Änderbar mit `--pause-days`, `--budget`, `--seconds`, `--seed`, `--out`.
 - Kennzahlen je Modus: Last am ersten Tag nach der Pause (Karten und Minuten), Tage bis der Rückstand abgebaut ist, Behaltensquote in den 30 Tagen nach der Pause.
 - Reproduzierbar: gleiche Parameter ergeben byte-identische Dateien. Die Ergebnisse sind eine Simulation, keine Messung an echten Lernenden.
+
+## Schwächen in spätere Lektionen einweben (Flag `woven_reviews`)
+
+Im Lektionstest erscheinen bis zu **2 Fragen** (etwa 20 %, bei kleinen Tests mindestens eine) aus **früheren Lektionen**, die gerade fällig oder schwach sind (fällig, oder Abrufwahrscheinlichkeit unter 80 %) und deren Konzept mit der aktuellen Lektion verbunden ist: gemeinsames Konzept, freigegebene Voraussetzung (`concept_prerequisite`, Status `approved`) oder gleiches Themengebiet. Bevorzugt wird eine Variante (Variantenrotation). Auswahl: `lib/server/weaving/candidates.ts`, Regeln: `lib/weaving/rules.ts`.
+
+- Die Fragen sehen aus wie normale Fragen, **zählen aber nicht** für Ergebnis, Punktzahl oder Lernzielstand der aktuellen Lektion (sie werden nicht in `quiz_answer` geschrieben).
+- Sie laufen als Review in das Gedächtnismodell: `review_log.review_type = interleaved`, `woven_into_lesson_id` nennt die Lektion, in der sie gestellt wurden; `item_state` wird wie bei jedem Review aktualisiert.
+- Items von Konzepten im **Verstehens-Modus** werden nie eingewoben. Im Offline-Leser wird nicht eingewoben.
+- Ausschalten: `FEATURE_WOVEN_REVIEWS=0` oder `FEATURE_WOVEN_REVIEWS_ROLLOUT=<0 bis 100>`. Auswertung: `psrp:metrics` unter `wovenReviews` (Flag-Arm, Zahl eingewebter Reviews und davon richtige).
+- Offen: Einbau in Simulationen (`task_item`/`embedded_step`).

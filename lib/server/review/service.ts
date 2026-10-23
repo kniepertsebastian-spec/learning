@@ -14,6 +14,8 @@ export interface ReviewOutcomeInput {
   variantQuestionId?: string | null;
   /** Standard `card`; der Rückblick loggt `recall_check`. */
   reviewType?: ReviewLogType;
+  /** Eingewebt in den Lektionstest dieser Lektion. */
+  wovenIntoLessonId?: string | null;
 }
 
 /**
@@ -60,6 +62,7 @@ export async function recordReviewOutcomes(
         responseTimeMs: r.responseTimeMs ?? null,
         variantQuestionId: r.variantQuestionId ?? null,
         reviewType: r.reviewType,
+        wovenIntoLessonId: r.wovenIntoLessonId ?? null,
       })),
     options,
   );
