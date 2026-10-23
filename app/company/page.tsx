@@ -17,6 +17,8 @@ import { MandatoryRulesPanel } from "@/components/MandatoryRulesPanel";
 import { listCatalogCoursesForRules, listMandatoryRules } from "@/lib/server/company/mandatory";
 import { OnboardingsPanel } from "@/components/OnboardingsPanel";
 import { listOnboardingPlans } from "@/lib/server/company/onboardings";
+import { MentorRequestsPanel } from "@/components/MentorRequestsPanel";
+import { listOpenMentorRequests, mentorRequestStats } from "@/lib/server/company/mentor-requests";
 import { PracticeTasksPanel } from "@/components/PracticeTasksPanel";
 import { InternalCoursesPanel } from "@/components/InternalCoursesPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
@@ -76,6 +78,10 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     canAssign ? listCatalogCoursesForRules(membership.organizationId) : [],
   ]);
   const objectivesByPath = await listObjectivesForPaths(paths.map((p) => p.id));
+  const [mentorRequestRows, mentorStats] = await Promise.all([
+    listOpenMentorRequests(membership.organizationId, membership.userId, membership.role),
+    isAdmin ? mentorRequestStats(membership.organizationId) : null,
+  ]);
   const documentRows = documents.map((d) => ({
     id: d.id,
     title: d.title,
@@ -131,7 +137,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   // Reiter: was Aufmerksamkeit braucht, steht als Zahl am Reiter.
   const overdue = rows.filter((r) => r.overdue).length;
   const waitingForReview = internalCourses.filter((c) => c.catalogStatus !== "approved").length + internalJobs.filter((j) => j.active).length;
-  const needsAttention = practice.pending.length + modules.filter((m) => m.state === "expired").length;
+  const needsAttention = practice.pending.length + mentorRequestRows.length + modules.filter((m) => m.state === "expired").length;
   const tabs: CompanyTab[] = [
     { id: "status", label: de ? "Ergebnisse" : "Results", badge: overdue, badgeTitle: de ? "überfällig" : "overdue" },
     ...(canAssign ? [{ id: "mandatory", label: de ? "Pflichtschulung" : "Mandatory training", badge: mandatoryRules.reduce((n, r) => n + r.overdue, 0), badgeTitle: de ? "überfällig" : "overdue" }] : []),
@@ -193,6 +199,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
 
       {active === "work" && (
         <>
+          <MentorRequestsPanel requests={mentorRequestRows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }))} stats={mentorStats} locale={locale} />
           <PracticeTasksPanel
             tasks={practice.tasks.map((t) => ({ id: t.id, title: t.title, description: t.description, learningPath: t.learningPath, assignees: t.assignees, submitted: t.submitted, confirmed: t.confirmed, rework: t.rework }))}
             pending={practice.pending.map((p) => ({ ...p, submittedAt: p.submittedAt.toISOString() }))}

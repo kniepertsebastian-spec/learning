@@ -5,6 +5,7 @@ import {
   domains,
   objectives,
   questions,
+  type ContentReportDetail,
   type ContentReportReason,
   type ContentReportStatus,
   type ContentReportTargetType,
@@ -40,6 +41,8 @@ export interface OpenQuestionReport {
   questionId: string;
   humanId: string;
   question: Localized<string>;
+  /** Nur bei `concept_struggle`: anonyme Zahlen und häufigste falsche Option. */
+  detail: ContentReportDetail | null;
 }
 
 /**
@@ -57,6 +60,7 @@ export async function listOpenQuestionReports(certificationId: string): Promise<
       questionId: questions.id,
       humanId: questions.humanId,
       question: questions.question,
+      detail: contentReports.detail,
     })
     .from(contentReports)
     .innerJoin(questions, eq(questions.id, contentReports.targetId))

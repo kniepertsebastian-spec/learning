@@ -9,6 +9,8 @@ import { getServerLocale } from "@/lib/server/locale";
 import { getOrCreateStudySession, getStudySessionWithContent } from "@/lib/server/study/session-service";
 import { pickPracticeSimulation } from "@/lib/server/simulations/service";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
+import { getCompanyMembership } from "@/lib/server/company/access";
+import { findMentorUserId } from "@/lib/server/company/mentor-requests";
 import { StudySession } from "@/components/StudySession";
 
 export default async function StudySessionPage({
@@ -66,10 +68,14 @@ export default async function StudySessionPage({
   // Nach den Fragen eine Praxisaufgabe aus denselben Lernzielen (ungelöst oder mühsam gelöst), falls es eine gibt.
   const practice = await pickPracticeSimulation(session.user.id, questionItems.map((q) => q.questionId), summary.id);
 
+  const membership = items.some((i) => i.understand) ? await getCompanyMembership(session.user.id) : null;
+  const mentorAsk = membership && (await findMentorUserId(membership.organizationId, membership.userId)) ? { certificationId: cert.id } : null;
+
   return (
     <div className="flex flex-1 flex-col">
       <StudySession
         key={summary.id}
+        mentorAsk={mentorAsk}
         exitEnabled={isFeatureEnabled("exit_with_win", session.user.id)}
         practice={practice}
         certSlug={slug}

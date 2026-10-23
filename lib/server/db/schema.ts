@@ -114,7 +114,7 @@ export const users = pgTable(
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     /** UI U8: Opt-out für E-Mail-Erinnerungen des Prüfungsplaners. */
     examRemindersOptOut: boolean("exam_reminders_opt_out").notNull().default(false),
-    /** PSRP-HR (roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
+    /** PSRP-HR (docs/roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
     ageRange: text("age_range").$type<AgeRange>(),
     /** IANA-Zeitzone für die lokale Tageszeit (Chronotyp) und Tagesgrenzen der Planung. */
     timezone: text("timezone").notNull().default("Europe/Berlin"),
@@ -857,6 +857,41 @@ export const engagementStates = pgTable(
   (table) => [check("engagement_state_status_check", sql`${table.status} in ('normal', 'deescalated')`)],
 );
 
+export type MentorRequestStatus = "open" | "answered";
+
+/**
+ * „Mentor fragen“ / „Ich hänge fest“ (roadmap_didaktik 9.4, roadmap_motivation Phase 9): nur vom Lernenden ausgelöst. Gespeichert wird
+ * ausschließlich, was die Person selbst geschrieben und vor dem Senden geprüft hat (Thema und Zusammenfassung) - keine Fehlerhistorie,
+ * keine Antworten, keine Lernzeit. Der Arbeitgeber sieht nur anonyme Zahlen (Anzahl, Antwortzeit ab Mindestgröße).
+ */
+export const mentorRequests = pgTable(
+  "mentor_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    mentorUserId: uuid("mentor_user_id").references(() => users.id, { onDelete: "set null" }),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    topic: text("topic").notNull(),
+    message: text("message").notNull(),
+    status: text("status").$type<MentorRequestStatus>().notNull().default("open"),
+    answerNote: text("answer_note"),
+    answeredByUserId: uuid("answered_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+  },
+  (table) => [
+    check("mentor_requests_status_check", sql`${table.status} in ('open', 'answered')`),
+    foreignKey({
+      columns: [table.userId, table.organizationId],
+      foreignColumns: [organizationMemberships.userId, organizationMemberships.organizationId],
+      name: "mentor_requests_member_fk",
+    }).onDelete("cascade"),
+    index("mentor_requests_org_status_idx").on(table.organizationId, table.status),
+    index("mentor_requests_user_idx").on(table.userId, table.createdAt),
+  ],
+);
+
 export type LearningExitSource = "session" | "section_quiz";
 
 /**
@@ -1336,7 +1371,18 @@ export const sessionRecommendationFeedback = pgTable(
  * dasselbe Problem), keine Korrektur eines einzelnen Werts. */
 export type ContentReportTargetType = "question" | "lesson";
 /** `variant_outlier`: automatisch erzeugt, wenn eine Variante auffällig andere Erfolgsquote hat als die übrigen (kein Nutzer meldet). */
-export type ContentReportReason = "incorrect" | "unclear" | "outdated" | "variant_outlier";
+export type ContentReportReason = "incorrect" | "unclear" | "outdated" | "variant_outlier" | "concept_struggle";
+/**
+ * `concept_struggle` (automatisch): viele Lernende scheitern am selben Konzept. Anonym und ohne Personenbezug: nur Anzahl, Anteil und die am
+ * häufigsten gewählte falsche Option. `targetId` ist die Frage des Konzepts mit den meisten Fehlern.
+ */
+export interface ContentReportDetail {
+  conceptId: string;
+  conceptName: string;
+  learners: number;
+  struggling: number;
+  topWrongOption: { text: { de: string; en: string }; count: number } | null;
+}
 export type ContentReportStatus = "open" | "resolved" | "dismissed";
 
 export const contentReports = pgTable(
@@ -1348,6 +1394,7 @@ export const contentReports = pgTable(
     targetId: uuid("target_id").notNull(),
     reason: text("reason").$type<ContentReportReason>().notNull(),
     status: text("status").$type<ContentReportStatus>().notNull().default("open"),
+    detail: jsonb("detail").$type<ContentReportDetail>(),
     resolvedByUserId: uuid("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1356,7 +1403,7 @@ export const contentReports = pgTable(
     index("content_reports_target_idx").on(table.targetType, table.targetId),
     index("content_reports_status_idx").on(table.status),
     check("content_reports_target_type_check", sql`${table.targetType} in ('question', 'lesson')`),
-    check("content_reports_reason_check", sql`${table.reason} in ('incorrect', 'unclear', 'outdated', 'variant_outlier')`),
+    check("content_reports_reason_check", sql`${table.reason} in ('incorrect', 'unclear', 'outdated', 'variant_outlier', 'concept_struggle')`),
     check("content_reports_status_check", sql`${table.status} in ('open', 'resolved', 'dismissed')`),
   ],
 );
@@ -2673,7 +2720,7 @@ export const careerSuggestions = pgTable("career_suggestions", {
 });
 
 // ---------------------------------------------------------------------------
-// PSRP-HR (roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
+// PSRP-HR (docs/roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
 // Engine und Kalibrierung. „Item“ der Roadmap = Frage (`questions`), „Kurs“ =
 // Zertifizierung (`certifications`), `course_enrollment` = `study_profiles`
 // (dort liegen Prüfungsdatum und leichte Tage bereits je Nutzer und Kurs).

@@ -85,3 +85,15 @@ export function distinctVariantFailureSignal(failures: Array<{ questionId: strin
   if (new Set(failures.map((f) => f.questionId)).size < min) return null;
   return { kind: "distinct_variant_failures", at: failures.reduce((a, b) => (b.at > a.at ? b : a)).at };
 }
+
+/** Häufung für die Werkstatt: ein Konzept, an dem viele Lernende scheitern (Platzhalter: ≥ 30 % der Lernenden, bei mindestens 20). */
+export interface HotspotConfig {
+  minLearners: number;
+  minShare: number;
+}
+
+export const DEFAULT_HOTSPOT_CONFIG: HotspotConfig = { minLearners: 20, minShare: 0.3 };
+
+export function isHotspot(learners: number, struggling: number, config: HotspotConfig = DEFAULT_HOTSPOT_CONFIG): boolean {
+  return learners >= config.minLearners && struggling / learners >= config.minShare;
+}

@@ -96,7 +96,7 @@ Quelle: `roadmap_didaktik.md`, Phase 9
 - [x] 3.5a Signale erkennen, `concept_struggle`, Wiederholen pausieren, häufige Verwechslung ansprechen · M
 - [ ] 3.5b Alternativerklärungen je Lernziel: Generierung, Werkstatt-Freigabe, Backfill · M
 - [ ] 3.5c Voraussetzungen im Konzeptmodell (`concept_prerequisite`), Diagnosefragen, Brückenlektion · L
-- [ ] 3.5d „Mentor fragen“ (nur durch Lernende ausgelöst), Häufung in die Werkstatt-Prüfliste · S; zusammen mit der Mentor-Brücke „Ich hänge fest“ (`roadmap_motivation.md`, Phase 9): Zusammenfassung wird vom Lernenden geprüft und bestätigt
+- [x] 3.5d „Mentor fragen“ (nur durch Lernende ausgelöst), Häufung in die Werkstatt-Prüfliste · S; zusammen mit der Mentor-Brücke „Ich hänge fest“ (`roadmap_motivation.md`, Phase 9): Zusammenfassung wird vom Lernenden geprüft und bestätigt
 
 **Zuschnitt:** vier PRs in der Reihenfolge a → d → b → c. Schon 3.5a allein verhindert, dass Unverstandenes stur wiederholt wird; 3.5d ist klein und verbessert die Inhalte früh.
 **Abhängigkeit:** 2.2 (erledigt). Vor 4.5 (neue Antwortformate).

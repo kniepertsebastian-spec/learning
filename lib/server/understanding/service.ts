@@ -18,6 +18,7 @@ import {
   type ConceptStruggleStatus,
   type StruggleSignal,
 } from "@/lib/server/db/schema";
+import { flagConceptHotspots } from "./hotspots";
 import { lastShownByQuestion } from "@/lib/server/variants/rotation";
 import {
   DEFAULT_UNDERSTANDING_CONFIG,
@@ -151,6 +152,8 @@ export async function detectStruggles(userId: string, itemIds: string[], now: Da
       .onConflictDoUpdate({ target: [conceptStruggles.userId, conceptStruggles.conceptId], set: { status: "detected", signals: evaluation.signals, detectedAt: now, resolvedAt: null, updatedAt: now } });
     detected.push(conceptId);
   }
+  // Häufung über viele Lernende: best effort, blockiert die Auswertung nie
+  if (detected.length > 0) await flagConceptHotspots(detected).catch((error) => console.error("Häufungs-Prüfung fehlgeschlagen:", error));
   return detected;
 }
 

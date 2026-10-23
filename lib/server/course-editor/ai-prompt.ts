@@ -10,7 +10,7 @@ import type { QuestionAiAction, SectionAiAction } from "@/lib/workshop-ai";
  */
 
 const LANGUAGE = { de: "Deutsch", en: "Englisch" } as const;
-const REASON: Record<ContentReportReason, string> = { incorrect: "fachlich falsch", unclear: "unklar", outdated: "veraltet", variant_outlier: "Variante mit auffällig anderer Erfolgsquote" };
+const REASON: Record<ContentReportReason, string> = { incorrect: "fachlich falsch", unclear: "unklar", outdated: "veraltet", variant_outlier: "Variante mit auffällig anderer Erfolgsquote", concept_struggle: "viele Lernende scheitern an diesem Konzept" };
 
 export type CourseFacts = { name: string; locale: Locale; objective: { code: string; title: string; description: string | null }; domain: string };
 
