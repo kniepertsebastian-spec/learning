@@ -24,9 +24,9 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const btn = "flex h-10 items-center gap-1.5 rounded-md border border-border-strong bg-control px-2.5 text-sm font-medium hover:bg-surface-2";
   return (
-    <div data-context="personal" className="flex min-h-dvh flex-col">
+    <div data-context="personal" className="flex min-h-dvh flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <OfflineBanner />
-      <header className="flex h-16 items-center justify-between px-4 sm:px-6">
+      <header className="flex h-[calc(4rem+env(safe-area-inset-top))] items-center justify-between px-4 pt-[env(safe-area-inset-top)] sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 font-semibold">
           <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">P</span>
           {t.appTitle}
@@ -40,7 +40,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </header>
-      <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6">{children}</main>
+      <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:px-6">{children}</main>
     </div>
   );
 }
@@ -58,12 +58,12 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
   const sidebarWidth = ctx === "admin" ? "md:w-[232px]" : "md:w-[248px]";
 
   return (
-    <div data-app-shell data-context={ctx} className="flex min-h-dvh flex-col bg-background text-foreground">
+    <div data-app-shell data-context={ctx} className="flex min-h-dvh flex-col bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-on-accent">{t.shell.skipToContent}</a>
       <OfflineBanner />
 
       {ctx === "admin" && (
-        <div role="note" className="z-40 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning/40 bg-warning-soft px-4 py-2 text-sm text-warning-text md:sticky md:top-0 md:h-10 md:py-0" data-testid="admin-strip">
+        <div role="note" className="z-40 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning/40 bg-warning-soft px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-sm text-warning-text md:sticky md:top-0 md:h-10 md:py-0 md:pt-0" data-testid="admin-strip">
           <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
           <strong className="font-semibold tracking-[0.06em]">{t.shell.adminStrip}</strong>
           <span>{t.shell.adminStripText}</span>
@@ -73,7 +73,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* Mobil: obere Leiste mit Sheet */}
-        <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-sidebar-border bg-sidebar px-4 md:hidden">
+        <div className={cn("sticky top-0 z-30 flex items-center justify-between border-b border-sidebar-border bg-sidebar px-4 md:hidden", ctx === "admin" ? "h-14" : "h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)]")}>
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">P</span>
             {t.appTitle}
@@ -117,7 +117,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
               <SyncStatusBadge userId={shell.user.id} locale={locale} />
             </div>
           </div>
-          <main id="main" className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+          <main id="main" className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8">{children}</main>
         </div>
       </div>
     </div>

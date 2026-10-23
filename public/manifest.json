@@ -1,24 +1,106 @@
 {
+  "id": "/",
   "name": "ProofPath",
   "short_name": "ProofPath",
   "description": "KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
+  "lang": "de",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "background_color": "#0A0C10",
+  "theme_color": "#0A0C10",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Heute lernen: Wiederholungen, Wochenziel und Fortschritt"
+    },
+    {
+      "src": "/screenshots/dashboard-narrow.png",
+      "sizes": "540x960",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Heute lernen auf dem Smartphone"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Heute wiederholen",
+      "short_name": "Wiederholen",
+      "description": "Zur heutigen Übersicht mit fälligen Wiederholungen",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Meine Offline-Kurse",
+      "short_name": "Offline",
+      "description": "Kurse ohne Netz lernen",
+      "url": "/offline",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Prüfungsplan",
+      "short_name": "Prüfungsplan",
+      "description": "Prüfungstermin und Bereitschaft",
+      "url": "/exams",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

@@ -1,90 +1,70 @@
-import { deflateSync } from "node:zlib";
-import { writeFileSync, mkdirSync } from "node:fs";
+// Erzeugt alle App-Icons und iOS-Startbilder aus einem Entwurf (Marke: mintfarbenes „P“ auf dunklem Grund).
+// Aufruf: node scripts/generate-icons.mjs   (benötigt `sharp`, kommt mit Next.js)
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import sharp from "sharp";
 
-const BG = [15, 23, 42]; // #0f172a
-const FG = [56, 189, 248]; // #38bdf8 accent
+const BG = "#0A0C10"; // Dunkles Theme (--bg in globals.css)
+const MINT = "#1FCB8F"; // --accent
+const INK = "#04140D"; // --on-accent
 
-function crc32(buf) {
-  let c;
-  const table = crc32.table || (crc32.table = (() => {
-    const t = new Uint32Array(256);
-    for (let n = 0; n < 256; n++) {
-      c = n;
-      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-      t[n] = c >>> 0;
-    }
-    return t;
-  })());
-  let crc = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) crc = table[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
-  return (crc ^ 0xffffffff) >>> 0;
-}
+// „P“ auf einer 512er-Fläche, mittig; Maße so, dass es in der 80-%-Sicherheitszone (Mitte, Radius 205) bleibt.
+const GLYPH = `M168 128 H260 A84 84 0 0 1 260 296 H224 V384 H168 Z M224 184 V240 H260 A28 28 0 0 0 260 184 Z`;
+const glyph = (fill, scale = 1) => `<g transform="translate(256 256) scale(${scale}) translate(-256 -256)"><path d="${GLYPH}" fill="${fill}" fill-rule="evenodd"/></g>`;
 
-function chunk(type, data) {
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length, 0);
-  const typeBuf = Buffer.from(type, "ascii");
-  const crcBuf = Buffer.alloc(4);
-  crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])), 0);
-  return Buffer.concat([len, typeBuf, data, crcBuf]);
-}
+const svg = (body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">${body}</svg>`;
+/** Rundes Symbol (purpose „any“): transparente Ecken. */
+const anySvg = svg(`<rect width="512" height="512" rx="112" fill="${MINT}"/>${glyph(INK)}`);
+/** Maskable und Apple: bis an den Rand gefüllt, das System schneidet zu; das Zeichen bleibt in der Sicherheitszone. */
+const fullSvg = svg(`<rect width="512" height="512" fill="${MINT}"/>${glyph(INK, 0.9)}`);
 
-function makePng(size) {
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // color type RGBA
-  ihdr[10] = 0;
-  ihdr[11] = 0;
-  ihdr[12] = 0;
+const out = "public/icons";
+mkdirSync(out, { recursive: true });
+const png = (source, size) => sharp(Buffer.from(source)).resize(size, size).png().toBuffer();
 
-  const raw = Buffer.alloc((size * 4 + 1) * size);
-  const cx = size / 2;
-  const cy = size / 2;
-  const capR = size * 0.32;
-  const brimW = size * 0.62;
-  const brimH = size * 0.09;
-
-  for (let y = 0; y < size; y++) {
-    let offset = y * (size * 4 + 1);
-    raw[offset] = 0; // filter type none
-    offset += 1;
-    for (let x = 0; x < size; x++) {
-      let [r, g, b] = BG;
-      const dx = x - cx;
-      const dy = y - (cy - size * 0.06);
-      const inCap = (dx * dx) / (capR * capR) + (dy * dy) / (capR * capR * 0.7) <= 1;
-      const inBrim =
-        Math.abs(x - cx) <= brimW / 2 &&
-        Math.abs(y - (cy + size * 0.1)) <= brimH / 2;
-      if (inCap || inBrim) {
-        [r, g, b] = FG;
-      }
-      const p = offset + x * 4;
-      raw[p] = r;
-      raw[p + 1] = g;
-      raw[p + 2] = b;
-      raw[p + 3] = 255;
-    }
-  }
-
-  const idat = deflateSync(raw);
-
-  return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    chunk("IHDR", ihdr),
-    chunk("IDAT", idat),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
-}
-
-const outDir = join(process.cwd(), "public", "icons");
-mkdirSync(outDir, { recursive: true });
-
+writeFileSync(join(out, "icon.svg"), anySvg);
 for (const size of [192, 512]) {
-  const png = makePng(size);
-  writeFileSync(join(outDir, `icon-${size}x${size}.png`), png);
-  console.log(`wrote icon-${size}x${size}.png (${png.length} bytes)`);
+  writeFileSync(join(out, `icon-${size}x${size}.png`), await png(anySvg, size));
+  writeFileSync(join(out, `maskable-${size}x${size}.png`), await png(fullSvg, size));
 }
+writeFileSync(join(out, "apple-touch-icon.png"), await sharp(Buffer.from(fullSvg)).resize(180, 180).flatten({ background: MINT }).png().toBuffer());
+
+// favicon.ico mit 32×32 und 48×48 (PNG-Einträge sind in ICO erlaubt)
+const sizes = [32, 48];
+const images = await Promise.all(sizes.map((s) => png(anySvg, s)));
+const header = Buffer.alloc(6 + 16 * images.length);
+header.writeUInt16LE(0, 0);
+header.writeUInt16LE(1, 2);
+header.writeUInt16LE(images.length, 4);
+let offset = header.length;
+images.forEach((img, i) => {
+  const e = 6 + i * 16;
+  header[e] = sizes[i];
+  header[e + 1] = sizes[i];
+  header.writeUInt16LE(1, e + 4);
+  header.writeUInt16LE(32, e + 6);
+  header.writeUInt32LE(img.length, e + 8);
+  header.writeUInt32LE(offset, e + 12);
+  offset += img.length;
+});
+writeFileSync("app/favicon.ico", Buffer.concat([header, ...images]));
+
+// iOS-Startbilder (Hochformat): dunkler Grund, Zeichen mittig. Gerät → Pixelgröße (Punkte × Faktor).
+export const STARTUP_IMAGES = [
+  { name: "iphone-430x932", w: 1290, h: 2796, pw: 430, ph: 932, ratio: 3 },
+  { name: "iphone-393x852", w: 1179, h: 2556, pw: 393, ph: 852, ratio: 3 },
+  { name: "iphone-390x844", w: 1170, h: 2532, pw: 390, ph: 844, ratio: 3 },
+  { name: "iphone-414x896", w: 828, h: 1792, pw: 414, ph: 896, ratio: 2 },
+  { name: "iphone-375x667", w: 750, h: 1334, pw: 375, ph: 667, ratio: 2 },
+  { name: "ipad-834x1194", w: 1668, h: 2388, pw: 834, ph: 1194, ratio: 2 },
+];
+mkdirSync("public/splash", { recursive: true });
+const mark = await png(anySvg, 220);
+for (const s of STARTUP_IMAGES) {
+  const buf = await sharp({ create: { width: s.w, height: s.h, channels: 3, background: BG } })
+    .composite([{ input: mark, left: Math.round((s.w - 220) / 2), top: Math.round((s.h - 220) / 2) }])
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+  writeFileSync(join("public/splash", `${s.name}.png`), buf);
+}
+console.log("Icons und Startbilder erzeugt.");

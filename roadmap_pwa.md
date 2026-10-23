@@ -79,14 +79,14 @@ Die Plattform ist eine Next.js-16-App mit Serwist (`@serwist/next`). Vorhanden s
 
 ## Phase 4 – Manifest, Icons, iOS (Priorität: mittel)
 
-- [ ] Manifest ergänzen: `id: "/"`, `lang`, `dir: "ltr"`, `categories: ["education", "productivity"]`, `orientation` weglassen oder `any`
-- [ ] `screenshots` ergänzen: mind. 1× `form_factor: "wide"` und 1× `"narrow"`, damit Chrome den ausführlichen Installationsdialog zeigt
-- [ ] `shortcuts`: „Heute wiederholen“, „Meine Offline-Kurse“ (`/offline`), „Prüfungsplan“
-- [ ] Icons neu im aktuellen Branding: getrennte Einträge `purpose: "any"` und `purpose: "maskable"` (kein kombiniertes `"any maskable"`), maskable mit Safe-Zone (80 %). Zusätzlich SVG-Favicon, `favicon.ico` erneuern. `scripts/generate-icons.mjs` entsprechend anpassen oder durch echte Assets ersetzen.
-- [ ] `theme_color`/`background_color` im Manifest an das Theme angleichen (aktuell `#0f172a` vs. `#0A0C10`/`#F6F7F9` im Viewport)
-- [ ] iOS: `apple-touch-icon` 180×180 ohne Transparenz; Startbilder (`apple-touch-startup-image`) für gängige Geräte über `metadata.appleWebApp.startupImage`
-- [ ] Statusleiste: entweder `viewportFit: "cover"` plus `env(safe-area-inset-*)`-Abstände in `AppShell`/Header/Bottom-Navigation, oder `statusBarStyle: "default"`. Heute laufen Inhalte bei `black-translucent` unter die Statusleiste.
-- [ ] `<html lang>` aus der Server-Locale setzen statt fest `"en"`
+- [x] Manifest ergänzen: `id: "/"`, `lang`, `dir: "ltr"`, `categories: ["education", "productivity"]`, `orientation` weglassen oder `any`
+- [x] `screenshots` ergänzen: mind. 1× `form_factor: "wide"` und 1× `"narrow"`, damit Chrome den ausführlichen Installationsdialog zeigt
+- [x] `shortcuts`: „Heute wiederholen“, „Meine Offline-Kurse“ (`/offline`), „Prüfungsplan“
+- [x] Icons neu im aktuellen Branding: getrennte Einträge `purpose: "any"` und `purpose: "maskable"` (kein kombiniertes `"any maskable"`), maskable mit Safe-Zone (80 %). Zusätzlich SVG-Favicon, `favicon.ico` erneuern. `scripts/generate-icons.mjs` entsprechend anpassen oder durch echte Assets ersetzen.
+- [x] `theme_color`/`background_color` im Manifest an das Theme angleichen (aktuell `#0f172a` vs. `#0A0C10`/`#F6F7F9` im Viewport)
+- [x] iOS: `apple-touch-icon` 180×180 ohne Transparenz; Startbilder (`apple-touch-startup-image`) für gängige Geräte über `metadata.appleWebApp.startupImage`
+- [x] Statusleiste: entweder `viewportFit: "cover"` plus `env(safe-area-inset-*)`-Abstände in `AppShell`/Header/Bottom-Navigation, oder `statusBarStyle: "default"`. Heute laufen Inhalte bei `black-translucent` unter die Statusleiste.
+- [x] `<html lang>` aus der Server-Locale setzen statt fest `"en"`
 
 **Akzeptanzkriterium:** Lighthouse/Chrome DevTools „Manifest“ ohne Warnungen; installierte App auf iPhone mit Notch zeigt keine verdeckten Bedienelemente.
 
