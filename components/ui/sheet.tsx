@@ -16,14 +16,14 @@ export function SheetContent({ className, children, side = "right", closeLabel =
       <DialogPrimitive.Overlay className="anim-fade-in fixed inset-0 z-50 bg-background/70" />
       <DialogPrimitive.Content
         className={cn(
-          "anim-sheet-in fixed top-0 z-50 flex h-full w-[min(420px,100vw)] flex-col overflow-y-auto border-border bg-surface p-5 shadow-sheet",
+          "anim-sheet-in fixed top-0 z-50 flex h-full w-[min(420px,100vw)] flex-col overflow-y-auto border-border bg-surface p-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-sheet",
           side === "right" ? "right-0 border-l" : "left-0 border-r [animation-direction:normal]",
           className,
         )}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close aria-label={closeLabel} className="absolute top-3 right-3 flex h-10 w-10 items-center justify-center rounded-md text-subtle hover:bg-surface-2 hover:text-foreground">
+        <DialogPrimitive.Close aria-label={closeLabel} className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] right-3 flex h-10 w-10 items-center justify-center rounded-md text-subtle hover:bg-surface-2 hover:text-foreground">
           <X className="h-4 w-4" aria-hidden="true" />
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>

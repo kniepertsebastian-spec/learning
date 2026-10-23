@@ -131,7 +131,7 @@ Quelle: `roadmap_didaktik.md`, Phase 5 und 6; `roadmap_motivation.md`, Phase 4, 
 
 ### Paket 4.2 – Manifest, Icons, iOS · M
 Quelle: `roadmap_pwa.md`, Phase 4
-- [ ] Manifest vollständig, Screenshots, Shortcuts, neue Icons im Branding, iOS-Startbilder und Safe-Areas, `<html lang>`
+- [x] Manifest vollständig, Screenshots, Shortcuts, neue Icons im Branding, iOS-Startbilder und Safe-Areas, `<html lang>` (Screenshots stammen aus den Testdaten und sollten vor dem Launch durch kuratierte ersetzt werden)
 
 **Abhängigkeit:** Neuer Produktname und Branding sollten feststehen, sonst entstehen die Icons zweimal.
 
