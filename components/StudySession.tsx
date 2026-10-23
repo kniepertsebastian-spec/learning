@@ -74,6 +74,8 @@ interface StudySessionProps {
   offline?: { userId: string };
   /** Praxisaufgabe nach den Fragen: eine Simulation aus einer Lektion derselben Lernziele (nur online). */
   practice?: { sectionId: string; title: { de: string; en: string }; content: { de: string; en: string }; simIndex: number } | null;
+  /** Frühwarnung (Flag dropout_guard): die Session wurde entlastet, mit „Nein danke“ zum normalen Umfang (nur online). */
+  deescalated?: boolean;
 }
 
 
@@ -91,6 +93,7 @@ export function StudySession({
   locale,
   offline,
   practice,
+  deescalated,
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
@@ -175,6 +178,16 @@ export function StudySession({
     setDecliningUnderstand(true);
     try {
       await fetch(`/api/study-sessions/${sessionId}/understand-decline`, { method: "POST" });
+    } finally {
+      window.location.reload();
+    }
+  }
+
+  const [decliningEase, setDecliningEase] = useState(false);
+  async function declineEase() {
+    setDecliningEase(true);
+    try {
+      await fetch(`/api/study-sessions/${sessionId}/deescalate-decline`, { method: "POST" });
     } finally {
       window.location.reload();
     }
@@ -350,6 +363,15 @@ export function StudySession({
       scoreText={fmt(t.quiz.answeredXofY, { x: answeredCount, y: questionItems.length })}
       navigator={<QuestionNavigator mode="exam" hideNote states={navStates} currentIndex={currentIndex} flagged={new Set()} onJump={setCurrentIndex} />}
     >
+      {deescalated && !offline && (
+        <Card variant="inset" className="mb-4" data-testid="ease-intro">
+          <p className="text-sm font-semibold">{t.quiz.easeTitle}</p>
+          <p className="mt-1 text-xs text-subtle">{t.quiz.easeHint}</p>
+          {answers.every((a) => a === null) && (
+            <Button className="mt-3" variant="ghost" size="sm" onClick={() => void declineEase()} disabled={decliningEase} data-testid="ease-decline">{t.quiz.easeDecline}</Button>
+          )}
+        </Card>
+      )}
       {item.category === "recall" && item.recall && (currentIndex === 0 || questionItems[currentIndex - 1].category !== "recall") && (
         <Card variant="inset" className="mb-4" data-testid="recall-intro">
           <p className="text-sm font-semibold">{fmt(t.quiz.recallTitle, { lesson: item.recall.lessonTitle[locale] })}</p>

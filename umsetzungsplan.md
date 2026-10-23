@@ -109,7 +109,7 @@ Quelle: `roadmap_motivation.md`, Phase 1
 
 ### Paket 3.7 – Frühwarnung und Notausstieg · M
 Quelle: `roadmap_motivation.md`, Phase 2, 3 und 8
-- [ ] 3.7a Frühwarnung für stille Abbrüche mit Deeskalation in der Planungsschicht, Flag `dropout_guard` · M
+- [x] 3.7a Frühwarnung für stille Abbrüche mit Deeskalation in der Planungsschicht, Flag `dropout_guard` · M
 - [ ] 3.7b Notausstieg „Heute reicht's“ mit 2–3 Erfolgsaufgaben, Flag `exit_with_win` · S
 - [ ] 3.7c Leitfaden für Rückmeldungen ohne Schuldzuweisung, Texte und Prompts überarbeiten · S
 

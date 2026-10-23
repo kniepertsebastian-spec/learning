@@ -71,6 +71,7 @@ export default async function StudySessionPage({
         practice={practice}
         certSlug={slug}
         sessionId={summary.id}
+        deescalated={summary.deescalated}
         questionItems={questionItems}
         lessonItems={lessonItems}
         locale={locale}

@@ -722,6 +722,8 @@ export const studySessions = pgTable(
      * muss auch nach dem Bau noch erklären können, WARUM die Session so
      * zusammengesetzt wurde. */
     isComeback: boolean("is_comeback").notNull().default(false),
+    /** Frühwarnung (Flag dropout_guard): ob diese Session in der Planungsschicht entlastet wurde (Snapshot wie isComeback). */
+    deescalated: boolean("deescalated").notNull().default(false),
     plannedAt: timestamp("planned_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -822,6 +824,35 @@ export const conceptStruggles = pgTable(
     index("concept_struggle_user_status_idx").on(table.userId, table.status),
     check("concept_struggle_status_check", sql`${table.status} in ('detected', 'in_progress', 'resolved', 'declined')`),
   ],
+);
+
+export type EngagementStatus = "normal" | "deescalated";
+export type EngagementSignalKind = "short_sessions" | "high_error_rate" | "slow_answers" | "checkin_skipped" | "exit_with_win";
+export interface EngagementSignal {
+  kind: EngagementSignalKind;
+  at: string;
+}
+
+/**
+ * Frühwarnung für stille Abbrüche (roadmap_motivation Phase 2): ein Zustand je Nutzer, getrennt von den Rohdaten.
+ * `deescalated` wirkt ausschließlich in der Planungsschicht (kleineres Tageslimit, keine neuen Karten); FSRS-Zustand und
+ * Ratings bleiben unverändert. Nie im Firmenbereich sichtbar. `declinedUntil`: „Nein danke, normal weiter“ löst bis dahin nicht erneut aus.
+ */
+export const engagementStates = pgTable(
+  "engagement_state",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").$type<EngagementStatus>().notNull().default("normal"),
+    signals: jsonb("signals").$type<EngagementSignal[]>().notNull().default(sql`'[]'::jsonb`),
+    since: timestamp("since", { withTimezone: true }),
+    until: timestamp("until", { withTimezone: true }),
+    sessionsLeft: integer("sessions_left").notNull().default(0),
+    declinedUntil: timestamp("declined_until", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check("engagement_state_status_check", sql`${table.status} in ('normal', 'deescalated')`)],
 );
 
 export type RecallCheckStatus = "offered" | "answered" | "skipped";
