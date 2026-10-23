@@ -67,6 +67,8 @@ interface SectionContentProps {
   simulationProgress?: Array<{ simIndex: number; bestHelps: number }>;
   /** Feature-Flag `pretest_questions`: zwei Vorabfragen vor dem Lektionstext (ohne Wertung). */
   pretestEnabled?: boolean;
+  /** „Warum lerne ich das?“: Gewicht der Domäne in der Prüfung und Praxisaufgaben, die diese Lektion freischaltet (nur Firmenbereich). */
+  relevance?: { examWeight: number | null; tasks: Array<{ title: string; unlocked: boolean }> } | null;
 }
 
 export function SectionContent({
@@ -93,6 +95,7 @@ export function SectionContent({
   translationPending = false,
   simulationProgress = [],
   pretestEnabled = false,
+  relevance = null,
 }: SectionContentProps) {
   const { locale, t } = useLocale();
   const router = useRouter();
@@ -190,6 +193,35 @@ export function SectionContent({
               <h1 className="text-[28px] leading-[1.15] font-semibold tracking-tight sm:text-[38px]">{sectionTitle[locale]}</h1>
               <p className="mt-2 text-sm text-subtle">{objectiveCode} · {objectiveTitle}</p>
             </header>
+
+            {relevance && (relevance.examWeight !== null || relevance.tasks.length > 0) && (
+              <Card className="mb-6" data-testid="lesson-why">
+                <p className="mb-1 text-sm font-semibold">{locale === "de" ? "Warum lerne ich das?" : "Why am I learning this?"}</p>
+                <ul className="flex flex-col gap-1 text-sm text-muted">
+                  {relevance.examWeight !== null && (
+                    <li>
+                      {locale === "de"
+                        ? `Der Bereich „${domainName}“ macht etwa ${relevance.examWeight} % der Prüfung aus.`
+                        : `The “${domainName}” domain makes up about ${relevance.examWeight}% of the exam.`}
+                    </li>
+                  )}
+                  {relevance.tasks.map((task) => (
+                    <li key={task.title} data-testid={task.unlocked ? "lesson-task-unlocked" : "lesson-task-locked"}>
+                      {task.unlocked ? (
+                        <>
+                          {locale === "de" ? "Praxisaufgabe freigeschaltet: " : "Practice task unlocked: "}
+                          <Link href="/" className="text-link hover:underline">{task.title}</Link>
+                        </>
+                      ) : locale === "de" ? (
+                        `Nach dieser Lektion wartet die Praxisaufgabe „${task.title}“.`
+                      ) : (
+                        `After this lesson, the practice task “${task.title}” awaits you.`
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
 
             {pretestQuestions.length > 0 && pretestPending && <LessonPretest questions={pretestQuestions} onDone={() => setPretestState("done")} />}
 

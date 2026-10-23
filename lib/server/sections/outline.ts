@@ -1,6 +1,7 @@
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { domains, lessonCompletions, lessons, objectives, quizAttempts, quizzes, sections } from "@/lib/server/db/schema";
+import { domains, lessons, objectives, sections } from "@/lib/server/db/schema";
+import { completedSectionIds } from "./completed";
 import type { Localized } from "@/lib/types";
 
 export type OutlineStatus = "done" | "current" | "open";
@@ -41,20 +42,7 @@ export async function loadSectionOutline(userId: string | null, sectionId: strin
     .orderBy(asc(objectives.code), asc(sections.orderNum));
 
   const ids = rows.map((r) => r.id);
-  const done = new Set<string>();
-  if (userId && ids.length > 0) {
-    const completed = await db
-      .select({ id: lessonCompletions.sectionId })
-      .from(lessonCompletions)
-      .where(and(eq(lessonCompletions.userId, userId), inArray(lessonCompletions.sectionId, ids)));
-    completed.forEach((c) => done.add(c.id));
-    const attempted = await db
-      .select({ id: quizzes.sectionId })
-      .from(quizAttempts)
-      .innerJoin(quizzes, eq(quizzes.id, quizAttempts.quizId))
-      .where(and(eq(quizAttempts.userId, userId), isNotNull(quizAttempts.completedAt), inArray(quizzes.sectionId, ids)));
-    attempted.forEach((a) => done.add(a.id));
-  }
+  const done = userId ? await completedSectionIds(userId, ids) : new Set<string>();
 
   const list = rows.map((r) => ({
     id: r.id,

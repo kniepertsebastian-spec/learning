@@ -117,8 +117,8 @@ Ziel: Bei wenig Energie nicht nur weniger, sondern anders lernen. Das stärkt da
 
 ## Phase 5 – Praxisbezug und „Warum lerne ich das?“ (Priorität: mittel)
 
-- [ ] Firmenbereich: Praxisaufgaben können an das Abschließen einer Lektion oder eines Lernziels geknüpft werden („Wer die Lektion zu Partitionierung abschließt, bekommt die Aufgabe ‚VM nach Firmenstandard partitionieren‘“). Freischaltung automatisch, Benachrichtigung an den Lernenden.
-- [ ] Jede Lektion zeigt kurz, wofür sie zählt: Gewicht in der Prüfung (aus dem Blueprint), zugehöriges Lernziel aus dem Ausbildungsrahmenplan oder der Firmenrolle, verknüpfte Praxisaufgabe, passender Karrierepfad. Vorhandene Bausteine nutzen (`[!POSSIBLE]`-Block, Karrierepfade, Blueprint-Gewichte).
+- [x] Firmenbereich: Praxisaufgaben können an das Abschließen einer Lektion oder eines Lernziels geknüpft werden („Wer die Lektion zu Partitionierung abschließt, bekommt die Aufgabe ‚VM nach Firmenstandard partitionieren‘“). Freischaltung automatisch, Benachrichtigung an den Lernenden.
+- [ ] (teilweise: Prüfungsgewicht und freigeschaltete Praxisaufgabe sind da; Ausbildungsrahmenplan/Firmenrolle und Karrierepfad fehlen) Jede Lektion zeigt kurz, wofür sie zählt: Gewicht in der Prüfung (aus dem Blueprint), zugehöriges Lernziel aus dem Ausbildungsrahmenplan oder der Firmenrolle, verknüpfte Praxisaufgabe, passender Karrierepfad. Vorhandene Bausteine nutzen (`[!POSSIBLE]`-Block, Karrierepfade, Blueprint-Gewichte).
 
 **Akzeptanzkriterium:** Eine an ein Lernziel geknüpfte Praxisaufgabe erscheint automatisch nach Abschluss der Lektion; jede Lektion zeigt mindestens eine Begründung ihrer Relevanz.
 

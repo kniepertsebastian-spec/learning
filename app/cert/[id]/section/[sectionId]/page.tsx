@@ -18,6 +18,7 @@ import {
 import { getCompanyMembership } from "@/lib/server/company/access";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { findMentorUserId } from "@/lib/server/company/mentor-requests";
+import { listTasksUnlockedBySection } from "@/lib/server/company/practice-tasks";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { listSimulationProgress } from "@/lib/server/simulations/service";
 import { SectionContent } from "@/components/SectionContent";
@@ -82,6 +83,8 @@ export default async function SectionPage({
     membership && domainRows[0] && (await findMentorUserId(membership.organizationId, membership.userId))
       ? { topic: section.title.de, certificationId: domainRows[0].certificationId }
       : null;
+  const examWeight = domainRows[0]?.weightPercent ? Number(domainRows[0].weightPercent) : null;
+  const unlockTasks = membership ? await listTasksUnlockedBySection(membership.organizationId, membership.userId, sectionId).catch(() => []) : [];
   let completed = false;
   if (session?.user?.id && !quizEnabled) {
     const [done] = await db
@@ -152,6 +155,7 @@ export default async function SectionPage({
       contentLocale={certRow?.contentLocale ?? "de"}
       translationPending={certRow?.translationStatus === "running"}
       mentorAsk={mentorAsk}
+      relevance={{ examWeight: examWeight && examWeight > 0 ? Math.round(examWeight) : null, tasks: unlockTasks.map((t) => ({ title: t.title, unlocked: t.unlocked })) }}
       askConfidence={askConfidence}
       exitEnabled={Boolean(session?.user?.id) && isFeatureEnabled("exit_with_win", session!.user!.id!)}
       pretestEnabled={Boolean(session?.user?.id) && isFeatureEnabled("pretest_questions", session!.user!.id!)}

@@ -2207,6 +2207,8 @@ export const practiceTasks = pgTable(
     description: text("description"),
     /** Optional: Lernziel, dessen Wiederholungsfragen die Aufgabe prüft (PSRP-HR Phase 6, implizite Reviews). */
     objectiveId: uuid("objective_id").references(() => objectives.id, { onDelete: "set null" }),
+    /** Optional: Die Aufgabe erscheint erst, wenn die Person diese Lektion abgeschlossen hat (roadmap_motivation Phase 5). */
+    unlockSectionId: uuid("unlock_section_id").references(() => sections.id, { onDelete: "set null" }),
     createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
