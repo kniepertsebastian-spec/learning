@@ -47,6 +47,8 @@ export interface MetricReview {
   pretest?: boolean;
   /** Feature-Flag `recall_check` des Nutzers. */
   recall?: boolean;
+  /** Feature-Flag `understanding_mode` des Nutzers. */
+  understanding?: boolean;
 }
 
 export interface GroupMetrics {
@@ -199,6 +201,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       variantShown: r.variantQuestionId !== null,
       pretest: isFeatureEnabled("pretest_questions", r.userId),
       recall: isFeatureEnabled("recall_check", r.userId),
+      understanding: isFeatureEnabled("understanding_mode", r.userId),
     }));
 
   const probeRows = await db
@@ -270,5 +273,5 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     })),
     salt,
   );
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults };
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults };
 }

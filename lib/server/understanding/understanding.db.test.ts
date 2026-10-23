@@ -107,7 +107,7 @@ run("Verstehens-Modus (echte DB)", () => {
     const userId = await newUser();
     const fx = await seedFixture();
     const [item] = fx.items;
-    const [v1, v2, v3] = fx.variants.get(item)!;
+    const [v1] = fx.variants.get(item)!;
 
     await answerSession(userId, fx, [{ itemId: item, pick: "wrong", confidence: "sure" }]);
     expect(await struggleOf(userId, fx.conceptId)).toBeUndefined();
