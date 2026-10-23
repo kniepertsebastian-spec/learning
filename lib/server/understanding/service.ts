@@ -1,5 +1,5 @@
 /** Verstehens-Modus (roadmap_didaktik Phase 9): Signale sammeln, erkennen, Wiederholen pausieren, Verstehens-Aufgabe, Abschluss. */
-import { and, asc, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, ne, sql, notInArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   conceptStruggles,
@@ -65,7 +65,7 @@ async function collectSignals(userId: string, conceptItemIds: string[], now: Dat
         eq(studySessions.status, "completed"),
         gte(studySessions.completedAt, from),
         eq(studySessionItems.referenceType, "question"),
-        ne(studySessionItems.category, "understand"),
+        notInArray(studySessionItems.category, ["understand", "prereq"]),
         inArray(studySessionItems.referenceId, conceptItemIds),
         eq(studySessionItems.outcome, "incorrect"),
       ),
@@ -223,7 +223,8 @@ export async function recordUnderstandResults(results: Array<{ struggleId: strin
   for (const r of results) {
     await db
       .update(conceptStruggles)
-      .set(r.isCorrect ? { status: "resolved", resolvedAt: now, updatedAt: now } : { status: "in_progress", updatedAt: now })
+      // Die Brückenlektion wurde mit der Aufgabe gezeigt: danach wieder ganz beim Ausgangskonzept.
+      .set(r.isCorrect ? { status: "resolved", resolvedAt: now, bridgeSectionId: null, bridgeConceptId: null, updatedAt: now } : { status: "in_progress", bridgeSectionId: null, bridgeConceptId: null, updatedAt: now })
       .where(and(eq(conceptStruggles.id, r.struggleId), inArray(conceptStruggles.status, ACTIVE)));
   }
 }
@@ -236,7 +237,7 @@ export async function declineUnderstanding(sessionId: string, userId: string, no
     if (!session || (session.status !== "planned" && session.status !== "in_progress")) return 0;
     const removed = await tx
       .delete(studySessionItems)
-      .where(and(eq(studySessionItems.sessionId, sessionId), eq(studySessionItems.category, "understand"), sql`${studySessionItems.outcome} is null`))
+      .where(and(eq(studySessionItems.sessionId, sessionId), inArray(studySessionItems.category, ["understand", "prereq"]), sql`${studySessionItems.outcome} is null`))
       .returning({ struggleId: studySessionItems.conceptStruggleId });
     const ids = [...new Set(removed.map((r) => r.struggleId).filter((id): id is string => id !== null))];
     if (ids.length > 0) await tx.update(conceptStruggles).set({ status: "declined", updatedAt: now }).where(and(inArray(conceptStruggles.id, ids), eq(conceptStruggles.userId, userId)));

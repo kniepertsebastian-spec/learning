@@ -2,7 +2,7 @@
  * Häufung (roadmap_didaktik Phase 9.4): scheitern viele Lernende am selben Konzept, landet es automatisch in der Prüfliste der
  * Werkstatt (`ContentReportQueue`, Grund `concept_struggle`) - mit der am häufigsten gewählten falschen Option. Anonym: nur Zahlen.
  */
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql, notInArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   conceptStruggles,
@@ -44,7 +44,7 @@ export async function flagConceptHotspots(conceptIds: string[], config: HotspotC
         n: sql<number>`count(*)::int`,
       })
       .from(studySessionItems)
-      .where(and(inArray(studySessionItems.referenceId, itemIds), eq(studySessionItems.outcome, "incorrect"), ne(studySessionItems.category, "understand")))
+      .where(and(inArray(studySessionItems.referenceId, itemIds), eq(studySessionItems.outcome, "incorrect"), notInArray(studySessionItems.category, ["understand", "prereq"])))
       .groupBy(studySessionItems.referenceId, studySessionItems.selectedOptionId)
       .orderBy(desc(sql`count(*)`));
     const perQuestion = new Map<string, number>();

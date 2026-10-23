@@ -95,7 +95,7 @@ Quelle: `roadmap_didaktik.md`, Phase 8
 Quelle: `roadmap_didaktik.md`, Phase 9
 - [x] 3.5a Signale erkennen, `concept_struggle`, Wiederholen pausieren, häufige Verwechslung ansprechen · M
 - [x] 3.5b Alternativerklärungen je Lernziel: Generierung, Werkstatt-Freigabe, Backfill · M
-- [ ] 3.5c Voraussetzungen im Konzeptmodell (`concept_prerequisite`), Diagnosefragen, Brückenlektion · L
+- [x] 3.5c Voraussetzungen im Konzeptmodell (`concept_prerequisite`), Diagnosefragen, Brückenlektion · L
 - [x] 3.5d „Mentor fragen“ (nur durch Lernende ausgelöst), Häufung in die Werkstatt-Prüfliste · S; zusammen mit der Mentor-Brücke „Ich hänge fest“ (`roadmap_motivation.md`, Phase 9): Zusammenfassung wird vom Lernenden geprüft und bestätigt
 
 **Zuschnitt:** vier PRs in der Reihenfolge a → d → b → c. Schon 3.5a allein verhindert, dass Unverstandenes stur wiederholt wird; 3.5d ist klein und verbessert die Inhalte früh.
@@ -111,7 +111,7 @@ Quelle: `roadmap_motivation.md`, Phase 1
 Quelle: `roadmap_motivation.md`, Phase 2, 3 und 8
 - [x] 3.7a Frühwarnung für stille Abbrüche mit Deeskalation in der Planungsschicht, Flag `dropout_guard` · M
 - [x] 3.7b Notausstieg „Heute reicht's“ mit 2–3 Erfolgsaufgaben, Flag `exit_with_win` · S
-- [ ] 3.7c Leitfaden für Rückmeldungen ohne Schuldzuweisung, Texte und Prompts überarbeiten · S
+- [x] 3.7c Leitfaden für Rückmeldungen ohne Schuldzuweisung, Texte und Prompts überarbeiten · S
 
 **Abhängigkeit:** nach 3.5a (gemeinsame Signale mit dem Verstehens-Modus). 3.7c ist reine Textarbeit und kann jederzeit parallel laufen.
 

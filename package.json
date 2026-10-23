@@ -22,6 +22,7 @@
     "rationales:backfill": "tsx scripts/backfill-option-rationales.ts",
     "variants:backfill": "tsx scripts/backfill-variants.ts",
     "explanations:backfill": "tsx scripts/backfill-explanations.ts",
+    "prerequisites:backfill": "tsx scripts/backfill-prerequisites.ts",
     "exams:remind": "tsx scripts/exam-reminders.ts",
     "lessons:blocks": "tsx scripts/backfill-lesson-blocks.ts",
     "lessons:simulations": "tsx scripts/backfill-simulations.ts",

@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
+import { FEEDBACK_TONE_PROMPT } from "@/lib/server/ai/feedback-tone";
 import { generateStructured } from "@/lib/ai/generate";
 import { localizedStringSchema } from "@/lib/ai/schemas";
 import { LESSONS_MODEL } from "@/lib/claude";
@@ -63,7 +64,9 @@ const SYSTEM_PROMPT = [
   "Jede Variante: anderer Kontext oder anderes Szenario, andere Formulierung, andere plausible Distraktoren, 4 Optionen, genau eine richtig, kurze Erklärung. Zweisprachig (de/en).",
   "Die Varianten müssen sich auch untereinander deutlich unterscheiden.",
   "Eine Variante darf weder den Wortlaut der Original-Frage noch die richtige Antwort oder den Lösungsweg des Originals wörtlich enthalten.",
-  "Erfinde keine Fakten, die nicht zum geprüften Wissen passen. Antworte ausschließlich als JSON im vorgegebenen Schema.",
+  "Erfinde keine Fakten, die nicht zum geprüften Wissen passen.",
+  FEEDBACK_TONE_PROMPT,
+  "Antworte ausschließlich als JSON im vorgegebenen Schema.",
 ].join("\n");
 
 export function createVariantGenerator(client?: GoogleGenAI): VariantGenerator {

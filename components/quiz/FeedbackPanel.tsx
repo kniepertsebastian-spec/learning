@@ -28,6 +28,7 @@ export function FeedbackPanel({
   onNext,
   nextDisabled,
   rereadHref,
+  note,
 }: {
   correct: boolean;
   correctIndex: number;
@@ -44,6 +45,8 @@ export function FeedbackPanel({
   nextDisabled?: boolean;
   /** Link zur passenden Lektion, nur bei falscher Antwort gezeigt. */
   rereadHref?: string | null;
+  /** Echte Plattformstatistik (nur mit Datenbasis), freundlich und ohne Wertung. */
+  note?: string | null;
 }) {
   const { t, locale } = useLocale();
   const given = (rationales ?? []).some((r, i) => r && i !== correctIndex);
@@ -67,6 +70,7 @@ export function FeedbackPanel({
         </p>
         {confidenceLabel && <p className="text-xs text-subtle">{fmt(t.quiz.yourConfidence, { c: confidenceLabel })}</p>}
       </div>
+      {!correct && note && <p className="mt-2 text-xs text-subtle" data-testid="platform-note">{note}</p>}
 
       <div className="mt-3 text-[15px] leading-[1.65] text-foreground">
         <RichText text={explanation} />

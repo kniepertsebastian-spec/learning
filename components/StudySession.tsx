@@ -29,11 +29,11 @@ import { fmt } from "@/lib/quiz/keys";
 
 interface SessionQuestionItem {
   itemId: string;
-  category: "review" | "weak" | "new" | "recall" | "understand" | "win";
+  category: "review" | "weak" | "new" | "recall" | "understand" | "win" | "prereq";
   /** Nur bei category = recall (online): die Lektion, auf die sich der Rückblick bezieht. */
   recall?: { sectionId: string; lessonTitle: { de: string; en: string } };
   /** Nur bei category = understand (online): das Konzept und die häufige Verwechslung. */
-  understand?: { conceptStruggleId: string; conceptName: string; confusion: { optionText: { de: string; en: string }; rationale: { de: string; en: string } | null } | null; explanation?: { kind: "worked_example" | "analogy" | "example"; content: { de: string; en: string } } | null };
+  understand?: { conceptStruggleId: string; conceptName: string; confusion: { optionText: { de: string; en: string }; rationale: { de: string; en: string } | null } | null; explanation?: { kind: "worked_example" | "analogy" | "example"; content: { de: string; en: string } } | null; bridge?: { conceptName: string; sectionId: string; title: { de: string; en: string } } | null };
   questionId: string;
   question: { de: string; en: string };
   /** isCorrect ist nur im Offline-Paket gesetzt (siehe offline-Prop unten) -
@@ -62,6 +62,7 @@ interface QuestionReveal {
   rationales: Record<string, { de: string; en: string }>;
   sourceReference: string | null;
   reviewSectionId: string | null;
+  platformNote?: { de: string; en: string } | null;
 }
 
 interface StudySessionProps {
@@ -349,6 +350,9 @@ export function StudySession({
           offlineNote={Boolean(offline)}
           actions={[{ href: exitHref, label: t.quiz.backToCourse, primary: true }]}
         >
+          {questionItems.some((q) => q.category === "prereq") && (
+            <p className="text-left text-sm" role="status" data-testid="prereq-result">{t.quiz.prereqResult}</p>
+          )}
           {questionItems.every((q) => q.category === "win") && (
             <p className="text-left text-sm" role="status" data-testid="win-result">{fmt(t.quiz.winResult, { a: correctCount, b: result.results.length })}</p>
           )}
@@ -423,6 +427,15 @@ export function StudySession({
           )}
         </Card>
       )}
+      {item.category === "prereq" && item.understand && (currentIndex === 0 || questionItems[currentIndex - 1].category !== "prereq") && (
+        <Card variant="inset" className="mb-4" data-testid="prereq-intro">
+          <p className="text-sm font-semibold">{fmt(t.quiz.prereqTitle, { concept: item.understand.conceptName })}</p>
+          <p className="mt-1 text-xs text-subtle">{t.quiz.prereqHint}</p>
+          {!offline && answers.every((a) => a === null) && (
+            <Button className="mt-3" variant="ghost" size="sm" onClick={() => void declineUnderstand()} disabled={decliningUnderstand} data-testid="prereq-decline">{t.quiz.understandDecline}</Button>
+          )}
+        </Card>
+      )}
       {item.category === "understand" && item.understand && (
         <Card variant="inset" className="mb-4" data-testid="understand-intro">
           <p className="text-sm font-semibold">{fmt(t.quiz.understandTitle, { concept: item.understand.conceptName })}</p>
@@ -431,6 +444,12 @@ export function StudySession({
             <p className="mt-2 text-xs" data-testid="understand-confusion">
               {fmt(t.quiz.understandConfusion, { option: item.understand.confusion.optionText[locale] })}
               {item.understand.confusion.rationale ? ` ${item.understand.confusion.rationale[locale]}` : ""}
+            </p>
+          )}
+          {item.understand.bridge && !offline && (
+            <p className="mt-3 text-sm" data-testid="understand-bridge">
+              {fmt(t.quiz.bridgeHint, { concept: item.understand.bridge.conceptName })}{" "}
+              <Link href={`/cert/${certSlug}/section/${item.understand.bridge.sectionId}`} className="text-link hover:underline">{fmt(t.quiz.bridgeRead, { lesson: item.understand.bridge.title[locale] })}</Link>
             </p>
           )}
           {item.understand.explanation && (
@@ -446,8 +465,8 @@ export function StudySession({
         </Card>
       )}
       <div className="mb-3">
-        <Badge tone={item.category === "weak" ? "warning" : item.category === "review" || item.category === "recall" || item.category === "understand" || item.category === "win" ? "info" : "accent"}>
-          {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : item.category === "recall" ? t.quiz.categoryRecall : item.category === "understand" ? t.quiz.categoryUnderstand : item.category === "win" ? t.quiz.categoryWin : t.quiz.categoryNew}
+        <Badge tone={item.category === "weak" ? "warning" : item.category === "review" || item.category === "recall" || item.category === "understand" || item.category === "win" || item.category === "prereq" ? "info" : "accent"}>
+          {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : item.category === "recall" ? t.quiz.categoryRecall : item.category === "understand" ? t.quiz.categoryUnderstand : item.category === "win" ? t.quiz.categoryWin : item.category === "prereq" ? t.quiz.categoryPrereq : t.quiz.categoryNew}
         </Badge>
       </div>
       <QuestionBody
@@ -487,6 +506,7 @@ export function StudySession({
             confidence={confidences[currentIndex]}
             sourceReference={reveal.sourceReference}
             questionId={item.questionId}
+            note={reveal.platformNote?.[locale] ?? null}
             rereadHref={reveal.reviewSectionId ? `/cert/${certSlug}/section/${reveal.reviewSectionId}` : null}
             nextLabel={isLast ? t.quiz.finish : t.quiz.nextShort}
             onNext={isLast ? () => void handleSubmit() : () => setCurrentIndex((i) => i + 1)}

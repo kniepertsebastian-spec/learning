@@ -42,7 +42,7 @@ describe("QuestionNavigator", () => {
     expect(exam).toContain('data-flagged="true"');
     const practice = wrap(<QuestionNavigator mode="practice" states={["correct", "wrong"]} currentIndex={0} flagged={new Set()} onJump={() => {}} />);
     expect(practice).toContain("Richtig");
-    expect(practice).toContain("Falsch");
+    expect(practice).toContain("Noch nicht");
     expect(practice).not.toContain("kein Sofort-Feedback");
   });
 });

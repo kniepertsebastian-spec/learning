@@ -23,6 +23,9 @@ import {
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
+import { loadBridges, planPrereqCheck, recordPrereqResults } from "@/lib/server/prerequisites/service";
+import { platformStatText } from "@/lib/feedback/platform-stat";
+import { firstTryStats } from "@/lib/server/stats/first-try";
 import { approvedExplanationForQuestion } from "@/lib/server/explanations/service";
 import { createWinSession, planWinItems, recordExit } from "@/lib/server/exit/service";
 import { afterDeescalatedSession, declineDeescalation, orderEasiestFirst, refreshEngagement } from "@/lib/server/engagement/service";
@@ -235,6 +238,8 @@ export interface StudySessionItemContent {
     confusion: { optionText: Localized<string>; rationale: Localized<string> | null } | null;
     /** Freigegebene Alternativerklärung zum Lernziel (nie live erzeugt), falls vorhanden. */
     explanation: { kind: "worked_example" | "analogy" | "example"; content: Localized<string> } | null;
+    /** Schwache Voraussetzung aus dem Grundlagen-Check: zuerst diese Lektion lesen, dann zurück zum Konzept. */
+    bridge: { conceptName: string; sectionId: string; title: Localized<string> } | null;
   };
   /** Nur bei category = recall: die Lektion, auf die sich der Rückblick bezieht. */
   recall?: {
@@ -331,7 +336,8 @@ export async function getStudySessionWithContent(
       explanationByStruggle.set(item.conceptStruggleId, await approvedExplanationForQuestion(item.variantQuestionId ?? item.referenceId, status).catch(() => null));
     }
   }
-  const struggleById = new Map(await Promise.all(struggleRows.map(async (r) => [r.id, { name: r.name, confusion: await loadConfusion(r.signals), explanation: explanationByStruggle.get(r.id) ?? null }] as const)));
+  const bridgeByStruggle = await loadBridges(struggleRows.map((r) => r.id));
+  const struggleById = new Map(await Promise.all(struggleRows.map(async (r) => [r.id, { name: r.name, confusion: await loadConfusion(r.signals), explanation: explanationByStruggle.get(r.id) ?? null, bridge: bridgeByStruggle.get(r.id) ?? null }] as const)));
 
   const items: StudySessionItemContent[] = [];
   for (const item of itemRows) {
@@ -348,7 +354,7 @@ export async function getStudySessionWithContent(
         outcome: item.outcome,
         question: { questionId: q.id, question: q.question, options },
         ...(item.conceptStruggleId && struggleById.has(item.conceptStruggleId)
-          ? { understand: { conceptStruggleId: item.conceptStruggleId, conceptName: struggleById.get(item.conceptStruggleId)!.name, confusion: struggleById.get(item.conceptStruggleId)!.confusion, explanation: struggleById.get(item.conceptStruggleId)!.explanation } }
+          ? { understand: { conceptStruggleId: item.conceptStruggleId, conceptName: struggleById.get(item.conceptStruggleId)!.name, confusion: struggleById.get(item.conceptStruggleId)!.confusion, explanation: struggleById.get(item.conceptStruggleId)!.explanation, bridge: struggleById.get(item.conceptStruggleId)!.bridge } }
           : {}),
         ...(item.recallCheckId && recallById.has(item.recallCheckId)
           ? { recall: { recallCheckId: item.recallCheckId, sectionId: recallById.get(item.recallCheckId)!.sectionId, lessonTitle: recallById.get(item.recallCheckId)!.title } }
@@ -578,19 +584,31 @@ async function buildAndPersistSession(
     }
   }
 
-  // Verstehens-Modus: eine Verstehens-Aufgabe (neue Variante) für das am längsten offene Konzept, nach dem Rückblick.
-  let understandItems: Array<{ referenceId: string; variantQuestionId: string; conceptStruggleId: string }> = [];
+  // Verstehens-Modus nach dem Rückblick: zuerst (einmal je Konzept) der Grundlagen-Check zu den freigegebenen Voraussetzungen,
+  // sonst eine Verstehens-Aufgabe (neue Variante) für das am längsten offene Konzept.
+  let understandItems: Array<{ referenceId: string; variantQuestionId: string | null; conceptStruggleId: string; category: "understand" | "prereq" }> = [];
   if (understandingOn) {
-    const task = await planUnderstandTask(userId, certificationId).catch((error) => {
-      console.error("Verstehens-Aufgabe konnte nicht geplant werden:", error);
+    const prereq = await planPrereqCheck(userId, certificationId, now).catch((error) => {
+      console.error("Grundlagen-Check konnte nicht geplant werden:", error);
       return null;
     });
-    if (task && !recallItems.some((r) => r.referenceId === task.itemId)) {
-      understandItems = [{ referenceId: task.itemId, variantQuestionId: task.variantQuestionId, conceptStruggleId: task.struggleId }];
-      // Das Item selbst kommt nicht zusätzlich regulär dran; sonst eine reguläre Frage weniger (zählt zum Zeitbudget).
-      let toTrim = 1;
+    const task = prereq
+      ? null
+      : await planUnderstandTask(userId, certificationId).catch((error) => {
+          console.error("Verstehens-Aufgabe konnte nicht geplant werden:", error);
+          return null;
+        });
+    const planned: typeof understandItems = prereq
+      ? prereq.items.filter((i) => !recallItems.some((r) => r.referenceId === i.itemId)).map((i) => ({ referenceId: i.itemId, variantQuestionId: null, conceptStruggleId: prereq.struggleId, category: "prereq" as const }))
+      : task && !recallItems.some((r) => r.referenceId === task.itemId)
+        ? [{ referenceId: task.itemId, variantQuestionId: task.variantQuestionId, conceptStruggleId: task.struggleId, category: "understand" as const }]
+        : [];
+    if (planned.length > 0) {
+      understandItems = planned;
+      // Diese Items kommen nicht zusätzlich regulär dran; sonst reguläre Fragen weniger (zählt zum Zeitbudget).
+      let toTrim = planned.length;
       for (let i = items.length - 1; i >= 0; i--) {
-        if (items[i].referenceType === "question" && items[i].referenceId === task.itemId) {
+        if (items[i].referenceType === "question" && planned.some((p) => p.referenceId === items[i].referenceId)) {
           items.splice(i, 1);
           toTrim--;
         }
@@ -609,7 +627,7 @@ async function buildAndPersistSession(
       understandItems.map((item, index) => ({
         sessionId: session.id,
         orderNum: recallItems.length + index + 1,
-        category: "understand" as const,
+        category: item.category,
         referenceType: "question" as const,
         referenceId: item.referenceId,
         variantQuestionId: item.variantQuestionId,
@@ -829,7 +847,16 @@ export async function completeStudySession(
       })),
       { sessionId },
     );
-    await recordUnderstandResults(results.flatMap((r) => (understandByItemId.has(r.itemId) ? [{ struggleId: understandByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
+    await recordUnderstandResults(results.flatMap((r) => (itemById.get(r.itemId)?.category === "understand" && understandByItemId.has(r.itemId) ? [{ struggleId: understandByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
+    // Grundlagen-Check: je Konzept im Verstehens-Modus auswerten (schwache Voraussetzung → Brückenlektion), kein FSRS-Review
+    const prereqResults = new Map<string, Array<{ questionId: string; isCorrect: boolean }>>();
+    for (const r of results) {
+      if (itemById.get(r.itemId)?.category === "prereq" && understandByItemId.has(r.itemId)) {
+        const struggleId = understandByItemId.get(r.itemId)!;
+        prereqResults.set(struggleId, [...(prereqResults.get(struggleId) ?? []), { questionId: r.questionId, isCorrect: r.isCorrect }]);
+      }
+    }
+    for (const [struggleId, list] of prereqResults) await recordPrereqResults(struggleId, list).catch((error) => console.error("Grundlagen-Check (Auswertung) fehlgeschlagen:", error));
     await recordRecallResults(results.flatMap((r) => (recallByItemId.has(r.itemId) ? [{ recallCheckId: recallByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
     // Auffällige Varianten in die Prüfliste legen (best effort, blockiert die Auswertung nie).
     await flagOutlierVariants(results.map((r) => r.questionId)).catch((error) => console.error("Varianten-Prüfung fehlgeschlagen:", error));
@@ -854,6 +881,8 @@ export async function completeStudySession(
 export interface StudySessionRevealResult extends AnswerReveal {
   /** Lektion zum Nachlesen (erste Section des Lernziels der Frage), falls vorhanden. */
   reviewSectionId: string | null;
+  /** Echte Plattformstatistik („x von 10 lösen das nicht gleich“) nur bei nicht gelöster Frage und ausreichender Datenbasis, sonst null. */
+  platformNote: Localized<string> | null;
 }
 
 /**
@@ -906,9 +935,14 @@ export async function revealStudySessionAnswer(
     .orderBy(asc(sections.orderNum))
     .limit(1);
 
+  const reveal = buildAnswerReveal(question, optionRows, selectedOptionId);
+  const stats = reveal.isCorrect ? null : await firstTryStats(item.referenceId).catch(() => null);
+  const de = platformStatText(stats, "de");
+  const en = platformStatText(stats, "en");
   return {
-    ...buildAnswerReveal(question, optionRows, selectedOptionId),
+    ...reveal,
     reviewSectionId: section?.id ?? null,
+    platformNote: de && en ? { de, en } : null,
   };
 }
 
@@ -1060,7 +1094,7 @@ export async function getSessionCategoryBreakdown(
     .where(eq(studySessionItems.sessionId, sessionId))
     .groupBy(studySessionItems.category);
 
-  const breakdown: Record<StudySessionItemCategory, number> = { review: 0, weak: 0, new: 0, lesson: 0, recall: 0, understand: 0, win: 0 };
+  const breakdown: Record<StudySessionItemCategory, number> = { review: 0, weak: 0, new: 0, lesson: 0, recall: 0, understand: 0, win: 0, prereq: 0 };
   for (const row of rows) breakdown[row.category] = row.count;
   return breakdown;
 }

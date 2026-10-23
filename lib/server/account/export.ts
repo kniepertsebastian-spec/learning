@@ -115,6 +115,7 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "mandatory_rules.created_by_user_id": "Die Regel gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "onboarding_plans.mentor_user_id": "Zuordnung der Firma (wer einen Plan begleitet), nicht persönliche Lerndaten; bei Löschung anonymisiert (SET NULL)",
   "onboarding_plans.created_by_user_id": "Der Plan gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
+  "concept_prerequisite.reviewed_by_user_id": "Der Inhalt gehört dem Kurs (Werkstatt-Freigabe durch Admins), keine persönlichen Lerndaten; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "objective_explanation.reviewed_by_user_id": "Der Inhalt gehört dem Kurs (Werkstatt-Freigabe durch Admins), keine persönlichen Lerndaten; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "mentor_requests.mentor_user_id": "Betrifft die fragende Person (steht in deren Export); der Verweis auf den Mentor wird bei Löschung anonymisiert (SET NULL)",
   "mentor_requests.answered_by_user_id": "Betrifft die fragende Person (steht in deren Export); der Verweis auf die antwortende Person wird bei Löschung anonymisiert (SET NULL)",

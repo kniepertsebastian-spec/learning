@@ -752,7 +752,7 @@ export const studySessions = pgTable(
  * zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen"). */
 /** `recall`: Rückblick auf eine kürzlich gelernte Lektion am Session-Anfang (roadmap_didaktik Phase 8). */
 /** `understand`: Verstehens-Aufgabe (neue Variante) für ein Konzept im Verstehens-Modus (roadmap_didaktik Phase 9). */
-export type StudySessionItemCategory = "review" | "weak" | "new" | "lesson" | "recall" | "understand" | "win";
+export type StudySessionItemCategory = "review" | "weak" | "new" | "lesson" | "recall" | "understand" | "win" | "prereq";
 
 /**
  * R2.3: eine einzelne Position innerhalb einer study_sessions-Zeile.
@@ -819,6 +819,11 @@ export const conceptStruggles = pgTable(
     signals: jsonb("signals").$type<StruggleSignal[]>().notNull().default(sql`'[]'::jsonb`),
     detectedAt: timestamp("detected_at", { withTimezone: true }).notNull().defaultNow(),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    /** Grundlagen-Check (Voraussetzungen) war schon dran. */
+    prereqCheckedAt: timestamp("prereq_checked_at", { withTimezone: true }),
+    /** Schwache Voraussetzung: Brückenlektion (Lektion zum Konzept), die vor der Verstehens-Aufgabe gezeigt wird. */
+    bridgeSectionId: uuid("bridge_section_id").references(() => sections.id, { onDelete: "set null" }),
+    bridgeConceptId: uuid("bridge_concept_id").references(() => concepts.id, { onDelete: "set null" }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -2835,6 +2840,35 @@ export const concepts = pgTable(
     name: text("name").notNull(),
   },
   (table) => [unique("concept_course_name_unique").on(table.courseId, table.name)],
+);
+
+export type PrerequisiteStatus = "draft" | "approved" | "rejected";
+
+/**
+ * Voraussetzungen im Konzeptmodell (roadmap_didaktik 9.3): `concept` setzt `requires` voraus. Per KI als `draft` vorgeschlagen, erst
+ * nach Freigabe in der Werkstatt (`approved`) wirksam. Gleicher Kurs, keine Zyklen (App-seitig geprüft).
+ */
+export const conceptPrerequisites = pgTable(
+  "concept_prerequisite",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conceptId: uuid("concept_id")
+      .notNull()
+      .references(() => concepts.id, { onDelete: "cascade" }),
+    requiresConceptId: uuid("requires_concept_id")
+      .notNull()
+      .references(() => concepts.id, { onDelete: "cascade" }),
+    status: text("status").$type<PrerequisiteStatus>().notNull().default("draft"),
+    reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("concept_prerequisite_pair_unique").on(table.conceptId, table.requiresConceptId),
+    index("concept_prerequisite_requires_idx").on(table.requiresConceptId),
+    check("concept_prerequisite_not_self_check", sql`${table.conceptId} <> ${table.requiresConceptId}`),
+    check("concept_prerequisite_status_check", sql`${table.status} in ('draft', 'approved', 'rejected')`),
+  ],
 );
 
 export const itemConcepts = pgTable(
