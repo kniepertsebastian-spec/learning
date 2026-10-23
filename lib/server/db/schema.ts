@@ -114,7 +114,7 @@ export const users = pgTable(
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     /** UI U8: Opt-out für E-Mail-Erinnerungen des Prüfungsplaners. */
     examRemindersOptOut: boolean("exam_reminders_opt_out").notNull().default(false),
-    /** PSRP-HR (roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
+    /** PSRP-HR (docs/roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
     ageRange: text("age_range").$type<AgeRange>(),
     /** IANA-Zeitzone für die lokale Tageszeit (Chronotyp) und Tagesgrenzen der Planung. */
     timezone: text("timezone").notNull().default("Europe/Berlin"),
@@ -2673,7 +2673,7 @@ export const careerSuggestions = pgTable("career_suggestions", {
 });
 
 // ---------------------------------------------------------------------------
-// PSRP-HR (roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
+// PSRP-HR (docs/roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
 // Engine und Kalibrierung. „Item“ der Roadmap = Frage (`questions`), „Kurs“ =
 // Zertifizierung (`certifications`), `course_enrollment` = `study_profiles`
 // (dort liegen Prüfungsdatum und leichte Tage bereits je Nutzer und Kurs).
