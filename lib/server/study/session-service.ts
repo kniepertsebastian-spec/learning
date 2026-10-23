@@ -23,6 +23,7 @@ import {
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
+import { planWinItems } from "@/lib/server/exit/service";
 import { afterDeescalatedSession, declineDeescalation, orderEasiestFirst, refreshEngagement } from "@/lib/server/engagement/service";
 import { DEFAULT_ENGAGEMENT_CONFIG } from "@/lib/server/engagement/rules";
 import { createRecallCheck, planRecallCheck, recordRecallResults } from "@/lib/server/recall/service";
@@ -903,6 +904,36 @@ export async function revealStudySessionAnswer(
 
 /** R2.4: "Heute aussetzen" - beendet die Session ohne sie als erledigt zu
  * zählen (zählt entsprechend NICHT in die Lernserie, siehe computeStreak()). */
+export interface StudySessionExitResult extends StudySessionAttemptResult {
+  /** Es wurde eine Mini-Session mit Erfolgsaufgaben angelegt. */
+  winSession: boolean;
+}
+
+/**
+ * Notausstieg „Heute reicht's“ (Flag exit_with_win): beendet die Session mit den bisher gegebenen Antworten. Unbeantwortete Aufgaben
+ * bekommen kein Rating und bleiben fällig. Danach höchstens drei Erfolgsaufgaben (sehr wahrscheinlich gekonnt, ohnehin bald fällig)
+ * als kurze Folge-Session. Der Notausstieg zählt als Signal für die Frühwarnung.
+ */
+export async function exitStudySession(sessionId: string, userId: string, answers: StudySessionAnswerInput[]): Promise<StudySessionExitResult> {
+  const db = getDb();
+  const [session] = await db.select().from(studySessions).where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId))).limit(1);
+  if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
+  const answered = answers.filter((a) => a.selectedOptionId);
+  const items = await db.select({ referenceId: studySessionItems.referenceId }).from(studySessionItems).where(eq(studySessionItems.sessionId, sessionId));
+  const result = await completeStudySession(sessionId, userId, answered);
+  await db.update(studySessions).set({ exitedAt: new Date() }).where(eq(studySessions.id, sessionId));
+  const winIds = await planWinItems(userId, session.certificationId, items.map((i) => i.referenceId)).catch(() => [] as string[]);
+  if (winIds.length === 0) return { ...result, winSession: false };
+  const [win] = await db
+    .insert(studySessions)
+    .values({ userId, certificationId: session.certificationId, status: "planned", goalType: "questions", goalValue: winIds.length, energyLevel: session.energyLevel })
+    .returning();
+  await db.insert(studySessionItems).values(
+    winIds.map((id, index) => ({ sessionId: win.id, orderNum: index + 1, category: "win" as const, referenceType: "question" as const, referenceId: id })),
+  );
+  return { ...result, winSession: true };
+}
+
 /**
  * „Nein danke, normal weiter“ bei einer entlasteten Session: Entlastung beenden (mit Wartezeit gegen sofortiges Neuauslösen) und die
  * noch unbeantwortete Session mit demselben Ziel normal neu bauen. Gibt die neue Session zurück, sonst null.
@@ -1025,7 +1056,7 @@ export async function getSessionCategoryBreakdown(
     .where(eq(studySessionItems.sessionId, sessionId))
     .groupBy(studySessionItems.category);
 
-  const breakdown: Record<StudySessionItemCategory, number> = { review: 0, weak: 0, new: 0, lesson: 0, recall: 0, understand: 0 };
+  const breakdown: Record<StudySessionItemCategory, number> = { review: 0, weak: 0, new: 0, lesson: 0, recall: 0, understand: 0, win: 0 };
   for (const row of rows) breakdown[row.category] = row.count;
   return breakdown;
 }

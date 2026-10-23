@@ -51,6 +51,8 @@ export interface MetricReview {
   understanding?: boolean;
   /** Feature-Flag `dropout_guard` des Nutzers. */
   dropoutGuard?: boolean;
+  /** Feature-Flag `exit_with_win` des Nutzers. */
+  exitWithWin?: boolean;
 }
 
 export interface GroupMetrics {
@@ -205,6 +207,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       recall: isFeatureEnabled("recall_check", r.userId),
       understanding: isFeatureEnabled("understanding_mode", r.userId),
       dropoutGuard: isFeatureEnabled("dropout_guard", r.userId),
+      exitWithWin: isFeatureEnabled("exit_with_win", r.userId),
     }));
 
   const probeRows = await db
@@ -276,5 +279,5 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     })),
     salt,
   );
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults };
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults };
 }

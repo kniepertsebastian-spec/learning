@@ -724,6 +724,8 @@ export const studySessions = pgTable(
     isComeback: boolean("is_comeback").notNull().default(false),
     /** Frühwarnung (Flag dropout_guard): ob diese Session in der Planungsschicht entlastet wurde (Snapshot wie isComeback). */
     deescalated: boolean("deescalated").notNull().default(false),
+    /** Notausstieg „Heute reicht's“ (Flag exit_with_win): Zeitpunkt, an dem die Session vorzeitig beendet wurde (Signal für die Frühwarnung). */
+    exitedAt: timestamp("exited_at", { withTimezone: true }),
     plannedAt: timestamp("planned_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -750,7 +752,7 @@ export const studySessions = pgTable(
  * zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen"). */
 /** `recall`: Rückblick auf eine kürzlich gelernte Lektion am Session-Anfang (roadmap_didaktik Phase 8). */
 /** `understand`: Verstehens-Aufgabe (neue Variante) für ein Konzept im Verstehens-Modus (roadmap_didaktik Phase 9). */
-export type StudySessionItemCategory = "review" | "weak" | "new" | "lesson" | "recall" | "understand";
+export type StudySessionItemCategory = "review" | "weak" | "new" | "lesson" | "recall" | "understand" | "win";
 
 /**
  * R2.3: eine einzelne Position innerhalb einer study_sessions-Zeile.

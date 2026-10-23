@@ -27,7 +27,7 @@ import { fmt } from "@/lib/quiz/keys";
 
 interface SessionQuestionItem {
   itemId: string;
-  category: "review" | "weak" | "new" | "recall" | "understand";
+  category: "review" | "weak" | "new" | "recall" | "understand" | "win";
   /** Nur bei category = recall (online): die Lektion, auf die sich der Rückblick bezieht. */
   recall?: { sectionId: string; lessonTitle: { de: string; en: string } };
   /** Nur bei category = understand (online): das Konzept und die häufige Verwechslung. */
@@ -76,6 +76,8 @@ interface StudySessionProps {
   practice?: { sectionId: string; title: { de: string; en: string }; content: { de: string; en: string }; simIndex: number } | null;
   /** Frühwarnung (Flag dropout_guard): die Session wurde entlastet, mit „Nein danke“ zum normalen Umfang (nur online). */
   deescalated?: boolean;
+  /** Notausstieg „Heute reicht's“ (Flag exit_with_win, nur online). */
+  exitEnabled?: boolean;
 }
 
 
@@ -94,6 +96,7 @@ export function StudySession({
   offline,
   practice,
   deescalated,
+  exitEnabled,
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
@@ -193,6 +196,34 @@ export function StudySession({
     }
   }
 
+  const [exitState, setExitState] = useState<{ winSession: boolean } | null>(null);
+  const [exiting, setExiting] = useState(false);
+  async function exitToday() {
+    if (exiting || result || exitState) return;
+    setExiting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/study-sessions/${sessionId}/exit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Nur beantwortete Aufgaben: die übrigen bekommen kein Rating und bleiben fällig.
+        body: JSON.stringify({
+          answers: questionItems.flatMap((q, i) => (answers[i] ? [{ itemId: q.itemId, selectedOptionId: answers[i], confidence: confidences[i] ?? undefined }] : [])),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || (locale === "de" ? "Das hat nicht geklappt." : "That did not work."));
+      } else {
+        setExitState({ winSession: Boolean(data.winSession) });
+      }
+    } catch {
+      setError(locale === "de" ? "Das hat nicht geklappt." : "That did not work.");
+    } finally {
+      setExiting(false);
+    }
+  }
+
   async function handleSubmit() {
     if (submitting || result) return;
     setSubmitting(true);
@@ -287,6 +318,25 @@ export function StudySession({
     );
   }
 
+  if (exitState) {
+    return (
+      <FocusFrame exitHref={exitHref} confirmLeave={false} contextLabel={t.quiz.session} mode="practice" segments={[]} counterText="">
+        <ResultSummary
+          score={100}
+          headline={t.quiz.exitHeadline}
+          offlineNote={false}
+          actions={
+            exitState.winSession
+              ? [{ href: `/cert/${certSlug}/session`, label: t.quiz.exitWinStart, primary: true }, { href: exitHref, label: t.quiz.backToCourse }]
+              : [{ href: exitHref, label: t.quiz.backToCourse, primary: true }]
+          }
+        >
+          <p className="text-left text-sm" role="status" data-testid="exit-result">{exitState.winSession ? t.quiz.exitWinHint : t.quiz.exitDoneHint}</p>
+        </ResultSummary>
+      </FocusFrame>
+    );
+  }
+
   if (result) {
     const correctCount = result.results.filter((r) => r.isCorrect).length;
     // Rückblick: freundlich zusammengefasst ("2 von 3 sitzen schon"), mit Link zur Lektion bei Fehlern.
@@ -310,6 +360,9 @@ export function StudySession({
           offlineNote={Boolean(offline)}
           actions={[{ href: exitHref, label: t.quiz.backToCourse, primary: true }]}
         >
+          {questionItems.every((q) => q.category === "win") && (
+            <p className="text-left text-sm" role="status" data-testid="win-result">{fmt(t.quiz.winResult, { a: correctCount, b: result.results.length })}</p>
+          )}
           {understandItem?.understand && (
             <p className="text-left text-sm" role="status" data-testid="understand-result">
               {fmt(understandCorrect ? t.quiz.understandResultOk : t.quiz.understandResultAgain, { concept: understandItem.understand.conceptName })}
@@ -397,8 +450,8 @@ export function StudySession({
         </Card>
       )}
       <div className="mb-3">
-        <Badge tone={item.category === "weak" ? "warning" : item.category === "review" || item.category === "recall" || item.category === "understand" ? "info" : "accent"}>
-          {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : item.category === "recall" ? t.quiz.categoryRecall : item.category === "understand" ? t.quiz.categoryUnderstand : t.quiz.categoryNew}
+        <Badge tone={item.category === "weak" ? "warning" : item.category === "review" || item.category === "recall" || item.category === "understand" || item.category === "win" ? "info" : "accent"}>
+          {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : item.category === "recall" ? t.quiz.categoryRecall : item.category === "understand" ? t.quiz.categoryUnderstand : item.category === "win" ? t.quiz.categoryWin : t.quiz.categoryNew}
         </Badge>
       </div>
       <QuestionBody
@@ -470,6 +523,12 @@ export function StudySession({
       </div>
 
       {error && <p role="alert" className="mt-3 text-sm text-danger-text">{error}</p>}
+
+      {exitEnabled && !offline && item.category !== "win" && (
+        <div className="mt-4">
+          <Button variant="ghost" size="sm" onClick={() => void exitToday()} disabled={exiting || submitting} data-testid="exit-today">{t.quiz.exitToday}</Button>
+        </div>
+      )}
 
       <label className="mt-6 flex items-start gap-2 text-xs text-subtle" title={t.quiz.feedbackAtEndHint}>
         <input

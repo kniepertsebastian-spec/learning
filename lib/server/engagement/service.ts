@@ -14,7 +14,7 @@ export async function collectEngagementFacts(userId: string, now: Date, config: 
   const since = new Date(now.getTime() - config.windowDays * DAY_MS);
   const [sessions, window, baseline, checkins] = await Promise.all([
     db
-      .select({ status: studySessions.status, plannedAt: studySessions.plannedAt, startedAt: studySessions.startedAt, completedAt: studySessions.completedAt })
+      .select({ status: studySessions.status, plannedAt: studySessions.plannedAt, startedAt: studySessions.startedAt, completedAt: studySessions.completedAt, exitedAt: studySessions.exitedAt })
       .from(studySessions)
       .where(and(eq(studySessions.userId, userId), gte(studySessions.plannedAt, since))),
     db
@@ -34,7 +34,7 @@ export async function collectEngagementFacts(userId: string, now: Date, config: 
       .orderBy(desc(sessionCheckins.timestamp))
       .limit(CHECKIN_LIMIT),
   ]);
-  return { sessions, window, baseline, checkinsSkipped: checkins.map((c) => c.imputed), exits: 0 };
+  return { sessions, window, baseline, checkinsSkipped: checkins.map((c) => c.imputed), exits: sessions.filter((s) => s.exitedAt !== null).length };
 }
 
 /**
