@@ -23,6 +23,7 @@ import {
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
+import { approvedExplanationForQuestion } from "@/lib/server/explanations/service";
 import { createWinSession, planWinItems, recordExit } from "@/lib/server/exit/service";
 import { afterDeescalatedSession, declineDeescalation, orderEasiestFirst, refreshEngagement } from "@/lib/server/engagement/service";
 import { DEFAULT_ENGAGEMENT_CONFIG } from "@/lib/server/engagement/rules";
@@ -232,6 +233,8 @@ export interface StudySessionItemContent {
     conceptStruggleId: string;
     conceptName: string;
     confusion: { optionText: Localized<string>; rationale: Localized<string> | null } | null;
+    /** Freigegebene Alternativerklärung zum Lernziel (nie live erzeugt), falls vorhanden. */
+    explanation: { kind: "worked_example" | "analogy" | "example"; content: Localized<string> } | null;
   };
   /** Nur bei category = recall: die Lektion, auf die sich der Rückblick bezieht. */
   recall?: {
@@ -316,12 +319,19 @@ export async function getStudySessionWithContent(
   const struggleRows =
     struggleIds.length > 0
       ? await db
-          .select({ id: conceptStruggles.id, name: concepts.name, signals: conceptStruggles.signals })
+          .select({ id: conceptStruggles.id, name: concepts.name, signals: conceptStruggles.signals, status: conceptStruggles.status })
           .from(conceptStruggles)
           .innerJoin(concepts, eq(concepts.id, conceptStruggles.conceptId))
           .where(inArray(conceptStruggles.id, struggleIds))
       : [];
-  const struggleById = new Map(await Promise.all(struggleRows.map(async (r) => [r.id, { name: r.name, confusion: await loadConfusion(r.signals) }] as const)));
+  const explanationByStruggle = new Map<string, Awaited<ReturnType<typeof approvedExplanationForQuestion>>>();
+  for (const item of itemRows) {
+    if (item.conceptStruggleId && !explanationByStruggle.has(item.conceptStruggleId)) {
+      const status = struggleRows.find((r) => r.id === item.conceptStruggleId)?.status ?? "detected";
+      explanationByStruggle.set(item.conceptStruggleId, await approvedExplanationForQuestion(item.variantQuestionId ?? item.referenceId, status).catch(() => null));
+    }
+  }
+  const struggleById = new Map(await Promise.all(struggleRows.map(async (r) => [r.id, { name: r.name, confusion: await loadConfusion(r.signals), explanation: explanationByStruggle.get(r.id) ?? null }] as const)));
 
   const items: StudySessionItemContent[] = [];
   for (const item of itemRows) {
@@ -338,7 +348,7 @@ export async function getStudySessionWithContent(
         outcome: item.outcome,
         question: { questionId: q.id, question: q.question, options },
         ...(item.conceptStruggleId && struggleById.has(item.conceptStruggleId)
-          ? { understand: { conceptStruggleId: item.conceptStruggleId, conceptName: struggleById.get(item.conceptStruggleId)!.name, confusion: struggleById.get(item.conceptStruggleId)!.confusion } }
+          ? { understand: { conceptStruggleId: item.conceptStruggleId, conceptName: struggleById.get(item.conceptStruggleId)!.name, confusion: struggleById.get(item.conceptStruggleId)!.confusion, explanation: struggleById.get(item.conceptStruggleId)!.explanation } }
           : {}),
         ...(item.recallCheckId && recallById.has(item.recallCheckId)
           ? { recall: { recallCheckId: item.recallCheckId, sectionId: recallById.get(item.recallCheckId)!.sectionId, lessonTitle: recallById.get(item.recallCheckId)!.title } }

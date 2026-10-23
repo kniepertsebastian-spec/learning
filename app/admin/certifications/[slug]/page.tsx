@@ -13,6 +13,7 @@ import { ContentGenerationControl } from "@/components/ContentGenerationControl"
 import { ExamInfoForm } from "@/components/admin/ExamInfoForm";
 import { DeleteCertification } from "@/components/DeleteCertification";
 import { ContentReportQueue } from "@/components/ContentReportQueue";
+import { ExplanationReviewQueue } from "@/components/ExplanationReviewQueue";
 import {
   estimateGenerationWork,
   getAiBudgetStatus,
@@ -404,6 +405,7 @@ export default async function AdminCertificationPage({
         </div>
 
         <ContentReportQueue certificationId={cert.id} locale={locale} />
+        {cert.kind === "general" && <ExplanationReviewQueue certificationId={cert.id} locale={locale} />}
         {cert.kind === "general" && <DeleteCertification certificationId={cert.id} slug={cert.slug} name={cert.name} locale={locale} />}
       </div>
     </div>
