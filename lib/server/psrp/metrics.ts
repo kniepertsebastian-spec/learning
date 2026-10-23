@@ -7,6 +7,7 @@ import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { examAttempts, examPlans, exams, probeResults, reviewLog, users, type EvaluationGroup } from "@/lib/server/db/schema";
 import { readiness } from "@/lib/exams/plan";
+import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { variantRotationEnabled } from "@/lib/server/variants/rotation";
 import { DEFAULT_PSRP_CONFIG } from "./config";
 import { calibrationHistory, type ProbeObservation } from "./calibration";
@@ -42,6 +43,8 @@ export interface MetricReview {
   /** Feature-Flag `variant_rotation` des Nutzers und ob in diesem Review eine Variante statt des Originals gezeigt wurde. */
   rotation?: boolean;
   variantShown?: boolean;
+  /** Feature-Flag `pretest_questions` des Nutzers. */
+  pretest?: boolean;
 }
 
 export interface GroupMetrics {
@@ -141,6 +144,12 @@ export interface VariantArmMetrics {
 
 const rate = (rows: MetricReview[]) => (rows.length ? rows.filter((r) => r.rawRating > 1).length / rows.length : null);
 
+/** Kennzahlen getrennt nach Nutzern mit und ohne ein Feature-Flag (beschreibend, keine automatische Auswertung). */
+export function computeFlagArms(reviews: MetricReview[], flagOf: (r: MetricReview) => boolean): { enabled: Pick<VariantArmMetrics, "users" | "reviews" | "retention">; disabled: Pick<VariantArmMetrics, "users" | "reviews" | "retention"> } {
+  const arm = (rows: MetricReview[]) => ({ users: new Set(rows.map((r) => r.userHash)).size, reviews: rows.length, retention: rate(rows) });
+  return { enabled: arm(reviews.filter(flagOf)), disabled: arm(reviews.filter((r) => !flagOf(r))) };
+}
+
 /** Feature-Flag `variant_rotation`: Kennzahlen getrennt nach Nutzern mit und ohne Rotation sowie nach Variante vs. Original. */
 export function computeVariantMetrics(reviews: MetricReview[]): { enabled: VariantArmMetrics; disabled: VariantArmMetrics } {
   const arm = (rows: MetricReview[]): VariantArmMetrics => ({
@@ -186,6 +195,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       predictedR: r.predictedR,
       rotation: variantRotationEnabled(r.userId),
       variantShown: r.variantQuestionId !== null,
+      pretest: isFeatureEnabled("pretest_questions", r.userId),
     }));
 
   const probeRows = await db
@@ -235,5 +245,5 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     })),
     salt,
   );
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), calibration, examResults };
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), calibration, examResults };
 }
