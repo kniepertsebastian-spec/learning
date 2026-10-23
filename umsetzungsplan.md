@@ -81,22 +81,22 @@ Quelle: `roadmap_didaktik.md`, Phase 4
 
 ### Paket 3.3 – PWA-Tests · M
 Quelle: `roadmap_pwa.md`, Phase 7
-- [ ] Playwright-E2E für Offline-Fluss, Update-Toast und Cache-Regeln, `docs/PWA.md`
+- [x] Playwright-E2E für Offline-Fluss, Update-Toast und Cache-Regeln, `docs/PWA.md`
 
 Direkt nach 3.1, damit die Offline-Navigation abgesichert ist.
 
 ### Paket 3.4 – Rückblick „Was weißt du noch?“ · M
 Quelle: `roadmap_didaktik.md`, Phase 8
-- [ ] Auswahl der Lektionen, Rückblick am Session-Anfang mit Varianten, `review_type = recall_check`, Tagesform beim Lernen mitloggen, Flag `recall_check`
+- [x] Auswahl der Lektionen, Rückblick am Session-Anfang mit Varianten, `review_type = recall_check`, Tagesform beim Lernen mitloggen, Flag `recall_check`
 
 **Abhängigkeit:** 2.2 (erledigt). Früh einplanen, weil die Messdaten Zeit brauchen.
 
 ### Paket 3.5 – Verstehens-Modus · L
 Quelle: `roadmap_didaktik.md`, Phase 9
-- [ ] 3.5a Signale erkennen, `concept_struggle`, Wiederholen pausieren, häufige Verwechslung ansprechen · M
-- [ ] 3.5b Alternativerklärungen je Lernziel: Generierung, Werkstatt-Freigabe, Backfill · M
-- [ ] 3.5c Voraussetzungen im Konzeptmodell (`concept_prerequisite`), Diagnosefragen, Brückenlektion · L
-- [ ] 3.5d „Mentor fragen“ (nur durch Lernende ausgelöst), Häufung in die Werkstatt-Prüfliste · S
+- [x] 3.5a Signale erkennen, `concept_struggle`, Wiederholen pausieren, häufige Verwechslung ansprechen · M
+- [x] 3.5b Alternativerklärungen je Lernziel: Generierung, Werkstatt-Freigabe, Backfill · M
+- [x] 3.5c Voraussetzungen im Konzeptmodell (`concept_prerequisite`), Diagnosefragen, Brückenlektion · L
+- [x] 3.5d „Mentor fragen“ (nur durch Lernende ausgelöst), Häufung in die Werkstatt-Prüfliste · S
 
 **Zuschnitt:** vier PRs in der Reihenfolge a → d → b → c. Schon 3.5a allein verhindert, dass Unverstandenes stur wiederholt wird; 3.5d ist klein und verbessert die Inhalte früh.
 **Abhängigkeit:** 2.2 (erledigt). Vor 4.5 (neue Antwortformate).
