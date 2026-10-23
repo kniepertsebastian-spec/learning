@@ -1,4 +1,5 @@
 import { clearPagesCache } from "@/lib/client/cache-owner";
+import { clearLastUserId } from "@/lib/client/last-user";
 import { clearOfflineDataForUser } from "@/lib/client/offline-db";
 
 /**
@@ -9,4 +10,5 @@ import { clearOfflineDataForUser } from "@/lib/client/offline-db";
 export async function clearLocalUserData(userId: string): Promise<void> {
   await clearOfflineDataForUser(userId).catch(() => {});
   await clearPagesCache();
+  clearLastUserId();
 }

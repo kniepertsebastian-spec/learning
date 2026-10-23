@@ -68,7 +68,7 @@ Vor den Pilotkunden, weil Firmenkunden geteilte Geräte nutzen können und Updat
 
 ### Paket 3.1 – Offline-Navigation · M
 Quelle: `roadmap_pwa.md`, Phase 2
-- [ ] `/~offline`-Fallback, Seite `/offline` „Meine Offline-Kurse“, serverunabhängiger Leser, harte Navigation offline
+- [x] `/~offline`-Fallback, Seite `/offline` „Meine Offline-Kurse“, serverunabhängiger Leser, harte Navigation offline
 
 **Abhängigkeit:** nach 2.3 (Cache-Aufteilung), damit Fallback und Precache gleich richtig einsortiert werden.
 

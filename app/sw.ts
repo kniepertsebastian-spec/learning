@@ -6,6 +6,7 @@ import {
   Serwist,
   StaleWhileRevalidate,
 } from "serwist";
+import { OFFLINE_FALLBACK_PATH } from "../lib/pwa/offline-routes";
 import type { PrecacheEntry, RuntimeCaching, SerwistGlobalConfig } from "serwist";
 import {
   ASSETS_CACHE,
@@ -82,6 +83,10 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching,
+  // Seite weder im Cache noch erreichbar (z. B. Admin-Seite im Flugmodus): statt der Browser-Fehlerseite die Offline-Seite.
+  fallbacks: {
+    entries: [{ url: OFFLINE_FALLBACK_PATH, matcher: ({ request }) => request.destination === "document" }],
+  },
 });
 
 serwist.addEventListeners();
