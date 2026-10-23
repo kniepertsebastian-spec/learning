@@ -167,10 +167,6 @@
     "hex": 0,
     "palette": 1
   },
-  "components/StartSessionPicker.tsx": {
-    "hex": 0,
-    "palette": 1
-  },
   "components/StudyGoalPanel.tsx": {
     "hex": 0,
     "palette": 2

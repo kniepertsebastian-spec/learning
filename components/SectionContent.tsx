@@ -53,6 +53,8 @@ interface SectionContentProps {
   quizEnabled?: boolean;
   /** Notausstieg „Heute reicht's“ im Lektionstest (Flag exit_with_win). */
   exitEnabled?: boolean;
+  /** Sicherheitsangabe im Lektionstest (ab der 3. Session, abschaltbar). */
+  askConfidence?: boolean;
   /** Firmenbereich mit zugeordnetem Mentor: „Ich hänge fest“ bei Simulationen. */
   mentorAsk?: { topic: string; certificationId: string } | null;
   signedIn?: boolean;
@@ -83,6 +85,7 @@ export function SectionContent({
   offline,
   quizEnabled = true,
   exitEnabled,
+  askConfidence,
   mentorAsk,
   signedIn = true,
   initialCompleted = false,
@@ -286,6 +289,7 @@ export function SectionContent({
                   objectiveLabel={objectiveCode}
                   offline={offline}
                   exitEnabled={exitEnabled}
+                  askConfidence={askConfidence}
                 />
               )}
             </div>

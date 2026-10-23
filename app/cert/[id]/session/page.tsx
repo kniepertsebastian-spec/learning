@@ -10,6 +10,7 @@ import { getOrCreateStudySession, getStudySessionWithContent } from "@/lib/serve
 import { pickPracticeSimulation } from "@/lib/server/simulations/service";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { getCompanyMembership } from "@/lib/server/company/access";
+import { getLearningContext } from "@/lib/server/study/learning-context";
 import { findMentorUserId } from "@/lib/server/company/mentor-requests";
 import { StudySession } from "@/components/StudySession";
 
@@ -71,10 +72,13 @@ export default async function StudySessionPage({
   const membership = items.some((i) => i.understand) ? await getCompanyMembership(session.user.id) : null;
   const mentorAsk = membership && (await findMentorUserId(membership.organizationId, membership.userId)) ? { certificationId: cert.id } : null;
 
+  const learning = await getLearningContext(session.user.id);
+
   return (
     <div className="flex flex-1 flex-col">
       <StudySession
         key={summary.id}
+        askConfidence={learning.intro.askConfidence}
         mentorAsk={mentorAsk}
         exitEnabled={isFeatureEnabled("exit_with_win", session.user.id)}
         practice={practice}

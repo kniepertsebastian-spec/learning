@@ -132,11 +132,11 @@ Ziel: Grundsätze „Lernen beginnt mit Handeln“ und „Gute Lernende bekommen
 
 ## Phase 5 – Motivation ohne Strafe (Priorität: mittel)
 
-- [ ] Tagesserie durch **Wochenziel** ersetzen: „x von 4 Lerntagen diese Woche“. Leichte Tage aus `study_profiles.light_weekdays` zählen nicht gegen das Ziel.
-- [ ] Bisherige Serie optional weiter anzeigen, aber mit automatischem Serienschutz: ein Tag Pause pro Woche bricht sie nicht.
-- [ ] Nach längerer Pause (≥ 7 Tage): Begrüßung mit „Willkommen zurück – heute nur 5 Minuten“ statt Rückstand-Zahl; Rückstand wird nicht als Zahl angezeigt, nur „wird über die nächsten Tage verteilt“.
+- [x] Tagesserie durch **Wochenziel** ersetzen: „x von 4 Lerntagen diese Woche“. Leichte Tage aus `study_profiles.light_weekdays` zählen nicht gegen das Ziel.
+- [x] Bisherige Serie optional weiter anzeigen, aber mit automatischem Serienschutz: ein Tag Pause pro Woche bricht sie nicht.
+- [x] Nach längerer Pause (≥ 7 Tage): Begrüßung mit „Willkommen zurück – heute nur 5 Minuten“ statt Rückstand-Zahl; Rückstand wird nicht als Zahl angezeigt, nur „wird über die nächsten Tage verteilt“.
 - [ ] Fortschritt als Kompetenz statt Aktivität: „3 Lernziele sicher seit letzter Woche“ in `TodayDashboard`.
-- [ ] Keine Vergleiche mit anderen Nutzern (Grundsatz bleibt).
+- [x] Keine Vergleiche mit anderen Nutzern (Grundsatz bleibt).
 
 **Akzeptanzkriterium:** Ein Nutzer, der an einem leichten Tag oder einem einzelnen Tag pro Woche nicht lernt, sieht keinen zurückgesetzten Zähler.
 
@@ -144,11 +144,11 @@ Ziel: Grundsätze „Lernen beginnt mit Handeln“ und „Gute Lernende bekommen
 
 ## Phase 6 – Einstieg vereinfachen (Priorität: mittel)
 
-- [ ] Erste Session ohne Check-in und ohne Sicherheitsangabe: nur „Starten“ (Zeitbudget mit Standard 10 Minuten).
-- [ ] Ab der 3. abgeschlossenen Session die Sicherheitsangabe einführen, mit einem Satz Begründung („Damit wir Geratenes öfter wiederholen“).
-- [ ] Check-in zur Tagesform erst ab der 5. Session anbieten, jederzeit abschaltbar.
-- [ ] „Selbsteinschätzung“ (`SelfAssessmentCard`) erst zeigen, wenn belastbare Daten vorliegen (bestehende Regel beibehalten).
-- [ ] Alle Zusatz-Eingaben auf einer Einstellungsseite „Wie ich lerne“ gebündelt.
+- [x] Erste Session ohne Check-in und ohne Sicherheitsangabe: nur „Starten“ (Zeitbudget mit Standard 10 Minuten).
+- [x] Ab der 3. abgeschlossenen Session die Sicherheitsangabe einführen, mit einem Satz Begründung („Damit wir Geratenes öfter wiederholen“).
+- [x] Check-in zur Tagesform erst ab der 5. Session anbieten, jederzeit abschaltbar.
+- [x] „Selbsteinschätzung“ (`SelfAssessmentCard`) erst zeigen, wenn belastbare Daten vorliegen (bestehende Regel beibehalten).
+- [x] Alle Zusatz-Eingaben auf einer Einstellungsseite „Wie ich lerne“ gebündelt.
 
 **Akzeptanzkriterium:** Ein neuer Nutzer kommt von der Registrierung zur ersten beantworteten Frage mit höchstens zwei Klicks nach Kurswahl.
 

@@ -18,7 +18,6 @@ import { RemediationService } from "@/lib/server/remediation/service";
 import { getStudyProfile } from "@/lib/server/study/profile";
 import {
   peekActiveOrTodaySession,
-  getStudyStreak,
   getTopWeakObjectives,
   getSessionCategoryBreakdown,
   getSessionRecommendationFeedback,
@@ -28,6 +27,7 @@ import { getReadiness } from "@/lib/server/readiness/service";
 import type { ReadinessResult } from "@/lib/server/readiness/engine";
 import { StudyGoalPanel, type StudyGoalState } from "@/components/StudyGoalPanel";
 import { TodayDashboard, type TodayDashboardData } from "@/components/TodayDashboard";
+import { getLearningContext } from "@/lib/server/study/learning-context";
 import { StartSessionPicker } from "@/components/StartSessionPicker";
 import { SelfAssessmentCard } from "@/components/SelfAssessmentCard";
 import { getSelfAssessment, type SelfAssessmentTopic } from "@/lib/server/psrp/self-assessment";
@@ -141,6 +141,8 @@ export default async function CertDetailPage({
   let studyGoal: StudyGoalState | null = null;
   let todayDashboard: TodayDashboardData | null = null;
   let readiness: ReadinessResult | null = null;
+  let learningIntro = { firstSession: false, offerCheckin: true };
+  let learningWelcomeBack = false;
   let selfAssessment: SelfAssessmentTopic[] = [];
   if (session?.user?.id) {
     selfAssessment = await getSelfAssessment(session.user.id, cert.id).catch(() => []);
@@ -150,7 +152,7 @@ export default async function CertDetailPage({
       studyProfile,
       sessionSummary,
       dueCount,
-      streak,
+      learning,
       weakObjectives,
       readinessResult,
     ] = await Promise.all([
@@ -163,12 +165,14 @@ export default async function CertDetailPage({
       // primäre Session-Eingabe statt eines stillen Auto-Baus).
       peekActiveOrTodaySession(session.user.id, cert.id),
       getDueReviewCount(session.user.id, cert.id),
-      getStudyStreak(session.user.id, cert.id),
+      getLearningContext(session.user.id),
       getTopWeakObjectives(session.user.id, cert.id),
       // R2.5: ganzheitliche Readiness (nicht nur der letzte Exam-Versuch).
       getReadiness(session.user.id, cert.id),
     ]);
     readiness = readinessResult;
+    learningIntro = { firstSession: learning.intro.firstSession, offerCheckin: learning.intro.offerCheckin };
+    learningWelcomeBack = learning.welcomeBack;
     progressData = Object.fromEntries(
       progress.map((p) => [p.objectiveId, { masteryScore: Number(p.masteryScore), status: p.status }])
     );
@@ -199,7 +203,9 @@ export default async function CertDetailPage({
         sessionStatus: sessionSummary.status,
         estimatedMinutes: sessionSummary.estimatedMinutes,
         dueCount,
-        streak,
+        streak: learning.preferences.showStreak ? learning.streak : 0,
+        weekly: { days: learning.weekly.daysLearned, goal: learning.weekly.goal },
+        welcomeBack: learning.welcomeBack,
         dailyGoalType: sessionSummary.goalType,
         dailyGoalValue: sessionSummary.goalValue,
         weakObjectives,
@@ -359,7 +365,7 @@ export default async function CertDetailPage({
       )}
 
       {session && quizzes && !todayDashboard && (
-        <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} />
+        <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} intro={learningIntro} welcomeBack={learningWelcomeBack} />
       )}
 
       {session && quizzes && readiness && <ReadinessCard locale={locale} readiness={readiness} />}

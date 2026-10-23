@@ -83,6 +83,8 @@ interface StudySessionProps {
   exitEnabled?: boolean;
   /** Im Firmenbereich mit zugeordnetem Mentor: „Mentor fragen“ in der Verstehens-Aufgabe (nur online). */
   mentorAsk?: { certificationId: string } | null;
+  /** Sicherheitsangabe ab der 3. Session (und wenn nicht abgeschaltet, „Wie ich lerne“); sonst gilt wie bisher das Rating ohne Angabe. */
+  askConfidence?: boolean;
 }
 
 
@@ -103,6 +105,7 @@ export function StudySession({
   deescalated,
   exitEnabled,
   mentorAsk,
+  askConfidence = true,
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
@@ -299,6 +302,8 @@ export function StudySession({
       next[currentIndex] = option.id;
       return next;
     });
+    // Ohne Sicherheitsangabe wird gleich aufgedeckt.
+    if (instant && !askConfidence && reveals[currentIndex] === null) void revealAnswer(currentIndex, option.id);
   };
   const isLast = currentIndex + 1 >= questionItems.length;
   const currentReveal = reveals[currentIndex] ?? null;
@@ -507,12 +512,13 @@ export function StudySession({
         locked={instant && Boolean(answers[currentIndex])}
       />
 
-      {answers[currentIndex] && instant && currentReveal === null && (
+      {askConfidence && answers[currentIndex] && instant && currentReveal === null && (
         <div className="mt-4">
           <ConfidenceBar onPick={(level) => chooseConfidence(currentIndex, level)} onSkip={() => chooseConfidence(currentIndex, null)} />
+          <p className="mt-2 text-xs text-subtle" data-testid="confidence-why">{t.quiz.confidenceWhy}</p>
         </div>
       )}
-      {answers[currentIndex] && !instant && (
+      {askConfidence && answers[currentIndex] && !instant && (
         <div className="mt-4">
           <ConfidenceBar onPick={(level) => setConfidences((prev) => { const next = [...prev]; next[currentIndex] = level; return next; })} />
           {confidences[currentIndex] && <p className="mt-2 text-xs text-subtle">{t.quiz[confidences[currentIndex] as AnswerConfidence]}</p>}

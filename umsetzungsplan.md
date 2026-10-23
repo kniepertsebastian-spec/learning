@@ -121,8 +121,8 @@ Quelle: `roadmap_motivation.md`, Phase 2, 3 und 8
 
 ### Paket 4.1 – Einfacher Einstieg und Motivation ohne Strafe · M
 Quelle: `roadmap_didaktik.md`, Phase 5 und 6; `roadmap_motivation.md`, Phase 4, 5 und 7
-- [ ] Wochenziel statt Tagesserie, Willkommen-zurück-Ablauf
-- [ ] Erste Session ohne Zusatz-Eingaben, Sicherheitsangabe ab Session 3, Check-in ab Session 5, Seite „Wie ich lerne“
+- [x] Wochenziel statt Tagesserie, Willkommen-zurück-Ablauf
+- [x] Erste Session ohne Zusatz-Eingaben, Sicherheitsangabe ab Session 3, Check-in ab Session 5, Seite „Wie ich lerne“
 - [ ] Aufgabenart nach Energie (Simulation, Spickzettel, „nur eine Aufgabe“), Flag `energy_modes`
 - [ ] Praxisaufgabe wird durch Lektion freigeschaltet, „Warum lerne ich das?“ je Lektion
 - [ ] Fortschritt sichtbar mit echten Zahlen; Einschätzung zum Prüfungstermin nur für den Lernenden

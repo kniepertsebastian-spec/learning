@@ -66,9 +66,14 @@ export default async function ProfilePage() {
             {membership ? ` · ${membership.organizationName} (${ROLE_LABEL[membership.role][locale]})` : ""}
           </p>
         </div>
-        <Link href="/account" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background" data-testid="profile-account-link">
-          {de ? "Konto & Daten" : "Account & data"}
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/how-i-learn" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background" data-testid="profile-how-i-learn-link">
+            {de ? "Wie ich lerne" : "How I learn"}
+          </Link>
+          <Link href="/account" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background" data-testid="profile-account-link">
+            {de ? "Konto & Daten" : "Account & data"}
+          </Link>
+        </div>
       </header>
 
       <CareerProfile initial={career} courseNames={catalog.map((c) => c.name)} />

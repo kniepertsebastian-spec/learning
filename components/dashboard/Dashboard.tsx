@@ -29,6 +29,8 @@ export interface DashboardData {
   };
   hero: null | { certSlug: string; certName: string; domainName: string; sectionId: string; sectionTitle: { de: string; en: string }; position: number; total: number; percent: number; lastAtIso: string | null };
   dueTotal: number;
+  /** Nach einer Pause von mindestens 7 Tagen: Begrüßung statt Rückstand-Zahl. */
+  welcomeBack?: boolean;
   streak: number;
   stats: { answeredTotal: number; answeredWeek: number; accuracyWeek: number | null; accuracyDelta: number | null; lessonsDone: number; lessonsDoneWeek: number };
   week: { counts: number[]; todayIndex: number; activeDays: number; plannedDays: number };
@@ -61,7 +63,9 @@ export function Dashboard({ data }: { data: DashboardData }) {
   const greeting = fmt(part === "morning" ? h.greetMorning : part === "evening" ? h.greetEvening : part === "day" ? h.greetDay : h.greetHello, { name: data.name });
   const dueMinutes = Math.max(1, Math.round(data.dueTotal * MINUTES_PER_CARD));
   const examLine = data.main && data.main.examInDays !== null && data.main.examInDays >= 0 ? ` ${fmt(h.examLine, { name: data.main.certName, n: data.main.examInDays })}` : "";
-  const dueLine = data.dueTotal > 0 ? fmt(h.dueLine, { n: data.dueTotal, m: dueMinutes }) : h.noDueLine;
+  // Nach längerer Pause keine Rückstand-Zahl: „Willkommen zurück – heute nur 5 Minuten“, der Rest wird über die nächsten Tage verteilt.
+  const welcomeBack = Boolean(data.welcomeBack) && data.dueTotal > 0;
+  const dueLine = welcomeBack ? h.welcomeBackLine : data.dueTotal > 0 ? fmt(h.dueLine, { n: data.dueTotal, m: dueMinutes }) : h.noDueLine;
   const stateText = (c: DashboardData["certs"][number]) => ({ planned: fmt(h.pillPlanned, { n: c.examInDays ?? 0 }), started: h.pillStarted, not_started: h.pillNotStarted, completed: h.pillCompleted })[c.state];
   const stateTone = (s: CertState) => (s === "planned" || s === "completed" ? "mint" : s === "started" ? "info" : "neutral");
   const btnText = (s: CertState) => (s === "not_started" ? h.btnStart : s === "completed" ? h.btnRepeat : h.btnContinue);
@@ -94,7 +98,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
                   <Link href={`/cert/${data.hero.certSlug}/section/${data.hero.sectionId}`} data-testid="hero-continue">{h.continueLearning}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
                 </Button>
                 {data.main && data.main.dueCount > 0 && (
-                  <Button asChild variant="secondary"><Link href={`/cert/${data.main.certSlug}/session`}>{fmt(h.reviews, { n: data.main.dueCount })}</Link></Button>
+                  <Button asChild variant="secondary"><Link href={`/cert/${data.main.certSlug}/session`}>{welcomeBack ? h.reviewsSoft : fmt(h.reviews, { n: data.main.dueCount })}</Link></Button>
                 )}
               </div>
             </>
@@ -153,7 +157,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
           sub={data.stats.accuracyWeek === null ? h.statAccuracyNone : data.stats.accuracyDelta === null ? undefined : fmt(h.statAccuracySub, { n: `${data.stats.accuracyDelta > 0 ? "+" : ""}${data.stats.accuracyDelta}` })}
           subTone={data.stats.accuracyDelta !== null && data.stats.accuracyDelta < 0 ? "warning" : "accent"}
         />
-        <StatTile label={h.statDue} value={data.dueTotal} sub={data.dueTotal > 0 ? fmt(h.statDueSub, { m: dueMinutes }) : undefined} subTone="warning" />
+        <StatTile label={h.statDue} value={welcomeBack ? "–" : data.dueTotal} sub={welcomeBack ? h.statDueSpread : data.dueTotal > 0 ? fmt(h.statDueSub, { m: dueMinutes }) : undefined} subTone="warning" />
         <StatTile label={h.statLessons} value={data.stats.lessonsDone} sub={fmt(h.statLessonsSub, { n: data.stats.lessonsDoneWeek })} subTone="accent" />
       </div>
 

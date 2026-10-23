@@ -27,10 +27,16 @@ export function StartSessionPicker({
   certSlug,
   certificationId,
   locale,
+  intro = { firstSession: false, offerCheckin: true },
+  welcomeBack = false,
 }: {
   certSlug: string;
   certificationId: string;
   locale: Locale;
+  /** Schrittweise Einführung: erste Session nur „Starten“, Check-in erst ab der 5. Session (und wenn nicht abgeschaltet). */
+  intro?: { firstSession: boolean; offerCheckin: boolean };
+  /** Nach längerer Pause: „Willkommen zurück – heute nur 5 Minuten“. */
+  welcomeBack?: boolean;
 }) {
   const router = useRouter();
   const [starting, setStarting] = useState<string | null>(null);
@@ -58,12 +64,42 @@ export function StartSessionPicker({
     }
   }
 
+  const de = locale === "de";
+  // Erste Session: nur „Starten“ (Standard 10 Minuten), ohne Check-in und weitere Eingaben.
+  if (intro.firstSession) {
+    return (
+      <div className="mb-6 rounded-lg border border-accent/30 bg-accent/5 p-4" data-testid="start-first-session">
+        <h2 className="mb-1 flex items-center gap-1.5 text-sm font-medium">
+          <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
+          {de ? "Los geht's" : "Let's go"}
+        </h2>
+        <p className="mb-3 text-xs text-foreground/60">{de ? "Zehn Minuten reichen für den Anfang. Weitere Einstellungen kommen später, Schritt für Schritt." : "Ten minutes are enough to start. More settings come later, step by step."}</p>
+        <button
+          type="button"
+          onClick={() => void handleStart("first", "minutes", 10)}
+          disabled={starting !== null}
+          data-testid="start-first"
+          className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {starting === "first" && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+          {de ? "Starten (10 Minuten)" : "Start (10 minutes)"}
+        </button>
+        {error && <p className="mt-2 text-xs text-danger-text">{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="mb-6 rounded-lg border border-accent/30 bg-accent/5 p-4">
       <h2 className="mb-3 flex items-center gap-1.5 text-sm font-medium">
         <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
-        {locale === "de" ? "Wie viel Zeit hast du gerade?" : "How much time do you have?"}
+        {welcomeBack ? (de ? "Willkommen zurück – heute nur 5 Minuten" : "Welcome back – just 5 minutes today") : de ? "Wie viel Zeit hast du gerade?" : "How much time do you have?"}
       </h2>
+      {welcomeBack && (
+        <p className="mb-3 text-xs text-foreground/60" data-testid="welcome-back">
+          {de ? "Wiederholungen werden über die nächsten Tage verteilt, es wartet kein Berg auf dich." : "Reviews are spread over the next days, there is no mountain waiting for you."}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         {TIME_BUDGETS.map((minutes) => {
           const key = `minutes-${minutes}`;
@@ -73,7 +109,9 @@ export function StartSessionPicker({
               type="button"
               onClick={() => void handleStart(key, "minutes", minutes)}
               disabled={starting !== null}
-              className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium hover:border-accent hover:bg-background disabled:cursor-not-allowed disabled:opacity-60"
+              className={`flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium hover:border-accent hover:bg-background disabled:cursor-not-allowed disabled:opacity-60 ${
+                welcomeBack && minutes === 5 ? "border-accent bg-accent/10 text-link" : "border-border bg-surface"
+              }`}
             >
               {starting === key && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
               {minutes} {locale === "de" ? "Min." : "min"}
@@ -95,6 +133,8 @@ export function StartSessionPicker({
         </button>
       </div>
 
+      {intro.offerCheckin && (
+        <>
       <p className="mb-1.5 mt-3 text-xs text-foreground/50">
         {locale === "de" ? "Check-in (optional): Wie viel Energie hast du?" : "Check-in (optional): how much energy do you have?"}
       </p>
@@ -139,7 +179,13 @@ export function StartSessionPicker({
         ))}
       </div>
 
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        </>
+      )}
+      <p className="mt-3 text-xs text-foreground/50">
+        <a href="/how-i-learn" className="text-link hover:underline" data-testid="how-i-learn-link">{de ? "Wie ich lerne" : "How I learn"}</a>
+      </p>
+
+      {error && <p className="mt-2 text-xs text-danger-text">{error}</p>}
     </div>
   );
 }

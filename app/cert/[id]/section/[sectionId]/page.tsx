@@ -16,6 +16,7 @@ import {
   questionOptions,
 } from "@/lib/server/db/schema";
 import { getCompanyMembership } from "@/lib/server/company/access";
+import { getLearningContext } from "@/lib/server/study/learning-context";
 import { findMentorUserId } from "@/lib/server/company/mentor-requests";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { listSimulationProgress } from "@/lib/server/simulations/service";
@@ -73,6 +74,8 @@ export default async function SectionPage({
     ? await db.select({ name: certifications.name }).from(certifications).where(eq(certifications.id, domainRows[0].certificationId)).limit(1)
     : [];
   const certName = certNameRow?.name;
+  // Sicherheitsangabe erst ab der 3. Session, jederzeit abschaltbar; ohne Anmeldung/Offline gilt der bisherige Standard.
+  const askConfidence = session?.user?.id ? (await getLearningContext(session.user.id).catch(() => null))?.intro.askConfidence ?? true : true;
   // „Ich hänge fest“ bei Simulationen: nur im Firmenbereich und nur, wenn der Person ein Mentor zugeordnet ist.
   const membership = session?.user?.id ? await getCompanyMembership(session.user.id) : null;
   const mentorAsk =
@@ -149,6 +152,7 @@ export default async function SectionPage({
       contentLocale={certRow?.contentLocale ?? "de"}
       translationPending={certRow?.translationStatus === "running"}
       mentorAsk={mentorAsk}
+      askConfidence={askConfidence}
       exitEnabled={Boolean(session?.user?.id) && isFeatureEnabled("exit_with_win", session!.user!.id!)}
       pretestEnabled={Boolean(session?.user?.id) && isFeatureEnabled("pretest_questions", session!.user!.id!)}
       simulationProgress={session?.user?.id ? await listSimulationProgress(session.user.id, sectionId) : []}

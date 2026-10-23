@@ -862,6 +862,25 @@ export const engagementStates = pgTable(
   (table) => [check("engagement_state_status_check", sql`${table.status} in ('normal', 'deescalated')`)],
 );
 
+/**
+ * „Wie ich lerne“ (roadmap_didaktik Phase 5 und 6): Zusatz-Eingaben und Anzeige-Wünsche einer Person an einer Stelle gebündelt.
+ * Ohne Zeile gelten die Standardwerte (Wochenziel 4 Lerntage, Serie aus, Sicherheitsangabe und Check-in an, sobald eingeführt).
+ */
+export const learningPreferences = pgTable(
+  "learning_preferences",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    weeklyGoalDays: integer("weekly_goal_days").notNull().default(4),
+    showStreak: boolean("show_streak").notNull().default(false),
+    askConfidence: boolean("ask_confidence").notNull().default(true),
+    offerCheckin: boolean("offer_checkin").notNull().default(true),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check("learning_preferences_goal_check", sql`${table.weeklyGoalDays} between 1 and 7`)],
+);
+
 export type ExplanationKind = "worked_example" | "gapped_example" | "analogy" | "example";
 export type ExplanationStatus = "draft" | "approved" | "rejected";
 

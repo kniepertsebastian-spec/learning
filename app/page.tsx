@@ -69,6 +69,7 @@ export default async function HomePage() {
     hero: dash.hero ? { ...dash.hero, lastAtIso: dash.hero.lastAt ? dash.hero.lastAt.toISOString() : null } : null,
     dueTotal: dash.dueTotal,
     streak: dash.streak,
+    welcomeBack: dash.welcomeBack,
     stats: dash.stats,
     week: dash.week,
   };
