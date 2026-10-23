@@ -56,13 +56,13 @@ Lernabbrüche sind selten fehlende Disziplin, sondern Schutzreaktionen gegen Üb
 
 Ziel: Den Human Layer in zehn Sekunden zeigen: Nach einer Pause wartet kein Berg, sondern höchstens das gewohnte Zeitbudget.
 
-- [ ] Simulator um einen Modus erweitern: `mode: "vanilla" | "planning"`. `vanilla` = reines FSRS wie eine klassische Lernkarten-App: alle fälligen Karten werden am selben Tag bearbeitet, neue Karten fix pro Tag, kein Tageslimit, kein Rückstau-Abbau. `planning` = bisheriges Verhalten.
-- [ ] Ergebnis je Tag zusätzlich: fällige Karten (auch nicht bearbeitete), bearbeitete Karten, Minuten (bearbeitete × Sekunden je Karte).
-- [ ] Szenario-Funktion `simulatePause(params)`: beide Modi mit identischem Seed und Parametern (siehe Platzhalter); Ausgabe als JSON mit Annahmen.
-- [ ] Kennzahlen: Spitzenlast am ersten Tag nach der Pause (Karten und Minuten) je Modus; Tage bis der Rückstand abgebaut ist (Planungsmodus); Behaltensquote 30 Tage nach der Pause je Modus.
-- [ ] Skript `npm run psrp:pause-demo` schreibt die JSON-Datei und eine statische Grafik (SVG): Minuten pro Tag als zwei Linien, Zeitbudget als waagerechte Linie, Pause als hinterlegter Bereich, Annahmen als Fußzeile.
-- [ ] Optional: dieselbe Grafik als Seite im Admin-Bereich bzw. als öffentliche Demo-Seite mit Schiebereglern für Pausenlänge und Zeitbudget (berechnet im Browser, keine Nutzerdaten).
-- [ ] Unit-Tests: Planungsmodus überschreitet an keinem Tag das Zeitbudget; Vanilla-Modus hat am ersten Tag nach der Pause mehr fällige Karten als vor der Pause; gleiche Parameter ergeben gleiche Ergebnisse.
+- [x] Simulator um einen Modus erweitern: `mode: "vanilla" | "planning"`. `vanilla` = reines FSRS wie eine klassische Lernkarten-App: alle fälligen Karten werden am selben Tag bearbeitet, neue Karten fix pro Tag, kein Tageslimit, kein Rückstau-Abbau. `planning` = bisheriges Verhalten.
+- [x] Ergebnis je Tag zusätzlich: fällige Karten (auch nicht bearbeitete), bearbeitete Karten, Minuten (bearbeitete × Sekunden je Karte).
+- [x] Szenario-Funktion `simulatePause(params)`: beide Modi mit identischem Seed und Parametern (siehe Platzhalter); Ausgabe als JSON mit Annahmen.
+- [x] Kennzahlen: Spitzenlast am ersten Tag nach der Pause (Karten und Minuten) je Modus; Tage bis der Rückstand abgebaut ist (Planungsmodus); Behaltensquote 30 Tage nach der Pause je Modus.
+- [x] Skript `npm run psrp:pause-demo` schreibt die JSON-Datei und eine statische Grafik (SVG): Minuten pro Tag als zwei Linien, Zeitbudget als waagerechte Linie, Pause als hinterlegter Bereich, Annahmen als Fußzeile.
+- [ ] Optional: dieselbe Grafik als Seite im Admin-Bereich bzw. als öffentliche Demo-Seite mit Schiebereglern für Pausenlänge und Zeitbudget (berechnet im Browser, keine Nutzerdaten). _(optional, noch nicht umgesetzt)_
+- [x] Unit-Tests: Planungsmodus überschreitet an keinem Tag das Zeitbudget; Vanilla-Modus hat am ersten Tag nach der Pause mehr fällige Karten als vor der Pause; gleiche Parameter ergeben gleiche Ergebnisse.
 
 **Akzeptanzkriterium:** `npm run psrp:pause-demo` erzeugt reproduzierbar eine Grafik und eine JSON-Datei mit allen Annahmen; die Kennzahlen stehen in der Ausgabe.
 

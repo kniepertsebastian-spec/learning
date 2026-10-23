@@ -35,3 +35,12 @@ npm run psrp:simulate -- 0.75 0.8 0.85 0.9             # Workload-Simulation üb
 ```
 
 Für `psrp:metrics` sollte `PSRP_EXPORT_SALT` gesetzt sein, damit die anonymen Nutzer-Kennungen über Exporte hinweg stabil und nicht rückrechenbar sind.
+
+## Vergleichsgrafik „Eine Woche Pause“
+
+`npm run psrp:pause-demo` zeigt ohne Nutzerdaten, was nach einer Pause passiert: dieselbe synthetische Person, derselbe Zufall, einmal mit reinem FSRS (wie eine klassische Lernkarten-App: alle fälligen Karten am selben Tag, neue Karten fix pro Tag, kein Tageslimit) und einmal mit der Planungsschicht (Tageslimit aus dem Zeitbudget, Rückstau wird über mehrere Tage abgebaut).
+
+- Ausgabe in `docs/pause-demo/`: `pause-demo.json` (alle Annahmen, Tageswerte und Kennzahlen), `pause-demo.de.svg` und `pause-demo.en.svg` (Minuten pro Tag als zwei Linien, Zeitbudget als gestrichelte Linie, Pause als hinterlegter Bereich, Annahmen in der Fußzeile).
+- Standard-Szenario (Platzhalter aus `roadmap_motivation.md`): 1.000 Karten, 10 neue pro Tag, 15 Minuten Zeitbudget, 15 Sekunden je Karte, 60 Tage Vorlauf, 7 Tage Pause, 30 Tage danach, Ziel-Behaltensquote 0,90, Seed 1. Änderbar mit `--pause-days`, `--budget`, `--seconds`, `--seed`, `--out`.
+- Kennzahlen je Modus: Last am ersten Tag nach der Pause (Karten und Minuten), Tage bis der Rückstand abgebaut ist, Behaltensquote in den 30 Tagen nach der Pause.
+- Reproduzierbar: gleiche Parameter ergeben byte-identische Dateien. Die Ergebnisse sind eine Simulation, keine Messung an echten Lernenden.

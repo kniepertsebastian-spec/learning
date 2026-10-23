@@ -103,7 +103,7 @@ Quelle: `roadmap_didaktik.md`, Phase 9
 
 ### Paket 3.6 – Vergleichsgrafik „Eine Woche Pause“ · S
 Quelle: `roadmap_motivation.md`, Phase 1
-- [ ] Simulator-Modus `vanilla` vs. `planning`, Szenario mit 7 Tagen Pause, `npm run psrp:pause-demo` mit SVG-Grafik und Annahmen
+- [x] Simulator-Modus `vanilla` vs. `planning`, Szenario mit 7 Tagen Pause, `npm run psrp:pause-demo` mit SVG-Grafik und Annahmen
 
 **Abhängigkeit:** keine. **Vor den ersten Gesprächen mit Entscheidern**, weil sie den Human Layer ohne Nutzerdaten zeigt.
 

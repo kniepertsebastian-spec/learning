@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" width="900" height="480" role="img" aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Eine Woche Pause: Was danach auf dich wartet</title>
+  <desc id="d">Klassische Lernkarten-App (reines FSRS): 40 min, Mit Planungsschicht: 15 min</desc>
+  <rect width="900" height="480" fill="#ffffff"/>
+  <text x="64" y="30" font-size="20" font-weight="600" fill="#0f172a">Eine Woche Pause: Was danach auf dich wartet</text>
+  <text x="64" y="50" font-size="13" fill="#475569">Lernzeit pro Tag, gleiche Person, gleicher Zufall</text>
+  <rect x="291.4" y="64" width="113.7" height="306" fill="#e2e8f0"/>
+  <text x="348.2" y="78" font-size="12" text-anchor="middle" fill="#475569">Pause</text>
+  <line x1="64" x2="876" y1="370" y2="370" stroke="#cbd5e1" stroke-width="0.5"/>
+  <text x="56" y="374" font-size="11" text-anchor="end" fill="#475569">0</text>
+  <line x1="64" x2="876" y1="308.8" y2="308.8" stroke="#cbd5e1" stroke-width="0.5"/>
+  <text x="56" y="312.8" font-size="11" text-anchor="end" fill="#475569">10</text>
+  <line x1="64" x2="876" y1="247.6" y2="247.6" stroke="#cbd5e1" stroke-width="0.5"/>
+  <text x="56" y="251.6" font-size="11" text-anchor="end" fill="#475569">20</text>
+  <line x1="64" x2="876" y1="186.4" y2="186.4" stroke="#cbd5e1" stroke-width="0.5"/>
+  <text x="56" y="190.4" font-size="11" text-anchor="end" fill="#475569">30</text>
+  <line x1="64" x2="876" y1="125.2" y2="125.2" stroke="#cbd5e1" stroke-width="0.5"/>
+  <text x="56" y="129.2" font-size="11" text-anchor="end" fill="#475569">40</text>
+  <line x1="64" x2="876" y1="64" y2="64" stroke="#cbd5e1" stroke-width="0.5"/>
+  <text x="56" y="68" font-size="11" text-anchor="end" fill="#475569">50</text>
+  <line x1="64" x2="876" y1="278.2" y2="278.2" stroke="#475569" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="876" y="272.2" font-size="12" text-anchor="end" fill="#475569">Zeitbudget: 15 min</text>
+  <polyline points="64,311.9 80.2,322.3 96.5,316.1 112.7,308.8 129,313.1 145.2,318 161.4,310 177.7,313.1 193.9,300.8 210.2,313.1 226.4,311.9 242.6,300.8 258.9,314.9 275.1,314.9 291.4,370 307.6,370 323.8,370 340.1,370 356.3,370 372.6,370 388.8,370 405,125.2 421.3,314.9 437.5,322.3 453.8,319.2 470,310 486.2,303.9 502.5,328.4 518.7,302.7 535,307 551.2,319.2 567.4,311.9 583.7,291.7 599.9,318 616.2,324.1 632.4,311.9 648.6,319.2 664.9,308.8 681.1,297.8 697.4,296.6 713.6,302.7 729.8,307 746.1,297.8 762.3,302.7 778.6,288.6 794.8,290.4 811,291.7 827.3,297.8 843.5,299.6 859.8,285.5 876,299.6" fill="none" stroke="#c2410c" stroke-width="2.5" stroke-linejoin="round"/>
+  <polyline points="64,307 80.2,319.2 96.5,316.1 112.7,316.1 129,314.9 145.2,313.1 161.4,308.8 177.7,313.1 193.9,314.9 210.2,313.1 226.4,319.2 242.6,310 258.9,305.7 275.1,307 291.4,370 307.6,370 323.8,370 340.1,370 356.3,370 372.6,370 388.8,370 405,278.2 421.3,278.2 437.5,278.2 453.8,319.2 470,321 486.2,330.2 502.5,318 518.7,321 535,302.7 551.2,311.9 567.4,311.9 583.7,308.8 599.9,319.2 616.2,314.9 632.4,310 648.6,318 664.9,318 681.1,311.9 697.4,308.8 713.6,327.2 729.8,305.7 746.1,299.6 762.3,296.6 778.6,290.4 794.8,290.4 811,305.7 827.3,294.7 843.5,305.7 859.8,290.4 876,293.5" fill="none" stroke="#0f766e" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="405" cy="125.2" r="4" fill="#c2410c"/>
+  <text x="413" y="117.2" font-size="13" font-weight="600" fill="#c2410c">40 min</text>
+  <circle cx="405" cy="278.2" r="4" fill="#0f766e"/>
+  <text x="413" y="296.2" font-size="13" font-weight="600" fill="#0f766e">15 min</text>
+  <text x="450" y="398" font-size="12" text-anchor="middle" fill="#475569">Tage</text>
+  <text x="18" y="217" font-size="12" text-anchor="middle" fill="#475569" transform="rotate(-90 18 217)">Minuten pro Tag</text>
+  <line x1="64" x2="88" y1="422" y2="422" stroke="#c2410c" stroke-width="3"/>
+  <text x="94" y="426" font-size="12" fill="#0f172a">Klassische Lernkarten-App (reines FSRS)</text>
+  <line x1="364" x2="388" y1="422" y2="422" stroke="#0f766e" stroke-width="3"/>
+  <text x="394" y="426" font-size="12" fill="#0f172a">Mit Planungsschicht</text>
+  <text x="64" y="450" font-size="10.5" fill="#475569">Annahmen: 1000 Karten, 10 neue pro Tag, 15 min Zeitbudget, 15 s je Karte, 60 Tage Vorlauf, 7 Tage Pause,</text>
+  <text x="64" y="464" font-size="10.5" fill="#475569">Ziel-Behaltensquote 90 %. Synthetische Simulation, keine Nutzerdaten.</text>
+</svg>
