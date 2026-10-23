@@ -6,10 +6,10 @@ export const APP_PORT = 3100;
 
 export const test = base.extend<{ gateway: Gateway }>({
   // Pro Test ein eigenes Gateway (eigener Origin, damit Service Worker und Caches nicht zwischen Tests geteilt werden).
-  gateway: async ({}, use) => {
+  gateway: async ({}, provide) => {
     const gateway = new Gateway({ host: "127.0.0.1", port: APP_PORT });
     await gateway.start();
-    await use(gateway);
+    await provide(gateway);
     await gateway.stop();
   },
 });
