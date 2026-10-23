@@ -28,11 +28,11 @@ test("Kurs herunterladen → offline → /offline → Lektion + Quiz → online 
 
   // Lektionstest abschließen
   await page.getByRole("button", { name: /Start quick check|Schnelltest starten/i }).first().click();
-  for (const n of [1, 2]) {
-    await expect(page.getByText(new RegExp(`Question ${n}\\?|Frage ${n}\\?`)).first()).toBeVisible();
+  for (let i = 0; i < 3; i++) {
+    await expect(page.getByText(/Question \d\?|Frage \d\?/).first()).toBeVisible();
     await page.getByText(/^(Right|Richtig)$/).first().click();
     await page.getByRole("button", { name: /^(Sure|Sicher)$/ }).first().click();
-    await page.getByRole("button", { name: n === 2 ? /Finish|Abschließen/ : /Next question|Nächste Frage|Next|Weiter/ }).first().click();
+    await page.getByRole("button", { name: i === 2 ? /Finish|Abschließen/ : /Next question|Nächste Frage/ }).first().click();
   }
   await expect.poll(async () => (await pendingSyncEvents(page)).map((e) => `${e.type}:${e.status}`)).toContain("section_quiz:pending");
 

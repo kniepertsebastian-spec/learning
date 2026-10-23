@@ -15,6 +15,7 @@ import {
   questions,
   questionOptions,
 } from "@/lib/server/db/schema";
+import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { listSimulationProgress } from "@/lib/server/simulations/service";
 import { SectionContent } from "@/components/SectionContent";
 import type { SectionQuizQuestion } from "@/components/SectionQuiz";
@@ -139,6 +140,7 @@ export default async function SectionPage({
       initialCompleted={completed}
       contentLocale={certRow?.contentLocale ?? "de"}
       translationPending={certRow?.translationStatus === "running"}
+      pretestEnabled={Boolean(session?.user?.id) && isFeatureEnabled("pretest_questions", session!.user!.id!)}
       simulationProgress={session?.user?.id ? await listSimulationProgress(session.user.id, sectionId) : []}
     />
   );

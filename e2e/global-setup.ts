@@ -29,7 +29,23 @@ export default async function globalSetup() {
 
   // Nicht löschen und neu anlegen: review_log ist unveränderlich, ein Kurs mit Lernfortschritt lässt sich nicht entfernen.
   const [existing] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, COURSE_SLUG)).limit(1);
-  if (existing) return;
+  let objectiveId: string;
+  if (existing) {
+    const [row] = await db
+      .select({ id: objectives.id })
+      .from(objectives)
+      .innerJoin(domains, eq(domains.id, objectives.domainId))
+      .where(eq(domains.certificationId, existing.id))
+      .limit(1);
+    objectiveId = row.id;
+  } else {
+    objectiveId = await createCourse();
+  }
+  await ensureQuestions(objectiveId);
+}
+
+async function createCourse(): Promise<string> {
+  const db = getDb();
   const [cert] = await db
     .insert(certifications)
     .values({ slug: COURSE_SLUG, name: COURSE_NAME, provider: "E2E", examName: "E2E", examVersion: "1", catalogStatus: "approved", includeSectionQuizzes: true })
@@ -47,10 +63,19 @@ export default async function globalSetup() {
     examFocusPoints: { de: ["b"], en: ["b"] },
     modelVersion: "e2e",
   });
-  for (const n of [1, 2]) {
+  return objective.id;
+}
+
+/** Mindestens drei Fragen: Vorabfragen brauchen zwei plus mindestens eine weitere für den Lektionstest. */
+async function ensureQuestions(objectiveId: string) {
+  const db = getDb();
+  for (const n of [1, 2, 3]) {
+    const humanId = `E2E-1.1-Q00${n}`;
+    const [have] = await db.select({ id: questions.id }).from(questions).where(eq(questions.humanId, humanId)).limit(1);
+    if (have) continue;
     const [question] = await db
       .insert(questions)
-      .values({ humanId: `E2E-1.1-Q00${n}`, objectiveId: objective.id, difficulty: "beginner", type: "knowledge", question: { de: `Frage ${n}?`, en: `Question ${n}?` }, explanation: { de: "Weil.", en: "Because." } })
+      .values({ humanId, objectiveId, difficulty: "beginner", type: "knowledge", question: { de: `Frage ${n}?`, en: `Question ${n}?` }, explanation: { de: "Weil.", en: "Because." } })
       .returning();
     await db.insert(questionOptions).values([
       { questionId: question.id, orderNum: 1, text: { de: "Richtig", en: "Right" }, isCorrect: true },
