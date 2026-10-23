@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/shell/AppShell";
 import type { ShellData } from "@/components/shell/Sidebar";
 import { availableContexts, type ShellContext } from "@/lib/shell/nav";
-import { getUserStudyStreak } from "@/lib/server/study/session-service";
+import { getLearningContext } from "@/lib/server/study/learning-context";
 import { LocaleProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
 import { getCurrentUser } from "@/lib/server/auth-guards";
@@ -88,7 +88,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         user: { id: user.id, email: user.email },
       }
     : null;
-  const streak = user ? await getUserStudyStreak(user.id).catch(() => 0) : 0;
+  // Wochenziel statt Tagesserie; die Serie (mit Serienschutz) nur, wenn die Person sie eingeschaltet hat.
+  const learning = user ? await getLearningContext(user.id).catch(() => null) : null;
+  const streak = learning?.preferences.showStreak ? learning.streak : 0;
+  const weekly = learning ? { days: learning.weekly.daysLearned, goal: learning.weekly.goal } : null;
   // Nonce aus proxy.ts (CSP ohne 'unsafe-inline' für Skripte).
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
@@ -104,7 +107,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <LocaleProvider>
           <ThemeProvider>
             <TooltipProvider delayDuration={200}>
-              <AppShell shell={shell} streak={streak}>
+              <AppShell shell={shell} streak={streak} weekly={weekly}>
                 {children}
               </AppShell>
               <Toaster />

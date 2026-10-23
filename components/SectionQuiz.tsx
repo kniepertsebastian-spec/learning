@@ -45,9 +45,11 @@ interface SectionQuizProps {
   offline?: { userId: string };
   /** Notausstieg „Heute reicht's“ (Flag exit_with_win, nur online). */
   exitEnabled?: boolean;
+  /** Sicherheitsangabe ab der 3. Session (und wenn nicht abgeschaltet). */
+  askConfidence?: boolean;
 }
 
-export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLabel, objectiveLabel, offline, exitEnabled }: SectionQuizProps) {
+export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLabel, objectiveLabel, offline, exitEnabled, askConfidence = true }: SectionQuizProps) {
   const { t } = useLocale();
   const [quizIndex, setQuizIndex] = useState(0);
   const [results, setResults] = useState<boolean[]>([]);
@@ -190,7 +192,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
         question={mapQuestion(current)}
         onAnswered={handleAnswered}
         sourceReference={current.sourceReference}
-        askConfidence
+        askConfidence={askConfidence}
         onNext={handleNext}
         nextLabel={quizIndex + 1 >= questions.length ? t.quiz.finish : t.quiz.next}
         objectiveLabel={objectiveLabel}

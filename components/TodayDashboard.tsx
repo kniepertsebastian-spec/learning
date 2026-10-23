@@ -27,6 +27,10 @@ export interface TodayDashboardData {
   estimatedMinutes: number;
   dueCount: number;
   streak: number;
+  /** Wochenziel („x von 4 Lerntagen“). */
+  weekly?: { days: number; goal: number };
+  /** Nach einer Pause von mindestens 7 Tagen: keine Rückstand-Zahl. */
+  welcomeBack?: boolean;
   dailyGoalType: "minutes" | "questions";
   dailyGoalValue: number;
   weakObjectives: TodayDashboardWeakObjective[];
@@ -154,6 +158,12 @@ export function TodayDashboard({
     return (
       <div className="mb-6 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
         <span>{locale === "de" ? "Heute schon erledigt - stark!" : "Already done for today - nice work!"}</span>
+        {data.weekly && (
+          <span className="flex items-center gap-1 font-medium" data-testid="weekly-goal">
+            <CalendarCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            {locale === "de" ? `${data.weekly.days} von ${data.weekly.goal} Lerntagen diese Woche` : `${data.weekly.days} of ${data.weekly.goal} study days this week`}
+          </span>
+        )}
         {data.streak > 0 && (
           <span className="flex items-center gap-1 font-medium">
             <Flame className="h-3.5 w-3.5" aria-hidden="true" />
@@ -188,8 +198,14 @@ export function TodayDashboard({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-1.5 text-sm font-medium">
           <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
-          {locale === "de" ? "Heute lernen" : "Today's session"}
+          {data.welcomeBack ? (locale === "de" ? "Willkommen zurück – heute nur 5 Minuten" : "Welcome back – just 5 minutes today") : locale === "de" ? "Heute lernen" : "Today's session"}
         </h2>
+        {data.weekly && (
+          <span className="flex items-center gap-1 text-xs font-medium text-foreground/70" data-testid="weekly-goal">
+            <CalendarCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            {locale === "de" ? `${data.weekly.days} von ${data.weekly.goal} Lerntagen diese Woche` : `${data.weekly.days} of ${data.weekly.goal} study days this week`}
+          </span>
+        )}
         {data.streak > 0 && (
           <span className="flex items-center gap-1 text-xs font-medium text-orange-600">
             <Flame className="h-3.5 w-3.5" aria-hidden="true" />
@@ -209,7 +225,11 @@ export function TodayDashboard({
       <div className="mb-3 flex flex-wrap gap-4 text-xs text-foreground/70">
         <span className="flex items-center gap-1">
           <CalendarCheck className="h-3.5 w-3.5" aria-hidden="true" />
-          {data.dueCount} {locale === "de" ? "fällige Wiederholungen" : "due reviews"}
+          {data.welcomeBack
+            ? locale === "de"
+              ? "Der Rest wird über die nächsten Tage verteilt"
+              : "The rest is spread over the next days"
+            : `${data.dueCount} ${locale === "de" ? "fällige Wiederholungen" : "due reviews"}`}
         </span>
         <span className="flex items-center gap-1">
           <Target className="h-3.5 w-3.5" aria-hidden="true" />

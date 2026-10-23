@@ -1,6 +1,6 @@
 "use client";
 
-import { Flame, Languages, Menu, Moon, ShieldAlert, Sun } from "lucide-react";
+import { CalendarCheck, Flame, Languages, Menu, Moon, ShieldAlert, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -12,6 +12,7 @@ import { SearchField } from "@/components/ui/search-field";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/cn";
 import { useLocale } from "@/lib/i18n";
+import { fmt } from "@/lib/quiz/keys";
 import { useSwitchLocale } from "@/lib/client/use-switch-locale";
 import { contextForPath, isPublicPath } from "@/lib/shell/nav";
 import { useTheme } from "@/lib/theme";
@@ -44,7 +45,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AppShell({ shell, streak, children }: { shell: ShellData | null; streak: number; children: React.ReactNode }) {
+export function AppShell({ shell, streak, weekly = null, children }: { shell: ShellData | null; streak: number; weekly?: { days: number; goal: number } | null; children: React.ReactNode }) {
   const pathname = usePathname();
   const { t, locale } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -101,6 +102,12 @@ export function AppShell({ shell, streak, children }: { shell: ShellData | null;
               <div className="flex-1" />
             )}
             <div className="ml-auto flex items-center gap-2">
+              {ctx === "personal" && weekly && (
+                <Badge tone={weekly.days >= weekly.goal ? "mint" : "neutral"} className="h-8 gap-1.5 px-3 text-sm" data-testid="weekly-goal-pill">
+                  <CalendarCheck className="h-4 w-4" aria-hidden="true" />
+                  {fmt(t.shell.weeklyGoal, { a: weekly.days, b: weekly.goal })}
+                </Badge>
+              )}
               {ctx === "personal" && streak > 0 && (
                 <Badge tone="warning" className="h-8 gap-1.5 px-3 text-sm" data-testid="streak-pill">
                   <Flame className="h-4 w-4" aria-hidden="true" />

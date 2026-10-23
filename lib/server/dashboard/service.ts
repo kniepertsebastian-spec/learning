@@ -8,7 +8,7 @@ import { visibleCertificationsCondition, type Viewer } from "@/lib/server/catalo
 import { getDueReviewCount } from "@/lib/server/review/service";
 import { getReadiness } from "@/lib/server/readiness/service";
 import { getTopWeakObjectives } from "@/lib/server/study/session-service";
-import { getUserStudyStreak } from "@/lib/server/study/session-service";
+import { getLearningContext } from "@/lib/server/study/learning-context";
 import {
   accuracy, certState, daysUntil, domainLight, masteryPercent, pickContinueIndex, shortCodeOf, weekBars, weekStart,
   type CertState, type DomainLight,
@@ -52,6 +52,8 @@ export interface LearnerDashboard {
   };
   dueTotal: number;
   streak: number;
+  /** Nach einer Pause von mindestens 7 Tagen: Begrüßung statt Rückstand-Zahl. */
+  welcomeBack: boolean;
   stats: {
     answeredTotal: number;
     answeredWeek: number;
@@ -222,8 +224,8 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
   }
 
   const bars = weekBars(answers.map((a) => a.at), now);
-  const planned = (mainCert && profileOf.get(mainCert.id)?.activeDays?.length) || 5;
-  const activeDays = bars.counts.filter((n) => n > 0).length;
+  // Wochenziel statt Tagesserie; die Serie (mit Serienschutz) nur, wenn die Person sie eingeschaltet hat („Wie ich lerne“).
+  const learning = await getLearningContext(userId, now);
 
   const weekStartDate = weekStart(now);
   const lessonsDoneWeek = [...doneAt.values()].filter((d) => d >= weekStartDate).length;
@@ -233,7 +235,8 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
     main,
     hero,
     dueTotal,
-    streak: await getUserStudyStreak(userId, now),
+    streak: learning.preferences.showStreak ? learning.streak : 0,
+    welcomeBack: learning.welcomeBack,
     stats: {
       answeredTotal: answers.length,
       answeredWeek: thisWeek.length,
@@ -242,6 +245,6 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
       lessonsDone: doneAt.size,
       lessonsDoneWeek,
     },
-    week: { counts: bars.counts, todayIndex: bars.todayIndex, activeDays, plannedDays: Math.min(7, Math.max(1, planned)) },
+    week: { counts: bars.counts, todayIndex: bars.todayIndex, activeDays: learning.weekly.daysLearned, plannedDays: learning.weekly.goal },
   };
 }
