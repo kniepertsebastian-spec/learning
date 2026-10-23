@@ -23,6 +23,8 @@ import {
 } from "@/lib/server/db/schema";
 import type { AnswerConfidence, EnergyLevel, Localized } from "@/lib/types";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
+import { afterDeescalatedSession, declineDeescalation, orderEasiestFirst, refreshEngagement } from "@/lib/server/engagement/service";
+import { DEFAULT_ENGAGEMENT_CONFIG } from "@/lib/server/engagement/rules";
 import { createRecallCheck, planRecallCheck, recordRecallResults } from "@/lib/server/recall/service";
 import { detectStruggles, loadConfusion, pausedItemIds, planUnderstandTask, recordUnderstandResults } from "@/lib/server/understanding/service";
 import { chooseSessionVariants } from "@/lib/server/variants/rotation";
@@ -77,6 +79,8 @@ export interface StudySessionSummary {
   itemCount: number;
   estimatedMinutes: number;
   isComeback: boolean;
+  /** Frühwarnung (Flag dropout_guard): diese Session wurde entlastet. */
+  deescalated: boolean;
 }
 
 function toSummary(
@@ -86,6 +90,7 @@ function toSummary(
     goalType: StudyGoalType;
     goalValue: number;
     isComeback: boolean;
+    deescalated: boolean;
   },
   itemCount: number,
 ): StudySessionSummary {
@@ -97,6 +102,7 @@ function toSummary(
     itemCount,
     estimatedMinutes: estimateSessionMinutes(itemCount),
     isComeback: session.isComeback,
+    deescalated: session.deescalated,
   };
 }
 
@@ -396,6 +402,11 @@ async function buildAndPersistSession(
     const extra = moreStudyExtra(targetQuestionCount);
     targetQuestionCount += extra;
   }
+  // Frühwarnung (Flag dropout_guard): bei erkanntem Muster entlasten - nur Planung, FSRS bleibt unverändert.
+  const deescalated = isFeatureEnabled("dropout_guard", userId)
+    ? (await refreshEngagement(userId, now).catch((error) => (console.error("Frühwarnung fehlgeschlagen:", error), { deescalated: false }))).deescalated
+    : false;
+  if (deescalated) targetQuestionCount = Math.max(1, Math.ceil(targetQuestionCount * DEFAULT_ENGAGEMENT_CONFIG.limitFactor));
   // Gespeichertes Tageslimit = tatsächliche Zielgröße der Session (auch ohne Planungsschicht).
   plan.dailyLimit = targetQuestionCount;
 
@@ -438,6 +449,7 @@ async function buildAndPersistSession(
     dueCount = Math.max(0, dueCount - (dueItems.length - kept.length));
     dueItems = kept;
   }
+  if (deescalated) dueItems = await orderEasiestFirst(userId, dueItems, now);
   const dueQuestionIds = dueItems.map((item) => item.questionId);
 
   const weakCandidates = (await selectWeakObjectiveQuestions(
@@ -449,7 +461,7 @@ async function buildAndPersistSession(
   const weakQuestionIds = weakCandidates.map((c) => c.questionId);
 
   // Rückstau-Abbau: solange mehr fällig ist als das Tageslimit, pausieren neue Karten.
-  const newCandidates = newCardsPaused
+  const newCandidates = newCardsPaused || deescalated
     ? []
     : await selectNewQuestions(userId, certificationId, [...dueQuestionIds, ...weakQuestionIds], CANDIDATE_POOL_LIMIT);
 
@@ -521,7 +533,7 @@ async function buildAndPersistSession(
 
   const [session] = await db
     .insert(studySessions)
-    .values({ userId, certificationId, status: "planned", goalType, goalValue, energyLevel, isComeback })
+    .values({ userId, certificationId, status: "planned", goalType, goalValue, energyLevel, isComeback, deescalated })
     .returning();
   await persistSessionPlan(session.id, userId, plan, now);
 
@@ -822,6 +834,8 @@ export async function completeStudySession(
     await detectStruggles(userId, results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => r.questionId)).catch((error) => console.error("Verstehens-Erkennung fehlgeschlagen:", error));
   }
 
+  if (session.deescalated) await afterDeescalatedSession(userId).catch((error) => console.error("Frühwarnung (Abschluss) fehlgeschlagen:", error));
+
   const score = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
   return { score, results };
 }
@@ -889,6 +903,25 @@ export async function revealStudySessionAnswer(
 
 /** R2.4: "Heute aussetzen" - beendet die Session ohne sie als erledigt zu
  * zählen (zählt entsprechend NICHT in die Lernserie, siehe computeStreak()). */
+/**
+ * „Nein danke, normal weiter“ bei einer entlasteten Session: Entlastung beenden (mit Wartezeit gegen sofortiges Neuauslösen) und die
+ * noch unbeantwortete Session mit demselben Ziel normal neu bauen. Gibt die neue Session zurück, sonst null.
+ */
+export async function declineDeescalatedSession(sessionId: string, userId: string): Promise<StudySessionSummary | null> {
+  const db = getDb();
+  const [session] = await db.select().from(studySessions).where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId))).limit(1);
+  if (!session || !session.deescalated || (session.status !== "planned" && session.status !== "in_progress")) return null;
+  const [answered] = await db
+    .select({ id: studySessionItems.id })
+    .from(studySessionItems)
+    .where(and(eq(studySessionItems.sessionId, sessionId), sql`${studySessionItems.outcome} is not null`))
+    .limit(1);
+  if (answered) return null;
+  await declineDeescalation(userId);
+  await db.delete(studySessions).where(eq(studySessions.id, sessionId));
+  return buildAndPersistSession(userId, session.certificationId, { goalType: session.goalType, goalValue: session.goalValue, energyLevel: session.energyLevel ?? undefined });
+}
+
 export async function skipStudySession(sessionId: string, userId: string): Promise<void> {
   const db = getDb();
   const result = await db
