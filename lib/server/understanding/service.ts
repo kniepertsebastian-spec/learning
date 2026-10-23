@@ -186,6 +186,18 @@ export async function planUnderstandTask(userId: string, certificationId: string
       .orderBy(asc(itemVariants.itemId), asc(itemVariants.createdAt));
     if (variants.length === 0) continue;
     const lastShown = await lastShownByQuestion(userId, [...new Set(variants.map((v) => v.itemId))]);
+    // Verstehens-Aufgaben erzeugen kein review_log: bereits gezeigte Varianten aus den Session-Items mitzählen.
+    const shownInSessions = await db
+      .select({ itemId: studySessionItems.referenceId, questionId: studySessionItems.variantQuestionId, at: sql<Date>`max(${studySessionItems.createdAt})` })
+      .from(studySessionItems)
+      .innerJoin(studySessions, eq(studySessions.id, studySessionItems.sessionId))
+      .where(and(eq(studySessions.userId, userId), eq(studySessionItems.category, "understand"), inArray(studySessionItems.referenceId, itemIds), sql`${studySessionItems.variantQuestionId} is not null`))
+      .groupBy(studySessionItems.referenceId, studySessionItems.variantQuestionId);
+    for (const s of shownInSessions) {
+      const key = `${s.itemId}:${s.questionId}`;
+      const at = s.at ? new Date(s.at) : new Date(0);
+      if (!lastShown.has(key) || lastShown.get(key)! < at) lastShown.set(key, at);
+    }
     const time = (v: { itemId: string; questionId: string }) => lastShown.get(`${v.itemId}:${v.questionId}`)?.getTime() ?? -Infinity;
     const pick = variants.reduce((best, v) => (time(v) < time(best) ? v : best));
     return { struggleId: struggle.id, itemId: pick.itemId, variantQuestionId: pick.questionId };
