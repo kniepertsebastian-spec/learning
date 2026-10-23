@@ -49,7 +49,7 @@ export default async function StudySessionPage({
       ? [
           {
             itemId: item.itemId,
-            category: item.category as "review" | "weak" | "new" | "recall" | "understand" | "win",
+            category: item.category as "review" | "weak" | "new" | "recall" | "understand" | "win" | "prereq",
             questionId: item.question.questionId,
             understand: item.understand ?? undefined,
             recall: item.recall ? { sectionId: item.recall.sectionId, lessonTitle: item.recall.lessonTitle } : undefined,

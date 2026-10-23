@@ -328,7 +328,11 @@ export async function conceptsWithoutProbes(certificationId: string): Promise<st
  */
 export function tagConceptsAfterGeneration(certificationId: string, organizationId: string | null): void {
   if (organizationId || process.env.PSRP_TAG_CONCEPTS === "0" || !process.env.GEMINI_API_KEY) return;
-  void tagCourseConcepts(certificationId, createConceptTagger()).catch((error) =>
-    console.error("Konzept-Tagging nach der Kursgenerierung fehlgeschlagen:", error),
-  );
+  void tagCourseConcepts(certificationId, createConceptTagger())
+    .then(async () => {
+      // Voraussetzungen zwischen den Konzepten als Entwurf vorschlagen (Freigabe in der Werkstatt)
+      const { backfillPrerequisites, createPrerequisiteGenerator } = await import("@/lib/server/prerequisites/generate");
+      await backfillPrerequisites(certificationId, createPrerequisiteGenerator());
+    })
+    .catch((error) => console.error("Konzept-Tagging nach der Kursgenerierung fehlgeschlagen:", error));
 }
