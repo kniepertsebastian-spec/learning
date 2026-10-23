@@ -41,7 +41,8 @@
     "psrp:fit-weights": "tsx scripts/psrp-fit-weights.ts",
     "concepts:tag": "tsx scripts/tag-concepts.ts",
     "course:e2e": "tsx scripts/run-fake-course-generation.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "lighthouse": "node scripts/lighthouse-check.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.23.0",
