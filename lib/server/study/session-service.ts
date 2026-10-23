@@ -26,7 +26,7 @@ import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { loadBridges, planPrereqCheck, recordPrereqResults } from "@/lib/server/prerequisites/service";
 import { platformStatText } from "@/lib/feedback/platform-stat";
 import { firstTryStats } from "@/lib/server/stats/first-try";
-import { approvedExplanationForQuestion } from "@/lib/server/explanations/service";
+import { approvedHelpForQuestion, type UnderstandHelp } from "@/lib/server/explanations/service";
 import { createWinSession, planWinItems, recordExit } from "@/lib/server/exit/service";
 import { afterDeescalatedSession, declineDeescalation, orderEasiestFirst, refreshEngagement } from "@/lib/server/engagement/service";
 import { DEFAULT_ENGAGEMENT_CONFIG } from "@/lib/server/engagement/rules";
@@ -236,8 +236,8 @@ export interface StudySessionItemContent {
     conceptStruggleId: string;
     conceptName: string;
     confusion: { optionText: Localized<string>; rationale: Localized<string> | null } | null;
-    /** Freigegebene Alternativerklärung zum Lernziel (nie live erzeugt), falls vorhanden. */
-    explanation: { kind: "worked_example" | "analogy" | "example"; content: Localized<string> } | null;
+    /** Freigegebene Hilfen zum Lernziel (nie live erzeugt): Leiter „Vormachen, dann selbst machen“ und eine zusätzliche Sicht, falls vorhanden. */
+    help: UnderstandHelp | null;
     /** Schwache Voraussetzung aus dem Grundlagen-Check: zuerst diese Lektion lesen, dann zurück zum Konzept. */
     bridge: { conceptName: string; sectionId: string; title: Localized<string> } | null;
   };
@@ -329,15 +329,15 @@ export async function getStudySessionWithContent(
           .innerJoin(concepts, eq(concepts.id, conceptStruggles.conceptId))
           .where(inArray(conceptStruggles.id, struggleIds))
       : [];
-  const explanationByStruggle = new Map<string, Awaited<ReturnType<typeof approvedExplanationForQuestion>>>();
+  const explanationByStruggle = new Map<string, UnderstandHelp | null>();
   for (const item of itemRows) {
     if (item.conceptStruggleId && !explanationByStruggle.has(item.conceptStruggleId)) {
       const status = struggleRows.find((r) => r.id === item.conceptStruggleId)?.status ?? "detected";
-      explanationByStruggle.set(item.conceptStruggleId, await approvedExplanationForQuestion(item.variantQuestionId ?? item.referenceId, status).catch(() => null));
+      explanationByStruggle.set(item.conceptStruggleId, await approvedHelpForQuestion(item.variantQuestionId ?? item.referenceId, status).catch(() => null));
     }
   }
   const bridgeByStruggle = await loadBridges(struggleRows.map((r) => r.id));
-  const struggleById = new Map(await Promise.all(struggleRows.map(async (r) => [r.id, { name: r.name, confusion: await loadConfusion(r.signals), explanation: explanationByStruggle.get(r.id) ?? null, bridge: bridgeByStruggle.get(r.id) ?? null }] as const)));
+  const struggleById = new Map(await Promise.all(struggleRows.map(async (r) => [r.id, { name: r.name, confusion: await loadConfusion(r.signals), help: explanationByStruggle.get(r.id) ?? null, bridge: bridgeByStruggle.get(r.id) ?? null }] as const)));
 
   const items: StudySessionItemContent[] = [];
   for (const item of itemRows) {
@@ -354,7 +354,7 @@ export async function getStudySessionWithContent(
         outcome: item.outcome,
         question: { questionId: q.id, question: q.question, options },
         ...(item.conceptStruggleId && struggleById.has(item.conceptStruggleId)
-          ? { understand: { conceptStruggleId: item.conceptStruggleId, conceptName: struggleById.get(item.conceptStruggleId)!.name, confusion: struggleById.get(item.conceptStruggleId)!.confusion, explanation: struggleById.get(item.conceptStruggleId)!.explanation, bridge: struggleById.get(item.conceptStruggleId)!.bridge } }
+          ? { understand: { conceptStruggleId: item.conceptStruggleId, conceptName: struggleById.get(item.conceptStruggleId)!.name, confusion: struggleById.get(item.conceptStruggleId)!.confusion, help: struggleById.get(item.conceptStruggleId)!.help, bridge: struggleById.get(item.conceptStruggleId)!.bridge } }
           : {}),
         ...(item.recallCheckId && recallById.has(item.recallCheckId)
           ? { recall: { recallCheckId: item.recallCheckId, sectionId: recallById.get(item.recallCheckId)!.sectionId, lessonTitle: recallById.get(item.recallCheckId)!.title } }

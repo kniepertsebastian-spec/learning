@@ -22,9 +22,10 @@ export interface DraftExplanation {
   objectiveTitle: string;
   kind: ExplanationKind;
   content: Localized<string>;
+  solution: Localized<string> | null;
 }
 
-const ORDER: ExplanationKind[] = ["worked_example", "analogy", "example"];
+const ORDER: ExplanationKind[] = ["worked_example", "gapped_example", "analogy", "example"];
 
 /** Entwürfe eines Kurses für die Werkstatt, nach Lernziel sortiert. */
 export async function listDraftExplanations(certificationId: string): Promise<DraftExplanation[]> {
@@ -36,6 +37,7 @@ export async function listDraftExplanations(certificationId: string): Promise<Dr
       objectiveTitle: objectives.title,
       kind: objectiveExplanations.kind,
       content: objectiveExplanations.content,
+      solution: objectiveExplanations.solution,
     })
     .from(objectiveExplanations)
     .innerJoin(objectives, eq(objectives.id, objectiveExplanations.objectiveId))
@@ -54,10 +56,13 @@ export async function reviewExplanation(input: {
   reviewerUserId: string;
   decision: Extract<ExplanationStatus, "approved" | "rejected">;
   content?: Localized<string>;
+  solution?: Localized<string>;
 }): Promise<void> {
   if (input.content && (!input.content.de.trim() || !input.content.en.trim())) throw new InvalidExplanationError();
+  if (input.solution && (!input.solution.de.trim() || !input.solution.en.trim())) throw new InvalidExplanationError();
   const set: Partial<typeof objectiveExplanations.$inferInsert> = { status: input.decision, reviewedByUserId: input.reviewerUserId, reviewedAt: new Date() };
   if (input.content) set.content = { de: input.content.de.trim(), en: input.content.en.trim() };
+  if (input.solution) set.solution = { de: input.solution.de.trim(), en: input.solution.en.trim() };
   const result = await getDb()
     .update(objectiveExplanations)
     .set(set)
@@ -79,22 +84,37 @@ export async function explanationCounts(certificationId: string): Promise<Record
   return counts;
 }
 
+export interface LadderStep {
+  kind: "worked_example" | "gapped_example";
+  content: Localized<string>;
+  /** Nur beim Beispiel mit Lücken. */
+  solution: Localized<string> | null;
+}
+
+export interface UnderstandHelp {
+  /** „Vormachen, dann selbst machen“: gelöstes Beispiel, dann Beispiel mit Lücken, danach die eigene Aufgabe. */
+  ladder: LadderStep[];
+  /** Zusätzliche Sicht (Vergleich aus dem Alltag oder anderes Beispiel), falls freigegeben. */
+  extra: { kind: "analogy" | "example"; content: Localized<string> } | null;
+}
+
 /**
- * Freigegebene Alternativerklärung für die Frage im Verstehens-Modus: beim ersten Versuch (`detected`) die erste Art
- * (gelöstes Beispiel), nach einer falsch beantworteten Aufgabe (`in_progress`) die nächste. Gibt es nur eine, bleibt es dabei.
+ * Freigegebene Hilfen für die Verstehens-Aufgabe: die Leiter (gelöstes Beispiel → Beispiel mit Lücken) und eine zusätzliche Sicht.
+ * Nach einer falsch beantworteten Aufgabe (`in_progress`) wird das gelöste Beispiel nicht noch einmal vorangestellt, wenn es das
+ * Beispiel mit Lücken gibt. Nur `approved` wird je ausgegeben.
  */
-export async function approvedExplanationForQuestion(
-  questionId: string,
-  status: ConceptStruggleStatus,
-): Promise<{ kind: ExplanationKind; content: Localized<string> } | null> {
+export async function approvedHelpForQuestion(questionId: string, status: ConceptStruggleStatus): Promise<UnderstandHelp | null> {
   const db = getDb();
   const [q] = await db.select({ objectiveId: questions.objectiveId }).from(questions).where(eq(questions.id, questionId)).limit(1);
   if (!q) return null;
   const rows = await db
-    .select({ kind: objectiveExplanations.kind, content: objectiveExplanations.content })
+    .select({ kind: objectiveExplanations.kind, content: objectiveExplanations.content, solution: objectiveExplanations.solution })
     .from(objectiveExplanations)
     .where(and(eq(objectiveExplanations.objectiveId, q.objectiveId), eq(objectiveExplanations.status, "approved"), inArray(objectiveExplanations.kind, ORDER)));
   if (rows.length === 0) return null;
-  const sorted = rows.sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind));
-  return sorted[status === "in_progress" ? Math.min(1, sorted.length - 1) : 0];
+  const by = new Map(rows.map((r) => [r.kind, r]));
+  let ladder: LadderStep[] = (["worked_example", "gapped_example"] as const).flatMap((kind) => (by.has(kind) ? [{ kind, content: by.get(kind)!.content, solution: by.get(kind)!.solution ?? null }] : []));
+  if (status === "in_progress" && ladder.length > 1) ladder = ladder.slice(1);
+  const extraRow = by.get("analogy") ?? by.get("example");
+  return { ladder, extra: extraRow ? { kind: extraRow.kind as "analogy" | "example", content: extraRow.content } : null };
 }

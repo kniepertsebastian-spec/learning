@@ -862,7 +862,7 @@ export const engagementStates = pgTable(
   (table) => [check("engagement_state_status_check", sql`${table.status} in ('normal', 'deescalated')`)],
 );
 
-export type ExplanationKind = "worked_example" | "analogy" | "example";
+export type ExplanationKind = "worked_example" | "gapped_example" | "analogy" | "example";
 export type ExplanationStatus = "draft" | "approved" | "rejected";
 
 /**
@@ -879,6 +879,8 @@ export const objectiveExplanations = pgTable(
       .references(() => objectives.id, { onDelete: "cascade" }),
     kind: text("kind").$type<ExplanationKind>().notNull(),
     content: jsonb("content").$type<Localized<string>>().notNull(),
+    /** Nur bei `gapped_example` (Beispiel mit Lücken): die Lösungen, die erst auf Wunsch gezeigt werden. */
+    solution: jsonb("solution").$type<Localized<string>>(),
     status: text("status").$type<ExplanationStatus>().notNull().default("draft"),
     reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
@@ -887,7 +889,7 @@ export const objectiveExplanations = pgTable(
   (table) => [
     unique("objective_explanation_objective_kind_unique").on(table.objectiveId, table.kind),
     index("objective_explanation_status_idx").on(table.status),
-    check("objective_explanation_kind_check", sql`${table.kind} in ('worked_example', 'analogy', 'example')`),
+    check("objective_explanation_kind_check", sql`${table.kind} in ('worked_example', 'gapped_example', 'analogy', 'example')`),
     check("objective_explanation_status_check", sql`${table.status} in ('draft', 'approved', 'rejected')`),
   ],
 );

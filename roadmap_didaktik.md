@@ -201,7 +201,7 @@ Ziel: Unterscheiden zwischen **Vergessen** (hilft: Wiederholen) und **Nicht-Vers
 - [x] **Wiederholen pausieren:** Items des Konzepts kommen nicht mehr als normale Wiederholung in die Session, solange der Verstehens-Modus läuft (nur Planungsschicht, FSRS-Zustand bleibt unverändert).
 - [x] **Verwechslung ansprechen:** Wurde wiederholt dieselbe falsche Option gewählt, deren Begründung (`rationale`) als „Häufige Verwechslung“ zeigen.
 - [x] **Anders erklären:** je Lernziel 1–2 Alternativerklärungen (anderes Beispiel, Vergleich aus dem Alltag, vollständig gelöstes Beispiel). **Vorab** per KI erzeugt und durch den normalen Prüfprozess der Werkstatt freigegeben, nie live generiert. Backfill-Skript mit Kostenschätzung.
-- [ ] **Vormachen, dann selbst machen:** gelöstes Beispiel → Beispiel mit Lücken → eigene Aufgabe (neue Variante).
+- [x] **Vormachen, dann selbst machen:** gelöstes Beispiel → Beispiel mit Lücken → eigene Aufgabe (neue Variante).
 - [x] **Abschluss:** Konzept gilt als `resolved`, wenn eine neue Variante richtig beantwortet wird; danach normale Wiederholung.
 - [x] Einstieg sichtbar und freundlich: „Das scheint noch nicht ganz zu sitzen. Sollen wir es anders angehen?“, jederzeit ablehnbar.
 

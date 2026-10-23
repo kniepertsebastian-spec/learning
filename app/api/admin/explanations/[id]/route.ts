@@ -12,6 +12,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const bodySchema = z.object({
   decision: z.enum(["approved", "rejected"]),
   content: z.object({ de: z.string().max(2500), en: z.string().max(2500) }).optional(),
+  solution: z.object({ de: z.string().max(1500), en: z.string().max(1500) }).optional(),
 });
 
 /** POST /api/admin/explanations/:id - Entwurf freigeben oder verwerfen, optional mit überarbeitetem Text. */
@@ -23,13 +24,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Ungültige Anfrage." }, { status: 400 });
   try {
-    await reviewExplanation({ id, reviewerUserId: guard.user.id, decision: parsed.data.decision, content: parsed.data.content });
+    await reviewExplanation({ id, reviewerUserId: guard.user.id, decision: parsed.data.decision, content: parsed.data.content, solution: parsed.data.solution });
     await recordAuditEvent({
       actorUserId: guard.user.id,
       action: "explanation.reviewed",
       targetType: "objective_explanation",
       targetId: id,
-      metadata: { decision: parsed.data.decision, edited: Boolean(parsed.data.content) },
+      metadata: { decision: parsed.data.decision, edited: Boolean(parsed.data.content || parsed.data.solution) },
     }).catch((error) => console.error("Audit-Log fehlgeschlagen:", error));
     return NextResponse.json({ status: "ok" });
   } catch (error) {

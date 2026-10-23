@@ -15,7 +15,9 @@ import { FEEDBACK_TONE_PROMPT } from "@/lib/server/ai/feedback-tone";
 import { similarity } from "@/lib/server/psrp/concepts";
 
 /** Pro Lernziel angestrebte Arten (1-2 Alternativerklärungen laut Roadmap). */
-export const TARGET_KINDS: readonly ExplanationKind[] = ["worked_example", "analogy"];
+export const TARGET_KINDS: readonly ExplanationKind[] = ["worked_example", "gapped_example", "analogy"];
+/** Lücken im „Beispiel mit Lücken“ stehen als drei Unterstriche. */
+export const GAP_MARKER = "___";
 export const MIN_LENGTH = 120;
 export const MAX_LENGTH = 1800;
 /** Ist die Erklärung dem Lektionstext zu ähnlich, ist sie keine andere Sicht. */
@@ -38,18 +40,21 @@ export interface ExplanationSource {
 export interface GeneratedExplanation {
   kind: ExplanationKind;
   content: { de: string; en: string };
+  /** Nur bei `gapped_example`: die Lösungen zu den Lücken. */
+  solution?: { de: string; en: string } | null;
 }
 
 export type ExplanationGenerator = (source: ExplanationSource, kinds: ExplanationKind[]) => Promise<GeneratedExplanation[]>;
 
 const KIND_HINT: Record<ExplanationKind, string> = {
   worked_example: "worked_example: ein vollständig gelöstes Beispiel, Schritt für Schritt, mit Begründung jedes Schritts",
+  gapped_example: "gapped_example: dasselbe Beispiel wie ein gelöstes Beispiel, aber an 2 bis 4 entscheidenden Stellen mit Lücken (genau drei Unterstriche ___ statt der Lösung); die Lösungen stehen getrennt in `solution`, Punkt für Punkt in derselben Reihenfolge",
   analogy: "analogy: ein Vergleich aus dem Alltag, der das Kernprinzip anschaulich macht (mit Hinweis, wo der Vergleich endet)",
   example: "example: ein anderes, konkretes Beispiel als in der Lektion",
 };
 
 const responseSchema = z.object({
-  explanations: z.array(z.object({ kind: z.enum(["worked_example", "analogy", "example"]), content: localizedStringSchema })).min(1),
+  explanations: z.array(z.object({ kind: z.enum(["worked_example", "gapped_example", "analogy", "example"]), content: localizedStringSchema, solution: localizedStringSchema.nullish() })).min(1),
 });
 
 const SYSTEM_PROMPT = [
@@ -58,7 +63,7 @@ const SYSTEM_PROMPT = [
   "Erkläre anders als die Lektion: anderes Beispiel, anderer Zugang. Schreibe den Lektionstext nicht um.",
   "Kurz und klar (etwa 100 bis 250 Wörter je Sprache), Markdown erlaubt, zweisprachig (de/en).",
   "Fachlich korrekt bleiben, nichts erfinden, was nicht zum Lernziel gehört. Keine Wertung der lernenden Person: nie 'Du hast das falsch verstanden', eher 'Schauen wir es einmal anders an'.",
-  'Antworte ausschließlich als JSON: {"explanations": [{"kind": "...", "content": {"de": "...", "en": "..."}}]} mit genau einem Eintrag je gewünschter Art.',
+  'Antworte ausschließlich als JSON: {"explanations": [{"kind": "...", "content": {"de": "...", "en": "..."}, "solution": {"de": "...", "en": "..."}}]} mit genau einem Eintrag je gewünschter Art; `solution` nur bei gapped_example, sonst weglassen.',
 ].join("\n");
 
 export function createExplanationGenerator(client?: GoogleGenAI): ExplanationGenerator {
@@ -86,6 +91,13 @@ export function validateExplanation(
   for (const lang of ["de", "en"] as const) {
     const text = candidate.content[lang].trim();
     if (text.length < MIN_LENGTH || text.length > MAX_LENGTH) return { ok: false, reason: `Länge (${lang})` };
+  }
+  const gapped = candidate.kind === "gapped_example";
+  if (gapped) {
+    if (!candidate.solution || !candidate.solution.de.trim() || !candidate.solution.en.trim()) return { ok: false, reason: "Lösung fehlt" };
+    if (!candidate.content.de.includes(GAP_MARKER) || !candidate.content.en.includes(GAP_MARKER)) return { ok: false, reason: "keine Lücken" };
+  } else if (candidate.solution) {
+    return { ok: false, reason: "Lösung nur beim Beispiel mit Lücken" };
   }
   if (lessonText.de && similarity(candidate.content.de, lessonText.de) > MAX_LESSON_SIMILARITY) return { ok: false, reason: "zu ähnlich zur Lektion" };
   return { ok: true };
@@ -170,7 +182,7 @@ export async function backfillExplanations(
           if (accepted.size > 0) {
             const inserted = await getDb()
               .insert(objectiveExplanations)
-              .values([...accepted.values()].map((e) => ({ objectiveId: source.objectiveId, kind: e.kind, content: { de: e.content.de.trim(), en: e.content.en.trim() }, status: "draft" as const })))
+              .values([...accepted.values()].map((e) => ({ objectiveId: source.objectiveId, kind: e.kind, content: { de: e.content.de.trim(), en: e.content.en.trim() }, solution: e.kind === "gapped_example" && e.solution ? { de: e.solution.de.trim(), en: e.solution.en.trim() } : null, status: "draft" as const })))
               .onConflictDoNothing()
               .returning({ id: objectiveExplanations.id });
             counts.created += inserted.length;

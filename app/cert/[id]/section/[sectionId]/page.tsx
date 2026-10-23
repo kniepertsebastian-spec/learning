@@ -15,6 +15,8 @@ import {
   questions,
   questionOptions,
 } from "@/lib/server/db/schema";
+import { getCompanyMembership } from "@/lib/server/company/access";
+import { findMentorUserId } from "@/lib/server/company/mentor-requests";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { listSimulationProgress } from "@/lib/server/simulations/service";
 import { SectionContent } from "@/components/SectionContent";
@@ -71,6 +73,12 @@ export default async function SectionPage({
     ? await db.select({ name: certifications.name }).from(certifications).where(eq(certifications.id, domainRows[0].certificationId)).limit(1)
     : [];
   const certName = certNameRow?.name;
+  // „Ich hänge fest“ bei Simulationen: nur im Firmenbereich und nur, wenn der Person ein Mentor zugeordnet ist.
+  const membership = session?.user?.id ? await getCompanyMembership(session.user.id) : null;
+  const mentorAsk =
+    membership && domainRows[0] && (await findMentorUserId(membership.organizationId, membership.userId))
+      ? { topic: section.title.de, certificationId: domainRows[0].certificationId }
+      : null;
   let completed = false;
   if (session?.user?.id && !quizEnabled) {
     const [done] = await db
@@ -140,6 +148,7 @@ export default async function SectionPage({
       initialCompleted={completed}
       contentLocale={certRow?.contentLocale ?? "de"}
       translationPending={certRow?.translationStatus === "running"}
+      mentorAsk={mentorAsk}
       exitEnabled={Boolean(session?.user?.id) && isFeatureEnabled("exit_with_win", session!.user!.id!)}
       pretestEnabled={Boolean(session?.user?.id) && isFeatureEnabled("pretest_questions", session!.user!.id!)}
       simulationProgress={session?.user?.id ? await listSimulationProgress(session.user.id, sectionId) : []}

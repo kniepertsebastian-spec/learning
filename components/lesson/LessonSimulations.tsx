@@ -24,6 +24,8 @@ type Ctx = {
   headings: string[];
   /** Position der Simulation in der Lektion (0-basiert, -1 unbekannt): für Sprungmarken wie #simulation-2. */
   indexOf: (spec: string) => number;
+  /** Firmenbereich mit zugeordnetem Mentor: „Ich hänge fest“ bei jeder Simulation (Thema = Lektion). */
+  mentorAsk: { topic: string; certificationId: string } | null;
 };
 
 const LessonSimulationsContext = React.createContext<Ctx | null>(null);
@@ -35,6 +37,7 @@ export function LessonSimulationsProvider({
   persist,
   offlineUserId,
   initialProgress,
+  mentorAsk = null,
   children,
 }: {
   text: string;
@@ -44,6 +47,8 @@ export function LessonSimulationsProvider({
   /** Im Offline-Reader: gelöste Simulationen gehen in die Sync-Warteschlange dieser Person. */
   offlineUserId?: string;
   initialProgress: Array<{ simIndex: number; bestHelps: number }>;
+  /** Nur online und nur mit zugeordnetem Mentor (nur durch die lernende Person ausgelöst). */
+  mentorAsk?: { topic: string; certificationId: string } | null;
   children: React.ReactNode;
 }) {
   const { t } = useLocaleOptional();
@@ -96,7 +101,7 @@ export function LessonSimulationsProvider({
   }, [open, target]);
 
   const indexOf = React.useCallback((spec: string) => simulationIndex(sources, spec), [sources]);
-  const value = React.useMemo<Ctx>(() => ({ solved, simCount: sources.length, openText, reportSolved, headings, indexOf }), [solved, sources.length, openText, reportSolved, headings, indexOf]);
+  const value = React.useMemo<Ctx>(() => ({ solved, simCount: sources.length, openText, reportSolved, headings, indexOf, mentorAsk }), [solved, sources.length, openText, reportSolved, headings, indexOf, mentorAsk]);
 
   return (
     <LessonSimulationsContext.Provider value={value}>

@@ -161,7 +161,7 @@ Ziel: Bei wenig Energie nicht nur weniger, sondern anders lernen. Das stärkt da
 
 Erweitert „Mentor fragen“ aus `roadmap_didaktik.md`, Phase 9.4.
 
-- [ ] Button „Ich hänge fest“ bei Praxisaufgaben und Simulationen im Firmenbereich. _(Stand: bei Praxisaufgaben und in der Verstehens-Aufgabe umgesetzt; bei Simulationen noch offen.)_
+- [x] Button „Ich hänge fest“ bei Praxisaufgaben und Simulationen im Firmenbereich.
 - [x] Das System schlägt eine Zusammenfassung vor: Aufgabe, eigene Beschreibung des Problems, optional Fehlermeldung oder Log-Ausschnitt, den der Lernende selbst einfügt.
 - [x] **Der Lernende sieht und bearbeitet die Zusammenfassung vor dem Senden.** Keine automatische Übertragung von Fehlversuchen, Antworten oder Lernzeit.
 - [x] Zustellung an den zugewiesenen Mentor (Plattform-Benachrichtigung, optional E-Mail).
