@@ -8,6 +8,7 @@ import { visibleCertificationsCondition, type Viewer } from "@/lib/server/catalo
 import { getDueReviewCount } from "@/lib/server/review/service";
 import { getReadiness } from "@/lib/server/readiness/service";
 import { getTopWeakObjectives } from "@/lib/server/study/session-service";
+import { getProgressView, type ProgressView } from "@/lib/server/progress/snapshots";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import {
   accuracy, certState, daysUntil, domainLight, masteryPercent, pickContinueIndex, shortCodeOf, weekBars, weekStart,
@@ -33,6 +34,8 @@ export interface LearnerDashboard {
   certs: DashboardCert[];
   /** Hauptkurs für Bereitschaft, Empfehlung und Wochenziel; null ohne eigene Kurse. */
   main: null | {
+    /** Rückblick und Einschätzung mit echten Zahlen (nur für die Person selbst). */
+    progress: ProgressView | null;
     cert: DashboardCert;
     readiness: { score: number | null; confidence: number };
     domains: Array<{ name: string; light: DomainLight; percent: number }>;
@@ -220,6 +223,7 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
       domains: domainStats,
       recommendation: weak[0] ? { objectiveId: weak[0].objectiveId, objectiveTitle: weak[0].objectiveTitle, domainName: weak[0].domainName } : null,
       dueCount: due,
+      progress: await getProgressView(userId, mainCert.id, now).catch(() => null),
     };
   }
 

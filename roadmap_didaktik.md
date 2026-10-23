@@ -135,7 +135,7 @@ Ziel: Grundsätze „Lernen beginnt mit Handeln“ und „Gute Lernende bekommen
 - [x] Tagesserie durch **Wochenziel** ersetzen: „x von 4 Lerntagen diese Woche“. Leichte Tage aus `study_profiles.light_weekdays` zählen nicht gegen das Ziel.
 - [x] Bisherige Serie optional weiter anzeigen, aber mit automatischem Serienschutz: ein Tag Pause pro Woche bricht sie nicht.
 - [x] Nach längerer Pause (≥ 7 Tage): Begrüßung mit „Willkommen zurück – heute nur 5 Minuten“ statt Rückstand-Zahl; Rückstand wird nicht als Zahl angezeigt, nur „wird über die nächsten Tage verteilt“.
-- [ ] Fortschritt als Kompetenz statt Aktivität: „3 Lernziele sicher seit letzter Woche“ in `TodayDashboard`.
+- [x] Fortschritt als Kompetenz statt Aktivität: „3 Lernziele sicher seit letzter Woche“ in `TodayDashboard`.
 - [x] Keine Vergleiche mit anderen Nutzern (Grundsatz bleibt).
 
 **Akzeptanzkriterium:** Ein Nutzer, der an einem leichten Tag oder einem einzelnen Tag pro Woche nicht lernt, sieht keinen zurückgesetzten Zähler.

@@ -7,6 +7,7 @@ import { and, asc, eq, isNotNull } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, sections } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
+import { CheatSheetDone } from "@/components/CheatSheetDone";
 import { PrintButton } from "@/components/PrintButton";
 import { RichText } from "@/components/RichText";
 
@@ -77,6 +78,7 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
           ))}
         </div>
       )}
+      {rows.length > 0 && <CheatSheetDone certificationId={cert.id} />}
     </div>
   );
 }

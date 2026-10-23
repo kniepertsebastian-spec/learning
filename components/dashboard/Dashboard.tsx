@@ -1,5 +1,6 @@
 "use client";
 
+import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 import { ArrowRight, Flame } from "lucide-react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
@@ -26,6 +27,7 @@ export interface DashboardData {
     domains: Array<{ name: string; light: DomainLight; percent: number }>;
     recommendation: null | { objectiveId: string; objectiveTitle: string; domainName: string };
     dueCount: number;
+    progress?: import("@/lib/server/progress/snapshots").ProgressView | null;
   };
   hero: null | { certSlug: string; certName: string; domainName: string; sectionId: string; sectionTitle: { de: string; en: string }; position: number; total: number; percent: number; lastAtIso: string | null };
   dueTotal: number;
@@ -160,6 +162,8 @@ export function Dashboard({ data }: { data: DashboardData }) {
         <StatTile label={h.statDue} value={welcomeBack ? "–" : data.dueTotal} sub={welcomeBack ? h.statDueSpread : data.dueTotal > 0 ? fmt(h.statDueSub, { m: dueMinutes }) : undefined} subTone="warning" />
         <StatTile label={h.statLessons} value={data.stats.lessonsDone} sub={fmt(h.statLessonsSub, { n: data.stats.lessonsDoneWeek })} subTone="accent" />
       </div>
+
+      {data.main?.progress && <ProgressReviewCard review={data.main.progress.review} outlook={data.main.progress.outlook} series={data.main.progress.series} locale={locale} certSlug={data.main.certSlug} />}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2" aria-label={h.myCerts}>

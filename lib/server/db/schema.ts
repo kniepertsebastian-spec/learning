@@ -881,6 +881,70 @@ export const learningPreferences = pgTable(
   (table) => [check("learning_preferences_goal_check", sql`${table.weeklyGoalDays} between 1 and 7`)],
 );
 
+export type LearningActivityKind = "cheat_sheet";
+
+/**
+ * Lernaktivität ohne Review (roadmap_motivation Phase 4): Spickzettel durchgehen zählt nicht als Review, aber als Aktivität für das
+ * Wochenziel. Gelöste Simulationen zählen über `simulation_results`.
+ */
+export const learningActivities = pgTable(
+  "learning_activity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<LearningActivityKind>().notNull(),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("learning_activity_user_idx").on(table.userId, table.createdAt), check("learning_activity_kind_check", sql`${table.kind} in ('cheat_sheet')`)],
+);
+
+export type EnergyMode = "simulation" | "cheat_sheet" | "reviews_only" | "single_task" | "normal";
+
+/** Wahl bei niedriger Energie (Flag `energy_modes`): Auswertung „Anteil gewählter Alternativen, Rückkehr am Folgetag“. */
+export const energyModeEvents = pgTable(
+  "energy_mode_event",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    mode: text("mode").$type<EnergyMode>().notNull(),
+    energyLevel: integer("energy_level"),
+    deescalated: boolean("deescalated").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("energy_mode_event_user_idx").on(table.userId, table.createdAt),
+    check("energy_mode_event_mode_check", sql`${table.mode} in ('simulation', 'cheat_sheet', 'reviews_only', 'single_task', 'normal')`),
+  ],
+);
+
+/**
+ * Fortschritt sichtbar (roadmap_motivation Phase 7): je Person, Kurs und Tag höchstens ein Stand „Lernziele sicher“ (Status STRONG).
+ * Nur echte Werte: ohne Verlauf gibt es keinen Rückblick und keine Einschätzung. Gehört der Person, nie im Firmenbereich sichtbar.
+ */
+export const objectiveSnapshots = pgTable(
+  "objective_snapshot",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+    secureObjectives: integer("secure_objectives").notNull(),
+    totalObjectives: integer("total_objectives").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("objective_snapshot_day_unique").on(table.userId, table.certificationId, table.day)],
+);
+
 export type ExplanationKind = "worked_example" | "gapped_example" | "analogy" | "example";
 export type ExplanationStatus = "draft" | "approved" | "rejected";
 

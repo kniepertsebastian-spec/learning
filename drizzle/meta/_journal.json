@@ -603,6 +603,13 @@
       "when": 1792771753960,
       "tag": "0085_learning_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1792773104116,
+      "tag": "0086_energy_modes_progress",
+      "breakpoints": true
     }
   ]
 }

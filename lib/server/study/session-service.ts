@@ -26,6 +26,7 @@ import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { loadBridges, planPrereqCheck, recordPrereqResults } from "@/lib/server/prerequisites/service";
 import { platformStatText } from "@/lib/feedback/platform-stat";
 import { firstTryStats } from "@/lib/server/stats/first-try";
+import { recordObjectiveSnapshot } from "@/lib/server/progress/snapshots";
 import { approvedHelpForQuestion, type UnderstandHelp } from "@/lib/server/explanations/service";
 import { createWinSession, planWinItems, recordExit } from "@/lib/server/exit/service";
 import { afterDeescalatedSession, declineDeescalation, orderEasiestFirst, refreshEngagement } from "@/lib/server/engagement/service";
@@ -186,8 +187,10 @@ export async function startStudySession(
   goalType: StudyGoalType = "minutes",
   energyLevel?: EnergyLevel,
   checkin?: CheckinInput,
+  /** Aufgabenart nach Energie (Flag energy_modes): nur Wiederholungen, kein neuer Stoff und keine Schwächen-Fragen. */
+  reviewsOnly?: boolean,
 ): Promise<StudySessionSummary> {
-  return buildAndPersistSession(userId, certificationId, { goalType, goalValue, energyLevel, checkin });
+  return buildAndPersistSession(userId, certificationId, { goalType, goalValue, energyLevel, checkin, reviewsOnly });
 }
 
 /**
@@ -378,7 +381,7 @@ export async function getStudySessionWithContent(
 async function buildAndPersistSession(
   userId: string,
   certificationId: string,
-  goalOverride?: { goalType: StudyGoalType; goalValue: number; energyLevel?: EnergyLevel; checkin?: CheckinInput; moreStudy?: boolean },
+  goalOverride?: { goalType: StudyGoalType; goalValue: number; energyLevel?: EnergyLevel; checkin?: CheckinInput; moreStudy?: boolean; reviewsOnly?: boolean },
 ): Promise<StudySessionSummary> {
   const db = getDb();
   const now = new Date();
@@ -502,6 +505,11 @@ async function buildAndPersistSession(
     composition = reallocateTowardFamiliarContent(composition, dueItems.length, weakCandidates.length);
   }
 
+  // „Nur Wiederholungen“ (Flag energy_modes): nur wenn überhaupt etwas fällig ist, sonst gilt die normale Zusammenstellung.
+  if (goalOverride?.reviewsOnly && isFeatureEnabled("energy_modes", userId) && dueItems.length > 0) {
+    composition = { ...composition, review: Math.min(targetQuestionCount, dueItems.length), weak: 0, new: 0 };
+  }
+
   const items: Array<{
     category: StudySessionItemCategory;
     referenceType: "question" | "section";
@@ -536,7 +544,7 @@ async function buildAndPersistSession(
 
   // "Bei zu kleinem Fragenpool auf Lesson-Wiederholung ... zurückfallen":
   // nur wenn die drei Fragen-Kategorien zusammen das Tagesziel verfehlen.
-  const fallbackCount = computeLessonFallbackCount(targetQuestionCount, composition);
+  const fallbackCount = goalOverride?.reviewsOnly && composition.new === 0 && composition.weak === 0 && dueItems.length > 0 ? 0 : computeLessonFallbackCount(targetQuestionCount, composition);
   if (fallbackCount > 0) {
     const fallbackSections = await selectFallbackLessonSections(certificationId, fallbackCount);
     items.push(
@@ -871,6 +879,8 @@ export async function completeStudySession(
   if (results.length > 0 && isFeatureEnabled("understanding_mode", userId)) {
     await detectStruggles(userId, results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => r.questionId)).catch((error) => console.error("Verstehens-Erkennung fehlgeschlagen:", error));
   }
+
+  await recordObjectiveSnapshot(userId, session.certificationId).catch((error) => console.error("Fortschritts-Stand fehlgeschlagen:", error));
 
   if (session.deescalated) await afterDeescalatedSession(userId).catch((error) => console.error("Frühwarnung (Abschluss) fehlgeschlagen:", error));
 
