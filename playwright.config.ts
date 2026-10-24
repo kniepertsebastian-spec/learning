@@ -29,6 +29,8 @@ export default defineConfig({
       DATABASE_URL: databaseUrl,
       AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-only-secret",
       AUTH_TRUST_HOST: "true",
+      // Die Tests melden sich pro Lauf dutzendfach an (siehe lib/server/auth-rate-limit.ts).
+      LOGIN_RATE_LIMIT_FACTOR: "50",
     },
   },
 });

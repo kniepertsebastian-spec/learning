@@ -5,18 +5,25 @@ import { getApprovalStatus } from "@/lib/server/approvals/service";
 import { getServerLocale } from "@/lib/server/locale";
 import { requireReviewerPage } from "@/lib/server/reviewers/guard";
 import { listAssignedCourses } from "@/lib/server/reviewers/service";
+import { isQualified } from "@/lib/server/reviewers/probe-service";
 
 /** Fachliche Prüfer: die ihnen zugewiesenen allgemeinen Kurse mit Stand der Freigabe. */
 export default async function ReviewerHome() {
   const user = await requireReviewerPage("/reviewer");
   const locale = await getServerLocale();
   const de = locale === "de";
-  const courses = await listAssignedCourses(user.id);
+  const [courses, qualified] = await Promise.all([listAssignedCourses(user.id), isQualified(user.id)]);
   const statuses = await Promise.all(courses.map((c) => getApprovalStatus(c.id)));
   return (
     <div className="flex flex-col gap-4" data-testid="reviewer-home">
       <h1 className="text-2xl font-semibold">{de ? "Kurse prüfen" : "Review courses"}</h1>
       <p className="text-sm text-subtle">{de ? "Du siehst nur die Kurse, die dir zugewiesen sind. Du kannst lesen, kommentieren, Fragen als fehlerhaft melden und freigeben." : "You only see the courses assigned to you. You can read, comment, report questions as faulty and approve."}</p>
+      {!qualified && (
+        <p className="rounded-xl border border-warning/40 bg-warning-soft p-3 text-sm text-warning-text" data-testid="reviewer-not-qualified">
+          {de ? "Freigeben und dein Profil veröffentlichen kannst du erst nach dem Probe-Review. " : "You can approve courses and publish your profile only after the trial review. "}
+          <Link href="/reviewer/probe" className="font-medium underline" data-testid="reviewer-probe-link">{de ? "Zum Probe-Review" : "To the trial review"}</Link>
+        </p>
+      )}
       <p className="text-sm">
         <Link href="/reviewer/profile" className="text-link hover:underline" data-testid="reviewer-profile-link">{de ? "Mein Expertenprofil pflegen" : "Manage my expert profile"}</Link>
       </p>

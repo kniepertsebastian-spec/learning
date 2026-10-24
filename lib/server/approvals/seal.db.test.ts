@@ -7,7 +7,7 @@ const TEST_DB = process.env.TEST_DATABASE_URL;
 if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 
 import { getDb } from "@/lib/server/db/client";
-import { certifications, domains, lessons, objectives, organizations, questions, sections, users } from "@/lib/server/db/schema";
+import { certifications, domains, lessons, objectives, organizations, questions, reviewerQualifications, sections, users } from "@/lib/server/db/schema";
 import { seedUser } from "@/lib/server/psrp/test-db";
 import { publishProfile, saveExperience, saveProfile, withdrawProfile } from "@/lib/server/reviewers/profile-service";
 import { getOfflinePackage } from "@/lib/server/offline/manifest";
@@ -49,6 +49,7 @@ run("Siegel (echte DB)", () => {
   async function reviewer(withProfile: boolean) {
     const id = await seedUser();
     await getDb().update(users).set({ role: "reviewer" }).where(eq(users.id, id));
+    await getDb().insert(reviewerQualifications).values({ userId: id, source: "admin" });
     if (withProfile) {
       await saveProfile(id, { firstName: "Eva", lastName: `Prüfer${tag}`, country: "Deutschland", consent: { name: true, country: true } });
       await saveExperience(id, { kind: "job", title: "Admin", periodFrom: "2019", isPublic: true });

@@ -172,7 +172,7 @@ Quelle: `roadmap_pruefer.md`, Phase 3 und 4 (rechtliche Punkte aus Phase 7 vorhe
 
 ### Paket 4.8 – Probe-Review für neue Prüfer · M
 Quelle: `roadmap_pruefer.md`, Phase 5
-- [ ] Probe-Sets mit von Menschen festgelegten Fehlern, regelbasierte Auswertung, schaltet Freigaberechte frei
+- [x] Probe-Sets mit von Menschen festgelegten Fehlern, regelbasierte Auswertung, schaltet Freigaberechte frei (siehe `docs/PROBE-REVIEW.md`)
 
 **Abhängigkeit:** 4.6b. Erst nötig, wenn mehr als ein, zwei Experten gewonnen werden; den ersten Experten wählst du persönlich aus.
 

@@ -7,7 +7,7 @@ const TEST_DB = process.env.TEST_DATABASE_URL;
 if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 
 import { getDb } from "@/lib/server/db/client";
-import { certifications, courseApprovals, reviewerCertifications, users } from "@/lib/server/db/schema";
+import { certifications, courseApprovals, reviewerCertifications, reviewerQualifications, users } from "@/lib/server/db/schema";
 import type { MailMessage } from "@/lib/server/mail/mailer";
 import { seedUser } from "@/lib/server/psrp/test-db";
 import { deleteCertification, getOwnProfile, getPublicProfile, ProfileError, publicIdentities, publishProfile, runCertificateReminders, saveCertification, saveExperience, saveProfile, setCertificationVerified, withdrawProfile } from "./profile-service";
@@ -18,6 +18,7 @@ const tag = randomUUID().slice(0, 6);
 async function reviewer() {
   const id = await seedUser();
   await getDb().update(users).set({ role: "reviewer" }).where(eq(users.id, id));
+  await getDb().insert(reviewerQualifications).values({ userId: id, source: "admin" }); // Veröffentlichen setzt Freigaberechte voraus
   return id;
 }
 const base = (over: Record<string, unknown> = {}) => ({ firstName: "Éva", lastName: `Müller${tag}`, country: "Deutschland", region: "Bayern", bio: { de: "Hallo", en: "Hi" }, linkedinUrl: null, consent: { name: true, country: true }, ...over });

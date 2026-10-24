@@ -15,6 +15,7 @@ import {
   type ReviewerProfileField,
 } from "@/lib/server/db/schema";
 import { recordAuditEvent } from "@/lib/server/audit/service";
+import { assertQualified, NotQualifiedError } from "./probe-service";
 import { appUrl, isMailConfigured } from "@/lib/server/mail/config";
 import { sendMail, type MailMessage } from "@/lib/server/mail/mailer";
 import { reviewerCertificateExpiryMessage } from "@/lib/server/mail/templates";
@@ -224,6 +225,13 @@ export async function deleteCertification(userId: string, id: string): Promise<b
 /* ------------------------------------------------------------------ Veröffentlichen und Zurückziehen */
 
 export async function publishProfile(userId: string, now = new Date()): Promise<void> {
+  // Veröffentlichen dürfen nur freigeschaltete Prüfer (Probe-Review bestanden oder vom Betreiber freigeschaltet).
+  try {
+    await assertQualified(userId);
+  } catch (error) {
+    if (error instanceof NotQualifiedError) throw new ProfileError(error.message);
+    throw error;
+  }
   const own = await getOwnProfile(userId);
   if (!own.profile) throw new ProfileError("Lege zuerst dein Profil an.");
   const problems = publishProblems(own.profile, own.experience, own.certifications);

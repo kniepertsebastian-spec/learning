@@ -3,6 +3,12 @@ import { checkRateLimit, type RateLimitResult } from "./admin/rate-limit";
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_PER_EMAIL = 10;
 const LOGIN_MAX_PER_IP = 30;
+/**
+ * Nur für die E2E-Läufe (playwright.config.ts): Die Tests melden sich in einem Lauf dutzendfach von derselben IP und mit denselben Konten an
+ * und würden sonst das Limit treffen. Im Betrieb nicht setzen; der Faktor gilt für beide Login-Limits.
+ */
+const loginLimitFactor = () => Math.max(1, Math.floor(Number(process.env.LOGIN_RATE_LIMIT_FACTOR) || 1));
+
 const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
 const REGISTRATION_MAX_PER_WINDOW = 5;
 
@@ -27,8 +33,9 @@ export function clientIp(headers: Headers): string {
  * Konto durch Fehlversuche für 15 Minuten sperren (bewusster Kompromiss).
  */
 export function checkLoginRateLimit(ip: string, email: string): RateLimitResult {
-  const byEmail = checkRateLimit("login-email", email, LOGIN_WINDOW_MS, LOGIN_MAX_PER_EMAIL);
-  const byIp = checkRateLimit("login-ip", ip, LOGIN_WINDOW_MS, LOGIN_MAX_PER_IP);
+  const factor = loginLimitFactor();
+  const byEmail = checkRateLimit("login-email", email, LOGIN_WINDOW_MS, LOGIN_MAX_PER_EMAIL * factor);
+  const byIp = checkRateLimit("login-ip", ip, LOGIN_WINDOW_MS, LOGIN_MAX_PER_IP * factor);
   if (!byEmail.allowed) return byEmail;
   return byIp;
 }
