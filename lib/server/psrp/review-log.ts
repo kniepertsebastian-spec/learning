@@ -49,6 +49,7 @@ export interface ReviewLogInput {
   /** Gezeigte Variante (questions.id), wenn nicht das Original. */
   variantQuestionId?: string | null;
   wovenIntoLessonId?: string | null;
+  thinkFirst?: boolean;
   predictedR?: number | null;
 }
 
@@ -68,6 +69,7 @@ export function buildReviewLogRow(input: ReviewLogInput): typeof reviewLog.$infe
     probeVariantId: input.probeVariantId ?? null,
     variantQuestionId: input.variantQuestionId ?? null,
     wovenIntoLessonId: input.wovenIntoLessonId ?? null,
+    thinkFirst: input.thinkFirst ?? false,
     predictedR: input.predictedR ?? null,
   };
 }

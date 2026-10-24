@@ -5,6 +5,7 @@ import { ArrowRight, CircleCheck, CircleX } from "lucide-react";
 import { RichText } from "@/components/RichText";
 import { ReportProblem } from "@/components/quiz/ReportProblem";
 import { Button } from "@/components/ui/button";
+import { SelfExplanation } from "@/components/quiz/SelfExplanation";
 import { fmt, letterOf } from "@/lib/quiz/keys";
 import { useLocale } from "@/lib/i18n";
 import type { AnswerConfidence } from "@/lib/types";
@@ -29,6 +30,7 @@ export function FeedbackPanel({
   nextDisabled,
   rereadHref,
   note,
+  selfExplain,
 }: {
   correct: boolean;
   correctIndex: number;
@@ -47,6 +49,8 @@ export function FeedbackPanel({
   rereadHref?: string | null;
   /** Echte Plattformstatistik (nur mit Datenbasis), freundlich und ohne Wertung. */
   note?: string | null;
+  /** Freiwillige Selbsterklärung anbieten (nur nach falscher Antwort; nicht bewertet, nur auf diesem Gerät). */
+  selfExplain?: boolean;
 }) {
   const { t, locale } = useLocale();
   const given = (rationales ?? []).some((r, i) => r && i !== correctIndex);
@@ -75,6 +79,8 @@ export function FeedbackPanel({
       <div className="mt-3 text-[15px] leading-[1.65] text-foreground">
         <RichText text={explanation} />
       </div>
+
+      {!correct && selfExplain && <SelfExplanation storageKey={`q:${questionId}`} prompt={locale === "de" ? "Erkläre in einem Satz, warum die richtige Antwort passt." : "Explain in one sentence why the correct answer fits."} modelAnswer={explanation} locale={locale} />}
 
       {wrongWithReason.length > 0 && (
         <div className="mt-4 border-t border-border pt-4" data-testid="option-rationales">

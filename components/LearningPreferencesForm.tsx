@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useThinkFirst } from "@/lib/client/use-think-first";
 import { useFeedbackMode } from "@/lib/client/use-feedback-mode";
 import { Card } from "@/components/ui/card";
 
@@ -17,6 +18,7 @@ export function LearningPreferencesForm({ initial, locale }: { initial: Prefs; l
   const [prefs, setPrefs] = useState<Prefs>(initial);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [feedbackMode, setFeedbackMode] = useFeedbackMode();
+  const [thinkFirst, setThinkFirst] = useThinkFirst();
 
   async function update(patch: Partial<Prefs>) {
     const next = { ...prefs, ...patch };
@@ -55,6 +57,7 @@ export function LearningPreferencesForm({ initial, locale }: { initial: Prefs; l
       {toggle("pref-confidence", de ? "Sicherheitsangabe bei Fragen" : "Confidence rating on questions", de ? "Ab der 3. Session: „Wie sicher bist du?“ Damit wir Geratenes öfter wiederholen." : "From the 3rd session: “How sure are you?” So we repeat guesses more often.", prefs.askConfidence, (v) => void update({ askConfidence: v }))}
       {toggle("pref-checkin", de ? "Check-in zur Tagesform" : "Daily check-in", de ? "Ab der 5. Session: Energie und Arbeitstag vor dem Start. Die Planung passt sich damit an deinen Tag an." : "From the 5th session: energy and workday before you start. Planning adapts to your day.", prefs.offerCheckin, (v) => void update({ offerCheckin: v }))}
       {toggle("pref-feedback", de ? "Sofort-Feedback nach jeder Frage" : "Instant feedback after each question", de ? "Aus: Richtig und Falsch erst am Ende, wie in der Prüfung (gilt für dieses Gerät)." : "Off: right and wrong only at the end, like in the exam (this device only).", feedbackMode === "instant", (v) => setFeedbackMode(v ? "instant" : "end"))}
+      {toggle("pref-think-first", de ? "Antwort zuerst überlegen" : "Think of the answer first", de ? "Bei Auswahlfragen bleiben die Optionen verdeckt, bis du „Optionen zeigen“ wählst. Eine Lernhilfe ohne Einfluss auf dein Rating (gilt für dieses Gerät)." : "On multiple-choice questions the options stay hidden until you choose “Show options”. A study aid with no effect on your rating (this device only).", thinkFirst, setThinkFirst)}
       <p className="mt-2 text-xs text-subtle" role="status" data-testid="prefs-status">
         {status === "saving" ? (de ? "Speichert …" : "Saving …") : status === "saved" ? (de ? "Gespeichert." : "Saved.") : status === "error" ? (de ? "Das hat nicht geklappt." : "That did not work.") : ""}
       </p>

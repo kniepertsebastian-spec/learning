@@ -16,6 +16,7 @@ export interface ReviewOutcomeInput {
   reviewType?: ReviewLogType;
   /** Eingewebt in den Lektionstest dieser Lektion. */
   wovenIntoLessonId?: string | null;
+  thinkFirst?: boolean;
 }
 
 /**
@@ -63,6 +64,7 @@ export async function recordReviewOutcomes(
         variantQuestionId: r.variantQuestionId ?? null,
         reviewType: r.reviewType,
         wovenIntoLessonId: r.wovenIntoLessonId ?? null,
+        thinkFirst: r.thinkFirst,
       })),
     options,
   );

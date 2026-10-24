@@ -1,0 +1,1 @@
+ALTER TABLE "review_log" ADD COLUMN "think_first" boolean DEFAULT false NOT NULL;

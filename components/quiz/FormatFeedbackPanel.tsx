@@ -5,6 +5,7 @@ import { RichText } from "@/components/RichText";
 import { ReportProblem } from "@/components/quiz/ReportProblem";
 import { SolutionView } from "@/components/quiz/FormatAnswerInput";
 import { Button } from "@/components/ui/button";
+import { SelfExplanation } from "@/components/quiz/SelfExplanation";
 import type { AnswerSolution } from "@/lib/questions/answer-formats";
 import { useLocale } from "@/lib/i18n";
 import { fmt } from "@/lib/quiz/keys";
@@ -26,6 +27,7 @@ export function FormatFeedbackPanel({
   rereadHref,
   note,
   locale,
+  selfExplain,
 }: {
   correct: boolean;
   partial?: number;
@@ -40,6 +42,7 @@ export function FormatFeedbackPanel({
   rereadHref?: string | null;
   note?: string | null;
   locale: Locale;
+  selfExplain?: boolean;
 }) {
   const { t } = useLocale();
   const de = locale === "de";
@@ -59,6 +62,7 @@ export function FormatFeedbackPanel({
       <div className="mt-3 text-[15px] leading-[1.65] text-foreground">
         <RichText text={explanation} />
       </div>
+      {!correct && selfExplain && <SelfExplanation storageKey={`q:${questionId}`} prompt={de ? "Erkläre in einem Satz, warum das die richtige Lösung ist." : "Explain in one sentence why this is the right solution."} modelAnswer={explanation} locale={locale} />}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
         <div className="flex flex-wrap items-center gap-4">
           {sourceReference && <p className="text-xs text-faint">{t.quiz.source}: {sourceReference}</p>}

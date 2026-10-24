@@ -234,6 +234,8 @@ export interface StudySessionItemContent {
     questionId: string;
     question: Localized<string>;
     options: Array<{ id: string; text: Localized<string>; orderNum: number }>;
+    /** Fragetyp (kognitive Stufe), für die Selbsterklärung bei Szenario-Fragen. */
+    type?: string;
     /** Antwortformat; fehlt bei Auswahlfragen. Bei den anderen Formaten sind `options` leer und `prompt` enthält die Aufgabe (ohne Lösung). */
     format?: AnswerFormat;
     prompt?: AnswerPrompt;
@@ -367,6 +369,7 @@ export async function getStudySessionWithContent(
           questionId: q.id,
           question: q.question,
           options,
+          type: q.type,
           ...(q.answerFormat !== "choice" && q.answerData ? { format: q.answerFormat, prompt: buildPrompt(q.answerFormat, q.answerData, `${item.id}`) } : {}),
         },
         ...(item.conceptStruggleId && struggleById.has(item.conceptStruggleId)
@@ -810,6 +813,8 @@ export interface StudySessionAnswerInput {
   answer?: AnswerPayload | null;
   /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - optional. */
   confidence?: AnswerConfidence;
+  /** Modus „Antwort zuerst überlegen“ war aktiv (nur für die Auswertung). */
+  thinkFirst?: boolean;
 }
 
 export interface StudySessionAttemptResult {
@@ -886,6 +891,7 @@ export async function completeStudySession(
 
   if (results.length > 0) {
     const confidenceByItemId = new Map(answers.map((a) => [a.itemId, a.confidence]));
+    const thinkFirstByItemId = new Set(answers.filter((a) => a.thinkFirst === true).map((a) => a.itemId));
     const selectedByItemId = new Map(answers.map((a) => [a.itemId, a.selectedOptionId]));
     const payloadByItemId = new Map(answers.map((a) => [a.itemId, sanitizeAnswer(a.answer)]));
     await Promise.all(
@@ -907,6 +913,7 @@ export async function completeStudySession(
         questionId: r.questionId,
         isCorrect: r.isCorrect,
         confidence: confidenceByItemId.get(r.itemId) ?? null,
+        thinkFirst: thinkFirstByItemId.has(r.itemId),
         variantQuestionId: variantByItemId.get(r.itemId) ?? null,
         reviewType: recallByItemId.has(r.itemId) ? ("recall_check" as const) : undefined,
       })),

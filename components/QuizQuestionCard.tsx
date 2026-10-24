@@ -5,13 +5,15 @@ import { ConfidenceBar } from "@/components/quiz/ConfidenceBar";
 import { FeedbackPanel } from "@/components/quiz/FeedbackPanel";
 import type { OptionState } from "@/components/quiz/OptionTile";
 import { QuestionBody } from "@/components/quiz/QuestionBody";
+import { useThinkFirst } from "@/lib/client/use-think-first";
 import { useQuizHotkeys } from "@/components/quiz/useQuizHotkeys";
 import { useLocale } from "@/lib/i18n";
+import { isSelfExplainType } from "@/lib/questions/self-explain";
 import type { AnswerConfidence, QuizQuestion } from "@/lib/types";
 
 interface QuizQuestionCardProps {
   question: QuizQuestion;
-  onAnswered: (isCorrect: boolean, selectedIndex: number, confidence?: AnswerConfidence) => void;
+  onAnswered: (isCorrect: boolean, selectedIndex: number, confidence?: AnswerConfidence, thinkFirst?: boolean) => void;
   /** R1.4: knappe Quellenangabe (z. B. "S. 4"); die vollständige Angabe bleibt dem Adminbereich vorbehalten. */
   sourceReference?: string | null;
   /** R2: Selbsteinschätzung VOR der Aufdeckung erfassen, sonst wäre sie keine echte Selbsteinschätzung mehr. */
@@ -22,6 +24,10 @@ interface QuizQuestionCardProps {
   nextDisabled?: boolean;
   objectiveLabel?: string;
   difficulty?: string | null;
+  /** Fragetyp: bei falsch beantworteten Szenario-Fragen wird die Selbsterklärung angeboten. */
+  questionType?: string | null;
+  /** Modus „Antwort zuerst überlegen“ ausschließen (z. B. unter Prüfungsbedingungen). */
+  noThinkFirst?: boolean;
 }
 
 /** Eine Frage im Übungsmodus: wählen, (Selbsteinschätzung), aufdecken, Feedback. Bedienbar nur mit Tastatur (A–D, Enter). */
@@ -35,24 +41,31 @@ export function QuizQuestionCard({
   nextDisabled,
   objectiveLabel,
   difficulty,
+  questionType,
+  noThinkFirst,
 }: QuizQuestionCardProps) {
   const { locale, t } = useLocale();
   const [selected, setSelected] = useState<number | null>(null);
   const [confidence, setConfidence] = useState<AnswerConfidence | null>(null);
+  const [thinkFirstOn] = useThinkFirst();
+  // Der Modus gilt ab Beginn dieser Frage: wer ihn mittendrin ändert, sieht die Optionen dieser Frage so, wie sie begonnen hat.
+  const [thinkFirst] = useState(() => thinkFirstOn && !noThinkFirst);
+  const [optionsShown, setOptionsShown] = useState(false);
+  const hidden = thinkFirst && !optionsShown;
 
   const revealed = askConfidence ? confidence !== null : selected !== null;
   const options = question.options[locale];
 
   function pick(index: number) {
-    if (selected !== null) return;
+    if (selected !== null || hidden) return;
     setSelected(index);
-    if (!askConfidence) onAnswered(index === question.correctIndex, index);
+    if (!askConfidence) onAnswered(index === question.correctIndex, index, undefined, thinkFirst || undefined);
   }
 
   function pickConfidence(level: AnswerConfidence) {
     if (selected === null || confidence !== null) return;
     setConfidence(level);
-    onAnswered(selected === question.correctIndex, selected, level);
+    onAnswered(selected === question.correctIndex, selected, level, thinkFirst || undefined);
   }
 
   useQuizHotkeys(options.length, (action) => {
@@ -77,6 +90,8 @@ export function QuizQuestionCard({
         locked={selected !== null}
         objectiveLabel={objectiveLabel}
         difficulty={difficulty}
+        optionsHidden={hidden}
+        onShowOptions={() => setOptionsShown(true)}
       />
 
       {askConfidence && selected !== null && confidence === null && <ConfidenceBar onPick={pickConfidence} />}
@@ -95,6 +110,7 @@ export function QuizQuestionCard({
           nextLabel={nextLabel ?? t.quiz.next}
           onNext={onNext ?? (() => {})}
           nextDisabled={nextDisabled || !onNext}
+          selfExplain={isSelfExplainType(questionType)}
         />
       )}
     </div>

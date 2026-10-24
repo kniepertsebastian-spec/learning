@@ -31,6 +31,8 @@ export interface SectionQuizAnswerInput {
   confidence?: AnswerConfidence;
   /** Eingewebte Frage aus einer früheren Lektion (Flag `woven_reviews`): zählt nicht für das Ergebnis dieser Lektion, nur als Review. */
   woven?: boolean;
+  /** Modus „Antwort zuerst überlegen“ war aktiv (nur für die Auswertung). */
+  thinkFirst?: boolean;
 }
 
 export interface SectionQuizAttemptResult {
@@ -132,6 +134,7 @@ export async function recordSectionQuizAttempt(
       questionId: r.questionId,
       isCorrect: r.isCorrect,
       confidence: answers.find((a) => a.questionId === r.questionId)?.confidence ?? null,
+      thinkFirst: answers.find((a) => a.questionId === r.questionId)?.thinkFirst === true,
     })),
   );
 
