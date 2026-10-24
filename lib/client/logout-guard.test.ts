@@ -6,6 +6,7 @@ const summary = (p: number, f = 0, c = 0): SyncQueueSummary => ({
   pendingCount: p,
   failedCount: f,
   conflictCount: c,
+  rejectedCount: 0,
   lastSyncedAt: null,
   oldestUnsyncedAt: null,
   authRequired: false,

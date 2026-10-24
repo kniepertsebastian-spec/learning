@@ -20,7 +20,8 @@ export interface StoredOfflinePackage {
   data: OfflinePackage;
 }
 
-export type PendingSyncEventStatus = "pending" | "syncing" | "failed" | "conflict" | "synced";
+/** `rejected`: der Server lehnt das Ereignis endgültig ab (3 gleichlautende Antworten); es wird nicht mehr gesendet, die Person kann es ansehen und verwerfen. */
+export type PendingSyncEventStatus = "pending" | "syncing" | "failed" | "conflict" | "synced" | "rejected";
 
 export interface PendingSyncEvent {
   clientEventId: string;
@@ -34,6 +35,8 @@ export interface PendingSyncEvent {
   status: PendingSyncEventStatus;
   attempts: number;
   lastError: string | null;
+  /** Wie oft der Server hintereinander denselben endgültigen Fehler gemeldet hat. */
+  terminalCount?: number;
   syncedAt: string | null;
 }
 

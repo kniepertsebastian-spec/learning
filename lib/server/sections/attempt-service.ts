@@ -40,6 +40,8 @@ export interface SectionQuizAnswerInput {
 }
 
 export interface SectionQuizAttemptResult {
+  /** Antworten auf Fragen, die es inzwischen nicht mehr gibt (nach dem Download gelöscht): übersprungen statt die Verbuchung scheitern zu lassen. */
+  skipped?: number;
   /** Offline aufgezeichneter Versuch, der älter ist als ein bereits vorhandener: protokolliert, Wiederholungen verbucht, der Lernzielstand verschlechtert sich nie. */
   late?: boolean;
   score: number;
@@ -62,7 +64,11 @@ export async function recordSectionQuizAttempt(
 ): Promise<SectionQuizAttemptResult> {
   const db = getDb();
   // Eingewebte Antworten zählen nicht für Ergebnis und Lernzielstand dieser Lektion (nur wenn das Flag gilt, sonst werden sie verworfen).
-  const answers = allAnswers.filter((a) => !a.woven);
+  const candidates = allAnswers.filter((a) => !a.woven);
+  const candidateIds = [...new Set(candidates.map((a) => a.questionId))];
+  const existingIds = new Set(candidateIds.length > 0 ? (await db.select({ id: questions.id }).from(questions).where(inArray(questions.id, candidateIds))).map((q) => q.id) : []);
+  const answers = candidates.filter((a) => existingIds.has(a.questionId));
+  const skipped = candidates.length - answers.length;
   const wovenAnswers = isFeatureEnabled("woven_reviews", userId) ? allAnswers.filter((a) => a.woven) : [];
 
   const certInfo = await db
@@ -156,7 +162,7 @@ export async function recordSectionQuizAttempt(
 
   if (wovenAnswers.length > 0) await recordWovenAnswers(userId, sectionId, certInfo[0], wovenAnswers, timing);
 
-  return { score, results, attemptId, ...(late ? { late: true } : {}) };
+  return { score, results, attemptId, ...(late ? { late: true } : {}), ...(skipped > 0 ? { skipped } : {}) };
 }
 
 /**

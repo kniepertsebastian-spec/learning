@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { CloudOff, RefreshCw, WifiOff } from "lucide-react";
 import type { Locale } from "@/lib/types";
-import { getSyncQueueSummary, listenForBackgroundSync, onSyncQueueChanged, runSync, type SyncQueueSummary } from "@/lib/client/sync-queue";
+import type { PendingSyncEvent } from "@/lib/client/offline-db";
+import { discardPendingSyncEvent, getSyncQueueSummary, listRejectedSyncEvents, listenForBackgroundSync, onSyncQueueChanged, runSync, type SyncQueueSummary } from "@/lib/client/sync-queue";
 
 function formatTime(iso: string | null, locale: Locale): string {
   if (!iso) return locale === "de" ? "nie" : "never";
@@ -23,6 +24,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
   const [summary, setSummary] = useState<SyncQueueSummary | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [open, setOpen] = useState(false);
+  const [rejected, setRejected] = useState<PendingSyncEvent[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +87,12 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
     setSyncing(false);
   }
 
-  const pendingTotal = (summary?.pendingCount ?? 0) + (summary?.failedCount ?? 0) + (summary?.conflictCount ?? 0);
+  const pendingTotal = (summary?.pendingCount ?? 0) + (summary?.failedCount ?? 0) + (summary?.conflictCount ?? 0) + (summary?.rejectedCount ?? 0);
+  const showRejected = async () => setRejected(rejected ? null : await listRejectedSyncEvents(userId).catch(() => []));
+  const discardRejected = async () => {
+    for (const event of rejected ?? []) await discardPendingSyncEvent(event.clientEventId);
+    setRejected(null);
+  };
   if (online && pendingTotal === 0 && !syncing && !summary?.partialApplied) return null;
 
   return (
@@ -138,6 +145,29 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
               {locale === "de" ? "Session war schon abgeschlossen, deine Antworten wurden trotzdem gezählt." : "Session was already completed, your answers were counted anyway."}
             </p>
           ) : null}
+          {summary?.skippedAnswers ? (
+            <p className="mb-1 text-foreground/70" data-testid="sync-skipped-note">
+              {locale === "de" ? `${summary.skippedAnswers} Antwort(en) betrafen Fragen, die es nicht mehr gibt, und wurden übersprungen.` : `${summary.skippedAnswers} answer(s) were for questions that no longer exist and were skipped.`}
+            </p>
+          ) : null}
+          {summary && summary.rejectedCount > 0 && (
+            <div className="mb-2" data-testid="sync-rejected">
+              <p className="mb-1 text-red-600 dark:text-red-400">
+                {locale === "de" ? `${summary.rejectedCount} Ergebnisse konnten nicht zugeordnet werden` : `${summary.rejectedCount} results could not be matched`}
+              </p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => void showRejected()} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-background">{locale === "de" ? "Ansehen" : "View"}</button>
+                <button type="button" onClick={() => void discardRejected().then(() => getSyncQueueSummary(userId).then(setSummary))} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-background" data-testid="sync-rejected-discard">{locale === "de" ? "Verwerfen" : "Discard"}</button>
+              </div>
+              {rejected && (
+                <ul className="mt-2 flex flex-col gap-1 text-xs text-foreground/70" data-testid="sync-rejected-list">
+                  {rejected.map((e) => (
+                    <li key={e.clientEventId}>{e.label} · {formatTime(e.createdAt, locale)}{e.lastError ? ` · ${e.lastError}` : ""}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           {summary && summary.conflictCount > 0 && (
             <p className="mb-1 text-red-600 dark:text-red-400">
               {locale === "de" ? "Konflikte" : "Conflicts"}: {summary.conflictCount}

@@ -121,3 +121,18 @@ AGE_IDENTITY=learning-backup.key scripts/restore-test.sh backups/db-20261005-023
 
 Ein Backup gilt erst als brauchbar, wenn dieser Test einmal erfolgreich gelaufen ist. Danach
 regelmäßig wiederholen (z. B. monatlich), denn ein ungetestetes Backup ist keine Garantie.
+
+## Betriebsprüfung (Datenintegrität, Phase 6)
+
+Das ist Handarbeit auf dem Server und lässt sich nicht aus dem Repository erledigen. Ergebnis jeweils mit Datum festhalten.
+
+- [ ] **Cron/Timer läuft.** `systemctl list-timers learning-backup.timer` zeigt den nächsten Lauf; `journalctl -u learning-backup.service -n 50` zeigt einen erfolgreichen letzten Lauf; `backups/.last-success` ist jünger als 26 Stunden.
+- [ ] **Offsite-Kopie.** `BACKUP_REMOTE` steht in `/etc/learning-backup.env`; `rclone lsl "$BACKUP_REMOTE"` listet das jüngste Backup.
+- [ ] **Schlüsseltrennung.** Auf dem Server liegt nur `BACKUP_AGE_RECIPIENT` (öffentlich). `find / -name '*.key' -path '*age*'` und ein Blick in `/etc/learning-backup.env` zeigen keinen privaten Schlüssel (`AGE-SECRET-KEY-...`).
+- [ ] **Monitoring-Alarm.** `scripts/monitor.sh` meldet `backup`, wenn das letzte erfolgreiche Backup älter als `MONITOR_BACKUP_MAX_HOURS` ist (Standard 26 Stunden, also strenger als die geforderten 36). Alarmprobe: `touch -d '2 days ago' backups/.last-success`, Monitor laufen lassen, Marker danach mit `touch` zurücksetzen.
+
+### Restore-Test-Protokoll (einmal im Quartal)
+
+| Datum | Backup-Datei | Ergebnis | Wer |
+|---|---|---|---|
+| | | | |

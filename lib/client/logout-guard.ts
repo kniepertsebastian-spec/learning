@@ -16,7 +16,7 @@ const defaultDeps: LogoutGuardDeps = {
  * Roadmap PWA Phase 1: Beim Logout werden ausstehende Lernergebnisse nicht
  * stillschweigend gelöscht. Erst wird (online) synchronisiert; die Rückgabe
  * ist die Zahl der Ereignisse, die danach noch nicht übertragen sind
- * (ausstehend, fehlgeschlagen oder im Konflikt). 0 heißt: gefahrlos abmelden.
+ * (ausstehend, fehlgeschlagen, abgelehnt oder im Konflikt). 0 heißt: gefahrlos abmelden.
  */
 export async function countUnsyncedBeforeLogout(
   userId: string,
@@ -33,5 +33,5 @@ export async function countUnsyncedBeforeLogout(
       return 0; // Warteschlange nicht lesbar (z. B. IndexedDB gesperrt) - Logout nicht blockieren.
     }
   }
-  return summary.pendingCount + summary.failedCount + summary.conflictCount;
+  return summary.pendingCount + summary.failedCount + summary.conflictCount + summary.rejectedCount;
 }

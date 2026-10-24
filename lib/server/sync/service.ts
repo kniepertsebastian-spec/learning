@@ -28,6 +28,8 @@ export interface SyncEventResult {
   status: SyncEventStatus | "already_applied";
   resultSummary?: unknown;
   error?: string;
+  /** Endgültig abgelehnt: derselbe Fehler kommt bei jedem erneuten Senden (Client markiert es nach 3 gleichen Antworten als abgelehnt). */
+  terminal?: boolean;
 }
 
 interface SectionQuizPayload {
@@ -63,6 +65,9 @@ export async function processSyncEvents(
   return results;
 }
 
+/** Platzhalter der Claim-Zeile, solange das Ereignis verarbeitet wird (kein endgültiges Ergebnis). */
+const PROCESSING_MESSAGE = "wird verarbeitet";
+
 function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }
@@ -95,6 +100,7 @@ async function processSingleEvent(userId: string, event: SyncEventInput): Promis
       status: existing.status === "applied" ? "already_applied" : existing.status,
       resultSummary: existing.resultSummary,
       error: existing.errorMessage ?? undefined,
+      ...(existing.status === "error" && existing.errorMessage !== PROCESSING_MESSAGE ? { terminal: true } : {}),
     };
   }
 
@@ -108,7 +114,7 @@ async function processSingleEvent(userId: string, event: SyncEventInput): Promis
         type: event.type,
         status: "error",
         clientCreatedAt: new Date(event.clientCreatedAt),
-        errorMessage: "wird verarbeitet",
+        errorMessage: PROCESSING_MESSAGE,
       })
       .returning({ id: syncEvents.id });
     claimId = claimed.id;
@@ -166,7 +172,7 @@ async function finalizeTerminal(
     .update(syncEvents)
     .set({ status, errorMessage })
     .where(eq(syncEvents.id, claimId));
-  return { clientEventId: event.clientEventId, status, error: errorMessage };
+  return { clientEventId: event.clientEventId, status, error: errorMessage, ...(status === "error" ? { terminal: true } : {}) };
 }
 
 async function applyEvent(userId: string, event: SyncEventInput): Promise<unknown> {

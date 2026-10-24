@@ -821,6 +821,8 @@ export interface StudySessionAnswerInput {
 }
 
 export interface StudySessionAttemptResult {
+  /** Antworten auf Fragen, die es inzwischen nicht mehr gibt: übersprungen (Sync-Pfad). */
+  skipped?: number;
   /** Die Session war schon abgeschlossen oder ausgesetzt: die Antworten wurden nur als Wiederholungen gezählt (Sync-Pfad). */
   partial?: boolean;
   score: number;
@@ -885,10 +887,16 @@ export async function completeStudySession(
   // Verstehens-Aufgaben (Konzept im Verstehens-Modus) erzeugen kein FSRS-Review: der Zustand bleibt unverändert bis zur Lösung.
   const understandByItemId = new Map(items.filter((i) => i.conceptStruggleId).map((i) => [i.id, i.conceptStruggleId as string]));
   let correctCount = 0;
+  let skipped = 0;
   for (const answer of answers) {
     const item = itemById.get(answer.itemId);
     if (!item) continue;
     const shown = formatOf.get(shownQuestionId(item));
+    // Die Frage wurde nach der Planung gelöscht: nicht werten, nicht verbuchen - der Rest der Session zählt.
+    if (!shown) {
+      skipped++;
+      continue;
+    }
     const grade = gradeQuestionAnswer(
       { answerFormat: shown?.answerFormat ?? "choice", answerData: shown?.answerData ?? null },
       optionRows.filter((o) => o.questionId === shownQuestionId(item)),
@@ -922,7 +930,7 @@ export async function completeStudySession(
       );
     }
     const partialScore = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
-    return { partial: true, score: partialScore, results };
+    return { partial: true, score: partialScore, results, ...(skipped > 0 ? { skipped } : {}) };
   }
 
   if (results.length > 0) {
@@ -987,7 +995,7 @@ export async function completeStudySession(
   if (session.deescalated) await afterDeescalatedSession(userId, timing?.completedAt).catch((error) => console.error("Frühwarnung (Abschluss) fehlgeschlagen:", error));
 
   const score = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
-  return { score, results };
+  return { score, results, ...(skipped > 0 ? { skipped } : {}) };
 }
 
 export interface StudySessionRevealResult extends AnswerReveal {

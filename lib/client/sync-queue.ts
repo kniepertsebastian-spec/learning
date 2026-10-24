@@ -90,6 +90,11 @@ export async function discardPendingSyncEvent(clientEventId: string): Promise<vo
   notifyQueueChanged();
 }
 
+/** Endgültig abgelehnte Ergebnisse (Server ordnet sie nicht zu), zum Ansehen und Verwerfen. */
+export async function listRejectedSyncEvents(userId: string): Promise<PendingSyncEvent[]> {
+  return (await listPendingSyncEvents(userId)).filter((e) => e.status === "rejected");
+}
+
 const inFlightSyncs = new Map<string, Promise<SyncQueueSummary>>();
 
 /**

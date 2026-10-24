@@ -119,3 +119,37 @@ describe("summarize", () => {
     expect(summarize([conflict], null).oldestUnsyncedAt).toBeNull();
   });
 });
+
+describe("endgültig abgelehnte Ereignisse", () => {
+  const terminal = (id: string, error = "Lektion nicht gefunden.") => ok([{ clientEventId: id, status: "error", error, terminal: true }]);
+  it("markiert ein Ereignis nach 3 gleichlautenden endgültigen Antworten als abgelehnt und sendet es nicht mehr", async () => {
+    const { io, store, posted } = fakeIo([event("a")], () => terminal("a"));
+    await transferPendingEvents("u1", io, () => null);
+    expect(store.get("a")).toMatchObject({ status: "failed", terminalCount: 1 });
+    await transferPendingEvents("u1", io, () => null);
+    expect(store.get("a")).toMatchObject({ status: "failed", terminalCount: 2 });
+    const { summary } = await transferPendingEvents("u1", io, () => null);
+    expect(store.get("a")).toMatchObject({ status: "rejected", terminalCount: 3, lastError: "Lektion nicht gefunden." });
+    expect(summary).toMatchObject({ rejectedCount: 1, failedCount: 0 });
+    expect(posted).toHaveLength(3);
+    await transferPendingEvents("u1", io, () => null);
+    expect(posted).toHaveLength(3); // nichts mehr gesendet
+    expect(store.has("a")).toBe(true); // nie still gelöscht
+  });
+  it("zählt nur gleichlautende endgültige Antworten", async () => {
+    let n = 0;
+    const { io, store } = fakeIo([event("a")], () => terminal("a", n++ === 1 ? "anderer Fehler" : "Lektion nicht gefunden."));
+    for (let i = 0; i < 3; i++) await transferPendingEvents("u1", io, () => null);
+    expect(store.get("a")?.status).toBe("failed");
+  });
+  it("vorübergehende Fehler führen nie zur Ablehnung", async () => {
+    const { io, store } = fakeIo([event("a")], () => ok([{ clientEventId: "a", status: "error", error: "Wird bereits verarbeitet" }]));
+    for (let i = 0; i < 5; i++) await transferPendingEvents("u1", io, () => null);
+    expect(store.get("a")?.status).toBe("failed");
+  });
+  it("meldet übersprungene Antworten und teilweise gezählte Sessions", async () => {
+    const { io } = fakeIo([event("a"), event("b")], () => ok([{ clientEventId: "a", status: "applied", resultSummary: { skipped: 2 } }, { clientEventId: "b", status: "applied_partial", resultSummary: { partial: true } }]));
+    const { summary } = await transferPendingEvents("u1", io, () => null);
+    expect(summary).toMatchObject({ skippedAnswers: 2, partialApplied: 1, pendingCount: 0 });
+  });
+});
