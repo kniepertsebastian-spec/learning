@@ -26,7 +26,14 @@ export class SimulationNotFoundError extends Error {}
  * soll bald wieder auf den Tisch (roadmap3.md, Schritt 5). Es entstehen keine neuen Wiederholungseinträge, nur
  * bestehende werden vorgezogen.
  */
-export async function recordSimulationSolved(userId: string, sectionId: string, simIndex: number, helps: number): Promise<{ struggled: boolean; pulledForward: number; woven: WovenQuestion[] }> {
+export async function recordSimulationSolved(
+  userId: string,
+  sectionId: string,
+  simIndex: number,
+  helps: number,
+  /** Offline gelöst, später synchronisiert: Zeitpunkt der Lösung; `applyState` falsch = nur protokollieren (Ereignis zu alt). */
+  options: { at?: Date; applyState?: boolean } = {},
+): Promise<{ struggled: boolean; pulledForward: number; woven: WovenQuestion[] }> {
   const db = getDb();
   const [row] = await db
     .select({ objectiveId: sections.objectiveId, content: lessons.content })
@@ -39,7 +46,10 @@ export async function recordSimulationSolved(userId: string, sectionId: string, 
   if (simIndex < 0 || simIndex >= count) throw new SimulationNotFoundError("Simulation nicht gefunden.");
 
   const h = Math.max(0, Math.min(99, Math.floor(helps)));
-  const now = new Date();
+  const now = options.at ?? new Date();
+  const applyState = options.applyState ?? true;
+  // Vorziehen und eingewebte Fragen betreffen den Zustand von jetzt, nicht den der Lösung.
+  const serverNow = new Date();
   await db
     .insert(simulationResults)
     .values({ userId, sectionId, simIndex, bestHelps: h, lastHelps: h })
@@ -49,28 +59,28 @@ export async function recordSimulationSolved(userId: string, sectionId: string, 
         solves: sql`${simulationResults.solves} + 1`,
         bestHelps: sql`least(${simulationResults.bestHelps}, ${h})`,
         lastHelps: h,
-        lastSolvedAt: now,
+        lastSolvedAt: sql`greatest(${simulationResults.lastSolvedAt}, ${now.toISOString()}::timestamptz)`,
       },
     });
 
   const struggled = h >= STRUGGLE_HELPS;
   // PSRP-HR Phase 6: referenzierte Items bekommen einen impliziten Review (mit viel Hilfe = nicht souverän gelöst).
-  await recordInterleavedTask({ userId, taskType: "simulation", taskRef: `${sectionId}:${simIndex}`, solved: !struggled, now });
+  await recordInterleavedTask({ userId, taskType: "simulation", taskRef: `${sectionId}:${simIndex}`, solved: !struggled, now, applyState });
   let pulledForward = 0;
-  if (struggled) {
+  if (struggled && applyState) {
     const questionIds = (await db.select({ id: questions.id }).from(questions).where(and(eq(questions.objectiveId, row.objectiveId), eq(questions.stale, false)))).map((q) => q.id);
     if (questionIds.length) {
       const moved = await db
         .update(reviewItems)
-        .set({ dueAt: now })
-        .where(and(eq(reviewItems.userId, userId), inArray(reviewItems.questionId, questionIds), gt(reviewItems.dueAt, now)))
+        .set({ dueAt: serverNow })
+        .where(and(eq(reviewItems.userId, userId), inArray(reviewItems.questionId, questionIds), gt(reviewItems.dueAt, serverNow)))
         .returning({ id: reviewItems.id });
       pulledForward = moved.length;
     }
   }
   // Roadmap Didaktik Phase 10: nach einer souverän gelösten Simulation eine fällige Frage aus einer früheren Lektion (Flag woven_reviews).
   // Wer sich durchkämpfen musste, bekommt nichts obendrauf.
-  const woven = struggled ? [] : await pickWovenQuestions(userId, sectionId, 0, now, { max: 1 }).catch(() => []);
+  const woven = struggled ? [] : await pickWovenQuestions(userId, sectionId, 0, serverNow, { max: 1 }).catch(() => []);
   return { struggled, pulledForward, woven };
 }
 

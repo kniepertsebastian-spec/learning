@@ -51,6 +51,7 @@ import { DEFAULT_PSRP_CONFIG } from "@/lib/server/psrp/config";
 import { moreStudyExtra } from "@/lib/server/psrp/planner";
 import { interleaveProbes, selectProbes } from "@/lib/server/psrp/probes";
 import { getDueReviewCount, getDueReviewItems, recordReviewOutcomes } from "@/lib/server/review/service";
+import { answerTime, type ReviewTiming } from "@/lib/server/sync/effective-time";
 import {
   computeLessonFallbackCount,
   computeSessionComposition,
@@ -815,6 +816,8 @@ export interface StudySessionAnswerInput {
   confidence?: AnswerConfidence;
   /** Modus „Antwort zuerst überlegen“ war aktiv (nur für die Auswertung). */
   thinkFirst?: boolean;
+  /** Zeitpunkt der Antwort auf dem Gerät (ISO); nur im Sync-Pfad ausgewertet, siehe lib/server/sync/effective-time.ts. */
+  answeredAt?: string;
 }
 
 export interface StudySessionAttemptResult {
@@ -833,6 +836,7 @@ export async function completeStudySession(
   sessionId: string,
   userId: string,
   answers: StudySessionAnswerInput[],
+  options: { timing?: (session: { createdAt: Date }) => ReviewTiming } = {},
 ): Promise<StudySessionAttemptResult> {
   const db = getDb();
   const [session] = await db
@@ -844,6 +848,9 @@ export async function completeStudySession(
   if (session.status !== "planned" && session.status !== "in_progress") {
     throw new StudySessionNotActiveError("Diese Session ist bereits abgeschlossen oder ausgesetzt.");
   }
+
+  // Offline beantwortet, später synchronisiert: Zeitpunkte der Antworten, begrenzt ab Erstellung der Session.
+  const timing = options.timing?.(session);
 
   const items = await db
     .select()
@@ -893,6 +900,7 @@ export async function completeStudySession(
     const confidenceByItemId = new Map(answers.map((a) => [a.itemId, a.confidence]));
     const thinkFirstByItemId = new Set(answers.filter((a) => a.thinkFirst === true).map((a) => a.itemId));
     const selectedByItemId = new Map(answers.map((a) => [a.itemId, a.selectedOptionId]));
+    const answeredAtByItemId = new Map(answers.map((a) => [a.itemId, a.answeredAt]));
     const payloadByItemId = new Map(answers.map((a) => [a.itemId, sanitizeAnswer(a.answer)]));
     await Promise.all(
       results.map((r) =>
@@ -916,10 +924,11 @@ export async function completeStudySession(
         thinkFirst: thinkFirstByItemId.has(r.itemId),
         variantQuestionId: variantByItemId.get(r.itemId) ?? null,
         reviewType: recallByItemId.has(r.itemId) ? ("recall_check" as const) : undefined,
+        ...(timing ? answerTime(timing, answeredAtByItemId.get(r.itemId)) : {}),
       })),
       { sessionId },
     );
-    await recordUnderstandResults(results.flatMap((r) => (itemById.get(r.itemId)?.category === "understand" && understandByItemId.has(r.itemId) ? [{ struggleId: understandByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
+    await recordUnderstandResults(results.flatMap((r) => (itemById.get(r.itemId)?.category === "understand" && understandByItemId.has(r.itemId) ? [{ struggleId: understandByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])), timing?.completedAt);
     // Grundlagen-Check: je Konzept im Verstehens-Modus auswerten (schwache Voraussetzung → Brückenlektion), kein FSRS-Review
     const prereqResults = new Map<string, Array<{ questionId: string; isCorrect: boolean }>>();
     for (const r of results) {
@@ -928,7 +937,7 @@ export async function completeStudySession(
         prereqResults.set(struggleId, [...(prereqResults.get(struggleId) ?? []), { questionId: r.questionId, isCorrect: r.isCorrect }]);
       }
     }
-    for (const [struggleId, list] of prereqResults) await recordPrereqResults(struggleId, list).catch((error) => console.error("Grundlagen-Check (Auswertung) fehlgeschlagen:", error));
+    for (const [struggleId, list] of prereqResults) await recordPrereqResults(struggleId, list, timing?.completedAt).catch((error) => console.error("Grundlagen-Check (Auswertung) fehlgeschlagen:", error));
     await recordRecallResults(results.flatMap((r) => (recallByItemId.has(r.itemId) ? [{ recallCheckId: recallByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
     // Auffällige Varianten in die Prüfliste legen (best effort, blockiert die Auswertung nie).
     await flagOutlierVariants(results.map((r) => r.questionId)).catch((error) => console.error("Varianten-Prüfung fehlgeschlagen:", error));
@@ -936,7 +945,7 @@ export async function completeStudySession(
 
   await db
     .update(studySessions)
-    .set({ status: "completed", completedAt: new Date(), updatedAt: new Date() })
+    .set({ status: "completed", completedAt: timing?.completedAt ?? new Date(), updatedAt: new Date() })
     .where(eq(studySessions.id, sessionId));
 
   // Verstehens-Modus (Flag understanding_mode): Muster erkennen, best effort, blockiert die Auswertung nie.
@@ -946,7 +955,7 @@ export async function completeStudySession(
 
   await recordObjectiveSnapshot(userId, session.certificationId).catch((error) => console.error("Fortschritts-Stand fehlgeschlagen:", error));
 
-  if (session.deescalated) await afterDeescalatedSession(userId).catch((error) => console.error("Frühwarnung (Abschluss) fehlgeschlagen:", error));
+  if (session.deescalated) await afterDeescalatedSession(userId, timing?.completedAt).catch((error) => console.error("Frühwarnung (Abschluss) fehlgeschlagen:", error));
 
   const score = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
   return { score, results };

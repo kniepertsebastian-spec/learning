@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
 import type { AnswerConfidence, Locale } from "@/lib/types";
@@ -134,6 +134,8 @@ export function StudySession({
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
+  // Zeitpunkt der Antwort je Frage; offline gespeichert, damit die Verbuchung später den richtigen Zeitpunkt kennt.
+  const answeredAtRef = useRef<Record<number, string>>({});
   const [payloads, setPayloads] = useState<Array<AnswerPayload | null>>(() => questionItems.map(() => null));
   const [formatResults, setFormatResults] = useState<Array<FormatEvaluation | null>>(() => questionItems.map(() => null));
   const [confidences, setConfidences] = useState<Array<AnswerConfidence | null>>(() =>
@@ -219,6 +221,7 @@ export function StudySession({
         return next;
       });
     }
+    answeredAtRef.current[index] = new Date().toISOString();
     setAnswers((prev) => {
       const next = [...prev];
       next[index] = FORMAT_ANSWER;
@@ -339,7 +342,7 @@ export function StudySession({
       await enqueueSyncEvent(
         offline.userId,
         "study_session",
-        { sessionId, answers: payload.answers },
+        { sessionId, answers: payload.answers.map((a, i) => ({ ...a, answeredAt: answeredAtRef.current[i] })) },
         locale === "de" ? "Tages-Session" : "Today's session",
       ).catch(() => {});
       setResult({ score, results });
@@ -375,6 +378,7 @@ export function StudySession({
     const option = sorted[index];
     if (!option || formatPromptOf(item) || (thinkFirst && !optionsShown[currentIndex])) return;
     if (instant && answers[currentIndex]) return; // Antwort ist nach dem Wählen gesperrt
+    answeredAtRef.current[currentIndex] = new Date().toISOString();
     setAnswers((prev) => {
       const next = [...prev];
       next[currentIndex] = option.id;

@@ -215,6 +215,8 @@ export async function recordProbeAnswer(params: {
   responseTimeMs?: number | null;
   sessionId?: string;
   now?: Date;
+  /** Falsch: nur protokollieren (verspätet synchronisierte Antwort, Ereignis zu alt). */
+  applyState?: boolean;
 }): Promise<void> {
   const db = getDb();
   const { variant, userId } = params;
@@ -232,7 +234,7 @@ export async function recordProbeAnswer(params: {
 
   const { sessionId } = await recordRatedReviews(
     userId,
-    [{ itemId, rawRating: ratingFromOutcome(params.isCorrect, params.confidence), responseTimeMs: params.responseTimeMs, reviewType: "probe", probeVariantId: variant.id }],
+    [{ itemId, rawRating: ratingFromOutcome(params.isCorrect, params.confidence), responseTimeMs: params.responseTimeMs, reviewType: "probe", probeVariantId: variant.id, applyState: params.applyState }],
     { sessionId: params.sessionId, now },
   );
   if (!variant.isBottleneck) return;

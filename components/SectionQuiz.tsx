@@ -71,9 +71,11 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
     confidence?: AnswerConfidence;
     woven?: boolean;
     thinkFirst?: boolean;
+    /** Zeitpunkt der Antwort (ISO); für die zeitgenaue Verbuchung offline aufgezeichneter Ergebnisse. */
+    answeredAt?: string;
   } | null>(null);
   const [answers, setAnswers] = useState<
-    Array<{ questionId: string; selectedOptionId: string; answer?: AnswerPayload; confidence?: AnswerConfidence; woven?: boolean; thinkFirst?: boolean }>
+    Array<{ questionId: string; selectedOptionId: string; answer?: AnswerPayload; confidence?: AnswerConfidence; woven?: boolean; thinkFirst?: boolean; answeredAt?: string }>
   >([]);
 
   function mapQuestion(q: SectionQuizQuestion): QuizQuestion {
@@ -105,6 +107,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
       confidence,
       woven: q.woven || undefined,
       thinkFirst,
+      answeredAt: new Date().toISOString(),
     });
   }
 
@@ -112,7 +115,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
     setResults((r) => [...r, correct]);
     setHasAnsweredCurrent(true);
     const q = questions[quizIndex];
-    setPendingAnswer({ questionId: q.id, selectedOptionId: "", answer, confidence, woven: q.woven || undefined });
+    setPendingAnswer({ questionId: q.id, selectedOptionId: "", answer, confidence, woven: q.woven || undefined, answeredAt: new Date().toISOString() });
   }
 
   function handleNext() {

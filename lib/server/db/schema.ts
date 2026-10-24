@@ -3256,6 +3256,8 @@ export const reviewLog = pgTable(
     thinkFirst: boolean("think_first").notNull().default(false),
     /** Abrufwahrscheinlichkeit laut FSRS unmittelbar vor diesem Review (null bei erstem Review). */
     predictedR: numeric("predicted_r", { precision: 6, scale: 5, mode: "number" }),
+    /** Falsch bei verspätet synchronisierten Antworten, deren Zeitpunkt vor dem letzten Review des Items liegt (oder zu alt ist): nur protokolliert, der FSRS-Zustand blieb unverändert. */
+    stateApplied: boolean("state_applied").notNull().default(true),
   },
   (table) => [
     index("review_log_user_time_idx").on(table.userId, table.timestampUtc),

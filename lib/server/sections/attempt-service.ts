@@ -15,6 +15,7 @@ import {
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { ObjectiveProgressService } from "@/lib/server/progress/service";
 import { recordReviewOutcomes } from "@/lib/server/review/service";
+import { answerTime, type ReviewTiming } from "@/lib/server/sync/effective-time";
 import { sanitizeAnswer, type AnswerPayload } from "@/lib/questions/answer-formats";
 import { gradeQuestionAnswer } from "@/lib/server/questions/grading";
 import type { AnswerConfidence } from "@/lib/types";
@@ -33,6 +34,8 @@ export interface SectionQuizAnswerInput {
   woven?: boolean;
   /** Modus „Antwort zuerst überlegen“ war aktiv (nur für die Auswertung). */
   thinkFirst?: boolean;
+  /** Zeitpunkt der Antwort auf dem Gerät (ISO); nur im Sync-Pfad ausgewertet, siehe lib/server/sync/effective-time.ts. */
+  answeredAt?: string;
 }
 
 export interface SectionQuizAttemptResult {
@@ -52,6 +55,7 @@ export async function recordSectionQuizAttempt(
   userId: string,
   sectionId: string,
   allAnswers: SectionQuizAnswerInput[],
+  options: { timing?: ReviewTiming } = {},
 ): Promise<SectionQuizAttemptResult> {
   const db = getDb();
   // Eingewebte Antworten zählen nicht für Ergebnis und Lernzielstand dieser Lektion (nur wenn das Flag gilt, sonst werden sie verworfen).
@@ -81,9 +85,11 @@ export async function recordSectionQuizAttempt(
     quizId = inserted[0].id;
   }
 
+  const timing = options.timing;
+  const completedAt = timing?.completedAt ?? new Date();
   const attemptInserted = await db
     .insert(quizAttempts)
-    .values({ quizId, userId, startedAt: new Date(), completedAt: new Date() })
+    .values({ quizId, userId, startedAt: completedAt, completedAt })
     .returning();
   const attemptId = attemptInserted[0].id;
 
@@ -135,10 +141,11 @@ export async function recordSectionQuizAttempt(
       isCorrect: r.isCorrect,
       confidence: answers.find((a) => a.questionId === r.questionId)?.confidence ?? null,
       thinkFirst: answers.find((a) => a.questionId === r.questionId)?.thinkFirst === true,
+      ...(timing ? answerTime(timing, answers.find((a) => a.questionId === r.questionId)?.answeredAt) : {}),
     })),
   );
 
-  if (wovenAnswers.length > 0) await recordWovenAnswers(userId, sectionId, certInfo[0], wovenAnswers);
+  if (wovenAnswers.length > 0) await recordWovenAnswers(userId, sectionId, certInfo[0], wovenAnswers, timing);
 
   return { score, results, attemptId };
 }
@@ -165,7 +172,7 @@ export async function recordSimulationWovenAnswer(userId: string, sectionId: str
  * Eingewebte Antworten als Reviews des Original-Items (`interleaved`, mit der Lektion, in der sie gestellt wurden). Nur Fragen
  * desselben Kurses aus einem anderen Lernziel; alles andere wird ignoriert.
  */
-async function recordWovenAnswers(userId: string, sectionId: string, section: { certificationId: string; objectiveId: string }, answers: SectionQuizAnswerInput[]): Promise<void> {
+async function recordWovenAnswers(userId: string, sectionId: string, section: { certificationId: string; objectiveId: string }, answers: SectionQuizAnswerInput[], timing?: ReviewTiming): Promise<void> {
   const db = getDb();
   const shownIds = [...new Set(answers.map((a) => a.questionId))];
   const valid = await db
@@ -195,6 +202,7 @@ async function recordWovenAnswers(userId: string, sectionId: string, section: { 
           confidence: a.confidence ?? null,
           reviewType: "interleaved" as const,
           wovenIntoLessonId: lesson?.id ?? null,
+          ...(timing ? answerTime(timing, a.answeredAt) : {}),
         };
       }),
   );

@@ -8,6 +8,7 @@ import {
   type SectionQuizAnswerInput,
 } from "@/lib/server/sections/attempt-service";
 import { recordSimulationSolved, SimulationNotFoundError } from "@/lib/server/simulations/service";
+import { createReviewTiming, effectiveTime } from "@/lib/server/sync/effective-time";
 import {
   completeStudySession,
   StudySessionNotActiveError,
@@ -169,18 +170,23 @@ async function applyEvent(userId: string, event: SyncEventInput): Promise<unknow
     // Offline aufgezeichnet, später synchronisiert: wer den Lernpfad inzwischen nicht mehr sehen darf
     // (z. B. aus der Firma entfernt), bekommt nichts mehr verbucht.
     if (await isSectionHidden(userId, payload.sectionId)) throw new SectionNotFoundError(payload.sectionId);
-    return recordSectionQuizAttempt(userId, payload.sectionId, payload.answers);
+    return recordSectionQuizAttempt(userId, payload.sectionId, payload.answers, {
+      timing: createReviewTiming({ eventTime: event.clientCreatedAt }),
+    });
   }
   if (event.type === "study_session") {
     const payload = event.payload as StudySessionPayload;
     if (await isStudySessionHidden(userId, payload.sessionId)) throw new StudySessionNotFoundError(payload.sessionId);
-    return completeStudySession(payload.sessionId, userId, payload.answers);
+    return completeStudySession(payload.sessionId, userId, payload.answers, {
+      timing: (session) => createReviewTiming({ eventTime: event.clientCreatedAt, notBefore: session.createdAt }),
+    });
   }
   if (event.type === "simulation_result") {
     const payload = event.payload as SimulationResultPayload;
     if (typeof payload?.sectionId !== "string" || !Number.isInteger(payload.simIndex) || typeof payload.helps !== "number") throw new SimulationNotFoundError("Ungültige Simulation.");
     if (await isSectionHidden(userId, payload.sectionId)) throw new SectionNotFoundError(payload.sectionId);
-    const { struggled, pulledForward } = await recordSimulationSolved(userId, payload.sectionId, payload.simIndex, payload.helps);
+    const { at, tooOld } = effectiveTime(event.clientCreatedAt, {}, new Date());
+    const { struggled, pulledForward } = await recordSimulationSolved(userId, payload.sectionId, payload.simIndex, payload.helps, { at, applyState: !tooOld });
     return { struggled, pulledForward };
   }
   throw new Error(`Unbekannter Sync-Ereignistyp: ${event.type}`);
