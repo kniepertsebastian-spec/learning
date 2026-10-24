@@ -1023,6 +1023,87 @@ export const reviewerComments = pgTable(
   ],
 );
 
+/** Felder des öffentlichen Prüferprofils, für die die Person einzeln einwilligt (roadmap_pruefer Phase 3). */
+export type ReviewerProfileField = "name" | "country" | "region" | "bio" | "linkedin" | "indexing";
+
+/**
+ * Expertenprofil einer Person mit Prüfer-Rolle. Öffentlich ist nur, was die Person einzeln freigegeben hat: `consent` hält je Feld den Zeitpunkt
+ * der Einwilligung (fehlt der Schlüssel, ist das Feld nicht öffentlich). Mit `published = false` ist nichts öffentlich; ein Rückzug setzt
+ * das sofort und nimmt alle Einwilligungen zurück. Das Foto folgt später (braucht Dateispeicher).
+ */
+export const reviewerProfiles = pgTable(
+  "reviewer_profiles",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull().unique(),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    country: text("country").notNull(),
+    region: text("region"),
+    bio: jsonb("bio").$type<Localized<string>>(),
+    linkedinUrl: text("linkedin_url"),
+    consent: jsonb("consent").$type<Partial<Record<ReviewerProfileField, string>>>().notNull().default(sql`'{}'::jsonb`),
+    published: boolean("published").notNull().default(false),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export type ReviewerExperienceKind = "job" | "project" | "teaching";
+
+/** Berufserfahrung, Projekte und Lehrtätigkeit; `isPublic` ist die Einwilligung für genau diesen Eintrag. */
+export const reviewerExperience = pgTable(
+  "reviewer_experience",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<ReviewerExperienceKind>().notNull(),
+    title: text("title").notNull(),
+    organization: text("organization"),
+    /** Zeitraum als Jahr oder Monat („2019“, „2019-04“); `periodTo` leer = laufend. */
+    periodFrom: text("period_from").notNull(),
+    periodTo: text("period_to"),
+    description: text("description"),
+    isPublic: boolean("is_public").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("reviewer_experience_user_idx").on(table.userId),
+    check("reviewer_experience_kind_check", sql`${table.kind} in ('job', 'project', 'teaching')`),
+  ],
+);
+
+/**
+ * Herstellerzertifikate mit Nachweis-Link auf die offizielle Prüfseite (keine Uploads). Erst wenn ein Admin den Link geprüft und
+ * `verified_at` gesetzt hat, zeigt die öffentliche Seite „Nachweis geprüft am …“. Ändert sich der Link, entfällt die Prüfung.
+ */
+export const reviewerCertifications = pgTable(
+  "reviewer_certifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    vendor: text("vendor").notNull(),
+    name: text("name").notNull(),
+    earnedOn: date("earned_on", { mode: "string" }).notNull(),
+    validUntil: date("valid_until", { mode: "string" }),
+    verificationUrl: text("verification_url").notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    verifiedByUserId: uuid("verified_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    /** Erinnerung vor Ablauf (60 Tage), je Ablaufdatum einmal. */
+    remindersSent: jsonb("reminders_sent").$type<{ d60?: string }>().notNull().default(sql`'{}'::jsonb`),
+    isPublic: boolean("is_public").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("reviewer_certifications_user_idx").on(table.userId)],
+);
+
 export type CourseApprovalKind = "approval" | "editorial" | "legacy";
 
 /**

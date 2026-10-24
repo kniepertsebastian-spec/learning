@@ -17,6 +17,9 @@ export default async function ReviewerHome() {
     <div className="flex flex-col gap-4" data-testid="reviewer-home">
       <h1 className="text-2xl font-semibold">{de ? "Kurse prüfen" : "Review courses"}</h1>
       <p className="text-sm text-subtle">{de ? "Du siehst nur die Kurse, die dir zugewiesen sind. Du kannst lesen, kommentieren, Fragen als fehlerhaft melden und freigeben." : "You only see the courses assigned to you. You can read, comment, report questions as faulty and approve."}</p>
+      <p className="text-sm">
+        <Link href="/reviewer/profile" className="text-link hover:underline" data-testid="reviewer-profile-link">{de ? "Mein Expertenprofil pflegen" : "Manage my expert profile"}</Link>
+      </p>
       {courses.length === 0 ? (
         <p className="text-sm text-subtle" data-testid="reviewer-empty">{de ? "Dir ist noch kein Kurs zugewiesen." : "No course is assigned to you yet."}</p>
       ) : (
