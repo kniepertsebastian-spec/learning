@@ -271,7 +271,9 @@ run("Kundenanfragen, Freigaben, Prüfstatus (echte DB)", () => {
     // erst nach der fachlichen Prüfung (Name und Datum) geht es
     const noName = await admin(adminCatalog, req("PATCH", { status: "approved" }), certCtx(certIds.pruefung));
     expect(noName.status).toBe(400);
-    const approved = await admin(adminCatalog, req("PATCH", { status: "approved", approvedByName: "  Dr. Erika Prüfer (extern) " }), certCtx(certIds.pruefung));
+    const noConfirm = await admin(adminCatalog, req("PATCH", { status: "approved", approvedByName: "Dr. Erika Prüfer (extern)" }), certCtx(certIds.pruefung));
+    expect(noConfirm.status).toBe(400); // ohne die Bestätigung „Inhalte dieser Version fachlich geprüft“ keine Freigabe
+    const approved = await admin(adminCatalog, req("PATCH", { status: "approved", approvedByName: "  Dr. Erika Prüfer (extern) ", confirmed: true }), certCtx(certIds.pruefung));
     expect(approved.status).toBe(204);
     const [cert] = await getDb().select().from(certifications).where(eq(certifications.id, certIds.pruefung));
     expect(cert).toMatchObject({ catalogStatus: "approved", approvedByName: "Dr. Erika Prüfer (extern)" });

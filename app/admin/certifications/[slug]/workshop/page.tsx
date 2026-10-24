@@ -7,6 +7,7 @@ import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
+import { CourseApprovalPanel } from "@/components/admin/CourseApprovalPanel";
 import { CourseWorkshop } from "@/components/admin/workshop/CourseWorkshop";
 
 /** Kurs-Werkstatt (roadmap3.md, Schritt 1): Lektionen und Fragen eines allgemeinen Kurses bearbeiten, mit Versionen. */
@@ -28,6 +29,7 @@ export default async function CourseWorkshopPage({ params }: { params: Promise<{
         <>
           <h1 className="mb-1 text-2xl font-semibold">{de ? "Kurs bearbeiten" : "Edit course"}: {cert.name}</h1>
           <p className="mb-6 text-sm text-subtle">{de ? "Änderungen sind sofort für Lernende sichtbar. Jeder frühere Stand bleibt in den Versionen erhalten." : "Changes are visible to learners immediately. Every earlier version stays in the history."}</p>
+          <CourseApprovalPanel certId={cert.id} locale={locale} />
           <CourseWorkshop certId={cert.id} courseName={cert.name} locale={locale} />
         </>
       )}

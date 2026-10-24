@@ -13,6 +13,7 @@ import {
   type CourseRequestStatus,
 } from "@/lib/server/db/schema";
 import { SETTABLE_REQUEST_STATUSES } from "@/lib/course-requests";
+import { approveCourse, getApprovalStatus } from "@/lib/server/approvals/service";
 import { notifyCompanyEntitlementRevoked, notifyCompanyRequestStatus } from "@/lib/server/company/request-notifications";
 
 /**
@@ -93,11 +94,14 @@ export type CatalogRow = {
   catalogStatus: CatalogStatus;
   approvedByName: string | null;
   approvedAt: Date | null;
+  /** Freigabe je Inhaltsstand: Version und Zahl der Änderungen seit der Prüfung (null ohne Freigabe). */
+  versionLabel: string | null;
+  changesSinceApproval: number | null;
 };
 
 /** Der Katalog des Betreibers: nur allgemeine Lernpfade. */
 export async function listCatalog(): Promise<CatalogRow[]> {
-  return getDb()
+  const rows = await getDb()
     .select({
       id: certifications.id,
       name: certifications.name,
@@ -109,6 +113,12 @@ export async function listCatalog(): Promise<CatalogRow[]> {
     .from(certifications)
     .where(eq(certifications.kind, "general")) // interne Lernpfade der Firmen sieht der Betreiber nicht
     .orderBy(asc(certifications.name));
+  const out: CatalogRow[] = [];
+  for (const row of rows) {
+    const status = row.catalogStatus === "approved" ? await getApprovalStatus(row.id).catch(() => null) : null;
+    out.push({ ...row, versionLabel: status?.approval?.versionLabel ?? null, changesSinceApproval: status && status.state !== "none" ? status.changeCount : null });
+  }
+  return out;
 }
 
 function cleanNote(note: string | null | undefined): string | null {
@@ -218,25 +228,28 @@ export async function setCatalogStatus(input: {
   certificationId: string;
   status: CatalogStatus;
   approvedByName?: string | null;
+  /** „Ich habe die Inhalte dieser Version fachlich geprüft.“ (Pflicht für „approved“; roadmap_pruefer Phase 2) */
+  confirmed?: boolean;
   actorUserId: string;
 }): Promise<void> {
   const name = input.approvedByName?.trim() ?? "";
-  if (input.status === "approved" && (name.length < 2 || name.length > 120)) throw new InvalidApprovalError();
+  if (input.status === "approved" && (name.length < 2 || name.length > 120 || !input.confirmed)) throw new InvalidApprovalError();
 
   const [existing] = await getDb().select({ kind: certifications.kind }).from(certifications).where(eq(certifications.id, input.certificationId)).limit(1);
   if (!existing) throw new CourseNotFoundError();
   if (existing.kind !== "general") throw new InternalCourseError();
 
-  const [row] = await getDb()
-    .update(certifications)
-    .set(
-      input.status === "approved"
-        ? { catalogStatus: "approved", approvedByName: name, approvedAt: new Date() }
-        : { catalogStatus: input.status, approvedByName: null, approvedAt: null },
-    )
-    .where(eq(certifications.id, input.certificationId))
-    .returning({ id: certifications.id });
-  if (!row) throw new CourseNotFoundError();
+  if (input.status === "approved") {
+    // Die Freigabe hält Hash und Fingerabdrücke dieses Inhaltsstands fest und setzt den Status (lib/server/approvals/service.ts).
+    await approveCourse({ certificationId: input.certificationId, reviewer: { userId: null, displayName: name }, confirmed: true, recordedByUserId: input.actorUserId });
+  } else {
+    const [row] = await getDb()
+      .update(certifications)
+      .set({ catalogStatus: input.status, approvedByName: null, approvedAt: null })
+      .where(eq(certifications.id, input.certificationId))
+      .returning({ id: certifications.id });
+    if (!row) throw new CourseNotFoundError();
+  }
   await recordAuditEvent({
     actorUserId: input.actorUserId,
     action: "certification.catalog_status_changed",
