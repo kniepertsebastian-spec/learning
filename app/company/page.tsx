@@ -20,6 +20,8 @@ import { listOnboardingPlans } from "@/lib/server/company/onboardings";
 import { MentorRequestsPanel } from "@/components/MentorRequestsPanel";
 import { listOpenMentorRequests, mentorRequestStats } from "@/lib/server/company/mentor-requests";
 import { PracticeTasksPanel } from "@/components/PracticeTasksPanel";
+import { FrameworkGoalsPanel } from "@/components/FrameworkGoalsPanel";
+import { listFrameworkGoalsForOrg } from "@/lib/server/company/framework-goals";
 import { InternalCoursesPanel } from "@/components/InternalCoursesPanel";
 import { InvitationsPanel } from "@/components/InvitationsPanel";
 import { ASSIGN_ROLES, STATUS_VIEW_ROLES } from "@/lib/server/company/access";
@@ -79,6 +81,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   ]);
   const objectivesByPath = await listObjectivesForPaths(paths.map((p) => p.id));
   const sectionsByPath = await listSectionsForPaths(paths.map((p) => p.id));
+  const frameworkGoalRows = canAssign ? await listFrameworkGoalsForOrg(membership.organizationId) : [];
   const [mentorRequestRows, mentorStats] = await Promise.all([
     listOpenMentorRequests(membership.organizationId, membership.userId, membership.role),
     isAdmin ? mentorRequestStats(membership.organizationId) : null,
@@ -209,6 +212,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
             sectionsByPath={sectionsByPath}
             locale={locale}
           />
+          {canAssign && <FrameworkGoalsPanel goals={frameworkGoalRows} paths={paths.map((p) => ({ id: p.id, name: p.name }))} objectivesByPath={objectivesByPath} locale={locale} />}
           <CompanyModulesPanel
             modules={modules}
             paths={paths.map((p) => ({ id: p.id, name: p.name }))}

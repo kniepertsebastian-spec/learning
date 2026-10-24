@@ -29,6 +29,8 @@ const ALLOWED_TABLES = new Set([
   // Firmenmodule (Unterlagen der Firma, Verantwortlicher, gültig bis)
   "companyModules",
   // Praxisaufgaben und ihre Abgaben (von der Firma verwaltet, Bestätigung durch den Mentor)
+  // Ausbildungsrahmenplan der Firma: Zuordnung von Plan-Einträgen zu Lernzielen, keine Lerndaten
+  "frameworkGoals",
   "practiceTasks",
   "practiceTaskSubmissions",
   // Kursstruktur für die Lernziel-Auswahl der Praxisaufgaben (Domains und Lernziele, keine Lerndaten)

@@ -124,7 +124,7 @@ Quelle: `roadmap_didaktik.md`, Phase 5 und 6; `roadmap_motivation.md`, Phase 4, 
 - [x] Wochenziel statt Tagesserie, Willkommen-zurück-Ablauf
 - [x] Erste Session ohne Zusatz-Eingaben, Sicherheitsangabe ab Session 3, Check-in ab Session 5, Seite „Wie ich lerne“
 - [x] Aufgabenart nach Energie (Simulation, Spickzettel, „nur eine Aufgabe“), Flag `energy_modes`
-- [x] Praxisaufgabe wird durch Lektion freigeschaltet, „Warum lerne ich das?“ je Lektion (Prüfungsgewicht, Praxisaufgabe, Zuweisung mit Frist, eigene Karrierepfade; einen Ausbildungsrahmenplan gibt es im Produkt nicht)
+- [x] Praxisaufgabe wird durch Lektion freigeschaltet, „Warum lerne ich das?“ je Lektion (Prüfungsgewicht, Praxisaufgabe, Ausbildungsrahmenplan der Firma, Zuweisung mit Frist, eigene Karrierepfade)
 - [x] Fortschritt sichtbar mit echten Zahlen; Einschätzung zum Prüfungstermin nur für den Lernenden
 
 **Zuschnitt:** zwei bis drei PRs (Einstieg und Wochenziel · Energie-Alternativen und Fortschritt · Praxisbezug).

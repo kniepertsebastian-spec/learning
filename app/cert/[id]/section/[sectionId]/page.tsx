@@ -18,6 +18,7 @@ import {
 import { getCompanyMembership } from "@/lib/server/company/access";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { findMentorUserId } from "@/lib/server/company/mentor-requests";
+import { frameworkGoalsForObjective } from "@/lib/server/company/framework-goals";
 import { loadCourseRelevance } from "@/lib/server/relevance/service";
 import { pickWovenQuestions } from "@/lib/server/weaving/candidates";
 import { interleave } from "@/lib/weaving/rules";
@@ -88,6 +89,7 @@ export default async function SectionPage({
       : null;
   const examWeight = domainRows[0]?.weightPercent ? Number(domainRows[0].weightPercent) : null;
   const unlockTasks = membership ? await listTasksUnlockedBySection(membership.organizationId, membership.userId, sectionId).catch(() => []) : [];
+  const frameworkGoals = membership ? await frameworkGoalsForObjective(membership.organizationId, objective.id).catch(() => []) : [];
   const courseRelevance = session?.user?.id && domainRows[0] ? await loadCourseRelevance(session.user.id, domainRows[0].certificationId).catch(() => null) : null;
   let completed = false;
   if (session?.user?.id && !quizEnabled) {
@@ -166,7 +168,7 @@ export default async function SectionPage({
       contentLocale={certRow?.contentLocale ?? "de"}
       translationPending={certRow?.translationStatus === "running"}
       mentorAsk={mentorAsk}
-      relevance={{ examWeight: examWeight && examWeight > 0 ? Math.round(examWeight) : null, tasks: unlockTasks.map((t) => ({ title: t.title, unlocked: t.unlocked })), assignment: courseRelevance?.assignment ?? null, careerPaths: courseRelevance?.careerPaths ?? [] }}
+      relevance={{ examWeight: examWeight && examWeight > 0 ? Math.round(examWeight) : null, tasks: unlockTasks.map((t) => ({ title: t.title, unlocked: t.unlocked })), frameworkGoals, assignment: courseRelevance?.assignment ?? null, careerPaths: courseRelevance?.careerPaths ?? [] }}
       askConfidence={askConfidence}
       exitEnabled={Boolean(session?.user?.id) && isFeatureEnabled("exit_with_win", session!.user!.id!)}
       pretestEnabled={Boolean(session?.user?.id) && isFeatureEnabled("pretest_questions", session!.user!.id!)}

@@ -2510,6 +2510,30 @@ export const practiceTasks = pgTable(
 );
 
 /**
+ * Ausbildungsrahmenplan der Firma (roadmap_motivation Phase 5): Die Firma ordnet Lernzielen eines Lernpfads Einträge ihres eigenen
+ * Plans zu (z. B. „2.3 Betriebssysteme installieren“). Die Lektion zeigt sie unter „Warum lerne ich das?“. Reine Zuordnung der
+ * Firma, keine Lerndaten.
+ */
+export const frameworkGoals = pgTable(
+  "framework_goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    objectiveId: uuid("objective_id")
+      .notNull()
+      .references(() => objectives.id, { onDelete: "cascade" }),
+    /** Gliederungsnummer im Plan der Firma, z. B. „2.3“ (optional). */
+    code: text("code"),
+    title: text("title").notNull(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("framework_goals_org_objective_idx").on(table.organizationId, table.objectiveId)],
+);
+
+/**
  * Abgabe einer Person zu einer Praxisaufgabe: eigene Notiz (freiwillig), Bestätigung oder Nacharbeit durch eine
  * ANDERE Person der Firma (Mentor/Firmen-Admin, nie die eigene Abgabe). Bestätigt ist endgültig. Der zusammengesetzte
  * Fremdschlüssel stellt sicher, dass die Person Mitglied der Firma ist; sie fällt mit der Mitgliedschaft weg.
