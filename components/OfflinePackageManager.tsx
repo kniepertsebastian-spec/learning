@@ -2,7 +2,7 @@
 
 import { InstallBanner } from "@/components/InstallBanner";
 import { useEffect, useState } from "react";
-import { CheckCircle2, CloudDownload, RefreshCw, Trash2 } from "lucide-react";
+import { BadgeCheck, CheckCircle2, CloudDownload, RefreshCw, Trash2 } from "lucide-react";
 import type { Locale } from "@/lib/types";
 import {
   deleteOfflinePackage,
@@ -13,6 +13,7 @@ import {
 import { downloadOfflinePackage, fetchOfflinePackageVersion, type DownloadProgress } from "@/lib/client/offline-download";
 import { getStorageStatus, type StorageStatus } from "@/lib/client/storage-status";
 import { SectionContent } from "@/components/SectionContent";
+import { reviewersText, changeLabel } from "@/lib/reviewers/seal";
 import { StudySession } from "@/components/StudySession";
 
 interface OfflinePackageManagerProps {
@@ -197,6 +198,15 @@ export function OfflinePackageManager({
       <InstallBanner />
       <div className="rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-1 text-sm font-medium">{certName}</h2>
+        {record?.data.seal && (
+          <p className="mb-2 flex items-center gap-1.5 text-xs text-mint-text" data-testid="offline-seal">
+            <BadgeCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              {locale === "de" ? "Fachlich geprüft von" : "Reviewed by"} {reviewersText(record.data.seal, locale)} · {locale === "de" ? "Version" : "Version"} {record.data.seal.versionLabel} · {locale === "de" ? "Stand" : "as of"} {new Date(record.data.seal.approvedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", { timeZone: "UTC" })}
+              {record.data.seal.changeCount ? ` · ${changeLabel(record.data.seal.changeCount, locale)}` : ""}
+            </span>
+          </p>
+        )}
         {loadingRecord ? (
           <p className="text-sm text-foreground/60">{locale === "de" ? "Lädt…" : "Loading…"}</p>
         ) : record ? (

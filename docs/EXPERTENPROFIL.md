@@ -18,8 +18,18 @@ Nur Links auf die offizielle Prüfseite oder das digitale Abzeichen des Herstell
 ## Daten
 Tabellen `reviewer_profiles`, `reviewer_experience`, `reviewer_certifications` (Migration 0094). Datenexport und Kontolöschung umfassen sie; die Löschung entfernt die Seite.
 
+## Siegel „Fachlich geprüft von …“ (Paket 4.7b)
+- **Wo:** Kursseite (volle Zeile mit Version und Stand), Katalog (kompakt: „Fachlich geprüft · Version · Stand“) und Offline-Paket (Zeile in der Offline-Übersicht, Stand zum Download).
+- **Inhalt:** „✓ Fachlich geprüft von **Vorname Name** · Version 2.1 · Stand 14.10.2026“. Der Name verlinkt auf `/experts/<slug>`, aber nur bei veröffentlichtem Profil mit Einwilligung für den Namen. Prüfer ohne öffentliches Profil (auch Altbestand und Einträge ohne Konto) erscheinen nur als „einem externen Experten“. Haben mehrere Prüfer genau diesen Inhaltsstand freigegeben, stehen alle da.
+- **Rückzug und Löschung:** Das Siegel bleibt, der Name verschwindet sofort („von einem externen Experten · Stand …“). Die interne Freigabe bleibt gültig.
+- **Änderungen:** Auf der Kursseite steht bei Abweichung vom geprüften Stand „X Änderungen seit der Prüfung“; Details (Zahl der Abschnitte/Fragen) auf Klick. Ohne Freigabe gibt es kein Siegel.
+- **Hinweistext** (auf Klick): „Geprüft“ bezieht sich auf die fachliche Richtigkeit zum angegebenen Stand, keine Garantie für das Bestehen einer Prüfung.
+- **Interne Lernpfade** bekommen kein Siegel; dort bleibt „Freigegeben von …“ im Firmenbereich.
+- **Katalog ohne Änderungszähler:** Die Änderungserkennung liest alle Inhalte eines Kurses. Für Listen wäre das zu teuer; der Katalog zeigt deshalb den Stand der letzten Prüfung, die Kursseite den genauen Zustand.
+
 ## Noch offen
 - Foto (braucht Dateispeicher).
-- Siegel „Fachlich geprüft von …“ an Kurs, Katalog, Offline-Paket und Bescheinigung samt neutralem Text nach Rückzug (Paket 4.7b).
-- Rechtliches (`roadmap_pruefer.md` Phase 7): Expertenvertrag, Datenschutzerklärung für öffentliche Prüferprofile, Hinweistext zum Siegel. Das ist Organisation, kein Code, und sollte vor der ersten Veröffentlichung eines echten Profils geklärt sein.
+- Siegel auf **Abschlussbescheinigungen**: Eine Bescheinigung über den Kursabschluss gibt es im Produkt noch nicht (das PDF im Firmenbereich ist das Zertifikats-Register). Sobald sie existiert, baut sie das Siegel aus `getCourseSeal` und `reviewersText` (`lib/reviewers/seal.ts`).
+- Siegel auf der Dashboard-Kachel und Geltungsbereich je Domain (Freigaben gelten bisher für den ganzen Kurs).
+- Rechtliches (`roadmap_pruefer.md` Phase 7): Expertenvertrag, Datenschutzerklärung für öffentliche Prüferprofile, Prüfung des Siegel-Hinweistexts. Das ist Organisation, kein Code, und sollte vor der ersten Veröffentlichung eines echten Profils geklärt sein.
 - Die Freischaltung der Veröffentlichung durch das Probe-Review (Paket 4.8) gibt es noch nicht.
