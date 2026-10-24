@@ -1,14 +1,14 @@
 /** Sammelläufe gegen echte DB, mit gefälschter KI (nur mit TEST_DATABASE_URL). */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const TEST_DB = process.env.TEST_DATABASE_URL;
 if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 
 import { getDb } from "@/lib/server/db/client";
-import { aiBatchRuns, certifications, contentRevisions, courseCheckpoints, lessons, users } from "@/lib/server/db/schema";
+import { aiBatchRuns, certifications, conceptPrerequisites, concepts, contentRevisions, courseCheckpoints, itemVariants, lessons, objectiveExplanations, questionOptions, questions, users } from "@/lib/server/db/schema";
 import { seedCourse, seedLessons, seedUser } from "@/lib/server/psrp/test-db";
-import { awaitBatch, BatchAlreadyRunningError, BatchNothingToDoError, cancelBatch, getBatchStatus, startBatch } from "./batch";
+import { awaitBatch, estimateBatch, BatchAlreadyRunningError, BatchNothingToDoError, cancelBatch, getBatchStatus, startBatch } from "./batch";
 import type { Generate } from "./ai";
 
 const run = TEST_DB ? describe : describe.skip;
@@ -86,5 +86,95 @@ run("Sammelläufe (echte DB, gefälschte KI)", () => {
     const status = await getBatchStatus("concepts", certId);
     expect(status).toMatchObject({ id: ghost.id, status: "failed" });
     expect(status?.message).toContain("neu gestartet");
+  });
+});
+
+run("Sammelläufe: Varianten, Erklärungen, Voraussetzungen, Formatfragen (echte DB, gefälschte KI)", () => {
+  let userId = "";
+  let certId = "";
+  let objectiveId = "";
+  let questionId = "";
+
+  beforeAll(async () => {
+    userId = await seedUser();
+    const course = await seedCourse(1);
+    certId = course.certId;
+    objectiveId = course.objectiveId;
+    questionId = course.questionIds[0];
+    await getDb().update(certifications).set({ kind: "general" }).where(eq(certifications.id, certId));
+    await seedLessons(objectiveId, ["## Partitionen\n\nEine Festplatte wird in Partitionen aufgeteilt, damit mehrere Systeme nebeneinander laufen."]);
+    await getDb().update(questions).set({ question: { de: "Wofür dient eine Partition?", en: "What is a partition for?" }, explanation: { de: "Sie teilt den Datenträger.", en: "It divides the disk." } }).where(eq(questions.id, questionId));
+    await getDb().insert(questionOptions).values([
+      { questionId, orderNum: 1, text: { de: "Datenträger unterteilen", en: "Divide the disk" }, isCorrect: true },
+      { questionId, orderNum: 2, text: { de: "Daten verschlüsseln", en: "Encrypt data" }, isCorrect: false },
+    ]);
+  });
+  afterAll(async () => {
+    await getDb().delete(users).where(eq(users.id, userId));
+  });
+
+  it("Varianten: ergänzt je Frage zwei, danach gibt es nichts mehr zu tun", async () => {
+    const topics = [
+      { de: "Ein Admin richtet einen Server für zwei Betriebssysteme ein: Welche Maßnahme trennt die Platte logisch in Bereiche?", en: "An admin prepares a server for two operating systems: which measure logically splits the drive into areas?" },
+      { de: "Im Notebook einer Kollegin sollen Programme und Dokumente getrennt liegen. Was legt man dafür auf dem Laufwerk an?", en: "On a colleague's notebook programs and documents should live apart. What do you create on the drive for that?" },
+    ];
+    const variant = (n: number) => ({
+      question: topics[(n - 1) % 2],
+      options: [
+        { text: { de: `Bereich ${n} anlegen`, en: `Create area ${n}` }, isCorrect: true },
+        { text: { de: "Alles löschen", en: "Delete everything" }, isCorrect: false },
+        { text: { de: "Neu starten", en: "Reboot" }, isCorrect: false },
+        { text: { de: "Passwort ändern", en: "Change password" }, isCorrect: false },
+      ],
+      explanation: { de: "Bereiche entstehen durch Aufteilen.", en: "Areas arise from splitting." },
+    });
+    let n = 0;
+    const { runId } = await startBatch({ kind: "variants", certificationId: certId, userId }, { variantGenerator: async (_s, count) => Array.from({ length: count }, () => variant(++n)) });
+    await awaitBatch(runId);
+    expect(await getBatchStatus("variants", certId)).toMatchObject({ status: "done", total: 1, applied: 1, failed: 0 });
+    const extras = await getDb().select().from(itemVariants).where(eq(itemVariants.itemId, questionId));
+    expect(extras.length).toBeGreaterThanOrEqual(2);
+    await expect(startBatch({ kind: "variants", certificationId: certId, userId }, { variantGenerator: async () => [] })).rejects.toBeInstanceOf(BatchNothingToDoError);
+  });
+
+  it("Erklärungen: legt Entwürfe an, nie freigegeben", async () => {
+    const text = (t: string) => ({ de: `${t} `.repeat(30), en: `${t} `.repeat(30) });
+    const { runId } = await startBatch(
+      { kind: "explanations", certificationId: certId, userId },
+      { explanationGenerator: async (_s, kinds) => kinds.map((kind) => ({ kind, content: kind === "gapped_example" ? { de: `Teile ___ ${"Beispiel ".repeat(30)}`, en: `Split ___ ${"example ".repeat(30)}` } : text(`Wie ein Schrank mit Fächern ${kind}`), solution: kind === "gapped_example" ? { de: "die Platte", en: "the disk" } : undefined })) },
+    );
+    await awaitBatch(runId);
+    expect(await getBatchStatus("explanations", certId)).toMatchObject({ status: "done", total: 1, applied: 1 });
+    const rows = await getDb().select().from(objectiveExplanations).where(eq(objectiveExplanations.objectiveId, objectiveId));
+    expect(rows).toHaveLength(3);
+    expect(rows.every((r) => r.status === "draft")).toBe(true);
+  });
+
+  it("Voraussetzungen: braucht Konzepte, legt Entwürfe an, läuft nicht erneut", async () => {
+    await expect(startBatch({ kind: "prerequisites", certificationId: certId, userId }, { prerequisiteGenerator: async () => [] })).rejects.toBeInstanceOf(BatchNothingToDoError);
+    const [a, b] = await getDb().insert(concepts).values([{ courseId: certId, topicArea: "Platten", name: "Partition" }, { courseId: certId, topicArea: "Platten", name: "Datenträger" }]).returning();
+    const { runId } = await startBatch({ kind: "prerequisites", certificationId: certId, userId }, { prerequisiteGenerator: async (list) => [{ concept: list.findIndex((c) => c.id === a.id), requires: [list.findIndex((c) => c.id === b.id)] }] });
+    await awaitBatch(runId);
+    expect(await getBatchStatus("prerequisites", certId)).toMatchObject({ status: "done", total: 1, failed: 0 });
+    const edges = await getDb().select().from(conceptPrerequisites).where(eq(conceptPrerequisites.conceptId, a.id));
+    expect(edges).toMatchObject([{ requiresConceptId: b.id, status: "draft" }]);
+    await expect(startBatch({ kind: "prerequisites", certificationId: certId, userId }, { prerequisiteGenerator: async () => [] })).rejects.toBeInstanceOf(BatchNothingToDoError);
+  });
+
+  it("Formatfragen: ergänzt für Lernziele nur mit Auswahlfragen, danach nicht mehr", async () => {
+    expect((await estimateBatch("formats", certId)).items).toBe(1);
+    const generate: Generate = async (_system, _user, schema) =>
+      schema.parse({
+        questions: [
+          { format: "ordering", question: "Ordne die Schritte beim Partitionieren.", explanation: "Erst planen, dann anlegen.", difficulty: "intermediate", type: "knowledge", steps: ["Platte wählen", "Tabelle anlegen", "Partition anlegen"], accepted: [], pairs: [] },
+          { format: "short_answer", question: "Welcher Befehl listet Partitionen?", explanation: "lsblk zeigt sie.", difficulty: "intermediate", type: "knowledge", steps: [], accepted: ["lsblk"], pairs: [] },
+        ],
+      });
+    const { runId } = await startBatch({ kind: "formats", certificationId: certId, userId }, { generate });
+    await awaitBatch(runId);
+    expect(await getBatchStatus("formats", certId)).toMatchObject({ status: "done", total: 1, applied: 1, failed: 0 });
+    const formats = (await getDb().select({ f: questions.answerFormat }).from(questions).where(and(eq(questions.objectiveId, objectiveId), eq(questions.probeOnly, false)))).map((r) => r.f).sort();
+    expect(formats).toEqual(["choice", "ordering", "short_answer"]);
+    await expect(startBatch({ kind: "formats", certificationId: certId, userId }, { generate })).rejects.toBeInstanceOf(BatchNothingToDoError);
   });
 });

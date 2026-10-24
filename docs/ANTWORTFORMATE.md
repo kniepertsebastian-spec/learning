@@ -33,3 +33,18 @@ Normalisierung der Kurzantwort: Unicode vereinheitlicht, Ränder und umgebende A
 Höchstens 20 % der Fragen einer Session haben ein neues Format (abgerundet, bei unter 5 Fragen also keine), bevorzugt zu Lernzielen, bei denen die Person zuletzt „sicher“ (Rating 4) war. Gibt es nicht genug Auswahlfragen, rücken Formatfragen nach, damit ein Kurs nur mit Formatfragen nicht leer bleibt (`pickWithFormatCap` in `lib/server/study/session-builder.ts`).
 
 Folgepaket: „Antwort zuerst überlegen“ und Selbsterklärung (4.5c).
+
+## Nachträge für bestehende Kurse
+
+Neue Funktionen gelten nicht nur für neu erzeugte Kurse. Admins wenden sie in der Kurs-Werkstatt (Reiter „Bericht“, Bereich „Nachträge“) auf einen Kurs an, oder unter „Nachträge für alle Kurse (KI)“ im Adminbereich auf alle allgemeinen Kurse auf einmal. Vorher zeigt die Schätzung Anzahl und Kosten; der Lauf läuft im Hintergrund und lässt sich abbrechen. Es sind dieselben Funktionen wie die Skripte, aber ohne Kommandozeile.
+
+| Lauf | Wirkung | Freigabe nötig |
+|---|---|---|
+| Simulationen ergänzen | interaktive Übung in Lektionen ohne Simulation | nein, als Version mit Herkunft „Nachtrag“ zurücknehmbar |
+| Konzepte und Abfragen | Konzepte und Abfragevarianten für die Wiederholungsplanung | nein |
+| Varianten für die Wiederholung | mindestens zwei Varianten je Frage (`probe_only`, nie als normale Aufgabe sichtbar) | nein |
+| Alternativerklärungen | durchgerechnetes Beispiel, Lückenbeispiel, Analogie je Lernziel für den Verstehens-Modus | **ja**, Entwurf bis zur Freigabe auf der Kursseite im Adminbereich |
+| Voraussetzungen | welches Konzept auf welchem aufbaut | **ja**, Entwurf bis zur Freigabe |
+| Formatfragen | je Lernziel ohne Formatfrage zwei Fragen mit Reihenfolge, Kurzantwort oder Zuordnung | nein, Version mit Herkunft „KI“, vorher wird der Kursstand gemerkt |
+
+Alle Läufe sind wiederholbar: Was schon da ist, wird übersprungen. Sie betreffen nur allgemeine Kurse, nie interne Kurse von Firmen. Noch nicht als Lauf in der Werkstatt gibt es (nur per Skript): Begründungen je Option (`rationales:backfill`), Lernblöcke (`lessons:blocks`), „Was damit möglich ist“ (`lessons:possible`), Kursbeschreibungen (`courses:overviews`) und Merkzettel (`cheatsheets:backfill`).

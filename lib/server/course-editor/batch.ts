@@ -3,20 +3,27 @@
  *  - quality:     alle Verbesserungspunkte des Qualitätsberichts eines Kurses von der KI bearbeiten lassen und direkt übernehmen
  *  - simulations: Simulationen in Lektionen ergänzen, die noch keine haben (ein Kurs oder alle Kurse)
  *  - concepts:    Konzepte und Abfragevarianten (Wiederholungsplanung) ergänzen (ein Kurs oder alle Kurse)
+ *  - variants:    Varianten für die Wiederholung (mindestens zwei je Frage) ergänzen
+ *  - explanations: Alternativerklärungen für den Verstehens-Modus als Entwurf ergänzen (Freigabe in der Werkstatt)
+ *  - prerequisites: Voraussetzungen zwischen den Konzepten als Entwurf vorschlagen (Freigabe in der Werkstatt)
+ *  - formats:     Formatfragen (Reihenfolge, Kurzantwort, Zuordnung) für Lernziele ergänzen, die nur Auswahlfragen haben
  *
  * Die KI-Aktionen sind dieselben wie in der Kurs-Werkstatt; hier werden die Vorschläge ohne Einzelprüfung übernommen. Das
  * Sicherheitsnetz bleibt: vor dem Lauf ein automatisch gemerkter Kursstand, jede Änderung als Version mit Herkunft „KI“ bzw.
  * „Nachtrag“, Kostenschätzung vorab, Budget-Prüfung und Abbruch jederzeit.
  */
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import { LESSONS_MODEL } from "@/lib/claude";
 import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/content-generation";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { clientFor } from "@/lib/server/course-translation/service";
 import { getDb } from "@/lib/server/db/client";
-import { aiBatchRuns, certifications, domains, lessons, objectives, sections, type AiBatchKind, type AiBatchStatus } from "@/lib/server/db/schema";
+import { aiBatchRuns, certifications, conceptPrerequisites, concepts, domains, lessons, objectives, questions, sections, type AiBatchKind, type AiBatchStatus } from "@/lib/server/db/schema";
+import { backfillExplanations, createExplanationGenerator, estimateRun as estimateExplanations, loadExplanationSources, missingKinds, type ExplanationGenerator } from "@/lib/server/explanations/generate";
 import { createSimulationGenerator, backfillSimulations, HAS_SIMULATION, type SimulationGenerator } from "@/lib/server/lessons/simulations-backfill";
+import { backfillPrerequisites, createPrerequisiteGenerator, estimateRun as estimatePrerequisites, loadCourseConcepts, type PrerequisiteGenerator } from "@/lib/server/prerequisites/generate";
+import { backfillVariants, createVariantGenerator, estimateRun as estimateVariants, loadVariantSources, missingVariantCount, type VariantGenerator } from "@/lib/server/variants/generate";
 import { createConceptTagger, objectivesToTag, tagCourseConcepts, type ConceptTagger } from "@/lib/server/psrp/concepts";
 import { MAX_NEW_QUESTIONS } from "@/lib/workshop-ai";
 import {
@@ -33,7 +40,10 @@ import {
 import { getCourseReport, type Improvement, type ImprovementKind } from "./report";
 import { createQuestion, editableCourse, saveQuestion, saveSection } from "./service";
 
-export const BATCH_KINDS = ["quality", "simulations", "concepts"] as const;
+export const BATCH_KINDS = ["quality", "simulations", "concepts", "variants", "explanations", "prerequisites", "formats"] as const;
+
+/** Formatfragen je Lernziel, wenn der Sammellauf sie ergänzt. */
+export const FORMAT_QUESTIONS_PER_OBJECTIVE = 2;
 
 /** Arten von Verbesserungspunkten, die die KI bearbeiten kann. */
 export const QUALITY_KINDS = [
@@ -179,6 +189,38 @@ async function lessonsWithoutSimulation(certIds: string[]) {
   return rows.filter((r) => !HAS_SIMULATION.test(r.content.de) && !HAS_SIMULATION.test(r.content.en));
 }
 
+/** Anzahl der Konzepte eines Kurses, für den noch gar keine Voraussetzungen vorgeschlagen wurden (sonst 0; mindestens zwei Konzepte nötig). */
+async function conceptsWithoutPrerequisites(certId: string): Promise<number> {
+  const all = await loadCourseConcepts(certId);
+  if (all.length < 2) return 0;
+  const [edge] = await getDb()
+    .select({ id: conceptPrerequisites.id })
+    .from(conceptPrerequisites)
+    .innerJoin(concepts, eq(concepts.id, conceptPrerequisites.conceptId))
+    .where(eq(concepts.courseId, certId))
+    .limit(1);
+  return edge ? 0 : all.length;
+}
+
+/** Lernziele mit Auswahlfragen, aber ohne eine einzige Formatfrage (Reihenfolge, Kurzantwort, Zuordnung). */
+async function objectivesWithoutFormatQuestions(certIds: string[]): Promise<Array<{ certId: string; objectiveId: string }>> {
+  if (!certIds.length) return [];
+  const live = and(eq(questions.stale, false), eq(questions.probeOnly, false));
+  const rows = await getDb()
+    .selectDistinct({ certId: domains.certificationId, objectiveId: objectives.id, code: objectives.code })
+    .from(objectives)
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .innerJoin(questions, and(eq(questions.objectiveId, objectives.id), live, eq(questions.answerFormat, "choice")))
+    .where(
+      and(
+        inArray(domains.certificationId, certIds),
+        notExists(getDb().select({ one: sql`1` }).from(questions).where(and(eq(questions.objectiveId, objectives.id), live, ne(questions.answerFormat, "choice")))),
+      ),
+    )
+    .orderBy(asc(domains.certificationId), asc(objectives.code));
+  return rows.map(({ certId, objectiveId }) => ({ certId, objectiveId }));
+}
+
 export async function estimateBatch(kind: AiBatchKind, certId: string | null, params?: unknown): Promise<BatchEstimate> {
   if (kind === "quality") {
     if (!certId) throw new BatchNothingToDoError("Der Qualitätsbericht gilt für einen Kurs.");
@@ -201,6 +243,43 @@ export async function estimateBatch(kind: AiBatchKind, certId: string | null, pa
       return sum !== null && c !== null ? sum + c : null;
     }, 0);
     return { kind, items: todo.length, usd, courses: new Set(todo.map((l) => l.certId)).size };
+  }
+  if (kind === "variants") {
+    let items = 0, usd: number | null = 0, withWork = 0;
+    for (const c of courses) {
+      const e = estimateVariants((await loadVariantSources(c.id)).filter((x) => missingVariantCount(x.existingVariants.length) > 0));
+      items += e.items;
+      if (e.items) withWork++;
+      usd = usd !== null && e.costUsd !== null ? usd + e.costUsd : null;
+    }
+    return { kind, items, usd: items ? usd : 0, courses: withWork };
+  }
+  if (kind === "explanations") {
+    let items = 0, usd: number | null = 0, withWork = 0;
+    for (const c of courses) {
+      const e = estimateExplanations((await loadExplanationSources(c.id)).filter((x) => missingKinds(x.existingKinds).length > 0));
+      items += e.objectives;
+      if (e.objectives) withWork++;
+      usd = usd !== null && e.costUsd !== null ? usd + e.costUsd : null;
+    }
+    return { kind, items, usd: items ? usd : 0, courses: withWork };
+  }
+  if (kind === "prerequisites") {
+    let items = 0, usd: number | null = 0, withWork = 0;
+    for (const c of courses) {
+      const n = await conceptsWithoutPrerequisites(c.id);
+      if (!n) continue;
+      const e = estimatePrerequisites(n);
+      items += e.requests;
+      withWork++;
+      usd = usd !== null && e.costUsd !== null ? usd + e.costUsd : null;
+    }
+    return { kind, items, usd: items ? usd : 0, courses: withWork };
+  }
+  if (kind === "formats") {
+    const todo = await objectivesWithoutFormatQuestions(courses.map((c) => c.id));
+    const each = estimateCostUsd(SYSTEM_TOKENS + tokens(12_000), tokens(FORMAT_QUESTIONS_PER_OBJECTIVE * 1200), LESSONS_MODEL);
+    return { kind, items: todo.length, usd: each === null ? null : todo.length * each, courses: new Set(todo.map((t) => t.certId)).size };
   }
   let items = 0;
   let withWork = 0;
@@ -279,7 +358,14 @@ export async function cancelBatch(kind: AiBatchKind, certId: string | null): Pro
   return rows.length > 0;
 }
 
-export type BatchDeps = { generate?: Generate; simulationGenerator?: SimulationGenerator; conceptTagger?: ConceptTagger };
+export type BatchDeps = {
+  generate?: Generate;
+  simulationGenerator?: SimulationGenerator;
+  conceptTagger?: ConceptTagger;
+  variantGenerator?: VariantGenerator;
+  explanationGenerator?: ExplanationGenerator;
+  prerequisiteGenerator?: PrerequisiteGenerator;
+};
 
 function isUniqueViolation(error: unknown): boolean {
   // Drizzle verpackt den Datenbankfehler; der Postgres-Code steht je nach Version am Fehler oder an `cause`.
@@ -297,7 +383,7 @@ export async function startBatch(
   const params = input.kind === "quality" ? qualityParamsSchema.parse(input.params) : {};
   const estimate = await estimateBatch(input.kind, input.certificationId, params);
   if (estimate.items === 0) throw new BatchNothingToDoError("Es gibt nichts zu tun.");
-  if (!deps.generate && !deps.simulationGenerator && !deps.conceptTagger) {
+  if (!Object.values(deps).some(Boolean)) {
     const budget = await getAiBudgetStatus();
     if (budget?.exceeded) throw new BatchNothingToDoError(`Das KI-Budget ist ausgeschöpft (${budget.spentUsd.toFixed(2)} von ${budget.limitUsd.toFixed(2)} USD).`);
   }
@@ -336,6 +422,10 @@ async function finish(run: Row, counts: { processed: number; applied: number; sk
 async function execute(run: Row, userId: string | null, params: unknown, deps: BatchDeps): Promise<void> {
   if (run.kind === "quality") return executeQuality(run, userId, qualityParamsSchema.parse(params), deps);
   if (run.kind === "simulations") return executeSimulations(run, userId, deps);
+  if (run.kind === "variants") return executeVariants(run, userId, deps);
+  if (run.kind === "explanations") return executeExplanations(run, userId, deps);
+  if (run.kind === "prerequisites") return executePrerequisites(run, userId, deps);
+  if (run.kind === "formats") return executeFormats(run, userId, deps);
   return executeConcepts(run, userId, deps);
 }
 
@@ -444,5 +534,108 @@ async function executeConcepts(run: Row, userId: string | null, deps: BatchDeps)
     counts.failed += result.failed;
     if (result.failed > 0 && result.objectives === 0 && courses.length === 1) aborted = true;
   }
+  await finish(run, counts, aborted, userId);
+}
+
+/** Gemeinsamer Rahmen der kursweisen Läufe: Abbruch, Budget, Fortschritt. `work` meldet über `report` den Stand dieses Kurses. */
+async function perCourse(
+  run: Row,
+  userId: string | null,
+  hasOwnGenerator: boolean,
+  work: (course: Awaited<ReturnType<typeof generalCourses>>[number], report: (c: { processed: number; applied: number; skipped?: number; failed: number }) => void, shouldStop: () => Promise<boolean>) => Promise<{ processed: number; applied: number; skipped?: number; failed: number; aborted: boolean }>,
+) {
+  const courses = await generalCourses(run.certificationId);
+  const counts = { processed: 0, applied: 0, skipped: 0, failed: 0, costUsd: null as number | null };
+  let aborted = false;
+  for (const course of courses) {
+    if (await cancelled(run.id)) break;
+    if (!hasOwnGenerator) {
+      const budget = await getAiBudgetStatus();
+      if (budget?.exceeded) { aborted = true; break; }
+    }
+    const base = { ...counts };
+    const result = await work(
+      course,
+      (c) => void patch(run.id, { processed: base.processed + c.processed, applied: base.applied + c.applied, skipped: base.skipped + (c.skipped ?? 0), failed: base.failed + c.failed }),
+      () => cancelled(run.id),
+    );
+    counts.processed += result.processed;
+    counts.applied += result.applied;
+    counts.skipped += result.skipped ?? 0;
+    counts.failed += result.failed;
+    if (result.aborted && result.applied === 0) aborted = true;
+    if (aborted) break;
+  }
+  await finish(run, counts, aborted, userId);
+}
+
+async function executeVariants(run: Row, userId: string | null, deps: BatchDeps) {
+  await perCourse(run, userId, Boolean(deps.variantGenerator), async (course, report) => {
+    const generator = deps.variantGenerator ?? createVariantGenerator(await clientFor(course));
+    const r = await backfillVariants(course.id, generator, { onProgress: (c) => report({ processed: c.items + c.failed, applied: c.items, failed: c.failed }) });
+    return { processed: r.items + r.failed, applied: r.items, failed: r.failed, aborted: r.aborted };
+  });
+}
+
+async function executeExplanations(run: Row, userId: string | null, deps: BatchDeps) {
+  await perCourse(run, userId, Boolean(deps.explanationGenerator), async (course, report) => {
+    const generator = deps.explanationGenerator ?? createExplanationGenerator(await clientFor(course));
+    const r = await backfillExplanations(course.id, generator, { onProgress: (c) => report({ processed: c.objectives + c.failed, applied: c.objectives, failed: c.failed }) });
+    return { processed: r.objectives + r.failed, applied: r.objectives, failed: r.failed, aborted: r.aborted };
+  });
+}
+
+async function executePrerequisites(run: Row, userId: string | null, deps: BatchDeps) {
+  await perCourse(run, userId, Boolean(deps.prerequisiteGenerator), async (course, report) => {
+    if (!(await conceptsWithoutPrerequisites(course.id))) return { processed: 0, applied: 0, failed: 0, aborted: false };
+    const generator = deps.prerequisiteGenerator ?? createPrerequisiteGenerator(await clientFor(course));
+    let requests = 0;
+    const r = await backfillPrerequisites(course.id, generator, {
+      onProgress: (c) => {
+        requests++;
+        report({ processed: requests, applied: requests - c.failed, failed: c.failed });
+      },
+    });
+    return { processed: requests, applied: requests - r.failed, failed: r.failed, aborted: r.aborted };
+  });
+}
+
+async function executeFormats(run: Row, userId: string | null, deps: BatchDeps) {
+  const todo = await objectivesWithoutFormatQuestions((await generalCourses(run.certificationId)).map((c) => c.id));
+  const counts = { processed: 0, applied: 0, skipped: 0, failed: 0, costUsd: null as number | null };
+  const changedQuestions = new Map<string, string[]>();
+  let streak = 0;
+  let aborted = false;
+  const checkpointed = new Set<string>();
+  for (const task of todo) {
+    if (await cancelled(run.id)) break;
+    if (!deps.generate) {
+      const budget = await getAiBudgetStatus();
+      if (budget?.exceeded) { aborted = true; break; }
+    }
+    try {
+      if (!checkpointed.has(task.certId)) {
+        await ensureAiCheckpoint(task.certId, userId);
+        checkpointed.add(task.certId);
+      }
+      const proposal = await proposeAi(task.certId, { target: "objective", id: task.objectiveId, action: "add_format_questions", count: FORMAT_QUESTIONS_PER_OBJECTIVE }, { generate: deps.generate });
+      counts.costUsd = (counts.costUsd ?? 0) + (proposal.costUsd ?? 0);
+      const applied = await applyProposal(task.certId, proposal, userId);
+      streak = 0;
+      if (applied.questions.length === 0) counts.skipped++;
+      else {
+        counts.applied++;
+        changedQuestions.set(task.certId, [...(changedQuestions.get(task.certId) ?? []), ...applied.questions]);
+      }
+    } catch (error) {
+      console.error("Sammellauf: Formatfragen fehlgeschlagen:", task.objectiveId, error instanceof Error ? error.message : error);
+      counts.failed++;
+      streak++;
+      if (streak >= ABORT_AFTER_FAILURES && counts.applied === 0) { aborted = true; counts.processed++; break; }
+    }
+    counts.processed++;
+    await patch(run.id, { processed: counts.processed, applied: counts.applied, skipped: counts.skipped, failed: counts.failed, costUsd: counts.costUsd === null ? null : String(counts.costUsd) });
+  }
+  for (const [certId, ids] of changedQuestions) await finishAiAccept(certId, { sections: [], questions: ids }, { userId, checkpoint: null });
   await finish(run, counts, aborted, userId);
 }

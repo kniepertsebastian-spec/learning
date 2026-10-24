@@ -305,6 +305,38 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
           description={tr("Ordnet den Fragen Konzepte zu und erzeugt Abfragevarianten für die Wiederholungsplanung (Selbsteinschätzung). Für Kurse, die davor entstanden sind.", "Tags questions with concepts and creates probe variants for review scheduling (self-assessment). For courses created before this feature.")}
           startLabel={tr("Schätzen und starten …", "Estimate and start …")}
         />
+        <AiBatchPanel
+          kind="variants"
+          certificationId={certId}
+          locale={locale}
+          title={tr("Varianten für die Wiederholung ergänzen", "Add review variants")}
+          description={tr("Erzeugt je Frage mindestens zwei Varianten (anderer Kontext, gleiches Wissen), damit die Wiederholung nicht dieselbe Frage wiederholt.", "Creates at least two variants per question (different context, same knowledge) so reviews do not repeat the same question.")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+        />
+        <AiBatchPanel
+          kind="explanations"
+          certificationId={certId}
+          locale={locale}
+          title={tr("Alternativerklärungen für den Verstehens-Modus", "Alternative explanations for understanding mode")}
+          description={tr("Erzeugt je Lernziel ein durchgerechnetes Beispiel, ein Lückenbeispiel und eine Analogie als Entwurf. Gezeigt werden sie erst nach deiner Freigabe in der Werkstatt.", "Creates a worked example, a gapped example and an analogy per objective as drafts. They are only shown after you approve them in the workshop.")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+        />
+        <AiBatchPanel
+          kind="prerequisites"
+          certificationId={certId}
+          locale={locale}
+          title={tr("Voraussetzungen zwischen Konzepten vorschlagen", "Suggest prerequisites between concepts")}
+          description={tr("Schlägt vor, welches Konzept auf welchem aufbaut (Brücke im Verstehens-Modus, Bezug beim Einweben). Nur Entwürfe bis zur Freigabe; setzt Konzepte voraus (siehe oben).", "Suggests which concept builds on which (bridge in understanding mode, link for woven reviews). Drafts until approved; needs concepts (see above).")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+        />
+        <AiBatchPanel
+          kind="formats"
+          certificationId={certId}
+          locale={locale}
+          title={tr("Formatfragen ergänzen", "Add format questions")}
+          description={tr("Ergänzt für Lernziele, die nur Auswahlfragen haben, je zwei Fragen mit Reihenfolge, Kurzantwort oder Zuordnung.", "Adds two questions with ordering, short answer or matching for objectives that only have multiple-choice questions.")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+        />
       </section>
     </div>
   );

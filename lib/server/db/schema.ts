@@ -3464,12 +3464,12 @@ export const taskItems = pgTable(
   ],
 );
 
-export type AiBatchKind = "quality" | "simulations" | "concepts";
+export type AiBatchKind = "quality" | "simulations" | "concepts" | "variants" | "explanations" | "prerequisites" | "formats";
 export type AiBatchStatus = "running" | "done" | "failed" | "cancelled";
 
 /**
  * Sammelläufe der KI-Nachbesserung (nur allgemeine Kurse, nur Admins): „Qualitätsbericht komplett abarbeiten“, „Simulationen
- * ergänzen“ und „Konzepte und Abfragen ergänzen“, für einen Kurs oder für alle. Läuft im Hintergrund des Servers; der Stand
+ * ergänzen“, „Konzepte und Abfragen ergänzen“, Varianten, Alternativerklärungen, Voraussetzungen und Formatfragen, für einen Kurs oder für alle. Läuft im Hintergrund des Servers; der Stand
  * steht hier, damit die Oberfläche Fortschritt zeigen und ein Neustart des Servers erkannt werden kann.
  */
 export const aiBatchRuns = pgTable(
@@ -3498,7 +3498,7 @@ export const aiBatchRuns = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (table) => [
-    check("ai_batch_runs_kind_check", sql`${table.kind} in ('quality', 'simulations', 'concepts')`),
+    check("ai_batch_runs_kind_check", sql`${table.kind} in ('quality', 'simulations', 'concepts', 'variants', 'explanations', 'prerequisites', 'formats')`),
     check("ai_batch_runs_status_check", sql`${table.status} in ('running', 'done', 'failed', 'cancelled')`),
     index("ai_batch_runs_kind_idx").on(table.kind, table.startedAt),
     // Höchstens ein laufender Lauf je Art und Kurs, und einer je Art für „alle Kurse“.
