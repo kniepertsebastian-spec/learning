@@ -1,3 +1,5 @@
+import type { Seal } from "@/lib/reviewers/seal";
+import { getSealSummaries } from "@/lib/server/approvals/seal";
 import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
@@ -28,6 +30,8 @@ export interface DashboardCert {
   percent: number;
   state: CertState;
   examInDays: number | null;
+  /** Siegel „Fachlich geprüft“ (Stand der letzten Prüfung, ohne Änderungszähler); null ohne Freigabe. */
+  seal?: Seal | null;
 }
 
 export interface LearnerDashboard {
@@ -158,6 +162,10 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
       examInDays: examIn,
     });
   }
+
+  // Siegel „Fachlich geprüft“ je Kurs (nur allgemeine, freigegebene Kurse).
+  const seals = await getSealSummaries(certs.map((c) => c.id)).catch(() => new Map<string, Seal>());
+  for (const c of certs) c.seal = seals.get(c.id) ?? null;
 
   // Hero
   let hero: LearnerDashboard["hero"] = null;

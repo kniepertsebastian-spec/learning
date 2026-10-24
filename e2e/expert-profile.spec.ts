@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
 import { approveCourse } from "../lib/server/approvals/service";
-import { certifications, questions, reviewerCertifications, reviewerExperience, reviewerProfiles, users } from "../lib/server/db/schema";
+import { certifications, domains, lessonCompletions, objectives, questions, reviewerCertifications, sections, reviewerExperience, reviewerProfiles, users } from "../lib/server/db/schema";
 import { getOwnProfile, publishProfile, saveExperience, saveProfile, withdrawProfile } from "../lib/server/reviewers/profile-service";
 import { FORMATS_SLUG, USERS } from "./global-setup";
 import { expect, login, test } from "./fixtures";
@@ -111,6 +111,13 @@ test("Siegel am Kurs: Name mit Link nur bei veröffentlichtem Profil, sonst neut
     await expect(seal.getByTestId("seal-reviewer")).toHaveText("Siegel Prüfer");
     await expect(seal.getByTestId("seal-reviewer")).toHaveAttribute("href", `/experts/${slug}`);
     await expect(seal).toHaveAttribute("data-changed", "false");
+
+    // Dashboard: Kurse mit eigener Aktivität zeigen das Siegel kompakt
+    const [learner] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.learnerA.email)).limit(1);
+    const [sec] = await db.select({ id: sections.id }).from(sections).innerJoin(objectives, eq(objectives.id, sections.objectiveId)).innerJoin(domains, eq(domains.id, objectives.domainId)).where(eq(domains.certificationId, cert.id)).limit(1);
+    await db.insert(lessonCompletions).values({ userId: learner.id, sectionId: sec.id }).onConflictDoNothing();
+    await page.goto(`${gateway.url}/`);
+    await expect(page.getByTestId(`cert-card-${FORMATS_SLUG}`).getByTestId("course-seal")).toContainText(/Expert reviewed|Fachlich geprüft/);
 
     await page.goto(`${gateway.url}/catalog`);
     await expect(page.getByTestId(`catalog-card-${FORMATS_SLUG}`).getByTestId("course-seal")).toContainText(/Expert reviewed|Fachlich geprüft/);

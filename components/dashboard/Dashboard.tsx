@@ -1,5 +1,7 @@
 "use client";
 
+import { CourseSeal } from "@/components/seal/CourseSeal";
+import type { Seal } from "@/lib/reviewers/seal";
 import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 import { ArrowRight, Flame } from "lucide-react";
 import Link from "next/link";
@@ -19,7 +21,7 @@ import type { CourseCategoryColor } from "@/lib/server/db/schema";
 
 export interface DashboardData {
   name: string;
-  certs: Array<{ id: string; slug: string; name: string; version: string; shortCode: string; color: CourseCategoryColor; doneLessons: number; totalLessons: number; percent: number; state: CertState; examInDays: number | null }>;
+  certs: Array<{ id: string; slug: string; name: string; version: string; shortCode: string; color: CourseCategoryColor; doneLessons: number; totalLessons: number; percent: number; state: CertState; examInDays: number | null; seal?: Seal | null }>;
   main: null | {
     certSlug: string;
     certName: string;
@@ -187,6 +189,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
                         <p className="font-mono text-[11.5px] text-subtle">{c.version}</p>
                       </div>
                     </div>
+                    {c.seal && <CourseSeal seal={c.seal} locale={locale} variant="compact" />}
                     <div>
                       <div className="mb-1 flex justify-between text-xs text-subtle tabular-nums">
                         <span>{fmt(h.lessonsXofY, { x: c.doneLessons, y: c.totalLessons })}</span>

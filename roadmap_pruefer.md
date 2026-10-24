@@ -90,7 +90,7 @@ Heute vorhanden:
 
 ## Phase 4 – Siegel am Kurs (Priorität: hoch)
 
-- [x] Anzeige auf Kursseite, Kursübersicht und im Katalog _(Kursseite und Katalog; Dashboard-Kachel offen. Der Katalog zeigt den Stand der Prüfung ohne Änderungszähler.)_: „✓ Fachlich geprüft von **Vorname Name** · Version 2.1 · Stand 14.10.2026 → Profil“.
+- [x] Anzeige auf Kursseite, Kursübersicht und im Katalog _(Kursseite, Katalog und Dashboard-Kachel; Katalog und Dashboard zeigen den Stand der Prüfung ohne Änderungszähler.)_: „✓ Fachlich geprüft von **Vorname Name** · Version 2.1 · Stand 14.10.2026 → Profil“.
 - [x] Bei mehreren Prüfern _(alle Prüfer desselben Inhaltsstands; ein Geltungsbereich je Domain fehlt, weil Freigaben bisher den ganzen Kurs betreffen)_ (z. B. je Domain) alle nennen, mit Geltungsbereich.
 - [x] Bei „geändert seit Prüfung“: Siegel mit Zusatz „X Änderungen seit der Prüfung“, Details per Klick. Kein Siegel ohne Freigabe.
 - [x] Interne Lernpfade: „Freigegeben von <Name>, <Datum>“ nur innerhalb der Firma (wie heute), kein Profil-Link.
