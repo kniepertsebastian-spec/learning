@@ -71,7 +71,7 @@ export function AiAssist({
   async function generate() {
     setBusy(true);
     setError(null);
-    const body = { ...target, action, instruction: instruction.trim() || undefined, ...(action === "add_questions" ? { count } : {}) };
+    const body = { ...target, action, instruction: instruction.trim() || undefined, ...(action === "add_questions" || action === "add_format_questions" ? { count } : {}) };
     const r = await api<{ proposal: AiProposal }>(`/api/admin/certifications/${certId}/workshop/ai`, { method: "POST", body });
     setBusy(false);
     if (!r.ok) return setError(r.problems?.length ? `${r.error} ${r.problems.join(" ")}` : r.error);
@@ -113,7 +113,7 @@ export function AiAssist({
           ))}
         </div>
       )}
-      {action === "add_questions" && (
+      {(action === "add_questions" || action === "add_format_questions") && (
         <Field label={tr("Anzahl neuer Fragen", "Number of new questions")} className="max-w-48">
           <input className={inputCls} type="number" min={1} max={MAX_NEW_QUESTIONS} value={count} onChange={(e) => setCount(Math.min(MAX_NEW_QUESTIONS, Math.max(1, Number(e.target.value) || 1)))} data-testid="ai-count" />
         </Field>

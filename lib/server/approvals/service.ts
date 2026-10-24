@@ -36,7 +36,7 @@ export async function computeCourseFingerprints(certId: string, db: Db = getDb()
     .where(eq(domains.certificationId, certId));
 
   const questionRows = await db
-    .select({ id: questions.id, question: questions.question, explanation: questions.explanation, difficulty: questions.difficulty, type: questions.type, probeOnly: questions.probeOnly })
+    .select({ id: questions.id, question: questions.question, explanation: questions.explanation, difficulty: questions.difficulty, type: questions.type, probeOnly: questions.probeOnly, answerFormat: questions.answerFormat, answerData: questions.answerData })
     .from(questions)
     .innerJoin(objectives, eq(objectives.id, questions.objectiveId))
     .innerJoin(domains, eq(domains.id, objectives.domainId))
@@ -64,6 +64,8 @@ export async function computeCourseFingerprints(certId: string, db: Db = getDb()
       difficulty: q.difficulty as QuestionSnapshot["difficulty"],
       type: q.type as QuestionSnapshot["type"],
       options: optionRows.filter((o) => o.questionId === q.id).map((o) => ({ id: o.id, orderNum: o.orderNum, text: o.text, isCorrect: o.isCorrect, rationale: o.rationale })),
+      // Wie im Editor: nur die neuen Formate tragen Format und Lösungsdaten (Auswahlfragen behalten ihren Fingerabdruck).
+      ...(q.answerFormat !== "choice" ? { format: q.answerFormat, answerData: q.answerData ?? undefined } : {}),
     };
     result.questions[q.id] = fingerprint(link ? ({ ...snapshot, variantOf: link.itemId } as never) : snapshot);
   }

@@ -191,3 +191,33 @@ export function isComebackSession(lastActivityAt: Date | null, now: Date = new D
   const gapMs = now.getTime() - lastActivityAt.getTime();
   return gapMs >= COMEBACK_GAP_DAYS * 24 * 60 * 60 * 1000;
 }
+
+/** Höchstanteil der Fragen mit neuem Antwortformat (Reihenfolge, Kurzantwort, Zuordnung) an einer Session. */
+export const FORMAT_QUESTION_SHARE = 0.2;
+
+export function formatQuestionCap(totalQuestions: number): number {
+  return Math.floor(totalQuestions * FORMAT_QUESTION_SHARE);
+}
+
+/**
+ * Wählt `count` Kandidaten (in der Reihenfolge ihrer Priorität): höchstens `cap` mit neuem Format, bevorzugt solche, bei denen die Person
+ * zuletzt „sicher“ (Rating 4) war, um Überschätzung früh zu erkennen. Den Rest füllen Auswahlfragen. Fehlen die, dürfen weitere
+ * Formatfragen nachrücken (ein Kurs nur mit Formatfragen soll nicht leer bleiben). Rückgabe in Prioritätsreihenfolge.
+ */
+export function pickWithFormatCap<T>(candidates: T[], count: number, cap: number, isFormat: (c: T) => boolean, preferred: (c: T) => boolean): { picked: T[]; formatUsed: number } {
+  const indexed = candidates.map((c, i) => ({ c, i }));
+  const regular = indexed.filter((x) => !isFormat(x.c));
+  const format = indexed.filter((x) => isFormat(x.c)).sort((a, b) => Number(preferred(b.c)) - Number(preferred(a.c)) || a.i - b.i);
+  const formatFirst = format.slice(0, Math.min(Math.max(cap, 0), count));
+  const chosen = new Set(formatFirst.map((x) => x.i));
+  for (const x of regular) {
+    if (chosen.size >= count) break;
+    chosen.add(x.i);
+  }
+  for (const x of format) {
+    if (chosen.size >= count) break;
+    chosen.add(x.i);
+  }
+  const picked = indexed.filter((x) => chosen.has(x.i)).map((x) => x.c);
+  return { picked, formatUsed: picked.filter(isFormat).length };
+}

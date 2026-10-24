@@ -185,3 +185,21 @@ export function validateAnswerData(format: AnswerFormat, data: unknown): string[
   }
   return problems;
 }
+
+/* ---------------------------------------------------------------- Übersetzbare Texte */
+
+/** Die Texte der Lösungsdaten, die übersetzt werden müssen (Kurzantworten nicht: Befehle und Begriffe bleiben). Schlüssel: `step:<id>`, `left:<id>`, `right:<id>`. */
+export function translatableAnswerTexts(format: AnswerFormat, data: AnswerData | null | undefined): Array<{ key: string; text: Localized<string> }> {
+  if (!data || format === "choice") return [];
+  if (format === "ordering") return (data as OrderingData).steps.map((s) => ({ key: `step:${s.id}`, text: s.text }));
+  if (format === "matching") return (data as MatchingData).pairs.flatMap((p) => [{ key: `left:${p.id}`, text: p.left }, { key: `right:${p.id}`, text: p.right }]);
+  return [];
+}
+
+/** Schreibt übersetzte Texte (Schlüssel wie oben) in das Feld der Zielsprache; alles andere bleibt unverändert. */
+export function withTranslatedAnswerTexts(format: AnswerFormat, data: AnswerData, target: "de" | "en", translated: Record<string, string>): AnswerData {
+  const pick = (key: string, cur: Localized<string>): Localized<string> => (key in translated ? { ...cur, [target]: translated[key] } : cur);
+  if (format === "ordering") return { steps: (data as OrderingData).steps.map((s) => ({ ...s, text: pick(`step:${s.id}`, s.text) })) };
+  if (format === "matching") return { pairs: (data as MatchingData).pairs.map((p) => ({ ...p, left: pick(`left:${p.id}`, p.left), right: pick(`right:${p.id}`, p.right) })) };
+  return data;
+}

@@ -96,8 +96,8 @@ Ziel: Mehr Abfragen, bei denen die Antwort aktiv erzeugt werden muss. Das festig
 - [x] `short_answer`: kurze freie Eingabe (Befehl, Port, Ressourcentyp) mit Liste akzeptierter Antworten und Normalisierung (Groß/Klein, Leerzeichen, Anführungszeichen; Synonyme als weitere akzeptierte Antworten). _Offen:_ die Terminal-Logik aus `lib/markdown/simulation.ts` wird nicht mitgenutzt, die Normalisierung ist eigenständig (`lib/questions/answer-formats.ts`).
 - [x] `matching`: Begriffe zuordnen (z. B. Dienst ↔ Zweck).
 - [x] Datenmodell: neues Feld `questions.answer_format` (`choice` Standard, `ordering`, `short_answer`, `matching`) plus formatabhängige Lösungsdaten; bestehender `type` (kognitive Stufe) bleibt.
-- [ ] Generierung und Werkstatt: KI erzeugt für geeignete Lernziele auch diese Formate; Validierung, Vorschau und Bearbeitung in der Kurs-Werkstatt.
-- [ ] Session-Mix: bis 20 % solche Fragen, bevorzugt bei Items mit Rating 4 („sicher“), um Überschätzung früh zu erkennen.
+- [x] Generierung und Werkstatt: In der Kurs-Werkstatt erzeugt die KI auf Wunsch „Formatfragen ergänzen“ je Lernziel (Vorschlag, Auswahl, Anlegen); Validierung, Vorschau und Bearbeitung ebenfalls dort; Übersetzung und Freigabe-Fingerabdruck berücksichtigen die Formate. _Offen:_ die vollautomatische Kursgenerierung (Worker) erzeugt weiterhin nur Auswahlfragen.
+- [x] Session-Mix: bis 20 % solche Fragen, bevorzugt bei Items mit Rating 4 („sicher“), um Überschätzung früh zu erkennen.
 
 ### 3.2 Erst denken, dann Optionen sehen
 - [ ] Modus „Antwort zuerst überlegen“ für Single-Choice: Optionen sind zunächst verdeckt, Nutzer tippt auf „Optionen zeigen“, wenn er eine Antwort im Kopf hat. Kein zusätzliches Rating, reine Lernhilfe. Standard aus, in den Einstellungen aktivierbar; im Metrik-Export auswertbar.

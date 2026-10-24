@@ -2,16 +2,19 @@
 
 import { ChevronDown, Flag, Plus, Save } from "lucide-react";
 import * as React from "react";
+import { FormatAnswerInput, initialDraft } from "@/components/quiz/FormatAnswerInput";
 import { RichText } from "@/components/RichText";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/tabs";
 import { cn } from "@/lib/cn";
+import { buildPrompt, validateAnswerData, type AnswerData, type AnswerPayload } from "@/lib/questions/answer-formats";
 import type { AiProposal, QuestionProposal, QuestionsProposal } from "@/lib/server/course-editor/ai";
 import type { NewQuestion, QuestionSnapshot } from "@/lib/server/course-editor/snapshots";
 import { QUESTION_AI_ACTIONS, type AiAction } from "@/lib/workshop-ai";
 import { acceptMessage, AiAssist, ProposalReview, type AcceptResult } from "./AiAssist";
 import { RevisionHistory } from "./RevisionHistory";
+import { emptyAnswerData, FormatDataEditor, type FormatKind } from "./FormatDataEditor";
 import { api, DiffView, Field, inputCls, Problems, textareaCls, useTr, useUnsavedWarning, type L, type Lang } from "./shared";
 
 type Item = { id: string; humanId: string; snapshot: QuestionSnapshot; fingerprint: string; openReports: number };
@@ -34,21 +37,33 @@ const empty = (): L => ({ de: "", en: "" });
 function toDraft(q: QuestionSnapshot): Draft {
   return { ...q, options: q.options.map((o) => ({ ...o, rationale: o.rationale ?? empty() })) };
 }
-const NEW: () => Draft = () => ({
+const NEW: (format?: FormatKind) => Draft = (format) => ({
   question: empty(),
   explanation: empty(),
   difficulty: "intermediate",
   type: "application",
-  options: [0, 1, 2, 3].map((i) => ({ id: null, orderNum: i + 1, text: empty(), isCorrect: i === 0, rationale: empty() })),
+  options: format ? [] : [0, 1, 2, 3].map((i) => ({ id: null, orderNum: i + 1, text: empty(), isCorrect: i === 0, rationale: empty() })),
+  ...(format ? { format, answerData: emptyAnswerData(format) } : {}),
 });
+const FORMAT_LABELS: Record<FormatKind, [string, string]> = { ordering: ["Reihenfolge", "Ordering"], short_answer: ["Kurzantwort", "Short answer"], matching: ["Zuordnung", "Matching"] };
+/** Leere Zeilen der akzeptierten Antworten fallen weg, bevor geprüft und gespeichert wird. */
+const cleanData = (d: Draft): AnswerData | undefined => (d.format === "short_answer" && d.answerData ? { ...(d.answerData as { accepted: string[] }), accepted: (d.answerData as { accepted: string[] }).accepted.filter((a) => a.trim()) } : d.answerData);
 const rationaleOrNull = (r: L) => (r.de.trim() || r.en.trim() ? r : null);
 const sameInBoth = (d: Draft) => d.question.de === d.question.en && d.explanation.de === d.explanation.en && d.options.every((o) => o.text.de === o.text.en && o.rationale.de === o.rationale.en);
 
 /** Text einer Frage für den Versionsvergleich: Frage, Optionen (✓ = richtig) mit Begründung, Erklärung. */
 function questionText(q: QuestionSnapshot, lang: Lang): string {
+  const solution = q.answerData
+    ? q.format === "ordering"
+      ? (q.answerData as { steps: Array<{ text: L }> }).steps.map((s, i) => `${i + 1}. ${s.text[lang]}`)
+      : q.format === "short_answer"
+        ? (q.answerData as { accepted: string[] }).accepted.map((a) => `✓ ${a}`)
+        : (q.answerData as { pairs: Array<{ left: L; right: L }> }).pairs.map((p) => `${p.left[lang]} → ${p.right[lang]}`)
+    : [];
   return [
     q.question[lang],
     "",
+    ...solution,
     ...q.options.map((o, i) => `${o.isCorrect ? "✓" : "·"} ${String.fromCharCode(65 + i)}) ${o.text[lang]}${o.rationale?.[lang] ? `\n    ↳ ${o.rationale[lang]}` : ""}`),
     "",
     `${q.difficulty} · ${q.type}`,
@@ -135,7 +150,7 @@ export function QuestionsPanel({
           }}
         />
       ) : (
-        <AiAssist certId={certId} locale={locale} target={{ target: "objective", id: objectiveId }} actions={["add_questions"]} initialAction={initialAiAction === "add_questions" ? "add_questions" : null} onProposal={(p) => {
+        <AiAssist certId={certId} locale={locale} target={{ target: "objective", id: objectiveId }} actions={["add_questions", "add_format_questions"]} initialAction={initialAiAction === "add_questions" || initialAiAction === "add_format_questions" ? initialAiAction : null} onProposal={(p) => {
             if (p.kind !== "questions") return;
             setMessage(null);
             setProposal(p);
@@ -166,6 +181,7 @@ export function QuestionsPanel({
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-2 text-xs text-subtle">
                 <span className="font-mono">{q.humanId}</span>
+                {q.snapshot.format && <Badge tone="info">{FORMAT_LABELS[q.snapshot.format][locale === "de" ? 0 : 1]}</Badge>}
                 {q.openReports > 0 && (
                   <Badge tone="warning">
                     <Flag className="h-3 w-3" aria-hidden="true" />
@@ -205,6 +221,7 @@ export function QuestionsPanel({
 
 function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty, onSaved }: { active: boolean; certId: string; objectiveId: string; item: Item | null; lang: Lang; locale: Lang; onDirty: (dirty: boolean) => void; onSaved: (message?: string) => void }) {
   const tr = useTr(locale);
+  const [newFormat, setNewFormat] = React.useState<FormatKind | "choice">("choice");
   const initial = React.useMemo(() => (item ? toDraft(item.snapshot) : NEW()), [item]);
   const [draft, setDraft] = React.useState<Draft>(initial);
   const [linked, setLinked] = React.useState(() => sameInBoth(initial));
@@ -218,16 +235,19 @@ function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty
 
   const setL = (cur: L, value: string): L => (linked ? { de: value, en: value } : { ...cur, [lang]: value });
   const setOption = (i: number, patch: Partial<Draft["options"][number]>) => setDraft((d) => ({ ...d, options: d.options.map((o, k) => (k === i ? { ...o, ...patch } : o)) }));
-  const missing = !draft.question.de.trim() || !draft.question.en.trim() || !draft.explanation.de.trim() || !draft.explanation.en.trim() || draft.options.some((o) => !o.text.de.trim() || !o.text.en.trim());
+  const formatProblems = draft.format ? validateAnswerData(draft.format, cleanData(draft)) : [];
+  const [previewAnswer, setPreviewAnswer] = React.useState<AnswerPayload | null>(null);
+  const missing = formatProblems.length > 0 || !draft.question.de.trim() || !draft.question.en.trim() || !draft.explanation.de.trim() || !draft.explanation.en.trim() || draft.options.some((o) => !o.text.de.trim() || !o.text.en.trim());
 
   async function save(base?: string, direct?: { snapshot: QuestionSnapshot; ai: { action: AiAction; resolveReports: boolean } }) {
     setBusy(true);
     setResult(null);
     const options = draft.options.map((o) => ({ ...o, rationale: rationaleOrNull(o.rationale) }));
+    const cleaned = { ...draft, options, ...(draft.format ? { answerData: cleanData(draft) } : {}) };
     const ai = direct?.ai ?? aiPending ?? undefined;
     const r = item
-      ? await api<{ fingerprint: string } & AcceptResult>(`/api/admin/certifications/${certId}/workshop/questions/${item.id}`, { method: "PUT", body: { snapshot: direct?.snapshot ?? { ...draft, options }, baseFingerprint: base ?? item.fingerprint, ai } })
-      : await api<{ questionId: string }>(`/api/admin/certifications/${certId}/workshop/objectives/${objectiveId}/questions`, { method: "POST", body: { question: { ...draft, options: options.map(({ text, isCorrect, rationale }) => ({ text, isCorrect, rationale })) } } });
+      ? await api<{ fingerprint: string } & AcceptResult>(`/api/admin/certifications/${certId}/workshop/questions/${item.id}`, { method: "PUT", body: { snapshot: direct?.snapshot ?? cleaned, baseFingerprint: base ?? item.fingerprint, ai } })
+      : await api<{ questionId: string }>(`/api/admin/certifications/${certId}/workshop/objectives/${objectiveId}/questions`, { method: "POST", body: { question: { ...cleaned, options: options.map(({ text, isCorrect, rationale }) => ({ text, isCorrect, rationale })) } } });
     setBusy(false);
     if (r.ok) {
       return onSaved(ai ? acceptMessage(r.data as AcceptResult, tr) : undefined);
@@ -281,6 +301,54 @@ function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty
           <RichText text={draft.question[lang]} />
         </div>
       )}
+      {!item && (
+        <Field label={tr("Antwortformat", "Answer format")}>
+          <select
+            className={inputCls}
+            value={newFormat}
+            onChange={(e) => {
+              const f = e.target.value as FormatKind | "choice";
+              setNewFormat(f);
+              setDraft((d) => ({ ...NEW(f === "choice" ? undefined : f), question: d.question, explanation: d.explanation, difficulty: d.difficulty, type: d.type }));
+              setPreviewAnswer(null);
+            }}
+            data-testid="question-format"
+          >
+            <option value="choice">{tr("Auswahlfrage (4 Optionen)", "Multiple choice (4 options)")}</option>
+            {(Object.keys(FORMAT_LABELS) as FormatKind[]).map((f) => (
+              <option key={f} value={f}>{FORMAT_LABELS[f][locale === "de" ? 0 : 1]}</option>
+            ))}
+          </select>
+        </Field>
+      )}
+      {draft.format && draft.answerData && (
+        <>
+          <FormatDataEditor
+            format={draft.format}
+            data={draft.answerData}
+            onChange={(next) => {
+              setDraft((d) => ({ ...d, answerData: next }));
+              setPreviewAnswer(null);
+            }}
+            lang={lang}
+            setL={setL}
+            tr={tr}
+          />
+          {formatProblems.length > 0 && dirty && <Problems title={tr("Die Lösungsdaten sind noch nicht vollständig.", "The solution data is not complete yet.")} items={formatProblems} tone="warning" />}
+          {formatProblems.length === 0 && (
+            <details className="rounded-xl border border-border bg-background p-3 text-sm" data-testid="format-preview">
+              <summary className="cursor-pointer font-medium">{tr("Vorschau: so sehen Lernende die Aufgabe", "Preview: how learners see the task")}</summary>
+              <div className="mt-3">
+                {(() => {
+                  const prompt = buildPrompt(draft.format!, cleanData(draft)!, "preview");
+                  return <FormatAnswerInput prompt={prompt} value={previewAnswer ?? initialDraft(prompt)} onChange={setPreviewAnswer} locale={lang} />;
+                })()}
+              </div>
+            </details>
+          )}
+        </>
+      )}
+      {!draft.format && (
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">{tr("Antwortoptionen (genau eine richtig)", "Answer options (exactly one correct)")}</legend>
         {draft.options.map((o, i) => (
@@ -296,6 +364,7 @@ function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty
           </div>
         ))}
       </fieldset>
+      )}
       <Field label={tr("Erklärung (Markdown)", "Explanation (Markdown)")}>
         <textarea className={cn(textareaCls, "min-h-24")} value={draft.explanation[lang]} onChange={(e) => setDraft({ ...draft, explanation: setL(draft.explanation, e.target.value) })} />
       </Field>
@@ -339,7 +408,7 @@ function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty
             {tr("Verwerfen", "Discard")}
           </Button>
         )}
-        {missing && dirty && <span className="text-xs text-subtle">{tr("Frage, Erklärung und alle Optionen brauchen Text in beiden Sprachen.", "Question, explanation and all options need text in both languages.")}</span>}
+        {missing && dirty && !draft.format && <span className="text-xs text-subtle">{tr("Frage, Erklärung und alle Optionen brauchen Text in beiden Sprachen.", "Question, explanation and all options need text in both languages.")}</span>}
       </div>
       {item && active && (
         <RevisionHistory
@@ -391,6 +460,9 @@ function NewQuestionsReview({ certId, objectiveId, locale, lang, proposal, onDon
               <input type="checkbox" className="mt-1" checked={picked.has(i)} onChange={() => toggle(i)} aria-label={tr(`Frage ${i + 1} übernehmen`, `Accept question ${i + 1}`)} />
               <span className="min-w-0 flex-1">
                 <RichText text={q.question[lang]} />
+                {q.format && q.answerData && (
+                  <p className="mt-1 text-xs text-subtle"><Badge tone="info">{FORMAT_LABELS[q.format][locale === "de" ? 0 : 1]}</Badge>{" "}{questionText({ ...q, options: [] } as unknown as QuestionSnapshot, lang).split("\n").slice(2).join(" · ")}</p>
+                )}
                 <ul className="mt-1 flex flex-col gap-0.5">
                   {q.options.map((o, k) => (
                     <li key={k} className={cn(o.isCorrect && "font-semibold text-mint-text")}>{o.isCorrect ? "✓" : "·"} {String.fromCharCode(65 + k)}) {o.text[lang]}</li>

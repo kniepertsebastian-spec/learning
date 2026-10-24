@@ -9,7 +9,7 @@ export type SectionAiAction = (typeof SECTION_AI_ACTIONS)[number];
 export const QUESTION_AI_ACTIONS = ["improve", "fix_reports", "custom"] as const;
 export type QuestionAiAction = (typeof QUESTION_AI_ACTIONS)[number];
 
-export type AiAction = SectionAiAction | QuestionAiAction | "add_questions" | "add_objective";
+export type AiAction = SectionAiAction | QuestionAiAction | "add_questions" | "add_format_questions" | "add_objective";
 
 export const AI_ACTION_LABELS: Record<AiAction, { de: string; en: string; hint: { de: string; en: string } }> = {
   lively: { de: "Lebendiger schreiben", en: "Make it livelier", hint: { de: "du-Form, erst das Problem, dann die Lösung, Beispiele aus dem Berufsalltag", en: "Direct address, problem first, everyday examples" } },
@@ -22,6 +22,7 @@ export const AI_ACTION_LABELS: Record<AiAction, { de: string; en: string; hint: 
   custom: { de: "Eigene Anweisung", en: "Custom instruction", hint: { de: "frei formulieren, was die KI ändern soll", en: "Describe freely what the AI should change" } },
   improve: { de: "Frage verbessern", en: "Improve question", hint: { de: "klarer formulieren, plausible falsche Antworten, gute Erklärung", en: "Clearer wording, plausible distractors, good explanation" } },
   add_questions: { de: "Fragen ergänzen", en: "Add questions", hint: { de: "neue Fragen, die sich von den vorhandenen unterscheiden", en: "New questions that differ from the existing ones" } },
+  add_format_questions: { de: "Formatfragen ergänzen", en: "Add format questions", hint: { de: "Reihenfolge, Kurzantwort, Zuordnung: Antwort selbst erzeugen statt wiedererkennen", en: "Ordering, short answer, matching: produce the answer instead of recognising it" } },
   add_objective: { de: "Fehlendes Lernziel ergänzen", en: "Add missing objective", hint: { de: "Lernziel mit Lektionen und Fragen anlegen", en: "Create the objective with lessons and questions" } },
 };
 

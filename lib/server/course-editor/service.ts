@@ -78,17 +78,19 @@ export async function readSection(exec: Exec, sectionId: string): Promise<Sectio
 
 export async function readQuestion(exec: Exec, questionId: string): Promise<QuestionSnapshot | null> {
   const [q] = await exec
-    .select({ question: questions.question, explanation: questions.explanation, difficulty: questions.difficulty, type: questions.type })
+    .select({ question: questions.question, explanation: questions.explanation, difficulty: questions.difficulty, type: questions.type, answerFormat: questions.answerFormat, answerData: questions.answerData })
     .from(questions)
     .where(eq(questions.id, questionId))
     .limit(1);
   if (!q) return null;
+  const { answerFormat, answerData, ...base } = q;
   const options = await exec
     .select({ id: questionOptions.id, orderNum: questionOptions.orderNum, text: questionOptions.text, isCorrect: questionOptions.isCorrect, rationale: questionOptions.rationale })
     .from(questionOptions)
     .where(eq(questionOptions.questionId, questionId))
     .orderBy(asc(questionOptions.orderNum));
-  return { ...(q as Omit<QuestionSnapshot, "options">), options };
+  // Format und Lösungsdaten nur bei den neuen Formaten: Auswahlfragen behalten ihren bisherigen Fingerabdruck.
+  return { ...(base as Omit<QuestionSnapshot, "options" | "format" | "answerData">), options, ...(answerFormat !== "choice" ? { format: answerFormat, answerData: answerData ?? undefined } : {}) };
 }
 
 /** Gehört die Section / Frage / das Lernziel zu diesem Kurs? */
@@ -252,7 +254,10 @@ async function writeSection(tx: Tx, sectionId: string, s: SectionSnapshot) {
 }
 
 async function writeQuestion(tx: Tx, questionId: string, q: QuestionSnapshot) {
-  await tx.update(questions).set({ question: q.question, explanation: q.explanation, difficulty: q.difficulty, type: q.type }).where(eq(questions.id, questionId));
+  await tx
+    .update(questions)
+    .set({ question: q.question, explanation: q.explanation, difficulty: q.difficulty, type: q.type, ...(q.format ? { answerData: q.answerData ?? null } : {}) })
+    .where(eq(questions.id, questionId));
   for (const o of q.options) {
     await tx.update(questionOptions).set({ text: o.text, isCorrect: o.isCorrect, rationale: o.rationale, orderNum: o.orderNum }).where(and(eq(questionOptions.id, o.id), eq(questionOptions.questionId, questionId)));
   }
@@ -295,6 +300,7 @@ export async function saveQuestion(certId: string, questionId: string, next: Que
     // Optionen werden nur geändert, nicht ersetzt: dieselben IDs wie bisher.
     const ids = new Set(current.options.map((o) => o.id));
     if (next.options.length !== ids.size || next.options.some((o) => !ids.has(o.id))) throw new EditValidationError(["Antwortoptionen passen nicht zur Frage."]);
+    if (next.format !== current.format) throw new EditValidationError(["Das Antwortformat einer Frage lässt sich nicht ändern; lege dafür eine neue Frage an."]);
     if (fingerprint(next) === currentFp) return { fingerprint: currentFp, changed: false };
     await insertRevision(tx, certId, "question", questionId, current, actor);
     await writeQuestion(tx, questionId, next);
@@ -349,9 +355,9 @@ export async function createQuestion(certId: string, objectiveId: string, q: New
     const humanId = await nextHumanId(tx, certId, objectiveId, owner.code);
     const [row] = await tx
       .insert(questions)
-      .values({ humanId, objectiveId, difficulty: q.difficulty, type: q.type, question: q.question, explanation: q.explanation })
+      .values({ humanId, objectiveId, difficulty: q.difficulty, type: q.type, question: q.question, explanation: q.explanation, ...(q.format ? { answerFormat: q.format, answerData: q.answerData } : {}) })
       .returning({ id: questions.id });
-    await tx.insert(questionOptions).values(q.options.map((o, i) => ({ questionId: row.id, orderNum: i + 1, text: o.text, isCorrect: o.isCorrect, rationale: o.rationale })));
+    if (q.options.length > 0) await tx.insert(questionOptions).values(q.options.map((o, i) => ({ questionId: row.id, orderNum: i + 1, text: o.text, isCorrect: o.isCorrect, rationale: o.rationale })));
     const snapshot = (await readQuestion(tx, row.id))!;
     return { questionId: row.id, humanId, fingerprint: fingerprint(snapshot) };
   });

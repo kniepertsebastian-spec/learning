@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { SolutionView } from "@/components/quiz/FormatAnswerInput";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -78,6 +79,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
                           </li>
                         ))}
                       </ul>
+                      {q.solution && <SolutionView solution={q.solution} locale={locale} />}
                       <p className="mt-1 text-xs text-subtle">{de ? "Erklärung" : "Explanation"}: {q.explanation[locale]}</p>
                       <ReviewerItemComment certId={cert.id} targetType="question" targetId={q.id} locale={locale} existing={commentsFor("question", q.id)} />
                     </div>

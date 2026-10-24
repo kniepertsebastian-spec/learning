@@ -165,6 +165,19 @@ export function newQuestionsUserPrompt(input: { facts: CourseFacts; lessons: str
     .join("\n");
 }
 
+export function formatQuestionsSystemPrompt(c: CourseFacts): string {
+  return [
+    ...base(c, "Du bist Prüfungsfragen-Autor"),
+    "Erzeuge NEUE Fragen, bei denen die Lernenden die Antwort selbst erzeugen statt unter Optionen zu wählen. Drei Formate stehen zur Wahl, nimm je Frage das passende:",
+    "- `ordering`: 3 bis 8 Schritte eines Ablaufs (z. B. Fehlersuche, Einrichtung). Gib `steps` in der RICHTIGEN Reihenfolge an. Nur Abläufe mit genau EINER sinnvollen Reihenfolge, keine austauschbaren Schritte.",
+    "- `short_answer`: eine kurze Eingabe (Befehl, Port, Dateiname, Fachbegriff), die sich eindeutig prüfen lässt. `accepted` enthält ALLE gleichwertigen Schreibweisen (Groß/Klein und Leerzeichen werden ohnehin ignoriert), höchstens 10. Nur Fragen, bei denen es eine eindeutige Kurzantwort gibt.",
+    "- `matching`: 3 bis 8 Paare Begriff ↔ Aussage (z. B. Dienst ↔ Zweck). Jede linke und jede rechte Seite kommt nur einmal vor, jede Aussage passt zu genau einem Begriff.",
+    "Fülle nur das Feld des gewählten Formats (`steps`, `accepted` oder `pairs`); die anderen bleiben leere Listen. `explanation` begründet die Lösung.",
+    "Die Fragen müssen sich mit dem Inhalt der Lektionen beantworten lassen. Befehle und Konfigurationen stehen in Markdown-Codeblöcken, außer in `accepted`, `steps` und `pairs` (dort reiner Text).",
+    ...QUESTION_VARIETY_PROMPT,
+  ].join("\n");
+}
+
 export function objectiveSystemPrompt(c: Omit<CourseFacts, "objective">): string {
   return [
     ...base({ ...c, objective: { code: "", title: "", description: null } }, "Du bist Dozent und Prüfungsfragen-Autor"),

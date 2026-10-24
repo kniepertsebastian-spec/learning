@@ -22,4 +22,14 @@ Normalisierung der Kurzantwort: Unicode vereinheitlicht, Ränder und umgebende A
 ## Prüfung der Lösungsdaten
 `validateAnswerData` (`lib/questions/answer-formats.ts`) prüft Grenzen (max. 8 Schritte/Paare, 10 akzeptierte Antworten, 200 Zeichen) und beide Sprachen; die Kursprüfung meldet Verstöße als `invalid_answer_data`.
 
-Folgepakete: Generierung und Werkstatt (4.5b), Session-Mix und „Antwort zuerst überlegen“ (4.5c).
+## Werkstatt und KI
+- **Anlegen und Bearbeiten:** In der Kurs-Werkstatt (Fragen eines Lernziels) wählt man beim Anlegen das Antwortformat. Schritte, Paare und akzeptierte Antworten werden direkt bearbeitet, eine Vorschau zeigt die Aufgabe wie für Lernende. Das Format einer vorhandenen Frage lässt sich nicht ändern. Versionen, Konflikterkennung und Zurücksetzen funktionieren wie bei Auswahlfragen; Auswahlfragen behalten ihren bisherigen Fingerabdruck.
+- **KI-Vorschlag:** Aktion „Formatfragen ergänzen“ (bis zu 10 je Lauf): Die KI schlägt Fragen vor, unbrauchbare Lösungsdaten werden verworfen, die Redaktion wählt aus und legt an. „Frage verbessern“ per KI gibt es für Formatfragen nicht.
+- **Übersetzung:** Fragetext, Erklärung und die Texte der Schritte/Begriffe/Aussagen werden mit übersetzt; akzeptierte Kurzantworten bleiben unverändert.
+- **Freigabe:** Format und Lösungsdaten gehen in den Fingerabdruck ein; Änderungen zeigen „Änderung seit Prüfung“. Die Prüfer-Ansicht zeigt die Lösung.
+- **Nicht abgedeckt:** Die vollautomatische Kursgenerierung (Worker) erzeugt weiterhin nur Auswahlfragen.
+
+## Session-Mix
+Höchstens 20 % der Fragen einer Session haben ein neues Format (abgerundet, bei unter 5 Fragen also keine), bevorzugt zu Lernzielen, bei denen die Person zuletzt „sicher“ (Rating 4) war. Gibt es nicht genug Auswahlfragen, rücken Formatfragen nach, damit ein Kurs nur mit Formatfragen nicht leer bleibt (`pickWithFormatCap` in `lib/server/study/session-builder.ts`).
+
+Folgepaket: „Antwort zuerst überlegen“ und Selbsterklärung (4.5c).

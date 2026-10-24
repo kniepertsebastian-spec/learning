@@ -11,6 +11,7 @@ import {
   questions,
   recallChecks,
   reviewItems,
+  reviewLog,
   sections,
   sessionRecommendationFeedback,
   studyProfiles,
@@ -56,7 +57,9 @@ import {
   computeStreak,
   estimateSessionMinutes,
   estimateTargetQuestionCount,
+  formatQuestionCap,
   isComebackSession,
+  pickWithFormatCap,
   reallocateTowardFamiliarContent,
   toDayKey,
   type SessionComposition,
@@ -520,22 +523,32 @@ async function buildAndPersistSession(
     composition = { ...composition, review: Math.min(targetQuestionCount, dueItems.length), weak: 0, new: 0 };
   }
 
+  // Fragen mit neuem Antwortformat: höchstens 20 % der Session, bevorzugt zu Themen, bei denen die Person zuletzt „sicher“ war.
+  const formatInfo = await loadFormatInfo(userId, [...dueQuestionIds, ...weakQuestionIds, ...newCandidates.map((c) => c.questionId)]);
+  let formatCapLeft = formatQuestionCap(composition.review + composition.weak + composition.new);
+  const pickQuestions = <T extends { questionId: string }>(candidates: T[], count: number): T[] => {
+    if (formatInfo.formatIds.size === 0) return candidates.slice(0, count);
+    const result = pickWithFormatCap(candidates, count, formatCapLeft, (c) => formatInfo.formatIds.has(c.questionId), (c) => formatInfo.preferredIds.has(c.questionId));
+    formatCapLeft = Math.max(0, formatCapLeft - result.formatUsed);
+    return result.picked;
+  };
+
   const items: Array<{
     category: StudySessionItemCategory;
     referenceType: "question" | "section";
     referenceId: string;
   }> = [
-    ...dueItems.slice(0, composition.review).map((item) => ({
+    ...pickQuestions(dueItems, composition.review).map((item) => ({
       category: "review" as const,
       referenceType: "question" as const,
       referenceId: item.questionId,
     })),
-    ...weakCandidates.slice(0, composition.weak).map((c) => ({
+    ...pickQuestions(weakCandidates, composition.weak).map((c) => ({
       category: "weak" as const,
       referenceType: "question" as const,
       referenceId: c.questionId,
     })),
-    ...newCandidates.slice(0, composition.new).map((c) => ({
+    ...pickQuestions(newCandidates, composition.new).map((c) => ({
       category: "new" as const,
       referenceType: "question" as const,
       referenceId: c.questionId,
@@ -716,6 +729,31 @@ async function selectWeakObjectiveQuestions(
     .orderBy(asc(objectiveProgress.masteryScore))
     .limit(limit);
   return rows;
+}
+
+/**
+ * Welche der Kandidaten haben ein neues Antwortformat, und bei welchen war die Person im Thema (Lernziel) zuletzt „sicher“ (Rating 4)?
+ * Ohne Formatfragen unter den Kandidaten bleibt es bei einer einzigen kleinen Abfrage.
+ */
+async function loadFormatInfo(userId: string, questionIds: string[]): Promise<{ formatIds: Set<string>; preferredIds: Set<string> }> {
+  const empty = { formatIds: new Set<string>(), preferredIds: new Set<string>() };
+  if (questionIds.length === 0) return empty;
+  const db = getDb();
+  const rows = await db
+    .select({ id: questions.id, objectiveId: questions.objectiveId })
+    .from(questions)
+    .where(and(inArray(questions.id, questionIds), sql`${questions.answerFormat} <> 'choice'`));
+  if (rows.length === 0) return empty;
+  const objectiveIds = [...new Set(rows.map((r) => r.objectiveId))];
+  const reviews = await db
+    .select({ objectiveId: questions.objectiveId, rating: reviewLog.rawRating })
+    .from(reviewLog)
+    .innerJoin(questions, eq(questions.id, reviewLog.itemId))
+    .where(and(eq(reviewLog.userId, userId), inArray(questions.objectiveId, objectiveIds)))
+    .orderBy(desc(reviewLog.timestampUtc));
+  const lastRating = new Map<string, number>();
+  for (const r of reviews) if (!lastRating.has(r.objectiveId)) lastRating.set(r.objectiveId, r.rating);
+  return { formatIds: new Set(rows.map((r) => r.id)), preferredIds: new Set(rows.filter((r) => lastRating.get(r.objectiveId) === 4).map((r) => r.id)) };
 }
 
 async function selectNewQuestions(
