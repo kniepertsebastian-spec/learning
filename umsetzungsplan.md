@@ -1,6 +1,6 @@
-# Umsetzungsplan: PWA-Härtung, Didaktik, Prüfer und Motivation
+# Umsetzungsplan: PWA-Härtung, Didaktik, Prüfer, Motivation und Datenintegrität
 
-Legt fest, in welcher Reihenfolge die Punkte aus `roadmap_pwa.md`, `roadmap_didaktik.md`, `roadmap_pruefer.md` und `roadmap_motivation.md` umgesetzt werden. Die Inhalte, Regeln und Akzeptanzkriterien stehen in den Roadmaps. Dieses Dokument regelt nur Reihenfolge, Zuschnitt in PRs und Abhängigkeiten. Stand: 23.10.2026.
+Legt fest, in welcher Reihenfolge die Punkte aus `roadmap_pwa.md`, `roadmap_didaktik.md`, `roadmap_pruefer.md`, `roadmap_motivation.md` und `roadmap_datenintegritaet.md` umgesetzt werden. Die Inhalte, Regeln und Akzeptanzkriterien stehen in den Roadmaps. Dieses Dokument regelt nur Reihenfolge, Zuschnitt in PRs und Abhängigkeiten. Stand: 23.10.2026.
 
 **Voraussetzung:** PR #117 (beide Roadmaps) ist gemergt.
 
@@ -184,6 +184,38 @@ Quelle: `roadmap_motivation.md`, Phase 6
 
 ---
 
+## Stufe 4a – Datenintegrität über Zeit (vor dem Pilot)
+
+Ergebnis des PWA-Reviews vom 24.10.2026: Offline-Lernleistung kommt an, aber nach Tagen mit falschem Zeitpunkt, auf iOS ohne Installation unter Umständen gar nicht, bei Konflikten ohne Wiederholungen; entzogene Firmeninhalte bleiben auf dem Gerät.
+
+### Paket 4.10 – Zeitpunkt der Antwort verbuchen · M
+Quelle: `roadmap_datenintegritaet.md`, Phase 1
+- [ ] `answeredAt` je Antwort, `effectiveTime()` mit Grenzen, Zeit bis `recordReviewOutcomes` durchreichen, Reihenfolge-Regel bei neuerem Zustand, `local_hour` aus dem Antwortzeitpunkt, abgeleitete Werte (Lernserie, Lernzeit, Rückblick, Frühwarnung)
+
+**Abhängigkeit:** keine. **Vor dem Pilot**, weil es die Daten des Human Layer auf allen Plattformen still verfälscht.
+
+### Paket 4.11 – iOS: Ergebnisse vor der Löschung retten · S
+Quelle: `roadmap_datenintegritaet.md`, Phase 2
+- [ ] Übertragen beim Wechsel in den Hintergrund (`keepalive`), Hinweis bei alten unübertragenen Ergebnissen, Installationsschritt vor dem ersten Offline-Download auf iOS
+
+**Abhängigkeit:** keine; zusammen mit 4.10.
+
+### Paket 4.12 – Entzogenen Zugriff lokal durchsetzen · S
+Quelle: `roadmap_datenintegritaet.md`, Phase 4
+- [ ] Pakete mit 404/403 beim Online-Start lokal löschen, optional Ablaufdatum für Pakete interner Lernpfade
+
+**Abhängigkeit:** keine. Vor dem ersten Firmenkunden mit vertraulichen internen Lernpfaden.
+
+### Paket 4.13 – Konflikte und Grenzfälle · M
+Quelle: `roadmap_datenintegritaet.md`, Phase 3 und 5
+- [ ] Antworten aus Konflikten als Wiederholungen verbuchen, Skript für bestehende Konflikte, `rejected`-Status mit „Verwerfen“, gelöschte Fragen und deaktivierte Varianten, Doku
+
+**Abhängigkeit:** 4.10 (Zeitpunkt und Reihenfolge-Regel).
+
+Begleitend ohne Code: Backup-Betrieb prüfen (`roadmap_datenintegritaet.md`, Phase 6).
+
+---
+
 ## Stufe 5 – Nach Bedarf
 
 - [ ] Wirkung messen, restliche Punkte (`roadmap_didaktik.md`, Phase 7): Export nach Feature-Flags, Readiness gegen Prüfungsergebnis; sobald genug Prüfungsergebnisse vorliegen
@@ -205,23 +237,27 @@ Quelle: `roadmap_motivation.md`, Phase 6
 | 2.2 | Varianten statt derselben Frage ✅ | Didaktik 1 | L | Vor Pilot | – |
 | 2.3 | Cache-Datenschutz & Updates ✅ | PWA 3 | M | Vor Pilot | – |
 | 3.1 | Offline-Navigation ✅ | PWA 2 | M | Offline | 2.3 ✅ |
-| 3.2 | Vorabfragen & Einstiegstest | Didaktik 4 | M | Didaktik | 2.2 ✅ |
-| 3.3 | PWA-Tests | PWA 7 | M | Offline | 3.1 |
-| 3.4 | Rückblick „Was weißt du noch?“ | Didaktik 8 | M | Didaktik | 2.2 ✅ |
-| 3.5 | Verstehens-Modus | Didaktik 9 | L | Didaktik | 2.2 ✅ |
-| 3.6 | Vergleichsgrafik „Eine Woche Pause“ | Motivation 1 | S | Vor Entscheider-Gesprächen | – |
-| 3.7 | Frühwarnung, Notausstieg, Rückmeldungen | Motivation 2, 3, 8 | M | Didaktik | 3.5a |
-| 4.1 | Einstieg & Motivation | Didaktik 5, 6; Motivation 4, 5, 7 | M | Vor Launch | – |
-| 4.2 | Manifest, Icons, iOS | PWA 4 | M | Vor Launch | Branding |
-| 4.3 | Installation & Background Sync | PWA 5 | M | Vor Launch | 4.2 |
-| 4.4 | Schwächen einweben | Didaktik 10 | M | Vor Launch | 3.5a, 3.5c |
-| 4.5 | Neue Antwortformate | Didaktik 3 | L | Vor Launch | 2.2 ✅, 3.5 |
-| 4.6 | Prüfer-Rolle & Freigabe je Inhaltsstand | Prüfer 1, 2 | L | Vor Launch / vor 1. Experten | – |
-| 4.7 | Expertenprofil & Siegel | Prüfer 3, 4 | M | Vor Launch | 4.6, Recht |
-| 4.8 | Probe-Review | Prüfer 5 | M | Vor Launch | 4.6b |
-| 4.9 | Reaktivierung per E-Mail | Motivation 6 | S | Vor Launch | 4.1 |
+| 3.2 | Vorabfragen & Einstiegstest ✅ | Didaktik 4 | M | Didaktik | 2.2 ✅ |
+| 3.3 | PWA-Tests ✅ | PWA 7 | M | Offline | 3.1 |
+| 3.4 | Rückblick „Was weißt du noch?“ ✅ | Didaktik 8 | M | Didaktik | 2.2 ✅ |
+| 3.5 | Verstehens-Modus ✅ | Didaktik 9 | L | Didaktik | 2.2 ✅ |
+| 3.6 | Vergleichsgrafik „Eine Woche Pause“ ✅ | Motivation 1 | S | Vor Entscheider-Gesprächen | – |
+| 3.7 | Frühwarnung, Notausstieg, Rückmeldungen ✅ | Motivation 2, 3, 8 | M | Didaktik | 3.5a |
+| 4.1 | Einstieg & Motivation ✅ | Didaktik 5, 6; Motivation 4, 5, 7 | M | Vor Launch | – |
+| 4.2 | Manifest, Icons, iOS ✅ | PWA 4 | M | Vor Launch | Branding |
+| 4.3 | Installation & Background Sync ✅ | PWA 5 | M | Vor Launch | 4.2 |
+| 4.4 | Schwächen einweben ✅ | Didaktik 10 | M | Vor Launch | 3.5a, 3.5c |
+| 4.5 | Neue Antwortformate ✅ | Didaktik 3 | L | Vor Launch | 2.2 ✅, 3.5 |
+| 4.6 | Prüfer-Rolle & Freigabe je Inhaltsstand ✅ | Prüfer 1, 2 | L | Vor Launch / vor 1. Experten | – |
+| 4.7 | Expertenprofil & Siegel ✅ | Prüfer 3, 4 | M | Vor Launch | 4.6, Recht |
+| 4.8 | Probe-Review ✅ | Prüfer 5 | M | Vor Launch | 4.6b |
+| 4.9 | Reaktivierung per E-Mail ✅ | Motivation 6 | S | Vor Launch | 4.1 |
+| 4.10 | Zeitpunkt der Antwort verbuchen | Datenintegrität 1 | M | Vor Pilot | – |
+| 4.11 | iOS: Ergebnisse vor der Löschung retten | Datenintegrität 2 | S | Vor Pilot | – |
+| 4.12 | Entzogenen Zugriff lokal durchsetzen | Datenintegrität 4 | S | Vor 1. Firmenkunden | – |
+| 4.13 | Konflikte und Grenzfälle | Datenintegrität 3, 5 | M | Vor Launch | 4.10 |
 | 5 | Messung, Push, Später, Prüfer-Qualität | Didaktik 7, 11; PWA 6; Prüfer 6; Motivation 10 | – | Nach Bedarf | Daten |
 
 Pakete ohne Abhängigkeit innerhalb einer Stufe können parallel bearbeitet werden.
 
-**Nächste Schritte (Stand 23.10.2026):** Stufe 1 und 2 sowie 3.1 sind erledigt. Zuerst 3.6 (Vergleichsgrafik, klein, für die Gespräche mit Entscheidern). Dann in Stufe 3 die didaktischen Pakete in der Reihenfolge 3.4 → 3.5a → 3.7 → 3.2 → 3.5d → 3.5b → 3.5c, parallel 3.3 (PWA-Tests). Vor der ersten Freigabe durch einen externen Experten zusätzlich 4.6a.
+**Nächste Schritte (Stand 24.10.2026):** Stufe 1 bis 4 sind erledigt. Als Nächstes Stufe 4a: 4.10 und 4.11 zusammen (vor dem Pilot), dann 4.12 (vor dem ersten Firmenkunden mit internen Lernpfaden), dann 4.13. Parallel ohne Code: Backup-Betrieb auf dem Server prüfen. Danach Stufe 5 nach Bedarf.
