@@ -72,6 +72,8 @@ export async function generateFinalExam(
           // aufnehmen.
           eq(questions.stale, false),
           eq(questions.probeOnly, false),
+          // Prüfungen bestehen aus Auswahlfragen; die anderen Antwortformate gibt es nur in Übung und Lektionstest.
+          eq(questions.answerFormat, "choice"),
           // Exclude already answered questions
           ...(!answeredIds.size ? [] : [notInArray(questions.id, Array.from(answeredIds))]),
         ),

@@ -12,7 +12,13 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const revealSchema = z.object({ itemId: z.string().min(1), selectedOptionId: z.string().min(1) });
+const payloadSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("ordering"), order: z.array(z.string().max(100)).max(20) }),
+  z.object({ kind: z.literal("short_answer"), text: z.string().max(500) }),
+  z.object({ kind: z.literal("matching"), matches: z.record(z.string().max(100), z.string().max(100)) }),
+]);
+// Auswahlfragen schicken die Option, die neuen Formate ihre Antwort.
+const revealSchema = z.object({ itemId: z.string().min(1), selectedOptionId: z.string().default(""), answer: payloadSchema.nullish() }).refine((v) => v.selectedOptionId.length > 0 || v.answer, { message: "Antwort fehlt." });
 
 /**
  * POST /api/study-sessions/:sessionId/reveal - Sofort-Feedback je Frage (roadmap_didaktik
@@ -42,6 +48,7 @@ export async function POST(
       session.user.id,
       parsed.data.itemId,
       parsed.data.selectedOptionId,
+      parsed.data.answer,
     );
     return NextResponse.json(result);
   } catch (error) {

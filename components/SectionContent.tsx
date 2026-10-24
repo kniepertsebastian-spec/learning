@@ -104,7 +104,7 @@ export function SectionContent({
   const [completed, setCompleted] = useState(initialCompleted);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
-  const pretestQuestions = pretestEnabled && quizEnabled && !initialCompleted ? pickPretestQuestions(questions.filter((q) => !q.woven), sectionId) : [];
+  const pretestQuestions = pretestEnabled && quizEnabled && !initialCompleted ? pickPretestQuestions(questions.filter((q) => !q.woven && (!q.format || q.format === "choice")), sectionId) : [];
   const [pretestState, setPretestState] = useState<"pending" | "done">("pending");
   const pretestPending = pretestQuestions.length > 0 && pretestState === "pending";
 
@@ -114,7 +114,7 @@ export function SectionContent({
   const toc = extractToc(content);
   const minutes = estimatedMinutes ?? readingMinutes(content);
   const hasQuiz = quizEnabled && questions.length > 0;
-  const regularCount = questions.filter((q) => !q.woven).length; // eingewebte Fragen zählen nicht mit
+  const regularCount = questions.filter((q) => !q.woven && (!q.format || q.format === "choice")).length; // eingewebte Fragen zählen nicht mit
   const lp = t.lesson_page;
 
   async function completeLesson() {

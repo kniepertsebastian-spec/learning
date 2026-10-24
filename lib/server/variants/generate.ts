@@ -143,7 +143,7 @@ export async function loadVariantSources(certificationId: string): Promise<Varia
     .from(questions)
     .innerJoin(objectives, eq(objectives.id, questions.objectiveId))
     .innerJoin(domains, eq(domains.id, objectives.domainId))
-    .where(and(eq(domains.certificationId, certificationId), eq(questions.stale, false), eq(questions.probeOnly, false)))
+    .where(and(eq(domains.certificationId, certificationId), eq(questions.stale, false), eq(questions.probeOnly, false), eq(questions.answerFormat, "choice")))
     .orderBy(asc(questions.humanId));
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);

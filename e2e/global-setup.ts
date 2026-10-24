@@ -12,9 +12,13 @@ export const USERS = {
   placement: { email: "e2e-placement@test.example", role: "learner" },
   recallAnswer: { email: "e2e-recall-answer@test.example", role: "learner" },
   recallSkip: { email: "e2e-recall-skip@test.example", role: "learner" },
+  formats: { email: "e2e-formats@test.example", role: "learner" },
+  formatsSession: { email: "e2e-formats-session@test.example", role: "learner" },
 } as const;
 export const COURSE_SLUG = "e2e-demo";
 export const COURSE_NAME = "E2E Demo Course";
+/** Kleiner Kurs nur mit den neuen Antwortformaten (Reihenfolge, Kurzantwort, Zuordnung). */
+export const FORMATS_SLUG = "e2e-formats";
 
 /** Legt Testnutzer und einen kleinen, freigegebenen Kurs an (idempotent: ein vorhandener Kurs bleibt unverändert). */
 export default async function globalSetup() {
@@ -47,6 +51,8 @@ export default async function globalSetup() {
   }
   await ensureQuestions(objectiveId);
   await ensureVariants(objectiveId);
+  await ensureFormatsCourse();
+  await resetFormatsSessionUser(passwordHash);
 
   // Prüfer-Nutzer: genau dem E2E-Kurs zugewiesen.
   const [reviewer] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.reviewer.email)).limit(1);
@@ -66,6 +72,45 @@ export default async function globalSetup() {
       await db.insert(studySessions).values({ userId: user.id, certificationId: course.id, status: "completed", goalType: "minutes", goalValue: 10, plannedAt: at, completedAt: at });
     }
   }
+}
+
+/** Frisch angelegt, Lektion gelesen, noch keine Antworten: die Tages-Session bietet die Formatfragen als neue Aufgaben an. */
+async function resetFormatsSessionUser(passwordHash: string) {
+  const db = getDb();
+  const email = USERS.formatsSession.email;
+  await db.delete(users).where(eq(users.email, email));
+  const [user] = await db.insert(users).values({ email, passwordHash, role: "learner", emailVerifiedAt: new Date() }).returning({ id: users.id });
+  const [cert] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, FORMATS_SLUG)).limit(1);
+  const [section] = await db
+    .select({ id: sections.id })
+    .from(sections)
+    .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .where(eq(domains.certificationId, cert.id))
+    .limit(1);
+  await db.insert(lessonCompletions).values({ userId: user.id, sectionId: section.id, completedAt: new Date(Date.now() - 3_600_000) });
+}
+
+const bi = (de: string, en = de) => ({ de, en });
+
+async function ensureFormatsCourse() {
+  const db = getDb();
+  const [have] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, FORMATS_SLUG)).limit(1);
+  if (have) return;
+  const [cert] = await db
+    .insert(certifications)
+    .values({ slug: FORMATS_SLUG, name: "E2E Formats Course", provider: "E2E", examName: "E2E", examVersion: "1", catalogStatus: "approved", includeSectionQuizzes: true })
+    .returning();
+  const [domain] = await db.insert(domains).values({ certificationId: cert.id, orderNum: 1, name: "Domain 1", weightPercent: "100" }).returning();
+  const [objective] = await db.insert(objectives).values({ domainId: domain.id, code: "1.1", title: "Formats" }).returning();
+  const [section] = await db.insert(sections).values({ objectiveId: objective.id, orderNum: 1, title: bi("Formate-Lektion", "Formats lesson"), estimatedMinutes: 5, difficulty: "beginner" }).returning();
+  await db.insert(lessons).values({ sectionId: section.id, content: bi("# Formate\n\nText.", "# Formats\n\nText."), keyTakeaways: { de: ["a"], en: ["a"] }, examFocusPoints: { de: ["b"], en: ["b"] }, modelVersion: "e2e" });
+  const base = { objectiveId: objective.id, difficulty: "beginner" as const, type: "knowledge" as const, explanation: bi("Weil.", "Because.") };
+  await db.insert(questions).values([
+    { ...base, humanId: "E2E-FMT-ORD", question: bi("Reihenfolge der Fehlersuche?", "Order of troubleshooting?"), answerFormat: "ordering", answerData: { steps: [{ id: "s1", text: bi("Erkennen", "Identify") }, { id: "s2", text: bi("Eingrenzen", "Narrow down") }, { id: "s3", text: bi("Beheben", "Fix") }] } },
+    { ...base, humanId: "E2E-FMT-SHORT", question: bi("Welcher Befehl zeigt alle IP-Einstellungen?", "Which command shows all IP settings?"), answerFormat: "short_answer", answerData: { accepted: ["ipconfig /all"] } },
+    { ...base, humanId: "E2E-FMT-MATCH", question: bi("Ordne zu.", "Match them."), answerFormat: "matching", answerData: { pairs: [{ id: "m1", left: bi("DNS"), right: bi("Namen auflösen", "Resolve names") }, { id: "m2", left: bi("DHCP"), right: bi("Adressen vergeben", "Assign addresses") }] } },
+  ]);
 }
 
 /** Je Frage eine Variante (für den Rückblick und die Variantenrotation). */

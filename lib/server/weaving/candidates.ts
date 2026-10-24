@@ -68,6 +68,7 @@ export async function pickWovenQuestions(userId: string, sectionId: string, regu
         ne(questions.objectiveId, section.objectiveId),
         eq(questions.stale, false),
         eq(questions.probeOnly, false),
+        eq(questions.answerFormat, "choice"), // eingewebt werden nur Auswahlfragen
         // Varianten sind keine eigenen Items: nur Originale kommen als Kandidat in Frage.
         notExists(db.select({ one: sql`1` }).from(itemVariants).where(and(eq(itemVariants.questionId, questions.id), ne(itemVariants.itemId, questions.id)))),
       ),

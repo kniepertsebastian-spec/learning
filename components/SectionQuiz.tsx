@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
+import { FormatQuestionCard } from "@/components/quiz/FormatQuestionCard";
+import { buildPrompt, buildSolution, gradeAnswer, type AnswerData, type AnswerFormat, type AnswerPayload } from "@/lib/questions/answer-formats";
 import { FocusFrame } from "@/components/quiz/FocusFrame";
 import { Button } from "@/components/ui/button";
 import { ExitSummary } from "@/components/quiz/ExitSummary";
@@ -30,6 +32,9 @@ export interface SectionQuizQuestion {
   sourceReference: string | null;
   /** Aus einer früheren Lektion eingewoben (Flag `woven_reviews`): sieht aus wie jede Frage, zählt aber nicht fürs Ergebnis dieser Lektion. */
   woven?: boolean;
+  /** Antwortformat; fehlt oder „choice“ = Auswahlfrage. Bei den anderen Formaten steht die Lösung in `answerData` (Lektionstest wird im Browser ausgewertet). */
+  format?: AnswerFormat;
+  answerData?: AnswerData | null;
 }
 
 interface SectionQuizProps {
@@ -60,11 +65,12 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
   const [pendingAnswer, setPendingAnswer] = useState<{
     questionId: string;
     selectedOptionId: string;
+    answer?: AnswerPayload;
     confidence?: AnswerConfidence;
     woven?: boolean;
   } | null>(null);
   const [answers, setAnswers] = useState<
-    Array<{ questionId: string; selectedOptionId: string; confidence?: AnswerConfidence; woven?: boolean }>
+    Array<{ questionId: string; selectedOptionId: string; answer?: AnswerPayload; confidence?: AnswerConfidence; woven?: boolean }>
   >([]);
 
   function mapQuestion(q: SectionQuizQuestion): QuizQuestion {
@@ -96,6 +102,13 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
       confidence,
       woven: q.woven || undefined,
     });
+  }
+
+  function handleFormatAnswered(correct: boolean, answer: AnswerPayload, confidence?: AnswerConfidence) {
+    setResults((r) => [...r, correct]);
+    setHasAnsweredCurrent(true);
+    const q = questions[quizIndex];
+    setPendingAnswer({ questionId: q.id, selectedOptionId: "", answer, confidence, woven: q.woven || undefined });
   }
 
   function handleNext() {
@@ -194,6 +207,26 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
       counterText={fmt(t.quiz.questionXofY, { x: quizIndex + 1, y: questions.length })}
       scoreText={fmt(t.quiz.correctWrong, { a: correctCount, b: wrongCount })}
     >
+      {current.format && current.format !== "choice" && current.answerData ? (
+        <FormatQuestionCard
+          key={current.id}
+          questionId={current.id}
+          question={current.question[locale]}
+          explanation={current.explanation[locale]}
+          prompt={buildPrompt(current.format, current.answerData, current.id)}
+          evaluate={(answer) => {
+            const grade = gradeAnswer(current.format as Exclude<AnswerFormat, "choice">, current.answerData!, answer);
+            return { correct: grade.correct, partial: grade.partial, solution: buildSolution(current.format as Exclude<AnswerFormat, "choice">, current.answerData!) };
+          }}
+          onAnswered={handleFormatAnswered}
+          askConfidence={askConfidence}
+          sourceReference={current.sourceReference}
+          onNext={handleNext}
+          nextLabel={quizIndex + 1 >= questions.length ? t.quiz.finish : t.quiz.next}
+          objectiveLabel={objectiveLabel}
+          difficulty={current.difficulty}
+        />
+      ) : (
       <QuizQuestionCard
         key={current.id}
         question={mapQuestion(current)}
@@ -205,6 +238,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
         objectiveLabel={objectiveLabel}
         difficulty={current.difficulty}
       />
+      )}
       {exitEnabled && !offline && (
         <div className="mt-4">
           <Button variant="ghost" size="sm" onClick={() => void exitToday()} disabled={exiting} data-testid="exit-today">{t.quiz.exitToday}</Button>

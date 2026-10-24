@@ -92,10 +92,10 @@ Ziel: Denkfehler werden korrigiert, solange der Kontext noch präsent ist.
 Ziel: Mehr Abfragen, bei denen die Antwort aktiv erzeugt werden muss. Das festigt Wissen stärker und senkt den Rateanteil.
 
 ### 3.1 Neue Antwortformate (regelbasiert auswertbar)
-- [ ] `ordering`: Schritte in die richtige Reihenfolge bringen (z. B. Troubleshooting-Ablauf). Auswertung: exakte Reihenfolge = richtig; optional Teilpunkte nur für die Anzeige, Rating bleibt binär.
-- [ ] `short_answer`: kurze freie Eingabe (Befehl, Port, Ressourcentyp) mit Liste akzeptierter Antworten und Normalisierung (Groß/Klein, Leerzeichen, Synonyme). Für Befehle die vorhandene Terminal-Logik aus `lib/markdown/simulation.ts` wiederverwenden.
-- [ ] `matching`: Begriffe zuordnen (z. B. Dienst ↔ Zweck).
-- [ ] Datenmodell: neues Feld `questions.answer_format` (`choice` Standard, `ordering`, `short_answer`, `matching`) plus formatabhängige Lösungsdaten; bestehender `type` (kognitive Stufe) bleibt.
+- [x] `ordering`: Schritte in die richtige Reihenfolge bringen (z. B. Troubleshooting-Ablauf). Auswertung: exakte Reihenfolge = richtig; optional Teilpunkte nur für die Anzeige, Rating bleibt binär.
+- [x] `short_answer`: kurze freie Eingabe (Befehl, Port, Ressourcentyp) mit Liste akzeptierter Antworten und Normalisierung (Groß/Klein, Leerzeichen, Anführungszeichen; Synonyme als weitere akzeptierte Antworten). _Offen:_ die Terminal-Logik aus `lib/markdown/simulation.ts` wird nicht mitgenutzt, die Normalisierung ist eigenständig (`lib/questions/answer-formats.ts`).
+- [x] `matching`: Begriffe zuordnen (z. B. Dienst ↔ Zweck).
+- [x] Datenmodell: neues Feld `questions.answer_format` (`choice` Standard, `ordering`, `short_answer`, `matching`) plus formatabhängige Lösungsdaten; bestehender `type` (kognitive Stufe) bleibt.
 - [ ] Generierung und Werkstatt: KI erzeugt für geeignete Lernziele auch diese Formate; Validierung, Vorschau und Bearbeitung in der Kurs-Werkstatt.
 - [ ] Session-Mix: bis 20 % solche Fragen, bevorzugt bei Items mit Rating 4 („sicher“), um Überschätzung früh zu erkennen.
 

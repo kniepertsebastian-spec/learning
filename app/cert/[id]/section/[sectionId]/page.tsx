@@ -130,6 +130,8 @@ export default async function SectionPage({
       })),
     difficulty: q.difficulty,
     sourceReference: q.sourceReference,
+    format: q.answerFormat,
+    answerData: q.answerData,
   }));
 
   // Schwächen aus früheren Lektionen einweben (Flag woven_reviews): bis zu 2, sehen aus wie normale Fragen, zählen nicht fürs Ergebnis.
