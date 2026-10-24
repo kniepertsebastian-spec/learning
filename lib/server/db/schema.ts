@@ -1023,6 +1023,78 @@ export const reviewerComments = pgTable(
   ],
 );
 
+export type ProbeErrorType = "wrong_key" | "two_valid" | "outdated" | "misleading" | "explanation_contradicts";
+
+/**
+ * Probe-Review für neue Prüfer (roadmap_pruefer Phase 5): ein Satz von 15 bis 20 Fragen, davon 4 bis 5 mit von Menschen festgelegten Fehlern.
+ * Die Fragen gehören nicht zu einem Kurs. Fehler und Hinweise sieht nur der Admin; Kandidaten sehen die Fragen ohne diese Angaben.
+ */
+export const probeSets = pgTable("probe_sets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  topic: text("topic").notNull(),
+  language: text("language").$type<Locale>().notNull().default("de"),
+  active: boolean("active").notNull().default(false),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const probeSetItems = pgTable(
+  "probe_set_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    setId: uuid("set_id")
+      .notNull()
+      .references(() => probeSets.id, { onDelete: "cascade" }),
+    orderNum: integer("order_num").notNull(),
+    question: text("question").notNull(),
+    /** Genau vier Optionen, eine als richtig markiert (bei `wrong_key` ist das die falsche Markierung, die die Prüfer entdecken sollen). */
+    options: jsonb("options").$type<Array<{ text: string; isCorrect: boolean }>>().notNull(),
+    explanation: text("explanation").notNull(),
+    /** Eingebauter Fehler (nur Admin); null = die Frage ist in Ordnung. */
+    plantedError: jsonb("planted_error").$type<{ type: ProbeErrorType; note: string } | null>(),
+  },
+  (table) => [index("probe_set_items_set_idx").on(table.setId, table.orderNum)],
+);
+
+export type ProbeReport = { itemId: string; type: ProbeErrorType; text: string };
+
+/** Ein Versuch einer Person. `result` ist nur intern (Admin). */
+export const probeAttempts = pgTable(
+  "probe_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    setId: uuid("set_id")
+      .notNull()
+      .references(() => probeSets.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    reports: jsonb("reports").$type<ProbeReport[]>().notNull().default(sql`'[]'::jsonb`),
+    result: jsonb("result").$type<{ found: number; plantedTotal: number; falseAlarms: number; passed: boolean } | null>(),
+    passed: boolean("passed"),
+  },
+  (table) => [index("probe_attempts_user_idx").on(table.userId, table.startedAt)],
+);
+
+/**
+ * Freigaberechte: wer ein Probe-Review bestanden hat (`probe`) oder von einem Admin freigeschaltet wurde (`admin`, z. B. der persönlich
+ * ausgewählte erste Experte). Ohne Eintrag darf eine Person mit Prüfer-Rolle lesen und kommentieren, aber keinen Kurs freigeben und
+ * kein Profil veröffentlichen.
+ */
+export const reviewerQualifications = pgTable("reviewer_qualifications", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  source: text("source").$type<"probe" | "admin">().notNull(),
+  attemptId: uuid("attempt_id"),
+  grantedByUserId: uuid("granted_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Felder des öffentlichen Prüferprofils, für die die Person einzeln einwilligt (roadmap_pruefer Phase 3). */
 export type ReviewerProfileField = "name" | "country" | "region" | "bio" | "linkedin" | "indexing";
 

@@ -11,6 +11,7 @@ import { describeChanges, getReviewerApprovalView } from "@/lib/server/approvals
 import { getServerLocale } from "@/lib/server/locale";
 import { requireReviewerPage } from "@/lib/server/reviewers/guard";
 import { canReviewCourse, listOwnComments } from "@/lib/server/reviewers/service";
+import { isQualified } from "@/lib/server/reviewers/probe-service";
 import { getReviewerCourseView } from "@/lib/server/reviewers/course-view";
 import { RichText } from "@/components/RichText";
 import { ReviewerApprovalPanel, type ReviewerApprovalData } from "@/components/reviewer/ReviewerApprovalPanel";
@@ -50,7 +51,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
         {de ? "Zurück zu meinen Kursen" : "Back to my courses"}
       </Link>
       <h1 className="mb-4 text-2xl font-semibold">{cert.name}</h1>
-      <ReviewerApprovalPanel certId={cert.id} data={approval} locale={locale} />
+      <ReviewerApprovalPanel certId={cert.id} data={approval} locale={locale} canApprove={await isQualified(user.id)} />
       {tree.map((domain) => (
         <section key={domain.id} className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">{domain.name}</h2>

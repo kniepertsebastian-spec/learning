@@ -104,11 +104,11 @@ Heute vorhanden:
 
 Ziel: Prüfen, ob jemand gut **prüfen** kann, nicht nur Fragen beantworten. Kein generiertes Abschlussquiz: Fehlerhafte KI-Fragen würden echte Experten benachteiligen.
 
-- [ ] Probe-Sets je Themengebiet (Admin-Bereich): 15–20 Fragen, davon 4–5 mit **von Menschen festgelegten** Fehlern. Fehlertypen: falscher Lösungsschlüssel, zwei vertretbare Antworten, veralteter Prüfungsstand, irreführende Formulierung, Erklärung widerspricht der Lösung. Fragen dürfen per KI vorgeschlagen werden, die Fehler und der Lösungsschlüssel werden von einem Admin festgelegt und geprüft.
-- [ ] Kandidat prüft im normalen Prüfer-Werkzeug (gleiche Oberfläche wie Phase 1) und markiert Fragen als fehlerhaft mit Begründung.
-- [ ] Auswertung regelbasiert: gefundene eingebaute Fehler, Fehlalarme; Bestehensregel siehe Platzhalter. Zusätzliche, nicht eingebaute Fehlermeldungen gehen in die Werkstatt-Prüfliste.
-- [ ] Ergebnis nur intern (Admin). Bestanden schaltet Freigaberechte und die Veröffentlichung des Profils frei.
-- [ ] Wiederholung frühestens nach 30 Tagen mit einem anderen Set.
+- [x] Probe-Sets je Themengebiet (Admin-Bereich) _(Fragen schreibt der Admin selbst; KI-Vorschläge dafür fehlen noch.)_: 15–20 Fragen, davon 4–5 mit **von Menschen festgelegten** Fehlern. Fehlertypen: falscher Lösungsschlüssel, zwei vertretbare Antworten, veralteter Prüfungsstand, irreführende Formulierung, Erklärung widerspricht der Lösung. Fragen dürfen per KI vorgeschlagen werden, die Fehler und der Lösungsschlüssel werden von einem Admin festgelegt und geprüft.
+- [x] Kandidat prüft im normalen Prüfer-Werkzeug _(eigene Seite `/reviewer/probe` im Prüfer-Bereich)_ (gleiche Oberfläche wie Phase 1) und markiert Fragen als fehlerhaft mit Begründung.
+- [x] Auswertung regelbasiert _(zusätzliche Meldungen stehen in der Ergebnisansicht des Admins statt in der Werkstatt-Prüfliste)_: gefundene eingebaute Fehler, Fehlalarme; Bestehensregel siehe Platzhalter. Zusätzliche, nicht eingebaute Fehlermeldungen gehen in die Werkstatt-Prüfliste.
+- [x] Ergebnis nur intern (Admin). Bestanden schaltet Freigaberechte und die Veröffentlichung des Profils frei.
+- [x] Wiederholung frühestens nach 30 Tagen mit einem anderen Set.
 
 **Akzeptanzkriterium:** Ein Kandidat, der 4 von 5 eingebauten Fehlern findet und höchstens 2 Fehlalarme hat, erhält Freigaberechte; einer mit 2 von 5 nicht.
 

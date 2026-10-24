@@ -10,7 +10,7 @@ const authMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/server/auth", () => ({ auth: authMock }));
 
 import { getDb } from "@/lib/server/db/client";
-import { certifications, courseApprovals, courseReviewers, organizations, questions, reviewerComments, sections, users, type UserRole } from "@/lib/server/db/schema";
+import { certifications, courseApprovals, courseReviewers, organizations, questions, reviewerComments, reviewerQualifications, sections, users, type UserRole } from "@/lib/server/db/schema";
 import { POST as commentRoute } from "@/app/api/reviewer/courses/[certId]/comments/route";
 import { POST as approveRoute } from "@/app/api/reviewer/courses/[certId]/approve/route";
 import { GET as adminApprovalRoute } from "@/app/api/admin/certifications/[certId]/approval/route";
@@ -116,6 +116,9 @@ run("Prüfer-Rolle (echte DB)", () => {
 
   it("Freigabe durch den Prüfer: nur mit Bestätigung, nur zugewiesener Kurs, mit seiner Kennung im Protokoll", async () => {
     signInAs(u.reviewer);
+    // Ohne Freischaltung (Probe-Review bestanden oder vom Betreiber) darf niemand freigeben.
+    expect((await approveRoute(req({ displayName: "Dr. Prüfer", confirmed: true }), certCtx(c.g1.certId))).status).toBe(403);
+    await getDb().insert(reviewerQualifications).values({ userId: u.reviewer, source: "admin" });
     expect((await approveRoute(req({ displayName: "Dr. Prüfer", confirmed: false }), certCtx(c.g1.certId))).status).toBe(400);
     expect((await approveRoute(req({ displayName: "Dr. Prüfer", confirmed: true }), certCtx(c.g2.certId))).status).toBe(404);
     expect((await approveRoute(req({ displayName: "Dr. Prüfer", confirmed: true }), certCtx(internalCertId))).status).toBe(404);

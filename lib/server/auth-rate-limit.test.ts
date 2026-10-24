@@ -26,6 +26,23 @@ describe("auth rate limits", () => {
     expect(checkLoginRateLimit("9.9.9.9", "another@example.com").allowed).toBe(true);
   });
 
+  it("der E2E-Faktor lockert nur die Login-Limits und nur wenn gesetzt", () => {
+    process.env.LOGIN_RATE_LIMIT_FACTOR = "5";
+    try {
+      for (let i = 0; i < 50; i++) expect(checkLoginRateLimit(`20.0.0.${i}`, "factor@example.com").allowed).toBe(true);
+      expect(checkLoginRateLimit("20.0.1.1", "factor@example.com").allowed).toBe(false);
+    } finally {
+      delete process.env.LOGIN_RATE_LIMIT_FACTOR;
+    }
+    process.env.LOGIN_RATE_LIMIT_FACTOR = "abc"; // ungültig: Standard
+    try {
+      for (let i = 0; i < 10; i++) checkLoginRateLimit(`21.0.0.${i}`, "bad@example.com");
+      expect(checkLoginRateLimit("21.0.1.1", "bad@example.com").allowed).toBe(false);
+    } finally {
+      delete process.env.LOGIN_RATE_LIMIT_FACTOR;
+    }
+  });
+
   it("sperrt Registrierung nach 5 Versuchen je IP", () => {
     for (let i = 0; i < 5; i++) {
       expect(checkRegistrationRateLimit("2.2.2.2").allowed).toBe(true);

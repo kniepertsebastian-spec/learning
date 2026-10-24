@@ -19,7 +19,7 @@ export interface ReviewerApprovalData {
 }
 
 /** Freigabe durch den Prüfer: Stand, nur der Diff seit seiner letzten Freigabe, Bestätigung. */
-export function ReviewerApprovalPanel({ certId, data, locale }: { certId: string; data: ReviewerApprovalData; locale: "de" | "en" }) {
+export function ReviewerApprovalPanel({ certId, data, locale, canApprove = true }: { certId: string; data: ReviewerApprovalData; locale: "de" | "en"; canApprove?: boolean }) {
   const router = useRouter();
   const de = locale === "de";
   const [name, setName] = useState(data.suggestedName);
@@ -74,9 +74,10 @@ export function ReviewerApprovalPanel({ certId, data, locale }: { certId: string
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4" data-testid="reviewer-confirm" />
             <span>{de ? "Ich habe die Inhalte dieser Version fachlich geprüft." : "I have professionally reviewed the content of this version."}</span>
           </label>
-          <Button size="sm" className="w-fit" disabled={busy || !confirmed || name.trim().length < 2} onClick={() => void approve()} data-testid="reviewer-approve">
+          <Button size="sm" className="w-fit" disabled={busy || !canApprove || !confirmed || name.trim().length < 2} onClick={() => void approve()} data-testid="reviewer-approve">
             {de ? "Freigeben" : "Approve"}
           </Button>
+          {!canApprove && <p className="text-warning-text" data-testid="reviewer-approve-locked">{de ? "Freigeben kannst du erst nach dem Probe-Review (oder wenn der Betreiber dich freischaltet)." : "You can approve only after the trial review (or when the operator clears you)."}</p>}
           {error && <p role="alert" className="text-danger-text">{error}</p>}
         </div>
       )}

@@ -3,6 +3,7 @@
 Öffentliches Profil für fachliche Prüfer (`roadmap_pruefer.md` Phase 3), Paket 4.7a.
 
 ## Für Prüfer
+- **Voraussetzung zum Veröffentlichen:** bestandenes Probe-Review oder Freischaltung durch den Betreiber (`docs/PROBE-REVIEW.md`).
 - **Pflegen:** `/reviewer/profile` (Link auf `/reviewer`). Name, Land, optional Region, Kurzvorstellung (de/en) und LinkedIn.
 - **Einwilligung je Feld:** Jedes Feld hat sein eigenes „Öffentlich zeigen“; Erfahrungseinträge und Zertifikate je Eintrag. Ohne Haken bleibt es privat. Der Zeitpunkt der Einwilligung wird gespeichert (`reviewer_profiles.consent`). Suchmaschinen dürfen das Profil nur bei ausdrücklicher Einwilligung („Indexierung“) finden, sonst `noindex`.
 - **Veröffentlichen:** Voraussetzung sind Name und Land (freigegeben) und mindestens ein öffentlicher Erfahrungseintrag oder ein öffentliches Zertifikat. Ein veröffentlichtes Profil darf nicht unvollständig werden; dafür vorher zurückziehen.
@@ -32,4 +33,3 @@ Tabellen `reviewer_profiles`, `reviewer_experience`, `reviewer_certifications` (
 - Siegel auf **Abschlussbescheinigungen**: Eine Bescheinigung über den Kursabschluss gibt es im Produkt noch nicht (das PDF im Firmenbereich ist das Zertifikats-Register). Sobald sie existiert, baut sie das Siegel aus `getCourseSeal` und `reviewersText` (`lib/reviewers/seal.ts`).
 - Siegel auf der Dashboard-Kachel und Geltungsbereich je Domain (Freigaben gelten bisher für den ganzen Kurs).
 - Rechtliches (`roadmap_pruefer.md` Phase 7): Expertenvertrag, Datenschutzerklärung für öffentliche Prüferprofile, Prüfung des Siegel-Hinweistexts. Das ist Organisation, kein Code, und sollte vor der ersten Veröffentlichung eines echten Profils geklärt sein.
-- Die Freischaltung der Veröffentlichung durch das Probe-Review (Paket 4.8) gibt es noch nicht.
