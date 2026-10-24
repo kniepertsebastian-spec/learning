@@ -5,7 +5,7 @@
 import type { ReviewerExperienceKind, ReviewerProfileField } from "@/lib/server/db/schema";
 import type { Localized } from "@/lib/types";
 
-export const PROFILE_FIELDS: readonly ReviewerProfileField[] = ["name", "country", "region", "bio", "linkedin", "indexing"];
+export const PROFILE_FIELDS: readonly ReviewerProfileField[] = ["name", "country", "region", "bio", "linkedin", "indexing", "photo"];
 export const EXPERIENCE_KINDS: readonly ReviewerExperienceKind[] = ["job", "project", "teaching"];
 /** Erinnerung an ablaufende Zertifikate: so viele Tage vorher. */
 export const CERT_REMINDER_DAYS = 60;
@@ -136,13 +136,15 @@ export interface PublicProfile {
   region: string | null;
   bio: Localized<string> | null;
   linkedinUrl: string | null;
+  /** Adresse des Fotos (mit Versionsnummer gegen Zwischenspeicher), nur mit Einwilligung und vorhandenem Foto. */
+  photoUrl: string | null;
   indexable: boolean;
   experience: Array<Omit<ExperienceData, "id" | "isPublic">>;
   certifications: Array<{ vendor: string; name: string; earnedOn: string; validUntil: string | null; verificationUrl: string; verifiedAt: string | null; status: CertStatus }>;
 }
 
 /** Was die Öffentlichkeit sehen darf: nur eingewilligte Felder und öffentliche Einträge; null, solange nicht veröffentlicht. */
-export function publicView(input: { slug: string; published: boolean; profile: ProfileData; experience: ExperienceData[]; certifications: CertificationData[]; today: Date }): PublicProfile | null {
+export function publicView(input: { slug: string; published: boolean; profile: ProfileData; experience: ExperienceData[]; certifications: CertificationData[]; today: Date; photoVersion?: number | null }): PublicProfile | null {
   const { profile } = input;
   if (!input.published || !profile.consent.name || !profile.consent.country) return null;
   return {
@@ -152,6 +154,7 @@ export function publicView(input: { slug: string; published: boolean; profile: P
     region: profile.consent.region ? profile.region : null,
     bio: profile.consent.bio ? profile.bio : null,
     linkedinUrl: profile.consent.linkedin ? profile.linkedinUrl : null,
+    photoUrl: profile.consent.photo && input.photoVersion ? `/api/experts/${input.slug}/photo?v=${input.photoVersion}` : null,
     indexable: Boolean(profile.consent.indexing),
     experience: input.experience.filter((e) => e.isPublic).map((e) => ({ kind: e.kind, title: e.title, organization: e.organization, periodFrom: e.periodFrom, periodTo: e.periodTo, description: e.description })),
     certifications: input.certifications

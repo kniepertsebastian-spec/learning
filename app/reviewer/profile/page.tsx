@@ -16,6 +16,7 @@ export default async function ReviewerProfilePage() {
     profile: own.profile ? { ...own.profile, bio: own.profile.bio } : null,
     experience: own.experience,
     certifications: own.certifications.map((c) => ({ id: c.id, vendor: c.vendor, name: c.name, earnedOn: c.earnedOn, validUntil: c.validUntil, verificationUrl: c.verificationUrl, isPublic: c.isPublic, verifiedAt: c.verifiedAt ? c.verifiedAt.toISOString() : null })),
+    photoVersion: own.photoVersion,
   };
   return (
     <div className="flex flex-col gap-4">

@@ -13,11 +13,28 @@ export type OwnProfileJson = {
   profile: (Omit<ProfileData, "bio"> & { bio: { de: string; en: string } | null; slug: string; published: boolean }) | null;
   experience: ExperienceData[];
   certifications: Array<Omit<CertificationData, "verifiedAt"> & { verifiedAt: string | null }>;
+  photoVersion?: number | null;
 };
 type Courses = Array<{ slug: string; name: string; versionLabel: string; approvedAt: string }>;
 
 const fieldCls = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm";
 const KINDS: ReviewerExperienceKind[] = ["job", "project", "teaching"];
+
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+
+async function upload(file: File): ReturnType<typeof call> {
+  if (file.size > MAX_PHOTO_BYTES) return { ok: false, error: "Das Foto ist größer als 2 MB.", problems: [] };
+  const body = new FormData();
+  body.append("file", file);
+  try {
+    const res = await fetch("/api/reviewer/profile/photo", { method: "POST", body });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok) return { ok: true, data: json as OwnProfileJson };
+    return { ok: false, error: (json as { error?: string }).error ?? "Das hat nicht geklappt.", problems: [] };
+  } catch {
+    return { ok: false, error: "Netzwerkfehler", problems: [] };
+  }
+}
 
 async function call(url: string, method: string, body?: unknown): Promise<{ ok: true; data: OwnProfileJson } | { ok: false; error: string; problems: string[] }> {
   try {
@@ -46,7 +63,7 @@ export function ReviewerProfileEditor({ initial, courses, locale }: { initial: O
     bioDe: p?.bio?.de ?? "",
     bioEn: p?.bio?.en ?? "",
     linkedinUrl: p?.linkedinUrl ?? "",
-    consent: { name: Boolean(p?.consent.name), country: Boolean(p?.consent.country), region: Boolean(p?.consent.region), bio: Boolean(p?.consent.bio), linkedin: Boolean(p?.consent.linkedin), indexing: Boolean(p?.consent.indexing) } as Record<ReviewerProfileField, boolean>,
+    consent: { name: Boolean(p?.consent.name), country: Boolean(p?.consent.country), region: Boolean(p?.consent.region), bio: Boolean(p?.consent.bio), linkedin: Boolean(p?.consent.linkedin), indexing: Boolean(p?.consent.indexing), photo: Boolean(p?.consent.photo) } as Record<ReviewerProfileField, boolean>,
   });
 
   async function run(action: () => ReturnType<typeof call>, success: string) {
@@ -85,8 +102,11 @@ export function ReviewerProfileEditor({ initial, courses, locale }: { initial: O
         experience: data.experience,
         certifications: data.certifications.map((c) => ({ ...c, verifiedAt: c.verifiedAt ? new Date(c.verifiedAt) : null })),
         today: new Date(),
+        photoVersion: data.photoVersion ?? null,
       })
     : null;
+  // Die Vorschau zeigt das eigene Foto auch vor der Veröffentlichung (die öffentliche Adresse gibt es erst danach).
+  if (preview?.photoUrl) preview.photoUrl = `/api/reviewer/profile/photo?v=${data.photoVersion}`;
 
   return (
     <div className="flex flex-col gap-6" data-testid="reviewer-profile-editor">
@@ -145,6 +165,39 @@ export function ReviewerProfileEditor({ initial, courses, locale }: { initial: O
             <input className={fieldCls} value={form.linkedinUrl} onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })} data-testid="profile-linkedin" />
             {consentBox("linkedin", `${show}: LinkedIn`)}
           </label>
+          {p && (
+            <div className="sm:col-span-2" data-testid="photo-section">
+              <span className="mb-1 block text-sm font-medium">{de ? "Foto (optional)" : "Photo (optional)"}</span>
+              <div className="flex flex-wrap items-center gap-3">
+                {data.photoVersion ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- eigenes Foto, nicht optimierbar und nur für die Person selbst
+                  <img src={`/api/reviewer/profile/photo?v=${data.photoVersion}`} alt={de ? "Dein Profilfoto" : "Your profile photo"} width={72} height={72} className="h-[72px] w-[72px] rounded-full border border-border object-cover" data-testid="photo-preview" />
+                ) : (
+                  <span className="text-sm text-subtle">{de ? "Noch kein Foto." : "No photo yet."}</span>
+                )}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label={de ? "Foto wählen" : "Choose photo"}
+                  data-testid="photo-input"
+                  disabled={busy}
+                  className="text-sm"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void run(() => upload(file), de ? "Foto gespeichert." : "Photo saved.");
+                  }}
+                />
+                {data.photoVersion && (
+                  <Button variant="ghost" size="sm" disabled={busy} onClick={() => void run(() => call("/api/reviewer/profile/photo", "DELETE"), de ? "Foto gelöscht." : "Photo deleted.")} data-testid="photo-delete">
+                    {de ? "Foto löschen" : "Delete photo"}
+                  </Button>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-subtle">{de ? "PNG, JPEG oder WebP, höchstens 2 MB. Es wird nur gezeigt, wenn du es unten freigibst; mit dem Rückzug deines Profils wird es gelöscht." : "PNG, JPEG or WebP, up to 2 MB. It is only shown if you release it below; withdrawing your profile deletes it."}</p>
+              {consentBox("photo", `${show}: ${de ? "Foto" : "photo"}`)}
+            </div>
+          )}
           <div className="sm:col-span-2">{consentBox("indexing", de ? "Suchmaschinen dürfen mein Profil finden (Indexierung)" : "Search engines may index my profile")}</div>
         </div>
         <Button className="mt-4" onClick={() => void saveProfile()} disabled={busy || !form.firstName.trim() || !form.lastName.trim() || !form.country.trim()} data-testid="profile-save">

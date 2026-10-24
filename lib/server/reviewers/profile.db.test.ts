@@ -7,9 +7,10 @@ const TEST_DB = process.env.TEST_DATABASE_URL;
 if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 
 import { getDb } from "@/lib/server/db/client";
-import { certifications, courseApprovals, reviewerCertifications, reviewerQualifications, users } from "@/lib/server/db/schema";
+import { certifications, courseApprovals, reviewerCertifications, reviewerPhotos, reviewerQualifications, users } from "@/lib/server/db/schema";
 import type { MailMessage } from "@/lib/server/mail/mailer";
 import { seedUser } from "@/lib/server/psrp/test-db";
+import { deletePhoto, getOwnPhoto, getPublicPhoto, MAX_PHOTO_BYTES, savePhoto } from "./photo-service";
 import { deleteCertification, getOwnProfile, getPublicProfile, ProfileError, publicIdentities, publishProfile, runCertificateReminders, saveCertification, saveExperience, saveProfile, setCertificationVerified, withdrawProfile } from "./profile-service";
 
 const run = TEST_DB ? describe : describe.skip;
@@ -156,5 +157,52 @@ run("Expertenprofil (echte DB)", () => {
     await getDb().delete(users).where(eq(users.id, id));
     expect(await getPublicProfile(slug)).toBeNull();
     expect((await getDb().select().from(reviewerCertifications).where(eq(reviewerCertifications.userId, id))).length).toBe(0);
+  });
+
+  describe("Foto", () => {
+    const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)]);
+    const file = (over: Partial<{ filename: string; mimeType: string; data: Buffer }> = {}) => ({ filename: "me.png", mimeType: "image/png", data: PNG, ...over });
+    async function published(consent: Record<string, boolean>) {
+      const id = await reviewer();
+      await saveProfile(id, base({ consent: { name: true, country: true, ...consent } }));
+      await saveCertification(id, cert());
+      await publishProfile(id);
+      return { id, slug: (await getOwnProfile(id)).profile!.slug };
+    }
+
+    it("nimmt nur echte Bilder bis 2 MB an und braucht ein Profil", async () => {
+      const id = await reviewer();
+      await expect(savePhoto(id, file())).rejects.toBeInstanceOf(ProfileError); // noch kein Profil
+      await saveProfile(id, base());
+      await expect(savePhoto(id, file({ data: Buffer.from("<html>kein Bild</html>") }))).rejects.toBeInstanceOf(ProfileError);
+      await expect(savePhoto(id, file({ filename: "me.gif", mimeType: "image/gif" }))).rejects.toBeInstanceOf(ProfileError);
+      await expect(savePhoto(id, file({ data: Buffer.concat([PNG, Buffer.alloc(MAX_PHOTO_BYTES)]) }))).rejects.toBeInstanceOf(ProfileError);
+      expect(await getOwnPhoto(id)).toBeNull();
+      await savePhoto(id, file());
+      expect((await getOwnPhoto(id))?.mimeType).toBe("image/png");
+      expect((await getOwnProfile(id)).photoVersion).toBeGreaterThan(0);
+      await savePhoto(id, file({ filename: "me.jpg", mimeType: "image/jpeg", data: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]) })); // ersetzt
+      expect((await getOwnPhoto(id))?.mimeType).toBe("image/jpeg");
+      expect(await deletePhoto(id)).toBe(true);
+      expect(await getOwnPhoto(id)).toBeNull();
+    });
+
+    it("öffentlich nur mit veröffentlichtem Profil UND Einwilligung; der Rückzug löscht das Foto", async () => {
+      const without = await published({});
+      await savePhoto(without.id, file());
+      expect(await getPublicPhoto(without.slug)).toBeNull(); // keine Einwilligung
+
+      const withConsent = await published({ photo: true });
+      expect(await getPublicPhoto(withConsent.slug)).toBeNull(); // noch kein Foto
+      await savePhoto(withConsent.id, file());
+      expect((await getPublicPhoto(withConsent.slug))?.mimeType).toBe("image/png");
+      expect((await getPublicProfile(withConsent.slug))?.profile.photoUrl).toContain(`/api/experts/${withConsent.slug}/photo?v=`);
+      expect((await getPublicProfile(without.slug))?.profile.photoUrl).toBeNull();
+
+      await withdrawProfile(withConsent.id);
+      expect(await getPublicPhoto(withConsent.slug)).toBeNull();
+      expect(await getDb().select().from(reviewerPhotos).where(eq(reviewerPhotos.userId, withConsent.id))).toHaveLength(0);
+      expect(await getPublicPhoto("gibt-es-nicht")).toBeNull();
+    });
   });
 });

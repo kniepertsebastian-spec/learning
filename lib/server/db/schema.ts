@@ -1096,7 +1096,7 @@ export const reviewerQualifications = pgTable("reviewer_qualifications", {
 });
 
 /** Felder des öffentlichen Prüferprofils, für die die Person einzeln einwilligt (roadmap_pruefer Phase 3). */
-export type ReviewerProfileField = "name" | "country" | "region" | "bio" | "linkedin" | "indexing";
+export type ReviewerProfileField = "name" | "country" | "region" | "bio" | "linkedin" | "indexing" | "photo";
 
 /**
  * Expertenprofil einer Person mit Prüfer-Rolle. Öffentlich ist nur, was die Person einzeln freigegeben hat: `consent` hält je Feld den Zeitpunkt
@@ -2333,6 +2333,20 @@ export const companyDocumentImages = pgTable(
   },
   (table) => [index("company_document_images_doc_idx").on(table.documentId)],
 );
+
+/**
+ * Profilfoto eines Prüfers: höchstens eines je Person, als Bild in der Datenbank (wie die Screenshots der Firmendokumente), damit kein
+ * zusätzliches Volume nötig ist. Öffentlich nur mit veröffentlichtem Profil UND Einwilligung `photo`; der Rückzug löscht es.
+ */
+export const reviewerPhotos = pgTable("reviewer_photos", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  data: bytea("data").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /**
  * Anfrage einer Firma nach einem allgemeinen Lernpfad. Entweder wird ein vorhandener Lernpfad gewählt
