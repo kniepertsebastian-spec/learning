@@ -150,7 +150,7 @@ Quelle: `roadmap_didaktik.md`, Phase 10
 
 ### Paket 4.5 – Neue Antwortformate · L
 Quelle: `roadmap_didaktik.md`, Phase 3
-- [ ] 4.5a Datenmodell `answer_format`, Formate `ordering`, `short_answer`, `matching` in Session, Lektionstest und Offline-Leser · L
+- [x] 4.5a Datenmodell `answer_format`, Formate `ordering`, `short_answer`, `matching` in Session, Lektionstest und Offline-Leser · L
 - [ ] 4.5b Generierung und Werkstatt für die neuen Formate · M
 - [ ] 4.5c Modus „Antwort zuerst überlegen“ und Selbsterklärung · S
 

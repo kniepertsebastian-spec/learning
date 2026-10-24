@@ -61,7 +61,7 @@ async function buildTest(domainId: string): Promise<Omit<PlacementTest, "skipAll
   const questionRows = await db
     .select()
     .from(questions)
-    .where(and(inArray(questions.objectiveId, objectiveRows.map((o) => o.id)), eq(questions.stale, false), eq(questions.probeOnly, false)))
+    .where(and(inArray(questions.objectiveId, objectiveRows.map((o) => o.id)), eq(questions.stale, false), eq(questions.probeOnly, false), eq(questions.answerFormat, "choice")))
     .orderBy(asc(questions.humanId));
   const picked: Array<{ objective: (typeof objectiveRows)[number]; question: (typeof questionRows)[number] }> = [];
   for (const objective of objectiveRows) {

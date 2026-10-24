@@ -35,6 +35,8 @@ import { createRecallCheck, planRecallCheck, recordRecallResults } from "@/lib/s
 import { detectStruggles, loadConfusion, pausedItemIds, planUnderstandTask, recordUnderstandResults } from "@/lib/server/understanding/service";
 import { chooseSessionVariants } from "@/lib/server/variants/rotation";
 import { flagOutlierVariants } from "@/lib/server/variants/outliers";
+import { buildPrompt, sanitizeAnswer, type AnswerFormat, type AnswerPayload, type AnswerPrompt } from "@/lib/questions/answer-formats";
+import { gradeQuestionAnswer } from "@/lib/server/questions/grading";
 import { buildAnswerReveal, type AnswerReveal } from "./answer-reveal";
 import {
   buildDailyQueue,
@@ -229,6 +231,9 @@ export interface StudySessionItemContent {
     questionId: string;
     question: Localized<string>;
     options: Array<{ id: string; text: Localized<string>; orderNum: number }>;
+    /** Antwortformat; fehlt bei Auswahlfragen. Bei den anderen Formaten sind `options` leer und `prompt` enthält die Aufgabe (ohne Lösung). */
+    format?: AnswerFormat;
+    prompt?: AnswerPrompt;
   };
   lesson?: {
     sectionId: string;
@@ -355,7 +360,12 @@ export async function getStudySessionWithContent(
         itemId: item.id,
         category: item.category,
         outcome: item.outcome,
-        question: { questionId: q.id, question: q.question, options },
+        question: {
+          questionId: q.id,
+          question: q.question,
+          options,
+          ...(q.answerFormat !== "choice" && q.answerData ? { format: q.answerFormat, prompt: buildPrompt(q.answerFormat, q.answerData, `${item.id}`) } : {}),
+        },
         ...(item.conceptStruggleId && struggleById.has(item.conceptStruggleId)
           ? { understand: { conceptStruggleId: item.conceptStruggleId, conceptName: struggleById.get(item.conceptStruggleId)!.name, confusion: struggleById.get(item.conceptStruggleId)!.confusion, help: struggleById.get(item.conceptStruggleId)!.help, bridge: struggleById.get(item.conceptStruggleId)!.bridge } }
           : {}),
@@ -758,6 +768,8 @@ async function selectFallbackLessonSections(
 export interface StudySessionAnswerInput {
   itemId: string;
   selectedOptionId: string;
+  /** Antwort bei den neuen Formaten (Reihenfolge, Kurzantwort, Zuordnung); `selectedOptionId` ist dann leer. */
+  answer?: AnswerPayload | null;
   /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - optional. */
   confidence?: AnswerConfidence;
 }
@@ -804,10 +816,11 @@ export async function completeStudySession(
   const shownQuestionId = (item: (typeof items)[number]) => item.variantQuestionId ?? item.referenceId;
   const questionIds = items.map(shownQuestionId);
 
-  const optionRows =
-    questionIds.length > 0
-      ? await db.select().from(questionOptions).where(inArray(questionOptions.questionId, questionIds))
-      : [];
+  const [optionRows, shownQuestions] = await Promise.all([
+    questionIds.length > 0 ? db.select().from(questionOptions).where(inArray(questionOptions.questionId, questionIds)) : Promise.resolve([]),
+    questionIds.length > 0 ? db.select({ id: questions.id, answerFormat: questions.answerFormat, answerData: questions.answerData }).from(questions).where(inArray(questions.id, questionIds)) : Promise.resolve([]),
+  ]);
+  const formatOf = new Map(shownQuestions.map((q) => [q.id, q]));
 
   const results: StudySessionAttemptResult["results"] = [];
   const variantByItemId = new Map(items.filter((i) => i.variantQuestionId).map((i) => [i.id, i.variantQuestionId as string]));
@@ -818,20 +831,25 @@ export async function completeStudySession(
   for (const answer of answers) {
     const item = itemById.get(answer.itemId);
     if (!item) continue;
-    const correctOption = optionRows.find((o) => o.questionId === shownQuestionId(item) && o.isCorrect);
-    const isCorrect = !!correctOption && correctOption.id === answer.selectedOptionId;
-    if (isCorrect) correctCount++;
+    const shown = formatOf.get(shownQuestionId(item));
+    const grade = gradeQuestionAnswer(
+      { answerFormat: shown?.answerFormat ?? "choice", answerData: shown?.answerData ?? null },
+      optionRows.filter((o) => o.questionId === shownQuestionId(item)),
+      { selectedOptionId: answer.selectedOptionId, answer: answer.answer },
+    );
+    if (grade.correct) correctCount++;
     results.push({
       itemId: item.id,
       questionId: item.referenceId,
-      isCorrect,
-      correctOptionId: correctOption?.id ?? "",
+      isCorrect: grade.correct,
+      correctOptionId: grade.correctOptionId,
     });
   }
 
   if (results.length > 0) {
     const confidenceByItemId = new Map(answers.map((a) => [a.itemId, a.confidence]));
     const selectedByItemId = new Map(answers.map((a) => [a.itemId, a.selectedOptionId]));
+    const payloadByItemId = new Map(answers.map((a) => [a.itemId, sanitizeAnswer(a.answer)]));
     await Promise.all(
       results.map((r) =>
         db
@@ -840,6 +858,7 @@ export async function completeStudySession(
             outcome: r.isCorrect ? "correct" : "incorrect",
             confidence: confidenceByItemId.get(r.itemId) ?? null,
             selectedOptionId: selectedByItemId.get(r.itemId) || null,
+            answer: payloadByItemId.get(r.itemId) ?? null,
           })
           .where(eq(studySessionItems.id, r.itemId)),
       ),
@@ -905,6 +924,7 @@ export async function revealStudySessionAnswer(
   userId: string,
   itemId: string,
   selectedOptionId: string,
+  answer?: AnswerPayload | null,
 ): Promise<StudySessionRevealResult> {
   const db = getDb();
   const [session] = await db
@@ -945,7 +965,7 @@ export async function revealStudySessionAnswer(
     .orderBy(asc(sections.orderNum))
     .limit(1);
 
-  const reveal = buildAnswerReveal(question, optionRows, selectedOptionId);
+  const reveal = buildAnswerReveal(question, optionRows, selectedOptionId, answer);
   const stats = reveal.isCorrect ? null : await firstTryStats(item.referenceId).catch(() => null);
   const de = platformStatText(stats, "de");
   const en = platformStatText(stats, "en");
@@ -972,7 +992,7 @@ export async function exitStudySession(sessionId: string, userId: string, answer
   const db = getDb();
   const [session] = await db.select().from(studySessions).where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId))).limit(1);
   if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
-  const answered = answers.filter((a) => a.selectedOptionId);
+  const answered = answers.filter((a) => a.selectedOptionId || a.answer);
   const items = await db.select({ id: studySessionItems.id, referenceId: studySessionItems.referenceId }).from(studySessionItems).where(eq(studySessionItems.sessionId, sessionId));
   const result = await completeStudySession(sessionId, userId, answered);
   await db.update(studySessions).set({ exitedAt: new Date() }).where(eq(studySessions.id, sessionId));

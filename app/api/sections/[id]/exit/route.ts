@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id: sectionId } = await params;
   if (await isSectionHidden(userId, sectionId)) return NextResponse.json({ error: "Section not found" }, { status: 404 });
   const body = (await request.json()) as { answers?: SectionQuizAnswerInput[]; openQuestionId?: string };
-  const answered = (body.answers ?? []).filter((a) => a.selectedOptionId);
+  const answered = (body.answers ?? []).filter((a) => a.selectedOptionId || a.answer);
   const result = await exitSectionQuiz(userId, sectionId, body.openQuestionId ?? null, () => (answered.length > 0 ? recordSectionQuizAttempt(userId, sectionId, answered) : Promise.resolve()));
   if (!result) return NextResponse.json({ error: "Section not found" }, { status: 404 });
   return NextResponse.json(result);

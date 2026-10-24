@@ -15,6 +15,8 @@ import {
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { ObjectiveProgressService } from "@/lib/server/progress/service";
 import { recordReviewOutcomes } from "@/lib/server/review/service";
+import { sanitizeAnswer, type AnswerPayload } from "@/lib/questions/answer-formats";
+import { gradeQuestionAnswer } from "@/lib/server/questions/grading";
 import type { AnswerConfidence } from "@/lib/types";
 
 export class SectionNotFoundError extends Error {}
@@ -22,6 +24,8 @@ export class SectionNotFoundError extends Error {}
 export interface SectionQuizAnswerInput {
   questionId: string;
   selectedOptionId: string;
+  /** Antwort bei den neuen Formaten (Reihenfolge, Kurzantwort, Zuordnung); `selectedOptionId` ist dann leer. */
+  answer?: AnswerPayload | null;
   /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - optional,
    * fehlt z. B. bei alten, noch nicht aktualisierten Offline-Paketen. */
   confidence?: AnswerConfidence;
@@ -82,21 +86,26 @@ export async function recordSectionQuizAttempt(
   const attemptId = attemptInserted[0].id;
 
   const questionIds = answers.map((a) => a.questionId);
-  const optionRows =
-    questionIds.length > 0
-      ? await db.select().from(questionOptions).where(inArray(questionOptions.questionId, questionIds))
-      : [];
+  const [optionRows, formatRows] = await Promise.all([
+    questionIds.length > 0 ? db.select().from(questionOptions).where(inArray(questionOptions.questionId, questionIds)) : Promise.resolve([]),
+    questionIds.length > 0 ? db.select({ id: questions.id, answerFormat: questions.answerFormat, answerData: questions.answerData }).from(questions).where(inArray(questions.id, questionIds)) : Promise.resolve([]),
+  ]);
+  const formatOf = new Map(formatRows.map((q) => [q.id, q]));
 
   const results: SectionQuizAttemptResult["results"] = [];
   let correctCount = 0;
   for (const answer of answers) {
-    const correctOption = optionRows.find((o) => o.questionId === answer.questionId && o.isCorrect);
-    const isCorrect = !!correctOption && correctOption.id === answer.selectedOptionId;
-    if (isCorrect) correctCount++;
+    const format = formatOf.get(answer.questionId);
+    const grade = gradeQuestionAnswer(
+      { answerFormat: format?.answerFormat ?? "choice", answerData: format?.answerData ?? null },
+      optionRows.filter((o) => o.questionId === answer.questionId),
+      { selectedOptionId: answer.selectedOptionId, answer: answer.answer },
+    );
+    if (grade.correct) correctCount++;
     results.push({
       questionId: answer.questionId,
-      isCorrect,
-      correctOptionId: correctOption?.id ?? "",
+      isCorrect: grade.correct,
+      correctOptionId: grade.correctOptionId,
     });
   }
 
@@ -106,6 +115,7 @@ export async function recordSectionQuizAttempt(
         quizAttemptId: attemptId,
         questionId: a.questionId,
         selectedOptionId: a.selectedOptionId || null,
+        answer: sanitizeAnswer(a.answer),
         isCorrect: results.find((r) => r.questionId === a.questionId)?.isCorrect ?? false,
         confidence: a.confidence ?? null,
       })),

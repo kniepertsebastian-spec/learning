@@ -6,6 +6,8 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import type { AnswerConfidence, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 import { ConfidenceBar } from "@/components/quiz/ConfidenceBar";
+import { FormatQuestionCard, type FormatEvaluation } from "@/components/quiz/FormatQuestionCard";
+import { buildPrompt, buildSolution, gradeAnswer, type AnswerData, type AnswerFormat, type AnswerPayload, type AnswerPrompt, type AnswerSolution } from "@/lib/questions/answer-formats";
 import { FeedbackPanel } from "@/components/quiz/FeedbackPanel";
 import { FocusFrame } from "@/components/quiz/FocusFrame";
 import type { OptionState } from "@/components/quiz/OptionTile";
@@ -42,6 +44,10 @@ interface SessionQuestionItem {
   /** Nur im Offline-Paket: Erklärung für das Sofort-Feedback ohne Server. */
   explanation?: { de: string; en: string };
   sourceReference?: string | null;
+  /** Neue Antwortformate (Reihenfolge, Kurzantwort, Zuordnung): online kommt die Aufgabe als `prompt` (ohne Lösung), offline die Lösung als `answerData`. */
+  format?: AnswerFormat;
+  prompt?: AnswerPrompt;
+  answerData?: AnswerData | null;
 }
 
 interface SessionLessonItem {
@@ -63,7 +69,22 @@ interface QuestionReveal {
   sourceReference: string | null;
   reviewSectionId: string | null;
   platformNote?: { de: string; en: string } | null;
+  /** Neue Formate: Lösung und Anteil richtiger Teile. */
+  isCorrect?: boolean;
+  solution?: AnswerSolution;
+  partial?: number;
 }
+
+/** Hat die Frage ein anderes Format als Auswahl, und kennen wir die Aufgabe? Dann liefert das die Aufgabe. */
+function formatPromptOf(item: SessionQuestionItem): AnswerPrompt | null {
+  if (!item.format || item.format === "choice") return null;
+  if (item.prompt) return item.prompt;
+  if (item.answerData) return buildPrompt(item.format, item.answerData, item.itemId);
+  return null;
+}
+
+/** Stellvertreter in `answers`, damit „beantwortet“ für alle Formate gleich gezählt wird; die eigentliche Antwort steht in `payloads`. */
+const FORMAT_ANSWER = "__format__";
 
 interface StudySessionProps {
   certSlug: string;
@@ -109,6 +130,8 @@ export function StudySession({
 }: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
+  const [payloads, setPayloads] = useState<Array<AnswerPayload | null>>(() => questionItems.map(() => null));
+  const [formatResults, setFormatResults] = useState<Array<FormatEvaluation | null>>(() => questionItems.map(() => null));
   const [confidences, setConfidences] = useState<Array<AnswerConfidence | null>>(() =>
     questionItems.map(() => null),
   );
@@ -159,6 +182,51 @@ export function StudySession({
       setReveal((await response.json()) as QuestionReveal);
     } catch {
       setReveal("failed");
+    }
+  }
+
+  /** Auswertung einer Frage mit neuem Format: offline lokal aus dem Paket, online über den Server (der die Lösung erst jetzt herausgibt). */
+  async function evaluateFormat(item: SessionQuestionItem, answer: AnswerPayload): Promise<FormatEvaluation> {
+    const format = item.format as Exclude<AnswerFormat, "choice">;
+    if (offline) {
+      if (!item.answerData) return { correct: false };
+      const grade = gradeAnswer(format, item.answerData, answer);
+      return { correct: grade.correct, partial: grade.partial, solution: buildSolution(format, item.answerData), explanation: item.explanation?.[locale] };
+    }
+    const response = await fetch(`/api/study-sessions/${sessionId}/reveal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId: item.itemId, answer }),
+    });
+    if (!response.ok) throw new Error("reveal failed");
+    const data = (await response.json()) as QuestionReveal;
+    return { correct: Boolean(data.isCorrect), partial: data.partial, solution: data.solution, explanation: data.explanation[locale] };
+  }
+
+  function handleFormatAnswered(index: number, answer: AnswerPayload, confidence?: AnswerConfidence, evaluation?: FormatEvaluation) {
+    if (evaluation) {
+      setFormatResults((prev) => {
+        const next = [...prev];
+        next[index] = evaluation;
+        return next;
+      });
+    }
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[index] = FORMAT_ANSWER;
+      return next;
+    });
+    setPayloads((prev) => {
+      const next = [...prev];
+      next[index] = answer;
+      return next;
+    });
+    if (confidence) {
+      setConfidences((prev) => {
+        const next = [...prev];
+        next[index] = confidence;
+        return next;
+      });
     }
   }
 
@@ -221,7 +289,7 @@ export function StudySession({
         // Nur beantwortete Aufgaben: die übrigen bekommen kein Rating und bleiben fällig.
         body: JSON.stringify({
           openItemId: item.itemId,
-          answers: questionItems.flatMap((q, i) => (answers[i] ? [{ itemId: q.itemId, selectedOptionId: answers[i], confidence: confidences[i] ?? undefined }] : [])),
+          answers: questionItems.flatMap((q, i) => (answers[i] ? [{ itemId: q.itemId, selectedOptionId: payloads[i] ? "" : answers[i], answer: payloads[i] ?? undefined, confidence: confidences[i] ?? undefined }] : [])),
         }),
       });
       const data = await response.json();
@@ -244,7 +312,8 @@ export function StudySession({
     const payload = {
       answers: questionItems.map((item, i) => ({
         itemId: item.itemId,
-        selectedOptionId: answers[i] ?? "",
+        selectedOptionId: payloads[i] ? "" : (answers[i] ?? ""),
+        answer: payloads[i] ?? undefined,
         confidence: confidences[i] ?? undefined,
       })),
     };
@@ -252,7 +321,7 @@ export function StudySession({
     if (offline) {
       const results = questionItems.map((item, i) => ({
         itemId: item.itemId,
-        isCorrect: item.options.some((o) => o.id === answers[i] && o.isCorrect),
+        isCorrect: item.format && item.format !== "choice" ? Boolean(item.answerData && payloads[i] && gradeAnswer(item.format, item.answerData, payloads[i]).correct) : item.options.some((o) => o.id === answers[i] && o.isCorrect),
       }));
       const score =
         results.length > 0
@@ -295,7 +364,7 @@ export function StudySession({
     if (!item) return;
     const sorted = [...item.options].sort((a, b) => a.orderNum - b.orderNum);
     const option = sorted[index];
-    if (!option) return;
+    if (!option || formatPromptOf(item)) return;
     if (instant && answers[currentIndex]) return; // Antwort ist nach dem Wählen gesperrt
     setAnswers((prev) => {
       const next = [...prev];
@@ -307,12 +376,13 @@ export function StudySession({
   };
   const isLast = currentIndex + 1 >= questionItems.length;
   const currentReveal = reveals[currentIndex] ?? null;
-  const canAdvance = currentReveal !== null && currentReveal !== "loading";
+  const currentFormat = questionItems[currentIndex] ? formatPromptOf(questionItems[currentIndex]) : null;
+  const canAdvance = currentFormat ? Boolean(payloads[currentIndex]) : currentReveal !== null && currentReveal !== "loading";
   useQuizHotkeys(
     4,
     (action) => {
       if (action.type === "pick") pickOption(action.index);
-      else if (action.type === "enter" && answers[currentIndex] && !isLast && (!instant || canAdvance)) setCurrentIndex((i) => i + 1);
+      else if (action.type === "enter" && answers[currentIndex] && !isLast && (!instant || canAdvance || currentFormat)) setCurrentIndex((i) => i + 1);
     },
     questionItems.length > 0 && !result,
   );
@@ -392,6 +462,7 @@ export function StudySession({
   }
 
   const item = questionItems[currentIndex];
+  const formatPrompt = formatPromptOf(item);
   const sortedOptions = [...item.options].sort((a, b) => a.orderNum - b.orderNum);
   const ladder = item.category === "understand" ? (item.understand?.help?.ladder ?? []) : [];
   const laddering = ladder.length > ladderStep;
@@ -504,6 +575,23 @@ export function StudySession({
           {item.category === "review" ? t.quiz.categoryReview : item.category === "weak" ? t.quiz.categoryWeak : item.category === "recall" ? t.quiz.categoryRecall : item.category === "understand" ? t.quiz.categoryUnderstand : item.category === "win" ? t.quiz.categoryWin : item.category === "prereq" ? t.quiz.categoryPrereq : t.quiz.categoryNew}
         </Badge>
       </div>
+      {formatPrompt ? (
+        <FormatQuestionCard
+          key={item.itemId}
+          questionId={item.questionId}
+          question={item.question[locale]}
+          explanation={item.explanation?.[locale] ?? ""}
+          prompt={formatPrompt}
+          evaluate={(answer) => evaluateFormat(item, answer)}
+          onAnswered={(_correct, answer, confidence, evaluation) => handleFormatAnswered(currentIndex, answer, confidence, evaluation)}
+          askConfidence={askConfidence}
+          sourceReference={item.sourceReference}
+          onNext={isLast ? () => void handleSubmit() : () => setCurrentIndex((i) => i + 1)}
+          nextLabel={isLast ? t.quiz.finish : t.quiz.nextShort}
+          restored={payloads[currentIndex] && formatResults[currentIndex] ? { answer: payloads[currentIndex]!, result: formatResults[currentIndex]!, confidence: confidences[currentIndex] } : undefined}
+        />
+      ) : (
+      <>
       <QuestionBody
         question={item.question[locale]}
         options={sortedOptions.map((o) => o.text[locale])}
@@ -556,6 +644,8 @@ export function StudySession({
           <ReportProblem questionId={item.questionId} />
         </div>
       )}
+      </>
+      )}
 
       <div className="mt-6 flex items-center justify-between gap-3">
         <Button variant="secondary" onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))} disabled={currentIndex === 0}>
@@ -564,11 +654,11 @@ export function StudySession({
         {instant && reveal ? (
           <span />
         ) : isLast ? (
-          <Button onClick={() => void handleSubmit()} disabled={submitting || (instant && !canAdvance)} iconLeft={submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : undefined} data-testid="submit-session">
+          <Button onClick={() => void handleSubmit()} disabled={submitting || ((instant || Boolean(formatPrompt)) && !canAdvance)} iconLeft={submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : undefined} data-testid="submit-session">
             {t.quiz.finish}
           </Button>
         ) : (
-          <Button onClick={() => setCurrentIndex((i) => Math.min(questionItems.length - 1, i + 1))} disabled={instant && !canAdvance} iconRight={<ArrowRight className="h-4 w-4" aria-hidden="true" />}>
+          <Button onClick={() => setCurrentIndex((i) => Math.min(questionItems.length - 1, i + 1))} disabled={(instant || Boolean(formatPrompt)) && !canAdvance} iconRight={<ArrowRight className="h-4 w-4" aria-hidden="true" />}>
             {t.quiz.nextShort}
           </Button>
         )}

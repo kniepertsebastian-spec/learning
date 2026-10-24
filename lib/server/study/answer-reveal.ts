@@ -1,8 +1,13 @@
+import { buildSolution, type AnswerData, type AnswerFormat, type AnswerPayload, type AnswerSolution } from "@/lib/questions/answer-formats";
+import { gradeQuestionAnswer } from "@/lib/server/questions/grading";
 import type { Localized } from "@/lib/types";
 
 export interface RevealQuestion {
   explanation: Localized<string>;
   sourceReference: string | null;
+  /** Fehlt bei Aufrufern, die nur Auswahlfragen kennen (dann `choice`). */
+  answerFormat?: AnswerFormat;
+  answerData?: AnswerData | null;
 }
 
 export interface RevealOption {
@@ -19,6 +24,9 @@ export interface AnswerReveal {
   sourceReference: string | null;
   /** Begründung je Option-ID (nur wo vorhanden, nie für die richtige Option). */
   rationales: Record<string, Localized<string>>;
+  /** Neue Formate: die Lösung zur Anzeige und der Anteil richtiger Teile (das Rating bleibt binär). */
+  solution?: AnswerSolution;
+  partial?: number;
 }
 
 /**
@@ -30,7 +38,21 @@ export function buildAnswerReveal(
   question: RevealQuestion,
   options: RevealOption[],
   selectedOptionId: string,
+  answer?: AnswerPayload | null,
 ): AnswerReveal {
+  const format = question.answerFormat ?? "choice";
+  if (format !== "choice") {
+    const grade = gradeQuestionAnswer({ answerFormat: format, answerData: question.answerData ?? null }, options, { selectedOptionId, answer });
+    return {
+      isCorrect: grade.correct,
+      correctOptionId: "",
+      explanation: question.explanation,
+      sourceReference: question.sourceReference,
+      rationales: {},
+      partial: grade.partial,
+      ...(question.answerData ? { solution: buildSolution(format, question.answerData) } : {}),
+    };
+  }
   const correct = options.find((o) => o.isCorrect);
   const rationales: Record<string, Localized<string>> = {};
   for (const option of options) {

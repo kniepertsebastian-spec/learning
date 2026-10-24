@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
+import { validateAnswerData } from "@/lib/questions/answer-formats";
 import {
   lessons,
   questions,
@@ -16,6 +17,7 @@ export interface ValidationIssue {
     | "empty_content"
     | "short_content"
     | "no_options"
+    | "invalid_answer_data"
     | "wrong_option_count"
     | "no_correct_answer"
     | "multiple_correct_answers"
@@ -136,38 +138,45 @@ export class ContentValidationService {
       .from(questionOptions)
       .where(eq(questionOptions.questionId, questionId));
 
-    if (options.length === 0) {
-      issues.push({
-        type: "no_options",
-        severity: "error",
-        message: "Question has no answer options",
-        contentId: questionId,
-      });
-    } else if (options.length !== 4) {
-      issues.push({
-        type: "wrong_option_count",
-        severity: "error",
-        message: `Question has ${options.length} options, expected 4`,
-        contentId: questionId,
-      });
-    }
+    if (questionRecord.answerFormat !== "choice") {
+      // Neue Antwortformate: Die Lösung steht in answer_data, nicht in Optionen.
+      for (const problem of validateAnswerData(questionRecord.answerFormat, questionRecord.answerData)) {
+        issues.push({ type: "invalid_answer_data", severity: "error", message: problem, contentId: questionId });
+      }
+    } else {
+      if (options.length === 0) {
+        issues.push({
+          type: "no_options",
+          severity: "error",
+          message: "Question has no answer options",
+          contentId: questionId,
+        });
+      } else if (options.length !== 4) {
+        issues.push({
+          type: "wrong_option_count",
+          severity: "error",
+          message: `Question has ${options.length} options, expected 4`,
+          contentId: questionId,
+        });
+      }
 
-    // Check correct answers
-    const correctOptions = options.filter((o) => o.isCorrect);
-    if (correctOptions.length === 0) {
-      issues.push({
-        type: "no_correct_answer",
-        severity: "error",
-        message: "Question has no correct answer",
-        contentId: questionId,
-      });
-    } else if (correctOptions.length > 1) {
-      issues.push({
-        type: "multiple_correct_answers",
-        severity: "error",
-        message: `Question has ${correctOptions.length} correct answers, expected 1`,
-        contentId: questionId,
-      });
+      // Check correct answers
+      const correctOptions = options.filter((o) => o.isCorrect);
+      if (correctOptions.length === 0) {
+        issues.push({
+          type: "no_correct_answer",
+          severity: "error",
+          message: "Question has no correct answer",
+          contentId: questionId,
+        });
+      } else if (correctOptions.length > 1) {
+        issues.push({
+          type: "multiple_correct_answers",
+          severity: "error",
+          message: `Question has ${correctOptions.length} correct answers, expected 1`,
+          contentId: questionId,
+        });
+      }
     }
 
     // Check explanation

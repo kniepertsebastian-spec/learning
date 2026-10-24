@@ -11,6 +11,7 @@ import {
   studySessionItems,
   studySessions,
 } from "@/lib/server/db/schema";
+import type { AnswerData, AnswerFormat } from "@/lib/questions/answer-formats";
 import type { Localized } from "@/lib/types";
 
 export interface OfflineQuestionOption {
@@ -27,6 +28,9 @@ export interface OfflineQuestion {
   explanation: Localized<string>;
   sourceReference: string | null;
   options: OfflineQuestionOption[];
+  /** Neue Antwortformate: Lösung im Paket, damit offline lokal ausgewertet werden kann (wie `isCorrect` bei Auswahlfragen). */
+  format?: AnswerFormat;
+  answerData?: AnswerData | null;
 }
 
 export interface OfflineSection {
@@ -74,6 +78,8 @@ export interface OfflineSessionQuestionItem {
   /** Sofort-Feedback offline: Erklärung und Begründungen der gezeigten Frage (Original oder Variante; Variantenfragen stehen nicht im Kurspaket). */
   explanation: Localized<string>;
   sourceReference: string | null;
+  format?: AnswerFormat;
+  answerData?: AnswerData | null;
 }
 
 export interface OfflineSessionLessonItem {
@@ -206,6 +212,7 @@ async function getOfflineStudySession(
         options,
         explanation: q.explanation,
         sourceReference: q.sourceReference,
+        ...(q.answerFormat !== "choice" ? { format: q.answerFormat, answerData: q.answerData } : {}),
       });
     } else {
       const s = sectionById.get(item.referenceId);
@@ -301,6 +308,7 @@ export async function getOfflinePackage(
       question: q.question,
       explanation: q.explanation,
       sourceReference: q.sourceReference,
+      ...(q.answerFormat !== "choice" ? { format: q.answerFormat, answerData: q.answerData } : {}),
       options: (optionsByQuestionId.get(q.id) ?? []).map((o) => ({
         id: o.id,
         text: o.text,

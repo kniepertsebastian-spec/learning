@@ -20,6 +20,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AnswerConfidence, EnergyLevel, Locale, Localized } from "@/lib/types";
 import type { CourseOverview } from "@/lib/course-overview";
+import type { AnswerData, AnswerFormat, AnswerPayload } from "@/lib/questions/answer-formats";
 
 /** R0.2 (roadmap.md): learner is the default, admin unlocks /admin and every
  * admin API route/server action. */
@@ -448,8 +449,11 @@ export const questions = pgTable("questions", {
   translationOutdated: boolean("translation_outdated").notNull().default(false),
   /** PSRP-HR Phase 7: Abfragevariante (probe_variant), erscheint nie in Lektionstests, Prüfungen oder Sessions als normale Frage. */
   probeOnly: boolean("probe_only").notNull().default(false),
+  /** Antwortformat (roadmap_didaktik 3.1): `choice` (Standard, Optionen in question_options), `ordering`, `short_answer`, `matching`; die Lösung steht dann in `answerData`. `type` bleibt die kognitive Stufe. */
+  answerFormat: text("answer_format").$type<AnswerFormat>().notNull().default("choice"),
+  answerData: jsonb("answer_data").$type<AnswerData>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [check("questions_answer_format_check", sql`${table.answerFormat} in ('choice', 'ordering', 'short_answer', 'matching')`)]);
 
 export const questionOptions = pgTable("question_options", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -531,6 +535,8 @@ export const quizAnswers = pgTable("quiz_answers", {
     onDelete: "set null",
   }),
   isCorrect: boolean("is_correct").notNull(),
+  /** Antwort bei den neuen Formaten (Reihenfolge, Kurzantwort, Zuordnung); bei Auswahlfragen leer. */
+  answer: jsonb("answer").$type<AnswerPayload>(),
   /** R2 (roadmap.md): "Sicherheit der eigenen Antwort abfragen" - optional,
    * vom Client VOR Aufdeckung der Korrektheit erfasst. Bewusst nicht auf
    * exam_answers übertragen: die Abschlussprüfung soll eine realistische,
@@ -786,6 +792,8 @@ export const studySessionItems = pgTable("study_session_items", {
   conceptStruggleId: uuid("concept_struggle_id").references((): AnyPgColumn => conceptStruggles.id, { onDelete: "set null" }),
   /** Gewählte Antwortoption der gezeigten Frage (Grundlage für „wiederholt dieselbe falsche Option“). */
   selectedOptionId: uuid("selected_option_id").references((): AnyPgColumn => questionOptions.id, { onDelete: "set null" }),
+  /** Antwort bei den neuen Formaten (Reihenfolge, Kurzantwort, Zuordnung). */
+  answer: jsonb("answer").$type<AnswerPayload>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
