@@ -5,6 +5,7 @@ import type { AIUsage } from "@/lib/ai/generate";
 import { recordQuestionRevision, recordSectionRevision } from "@/lib/server/course-editor/service";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, questionOptions, questions, sections } from "@/lib/server/db/schema";
+import { translatableAnswerTexts, withTranslatedAnswerTexts, type AnswerData } from "@/lib/questions/answer-formats";
 import { estimateCostUsd } from "@/lib/server/admin/content-generation";
 import { AiAccessUnavailableError, clientForOrganization } from "@/lib/server/internal-courses/ai-client";
 import type { Locale, Localized } from "@/lib/types";
@@ -64,7 +65,7 @@ async function loadChunks(certificationId: string, source: Locale): Promise<Tran
       .orderBy(asc(sections.orderNum)),
     // Veraltete Fragen sehen Lernende nicht mehr (nur alte Verläufe): sie zu übersetzen kostet nur.
     db
-      .select({ id: questions.id, objectiveId: questions.objectiveId, question: questions.question, explanation: questions.explanation, outdated: questions.translationOutdated })
+      .select({ id: questions.id, objectiveId: questions.objectiveId, question: questions.question, explanation: questions.explanation, outdated: questions.translationOutdated, answerFormat: questions.answerFormat, answerData: questions.answerData })
       .from(questions)
       .where(and(inArray(questions.objectiveId, objectiveIds), eq(questions.stale, false)))
       .orderBy(asc(questions.humanId)),
@@ -97,7 +98,8 @@ async function loadChunks(certificationId: string, source: Locale): Promise<Tran
       }));
     const questionItems: QuestionItem[] = questionRows
       .filter((q) => q.objectiveId === objective.id)
-      .map((q) => ({ ...q, options: optionsByQuestion.get(q.id) ?? [] }))
+      // Bei den neuen Antwortformaten laufen die Texte der Lösung (Schritte, Begriffe, Aussagen) wie Optionen mit; ihre Kennung steht in `id`.
+      .map((q) => ({ ...q, options: [...(optionsByQuestion.get(q.id) ?? []), ...translatableAnswerTexts(q.answerFormat, q.answerData).map((a) => ({ id: `ans:${a.key}`, text: a.text, rationale: null }))] }))
       .filter((q) => q.outdated || untranslated(q.question) || untranslated(q.explanation) || q.options.some((o) => untranslated(o.text) || untranslated(o.rationale)))
       .map((q, i) => ({
         key: `q${i + 1}`,
@@ -141,12 +143,21 @@ async function saveChunk(certificationId: string, chunk: TranslationChunk, resul
         .update(questions)
         .set({ question: setLocale(questions.question, target, t.question), explanation: setLocale(questions.explanation, target, t.explanation), translationOutdated: false })
         .where(eq(questions.id, q.questionId));
+      const answerTexts: Record<string, string> = {};
       for (const [i, o] of q.options.entries()) {
         const to = t.options[i];
+        if (o.id.startsWith("ans:")) {
+          answerTexts[o.id.slice(4)] = to.text;
+          continue;
+        }
         await tx
           .update(questionOptions)
           .set({ text: setLocale(questionOptions.text, target, to.text), ...(o.rationale && to.rationale ? { rationale: setLocale(questionOptions.rationale, target, to.rationale) } : {}) })
           .where(eq(questionOptions.id, o.id));
+      }
+      if (Object.keys(answerTexts).length > 0) {
+        const [row] = await tx.select({ format: questions.answerFormat, data: questions.answerData }).from(questions).where(eq(questions.id, q.questionId)).limit(1);
+        if (row?.data) await tx.update(questions).set({ answerData: withTranslatedAnswerTexts(row.format, row.data as AnswerData, target, answerTexts) }).where(eq(questions.id, q.questionId));
       }
     }
   });

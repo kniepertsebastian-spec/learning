@@ -6,6 +6,7 @@ import { extractSimulationSources } from "@/lib/markdown/simulation";
 import { repairLearningBlocks, validateLearningBlocks } from "@/lib/markdown/validate";
 import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/content-generation";
 import { shuffleOptions } from "@/lib/server/course-generation/variety";
+import { MAX_ACCEPTED_ANSWERS, MAX_MATCHING_PAIRS, MAX_ORDERING_STEPS, normalizeShortAnswer, validateAnswerData, type AnswerData } from "@/lib/questions/answer-formats";
 import { clientFor } from "@/lib/server/course-translation/service";
 import { isAutoTranslateEnabled, startCourseTranslation } from "@/lib/server/course-translation/runner";
 import { getDb } from "@/lib/server/db/client";
@@ -36,6 +37,7 @@ import {
   type SectionAiAction,
 } from "@/lib/workshop-ai";
 import {
+  formatQuestionsSystemPrompt,
   newQuestionsSystemPrompt,
   newQuestionsUserPrompt,
   objectiveSystemPrompt,
@@ -73,7 +75,7 @@ export const aiRequestSchema = z
   .discriminatedUnion("target", [
     z.object({ target: z.literal("section"), id: uuid, action: z.enum(SECTION_AI_ACTIONS), instruction }),
     z.object({ target: z.literal("question"), id: uuid, action: z.enum(QUESTION_AI_ACTIONS), instruction }),
-    z.object({ target: z.literal("objective"), id: uuid, action: z.literal("add_questions"), count: z.number().int().min(1).max(MAX_NEW_QUESTIONS), instruction }),
+    z.object({ target: z.literal("objective"), id: uuid, action: z.enum(["add_questions", "add_format_questions"]), count: z.number().int().min(1).max(MAX_NEW_QUESTIONS), instruction }),
     z.object({ target: z.literal("missing-objective"), domainId: uuid, code: z.string().trim().min(1).max(40), title: z.string().trim().min(1).max(300), action: z.literal("add_objective"), instruction }),
   ])
   .refine((r) => r.action !== "custom" || Boolean(r.instruction), { message: "Bei „Eigene Anweisung“ fehlt die Anweisung.", path: ["instruction"] });
@@ -104,6 +106,19 @@ const questionAiSchema = z.object({
 type QuestionAi = z.infer<typeof questionAiSchema>;
 const newQuestionAiSchema = questionAiSchema.omit({ changes: true }).extend({ options: z.array(optionAiSchema).length(4) });
 const newQuestionsAiSchema = z.object({ questions: z.array(newQuestionAiSchema).min(1).max(MAX_NEW_QUESTIONS) });
+
+/** Flach statt Union: nur das Feld des gewählten Formats ist gefüllt (einfacher für strukturierte KI-Antworten). */
+const formatQuestionAiSchema = z.object({
+  format: z.enum(["ordering", "short_answer", "matching"]),
+  question: z.string().trim().min(1).max(20_000),
+  explanation: z.string().trim().min(1).max(20_000),
+  difficulty: z.enum(DIFFICULTIES),
+  type: z.enum(QUESTION_TYPES),
+  steps: z.array(z.string().trim().min(1).max(300)).max(MAX_ORDERING_STEPS),
+  accepted: z.array(z.string().trim().min(1).max(200)).max(MAX_ACCEPTED_ANSWERS),
+  pairs: z.array(z.object({ left: z.string().trim().min(1).max(300), right: z.string().trim().min(1).max(300) })).max(MAX_MATCHING_PAIRS),
+});
+const newFormatQuestionsAiSchema = z.object({ questions: z.array(formatQuestionAiSchema).min(1).max(MAX_NEW_QUESTIONS) });
 
 const objectiveAiSchema = z.object({
   title: z.string().trim().min(1).max(300),
@@ -223,7 +238,7 @@ export async function estimateAi(certId: string, target: { target: "section" | "
   }
   if (target.target === "objective") {
     const n = Math.min(Math.max(target.count ?? 4, 1), MAX_NEW_QUESTIONS);
-    return [estimate("add_questions", 12_000, n * 1600)];
+    return [estimate("add_questions", 12_000, n * 1600), estimate("add_format_questions", 12_000, n * 1200)];
   }
   return [estimate("add_objective", 1500, 3 * 7000 + 5 * 1600)];
 }
@@ -297,6 +312,7 @@ async function proposeQuestion(cert: Cert, questionId: string, action: QuestionA
   if (!row || row.certId !== cert.id) throw new EditorNotFoundError("Frage nicht gefunden.");
   const facts = await objectiveFacts(cert, row.objectiveId);
   const q = (await readQuestion(getDb(), questionId))!;
+  if (q.format) throw new AiEditError("Fragen mit Reihenfolge, Kurzantwort oder Zuordnung lassen sich nicht per KI überarbeiten; bitte von Hand bearbeiten.");
   const l = cert.locale;
   const current = { question: q.question[l], explanation: q.explanation[l], difficulty: q.difficulty, type: q.type, options: q.options.map((o) => ({ text: o.text[l], isCorrect: o.isCorrect, rationale: o.rationale?.[l] || null })) };
   const result = questionAiSchema.parse(
@@ -347,6 +363,34 @@ async function proposeQuestions(cert: Cert, objectiveId: string, count: number, 
     await generate(newQuestionsSystemPrompt(facts), newQuestionsUserPrompt({ facts, lessons: lessonsText, existing: existing.map((q) => q.question[l].slice(0, 300)), count, instruction: instr }), newQuestionsAiSchema),
   );
   return { objectiveId, questions: result.questions.slice(0, count).map(toNewQuestion) };
+}
+
+/** KI-Antwort → Formatfrage (in beiden Sprachen gleich, bis die Übersetzung läuft). Unbrauchbare Lösungsdaten werden verworfen. */
+export function toFormatQuestion(q: z.infer<typeof formatQuestionAiSchema>): NewQuestion | null {
+  const data: AnswerData =
+    q.format === "ordering"
+      ? { steps: q.steps.map((t, i) => ({ id: `s${i + 1}`, text: both(t) })) }
+      : q.format === "short_answer"
+        ? { accepted: q.accepted.filter((a, i, all) => all.findIndex((b) => normalizeShortAnswer(b) === normalizeShortAnswer(a)) === i) }
+        : { pairs: q.pairs.map((p, i) => ({ id: `p${i + 1}`, left: both(p.left), right: both(p.right) })) };
+  if (validateAnswerData(q.format, data).length > 0) return null;
+  return { question: both(q.question), explanation: both(q.explanation), difficulty: q.difficulty, type: q.type, options: [], format: q.format, answerData: data };
+}
+
+async function proposeFormatQuestions(cert: Cert, objectiveId: string, count: number, instr: string | null, generate: Generate): Promise<Omit<QuestionsProposal, "kind">> {
+  const facts = await objectiveFacts(cert, objectiveId);
+  const l = cert.locale;
+  const db = getDb();
+  const lessonRows = await db.select({ title: sections.title, content: lessons.content }).from(sections).innerJoin(lessons, eq(lessons.sectionId, sections.id)).where(eq(sections.objectiveId, objectiveId)).orderBy(asc(sections.orderNum));
+  const existing = await db.select({ question: questions.question }).from(questions).where(and(eq(questions.objectiveId, objectiveId), eq(questions.stale, false)));
+  const budget = Math.floor(30_000 / Math.max(lessonRows.length, 1));
+  const lessonsText = lessonRows.map((r) => `## ${r.title[l]}\n${r.content[l].slice(0, budget)}`);
+  const result = newFormatQuestionsAiSchema.parse(
+    await generate(formatQuestionsSystemPrompt(facts), newQuestionsUserPrompt({ facts, lessons: lessonsText, existing: existing.map((q) => q.question[l].slice(0, 300)), count, instruction: instr }), newFormatQuestionsAiSchema),
+  );
+  const usable = result.questions.slice(0, count).map(toFormatQuestion).filter((q): q is NewQuestion => q !== null);
+  if (usable.length === 0) throw new AiEditError("Die KI hat keine brauchbaren Formatfragen geliefert. Bitte noch einmal versuchen oder eine Anweisung ergänzen.");
+  return { objectiveId, questions: usable };
 }
 
 async function proposeObjective(cert: Cert, req: Extract<AiRequest, { target: "missing-objective" }>, generate: Generate): Promise<Omit<ObjectiveProposal, "kind">> {
@@ -417,7 +461,7 @@ export async function proposeAi(certId: string, req: AiRequest, deps: { generate
   const meta = { action: req.action, locale: cert.locale, costUsd: null, totalCostUsd: null };
   if (req.target === "section") proposal = { kind: "section", ...(await proposeSection(cert, req.id, req.action, instr, generate)), ...meta };
   else if (req.target === "question") proposal = { kind: "question", ...(await proposeQuestion(cert, req.id, req.action, instr, generate)), ...meta };
-  else if (req.target === "objective") proposal = { kind: "questions", ...(await proposeQuestions(cert, req.id, req.count, instr, generate)), ...meta };
+  else if (req.target === "objective") proposal = { kind: "questions", ...(await (req.action === "add_format_questions" ? proposeFormatQuestions : proposeQuestions)(cert, req.id, req.count, instr, generate)), ...meta };
   else proposal = { kind: "objective", ...(await proposeObjective(cert, req, generate)), ...meta };
 
   const total = (Number(cert.aiEditCostUsd) || 0) + (costUsd ?? 0);

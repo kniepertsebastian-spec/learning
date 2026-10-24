@@ -6,7 +6,9 @@ import {
   computeStreak,
   estimateSessionMinutes,
   estimateTargetQuestionCount,
+  formatQuestionCap,
   isComebackSession,
+  pickWithFormatCap,
   MINUTES_PER_SESSION_QUESTION,
   reallocateTowardFamiliarContent,
 } from "./session-builder";
@@ -179,5 +181,35 @@ describe("isComebackSession", () => {
 
   it("is a comeback after a long pause", () => {
     expect(isComebackSession(new Date("2025-12-01T09:00:00Z"), NOW)).toBe(true);
+  });
+});
+
+describe("pickWithFormatCap", () => {
+  const c = (id: string, format = false, preferred = false) => ({ id, format, preferred });
+  const run = (cands: ReturnType<typeof c>[], count: number, cap: number) => pickWithFormatCap(cands, count, cap, (x) => x.format, (x) => x.preferred);
+
+  it("begrenzt Formatfragen auf die Obergrenze und füllt mit Auswahlfragen", () => {
+    const cands = [c("f1", true), c("f2", true), c("a"), c("b"), c("c"), c("d"), c("e")];
+    const { picked, formatUsed } = run(cands, 5, 1);
+    expect(picked.map((x) => x.id)).toEqual(["f1", "a", "b", "c", "d"]);
+    expect(formatUsed).toBe(1);
+  });
+
+  it("bevorzugt Formatfragen zu Themen mit zuletzt sicherer Antwort", () => {
+    const cands = [c("f1", true), c("f2", true, true), c("a"), c("b")];
+    expect(run(cands, 3, 1).picked.map((x) => x.id)).toEqual(["f2", "a", "b"]);
+  });
+
+  it("ohne genug Auswahlfragen rücken Formatfragen über die Obergrenze nach", () => {
+    const cands = [c("f1", true), c("f2", true), c("f3", true)];
+    expect(run(cands, 3, 0).picked.map((x) => x.id)).toEqual(["f1", "f2", "f3"]);
+  });
+
+  it("Obergrenze 0 und genug Auswahlfragen: keine Formatfragen", () => {
+    expect(run([c("f1", true), c("a"), c("b")], 2, 0).picked.map((x) => x.id)).toEqual(["a", "b"]);
+  });
+
+  it("20 % Obergrenze", () => {
+    expect([0, 4, 5, 10, 15].map(formatQuestionCap)).toEqual([0, 0, 1, 2, 3]);
   });
 });

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { validateAnswerData, type AnswerData } from "@/lib/questions/answer-formats";
 import type { Localized } from "@/lib/types";
 
 /**
@@ -34,15 +35,32 @@ export const questionOptionSnapshotSchema = z.object({
   rationale: z.object({ de: text(4000), en: text(4000) }).nullable(),
 });
 
+/** Neue Antwortformate (Auswahlfragen haben kein Format): Optionen bleiben leer, die Lösung steht in `answerData`. */
+export const FORMAT_QUESTION_FORMATS = ["ordering", "short_answer", "matching"] as const;
+const formatFields = { format: z.enum(FORMAT_QUESTION_FORMATS).optional(), answerData: z.custom<AnswerData>((v) => v === undefined || (typeof v === "object" && v !== null)).optional() };
+
+/** Auswahlfrage: 2 bis 8 Optionen, genau eine richtig. Formatfrage: keine Optionen, gültige Lösungsdaten. */
+function checkQuestionShape(q: { format?: (typeof FORMAT_QUESTION_FORMATS)[number]; answerData?: AnswerData; options: Array<{ isCorrect: boolean }> }, ctx: z.RefinementCtx) {
+  if (q.format) {
+    if (q.options.length > 0) ctx.addIssue({ code: "custom", message: "Fragen mit diesem Antwortformat haben keine Antwortoptionen." });
+    for (const problem of validateAnswerData(q.format, q.answerData)) ctx.addIssue({ code: "custom", message: problem });
+    return;
+  }
+  if (q.answerData !== undefined) ctx.addIssue({ code: "custom", message: "Auswahlfragen haben keine zusätzlichen Lösungsdaten." });
+  if (q.options.length < 2) ctx.addIssue({ code: "custom", message: "Mindestens zwei Antwortoptionen nötig." });
+  if (q.options.filter((o) => o.isCorrect).length !== 1) ctx.addIssue({ code: "custom", message: "Genau eine Antwortoption muss richtig sein." });
+}
+
 export const questionSnapshotSchema = z
   .object({
     question: localized(20_000),
     explanation: localized(20_000),
     difficulty: z.enum(DIFFICULTIES),
     type: z.enum(QUESTION_TYPES),
-    options: z.array(questionOptionSnapshotSchema).min(2).max(8),
+    options: z.array(questionOptionSnapshotSchema).max(8),
+    ...formatFields,
   })
-  .refine((q) => q.options.filter((o) => o.isCorrect).length === 1, { message: "Genau eine Antwortoption muss richtig sein." });
+  .superRefine(checkQuestionShape);
 export type QuestionSnapshot = z.infer<typeof questionSnapshotSchema>;
 
 /** Neue Frage: Optionen noch ohne ID (bekommen sie beim Anlegen). */
@@ -52,9 +70,10 @@ export const newQuestionSchema = z
     explanation: localized(20_000),
     difficulty: z.enum(DIFFICULTIES),
     type: z.enum(QUESTION_TYPES),
-    options: z.array(z.object({ text: localized(2000), isCorrect: z.boolean(), rationale: z.object({ de: text(4000), en: text(4000) }).nullable() })).min(2).max(8),
+    options: z.array(z.object({ text: localized(2000), isCorrect: z.boolean(), rationale: z.object({ de: text(4000), en: text(4000) }).nullable() })).max(8),
+    ...formatFields,
   })
-  .refine((q) => q.options.filter((o) => o.isCorrect).length === 1, { message: "Genau eine Antwortoption muss richtig sein." });
+  .superRefine(checkQuestionShape);
 export type NewQuestion = z.infer<typeof newQuestionSchema>;
 
 /** Stabile Darstellung (Schlüssel sortiert), damit gleicher Inhalt immer denselben Fingerabdruck ergibt. */
