@@ -36,8 +36,11 @@ run("Ausgangswerte (echte DB)", () => {
     await getDb().update(users).set({ evaluationGroup: "planning" }).where(eq(users.id, userId));
     await getDb().insert(studySessions).values({ userId, certificationId: course.certId, status: "completed", goalType: "minutes", goalValue: 10, plannedAt: new Date(), completedAt: new Date() });
     const { rows, basisBefore, basisAfter } = await compareSnapshots(before);
+    // Andere Tests laufen parallel und legen ebenfalls Personen an oder löschen sie: geprüft wird nur, dass Vorher, Nachher und Delta zusammenpassen.
     const people = rows.find((r) => r.key === "engagement.all.users")!;
-    expect(people.after!.value!).toBe((people.before!.value ?? 0) + 1);
+    expect(people.before).not.toBeNull();
+    expect(people.after).not.toBeNull();
+    expect(people.delta).toBe(people.after!.value! - people.before!.value!);
     expect(basisAfter).toBeDefined();
     expect(basisBefore).toEqual(before.basis);
   });

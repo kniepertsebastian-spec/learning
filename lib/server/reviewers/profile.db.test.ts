@@ -124,6 +124,9 @@ run("Expertenprofil (echte DB)", () => {
 
   it("Erinnerung 60 Tage vor Ablauf: Person und Admins, einmal je Ablaufdatum", async () => {
     const id = await reviewer();
+    // Die Erinnerung geht auch an Admins: einen eigenen anlegen, statt sich auf Konten anderer Tests zu verlassen.
+    const adminId = await seedUser();
+    await getDb().update(users).set({ role: "admin" }).where(eq(users.id, adminId));
     await saveProfile(id, base());
     const now = new Date("2026-10-24T08:00:00Z");
     const soon = await saveCertification(id, cert({ name: `Bald ${tag}`, validUntil: "2026-12-10" }));
