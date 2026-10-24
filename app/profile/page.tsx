@@ -11,6 +11,8 @@ import { listMyAssignments, type MyAssignment } from "@/lib/server/assignments/s
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { getCompanyMembership } from "@/lib/server/company/access";
 import { getServerLocale } from "@/lib/server/locale";
+import { getProgressView, listProgressCourses } from "@/lib/server/progress/snapshots";
+import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 
 const ROLE_LABEL = {
   company_admin: { de: "Firmen-Admin", en: "Company admin" },
@@ -40,6 +42,8 @@ export default async function ProfilePage() {
     getProfile(user.id),
     getDb().select({ name: certifications.name }).from(certifications).where(and(eq(certifications.kind, "general"), eq(certifications.catalogStatus, "approved"))).orderBy(asc(certifications.name)),
   ]);
+  // Rückblick „Vor 3 Wochen … Heute …“: nur eigene, echte Stände; für höchstens drei Kurse mit festgehaltenem Fortschritt.
+  const progress = await Promise.all((await listProgressCourses(user.id).catch(() => [])).map(async (c) => ({ course: c, view: await getProgressView(user.id, c.id).catch(() => null) })));
   const fmt = (d: Date) => d.toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" });
   const done = assignments.filter((a) => a.status === "completed");
   const rest = assignments.filter((a) => a.status !== "completed");
@@ -75,6 +79,20 @@ export default async function ProfilePage() {
           </Link>
         </div>
       </header>
+
+      {progress.some((p) => p.view && (p.view.review || p.view.outlook)) && (
+        <section className="flex flex-col gap-1" data-testid="profile-progress">
+          <h2 className="font-semibold">{de ? "Mein Fortschritt" : "My progress"}</h2>
+          {progress.map(({ course, view }) =>
+            view && (view.review || view.outlook) ? (
+              <div key={course.id}>
+                <p className="mb-1 text-xs text-foreground/70">{course.name}</p>
+                <ProgressReviewCard review={view.review} outlook={view.outlook} series={view.series} locale={locale} certSlug={course.slug} />
+              </div>
+            ) : null,
+          )}
+        </section>
+      )}
 
       <CareerProfile initial={career} courseNames={catalog.map((c) => c.name)} />
 

@@ -8,7 +8,7 @@ if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 import { getDb } from "@/lib/server/db/client";
 import { objectiveProgress, objectiveSnapshots, objectives, domains, users } from "@/lib/server/db/schema";
 import { seedCourse, seedUser } from "@/lib/server/psrp/test-db";
-import { getProgressView, recordObjectiveSnapshot } from "./snapshots";
+import { getProgressView, listProgressCourses, recordObjectiveSnapshot } from "./snapshots";
 
 const run = TEST_DB ? describe : describe.skip;
 const now = new Date("2026-10-21T12:00:00Z");
@@ -42,5 +42,19 @@ run("Fortschritts-Stände (echte DB)", () => {
     const view = await getProgressView(userId, course.certId, now);
     expect(view.review).not.toBeNull();
     expect(view.series.length).toBe(2);
+  });
+
+  it("Profil: Kurse mit festgehaltenem Fortschritt, jüngster zuerst, höchstens drei, nur die eigenen", async () => {
+    const [a, b, c, d] = [await seedCourse(1), await seedCourse(1), await seedCourse(1), await seedCourse(1)];
+    const userId = await seedUser();
+    const other = await seedUser();
+    await recordObjectiveSnapshot(userId, a.certId, new Date("2026-10-01T12:00:00Z"));
+    await recordObjectiveSnapshot(userId, b.certId, new Date("2026-10-05T12:00:00Z"));
+    await recordObjectiveSnapshot(userId, c.certId, new Date("2026-10-03T12:00:00Z"));
+    await recordObjectiveSnapshot(userId, d.certId, new Date("2026-10-04T12:00:00Z"));
+    await recordObjectiveSnapshot(other, a.certId, new Date("2026-10-20T12:00:00Z"));
+    const courses = await listProgressCourses(userId);
+    expect(courses.map((x) => x.id)).toEqual([b.certId, d.certId, c.certId]);
+    expect(await listProgressCourses(await seedUser())).toEqual([]);
   });
 });
