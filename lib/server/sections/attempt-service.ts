@@ -1,9 +1,10 @@
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, gt, inArray, ne } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   domains,
   itemVariants,
   lessons,
+  objectiveProgress,
   objectives,
   questionOptions,
   questions,
@@ -39,6 +40,8 @@ export interface SectionQuizAnswerInput {
 }
 
 export interface SectionQuizAttemptResult {
+  /** Offline aufgezeichneter Versuch, der älter ist als ein bereits vorhandener: protokolliert, Wiederholungen verbucht, der Lernzielstand verschlechtert sich nie. */
+  late?: boolean;
   score: number;
   results: Array<{ questionId: string; isCorrect: boolean; correctOptionId: string }>;
   attemptId: string;
@@ -133,7 +136,13 @@ export async function recordSectionQuizAttempt(
   const score = answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0;
   await db.update(quizAttempts).set({ score: String(score) }).where(eq(quizAttempts.id, attemptId));
 
+  // Ein verspätet synchronisierter Versuch (inzwischen gibt es einen neueren) darf den Lernzielstand nur verbessern, nie verschlechtern.
+  const late = timing
+    ? (await db.select({ id: quizAttempts.id }).from(quizAttempts).where(and(eq(quizAttempts.quizId, quizId), eq(quizAttempts.userId, userId), gt(quizAttempts.completedAt, completedAt))).limit(1)).length > 0
+    : false;
+  const touched = late ? await touchedObjectiveProgress(userId, questionIds) : [];
   await ObjectiveProgressService.updateProgressForQuizAttempt(userId, attemptId);
+  for (const before of touched) await restoreIfWorse(before);
   await recordReviewOutcomes(
     userId,
     results.map((r) => ({
@@ -147,7 +156,7 @@ export async function recordSectionQuizAttempt(
 
   if (wovenAnswers.length > 0) await recordWovenAnswers(userId, sectionId, certInfo[0], wovenAnswers, timing);
 
-  return { score, results, attemptId };
+  return { score, results, attemptId, ...(late ? { late: true } : {}) };
 }
 
 /**
@@ -206,4 +215,20 @@ async function recordWovenAnswers(userId: string, sectionId: string, section: { 
         };
       }),
   );
+}
+
+/** Stand des Lernziels vor einem verspäteten Versuch, für alle berührten Lernziele mit vorhandenem Stand. */
+async function touchedObjectiveProgress(userId: string, questionIds: string[]): Promise<Array<typeof objectiveProgress.$inferSelect>> {
+  if (questionIds.length === 0) return [];
+  const db = getDb();
+  const objectiveIds = [...new Set((await db.select({ objectiveId: questions.objectiveId }).from(questions).where(inArray(questions.id, questionIds))).map((r) => r.objectiveId))];
+  if (objectiveIds.length === 0) return [];
+  return db.select().from(objectiveProgress).where(and(eq(objectiveProgress.userId, userId), inArray(objectiveProgress.objectiveId, objectiveIds)));
+}
+
+async function restoreIfWorse(before: typeof objectiveProgress.$inferSelect): Promise<void> {
+  const db = getDb();
+  const [after] = await db.select().from(objectiveProgress).where(eq(objectiveProgress.id, before.id)).limit(1);
+  if (!after || Number(after.masteryScore) >= Number(before.masteryScore)) return;
+  await db.update(objectiveProgress).set({ masteryScore: before.masteryScore, status: before.status, lastAttemptAt: before.lastAttemptAt }).where(eq(objectiveProgress.id, before.id));
 }

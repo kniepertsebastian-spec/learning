@@ -821,6 +821,8 @@ export interface StudySessionAnswerInput {
 }
 
 export interface StudySessionAttemptResult {
+  /** Die Session war schon abgeschlossen oder ausgesetzt: die Antworten wurden nur als Wiederholungen gezählt (Sync-Pfad). */
+  partial?: boolean;
   score: number;
   results: Array<{ itemId: string; questionId: string; isCorrect: boolean; correctOptionId: string }>;
 }
@@ -836,7 +838,11 @@ export async function completeStudySession(
   sessionId: string,
   userId: string,
   answers: StudySessionAnswerInput[],
-  options: { timing?: (session: { createdAt: Date }) => ReviewTiming } = {},
+  options: {
+    timing?: (session: { createdAt: Date }) => ReviewTiming;
+    /** Sync-Pfad: eine inzwischen abgeschlossene oder ausgesetzte Session ist kein Fehler, die Antworten zählen trotzdem als Wiederholungen. */
+    countIfFinished?: boolean;
+  } = {},
 ): Promise<StudySessionAttemptResult> {
   const db = getDb();
   const [session] = await db
@@ -845,7 +851,8 @@ export async function completeStudySession(
     .where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId)))
     .limit(1);
   if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
-  if (session.status !== "planned" && session.status !== "in_progress") {
+  const finished = session.status !== "planned" && session.status !== "in_progress";
+  if (finished && !options.countIfFinished) {
     throw new StudySessionNotActiveError("Diese Session ist bereits abgeschlossen oder ausgesetzt.");
   }
 
@@ -894,6 +901,28 @@ export async function completeStudySession(
       isCorrect: grade.correct,
       correctOptionId: grade.correctOptionId,
     });
+  }
+
+  if (finished) {
+    // Die Session wurde nicht erneut abgeschlossen (Status, Verstehens- und Rückblick-Zustand bleiben), aber echte Wiederholungen gehen nicht verloren.
+    if (results.length > 0) {
+      const answerOf = new Map(answers.map((a) => [a.itemId, a]));
+      await recordReviewOutcomes(
+        userId,
+        results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => ({
+          questionId: r.questionId,
+          isCorrect: r.isCorrect,
+          confidence: answerOf.get(r.itemId)?.confidence ?? null,
+          thinkFirst: answerOf.get(r.itemId)?.thinkFirst === true,
+          variantQuestionId: variantByItemId.get(r.itemId) ?? null,
+          reviewType: recallByItemId.has(r.itemId) ? ("recall_check" as const) : undefined,
+          ...(timing ? answerTime(timing, answerOf.get(r.itemId)?.answeredAt) : {}),
+        })),
+        { sessionId },
+      );
+    }
+    const partialScore = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
+    return { partial: true, score: partialScore, results };
   }
 
   if (results.length > 0) {

@@ -1686,7 +1686,8 @@ export const objectiveSourceRefs = pgTable(
  * einfach das zuvor gespeicherte Ergebnis zurück. */
 /** `simulation_result`: offline gelöste Simulation (roadmap3.md, Schritt 5). */
 export type SyncEventType = "section_quiz" | "study_session" | "simulation_result";
-export type SyncEventStatus = "applied" | "conflict" | "error";
+/** `applied_partial`: die Session war inzwischen anderswo abgeschlossen; die Antworten wurden trotzdem als Wiederholungen gezählt. */
+export type SyncEventStatus = "applied" | "applied_partial" | "conflict" | "error";
 
 export const syncEvents = pgTable(
   "sync_events",

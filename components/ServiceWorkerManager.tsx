@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { reconcileCacheOwner, clearPagesCache } from "@/lib/client/cache-owner";
-import { setLastUserId } from "@/lib/client/last-user";
+import { getLastUserId, setLastUserId } from "@/lib/client/last-user";
+import { startSyncTriggers } from "@/lib/client/sync-queue";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "@/components/ui/toaster";
 import { startInstallCapture } from "@/lib/client/install-prompt";
@@ -22,6 +23,9 @@ export function ServiceWorkerManager({ userId }: { userId: string | null }) {
 
   // `beforeinstallprompt` feuert oft vor dem Öffnen einer Seite mit Installationshinweis: früh festhalten.
   useEffect(() => startInstallCapture(), []);
+
+  // Übertragung der Warteschlange: Start, online, Vordergrund, Hintergrund (auch auf `/offline`, wo der Header fehlt).
+  useEffect(() => startSyncTriggers(() => userId ?? getLastUserId()), [userId]);
 
   useEffect(() => {
     if (userId) setLastUserId(userId); // Offline-Einstieg (/offline) weiß so, welche Pakete zu zeigen sind

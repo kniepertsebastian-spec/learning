@@ -86,7 +86,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
   }
 
   const pendingTotal = (summary?.pendingCount ?? 0) + (summary?.failedCount ?? 0) + (summary?.conflictCount ?? 0);
-  if (online && pendingTotal === 0 && !syncing) return null;
+  if (online && pendingTotal === 0 && !syncing && !summary?.partialApplied) return null;
 
   return (
     <div className="relative">
@@ -133,6 +133,11 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
               {locale === "de" ? "Fehlgeschlagen (wird erneut versucht)" : "Failed (will retry)"}: {summary.failedCount}
             </p>
           )}
+          {summary?.partialApplied ? (
+            <p className="mb-1 text-foreground/70" data-testid="sync-partial-note">
+              {locale === "de" ? "Session war schon abgeschlossen, deine Antworten wurden trotzdem gezählt." : "Session was already completed, your answers were counted anyway."}
+            </p>
+          ) : null}
           {summary && summary.conflictCount > 0 && (
             <p className="mb-1 text-red-600 dark:text-red-400">
               {locale === "de" ? "Konflikte" : "Conflicts"}: {summary.conflictCount}

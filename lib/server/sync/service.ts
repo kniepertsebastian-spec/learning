@@ -86,7 +86,10 @@ async function processSingleEvent(userId: string, event: SyncEventInput): Promis
     .from(syncEvents)
     .where(and(eq(syncEvents.userId, userId), eq(syncEvents.clientEventId, event.clientEventId)))
     .limit(1);
-  if (existing) {
+  // Frühere Konflikte (Session anderswo abgeschlossen) wurden nie verbucht: der erneute Versuch wird mit der heutigen Logik verarbeitet.
+  if (existing?.status === "conflict") {
+    await db.delete(syncEvents).where(eq(syncEvents.id, existing.id));
+  } else if (existing) {
     return {
       clientEventId: event.clientEventId,
       status: existing.status === "applied" ? "already_applied" : existing.status,
@@ -122,11 +125,13 @@ async function processSingleEvent(userId: string, event: SyncEventInput): Promis
 
   try {
     const resultSummary = await applyEvent(userId, event);
+    const partial = typeof resultSummary === "object" && resultSummary !== null && "partial" in resultSummary && resultSummary.partial === true;
+    const status: SyncEventStatus = partial ? "applied_partial" : "applied";
     await db
       .update(syncEvents)
-      .set({ status: "applied", resultSummary, errorMessage: null })
+      .set({ status, resultSummary, errorMessage: null })
       .where(eq(syncEvents.id, claimId));
-    return { clientEventId: event.clientEventId, status: "applied", resultSummary };
+    return { clientEventId: event.clientEventId, status, resultSummary };
   } catch (error) {
     // "Konflikte nach Ereigniszeit und Serverstatus nachvollziehbar lösen":
     // ein Konflikt (Session anderswo bereits abgeschlossen) oder eine
@@ -178,6 +183,7 @@ async function applyEvent(userId: string, event: SyncEventInput): Promise<unknow
     const payload = event.payload as StudySessionPayload;
     if (await isStudySessionHidden(userId, payload.sessionId)) throw new StudySessionNotFoundError(payload.sessionId);
     return completeStudySession(payload.sessionId, userId, payload.answers, {
+      countIfFinished: true,
       timing: (session) => createReviewTiming({ eventTime: event.clientCreatedAt, notBefore: session.createdAt }),
     });
   }

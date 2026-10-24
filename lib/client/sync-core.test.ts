@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PendingSyncEvent } from "./offline-db";
-import { transferPendingEvents, type SyncIo } from "./sync-core";
+import { chunkForKeepalive, summarize, transferPendingEvents, type SyncIo } from "./sync-core";
 import { userIdFromSyncTag } from "../pwa/sync-tag";
 
 const event = (id: string, status: PendingSyncEvent["status"] = "pending"): PendingSyncEvent => ({
@@ -86,5 +86,36 @@ describe("userIdFromSyncTag", () => {
     expect(userIdFromSyncTag("sync-queue:abc")).toBe("abc");
     expect(userIdFromSyncTag("sync-queue:")).toBeNull();
     expect(userIdFromSyncTag("anderes")).toBeNull();
+  });
+});
+
+describe("chunkForKeepalive", () => {
+  const big = (id: string, bytes: number): PendingSyncEvent => ({ ...event(id), payload: { filler: "x".repeat(bytes) } });
+  it("packt kleine Ereignisse in eine Anfrage", () => {
+    const { chunks, skipped } = chunkForKeepalive([event("a"), event("b")], "u1");
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0].map((e) => e.clientEventId)).toEqual(["a", "b"]);
+    expect(skipped).toEqual([]);
+  });
+  it("teilt auf mehrere Anfragen unter der Grenze", () => {
+    const { chunks } = chunkForKeepalive([big("a", 400), big("b", 400), big("c", 400)], "u1", 1000);
+    expect(chunks.length).toBeGreaterThan(1);
+    for (const c of chunks) expect(new TextEncoder().encode(JSON.stringify({ userId: "u1", events: c })).length).toBeLessThanOrEqual(1000);
+    expect(chunks.flat().map((e) => e.clientEventId)).toEqual(["a", "b", "c"]);
+  });
+  it("lässt ein zu großes Ereignis für die normale Übertragung liegen", () => {
+    const { chunks, skipped } = chunkForKeepalive([event("a"), big("huge", 5000)], "u1", 1000);
+    expect(chunks.flat().map((e) => e.clientEventId)).toEqual(["a"]);
+    expect(skipped.map((e) => e.clientEventId)).toEqual(["huge"]);
+  });
+});
+
+describe("summarize", () => {
+  it("nennt das Alter des ältesten unübertragenen Ereignisses", () => {
+    const old = { ...event("old"), createdAt: "2026-10-20T10:00:00.000Z" };
+    const failed = { ...event("f", "failed"), createdAt: "2026-10-21T10:00:00.000Z" };
+    const conflict = { ...event("c", "conflict"), createdAt: "2026-10-01T10:00:00.000Z" };
+    expect(summarize([failed, old, conflict], null).oldestUnsyncedAt).toBe("2026-10-20T10:00:00.000Z");
+    expect(summarize([conflict], null).oldestUnsyncedAt).toBeNull();
   });
 });

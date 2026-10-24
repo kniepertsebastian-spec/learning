@@ -14,6 +14,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",
     "user:set-role": "tsx scripts/set-user-role.ts",
+    "sync:reprocess-conflicts": "tsx scripts/sync-reprocess-conflicts.ts",
     "company:create": "tsx scripts/manage-company.ts create",
     "company:ensure": "tsx scripts/manage-company.ts ensure",
     "gate3": "tsx scripts/gate3.ts",

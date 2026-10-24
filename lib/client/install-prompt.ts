@@ -79,3 +79,15 @@ export function dismissInstallOffer(): void {
   write(INSTALL_DISMISSED_KEY, new Date().toISOString());
   notify();
 }
+
+/** Läuft die App installiert (Home-Bildschirm / eigenes Fenster)? */
+export function isStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(window.matchMedia?.("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
+}
+
+/** iPhone/iPad in Safari ohne Installation: dort kann der Browser den Offline-Speicher nach etwa 7 Tagen ohne Nutzung räumen. */
+export function isUninstalledIosSafari(): boolean {
+  if (typeof window === "undefined") return false;
+  return !isStandalone() && isIosSafari(navigator.userAgent, navigator.platform, navigator.maxTouchPoints ?? 0);
+}

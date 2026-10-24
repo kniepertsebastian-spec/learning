@@ -12,6 +12,7 @@ import {
 } from "@/lib/client/offline-db";
 import { downloadOfflinePackage, fetchOfflinePackageVersion, type DownloadProgress } from "@/lib/client/offline-download";
 import { getStorageStatus, type StorageStatus } from "@/lib/client/storage-status";
+import { isUninstalledIosSafari } from "@/lib/client/install-prompt";
 import { SectionContent } from "@/components/SectionContent";
 import { reviewersText, changeLabel } from "@/lib/reviewers/seal";
 import { StudySession } from "@/components/StudySession";
@@ -95,7 +96,15 @@ export function OfflinePackageManager({
     };
   }, [certificationId]);
 
-  async function handleDownload() {
+  const [showInstallStep, setShowInstallStep] = useState(false);
+
+  async function handleDownload(skipInstallStep = false) {
+    // iPhone/iPad in Safari ohne Installation: Safari kann den Speicher nach etwa einer Woche ohne Nutzung räumen, daher zuerst die Installation anbieten (überspringbar).
+    if (!record && !skipInstallStep && isUninstalledIosSafari()) {
+      setShowInstallStep(true);
+      return;
+    }
+    setShowInstallStep(false);
     if (!isOfflineStorageSupported()) {
       setError(
         locale === "de"
@@ -275,10 +284,33 @@ export function OfflinePackageManager({
 
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
+        {showInstallStep && (
+          <div role="region" aria-label={locale === "de" ? "Zuerst installieren" : "Install first"} data-testid="download-install-step" className="mt-3 rounded-md border border-border bg-surface-inset p-3 text-sm">
+            <p className="font-medium">{locale === "de" ? "Installiere die App, bevor du Kurse speicherst" : "Install the app before saving courses"}</p>
+            <p className="mt-1 text-subtle">
+              {locale === "de"
+                ? "Safari kann gespeicherte Kurse und noch nicht übertragene Ergebnisse einer nicht installierten Website nach etwa einer Woche ohne Nutzung löschen."
+                : "Safari can delete saved courses and results that are not uploaded yet from a website that is not installed after about a week without use."}
+            </p>
+            <ol className="mt-2 flex list-decimal flex-col gap-0.5 pl-5">
+              <li>{locale === "de" ? "Tippe unten in Safari auf „Teilen“" : "Tap “Share” in Safari"}</li>
+              <li>{locale === "de" ? "Wähle „Zum Home-Bildschirm“ und öffne die App von dort" : "Choose “Add to Home Screen” and open the app from there"}</li>
+            </ol>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={() => void handleDownload(true)} data-testid="download-install-skip" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background">
+                {locale === "de" ? "Trotzdem speichern" : "Save anyway"}
+              </button>
+              <button type="button" onClick={() => setShowInstallStep(false)} className="rounded-md px-3 py-1.5 text-sm text-subtle hover:bg-background">
+                {locale === "de" ? "Später" : "Later"}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={handleDownload}
+            onClick={() => void handleDownload()}
             disabled={downloading}
             className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >

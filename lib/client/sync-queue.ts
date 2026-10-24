@@ -1,6 +1,6 @@
 import type { SyncEventType } from "@/lib/server/db/schema";
 import { SYNC_TAG_PREFIX } from "@/lib/pwa/sync-tag";
-import { summarize, transferPendingEvents, type SyncQueueSummary } from "@/lib/client/sync-core";
+import { chunkForKeepalive, summarize, transferPendingEvents, type SyncApiResult, type SyncQueueSummary } from "@/lib/client/sync-core";
 import {
   deletePendingSyncEvent,
   listPendingSyncEvents,
@@ -114,7 +114,28 @@ export function runSync(userId: string): Promise<SyncQueueSummary> {
   return promise;
 }
 
+/**
+ * Früher endete eine Session, die anderswo schon abgeschlossen war, als „Konflikt“ und wurde nie verbucht. Der Server zählt
+ * ihre Antworten jetzt als Wiederholungen: alte Konflikte werden deshalb einmalig je Gerät und Person erneut eingereiht.
+ */
+async function requeueLegacyConflicts(userId: string): Promise<void> {
+  const key = `certstudy-conflicts-requeued:${userId}`;
+  try {
+    if (window.localStorage.getItem(key)) return;
+  } catch {
+    return;
+  }
+  const conflicts = (await listPendingSyncEvents(userId)).filter((e) => e.status === "conflict");
+  for (const event of conflicts) await savePendingSyncEvent({ ...event, status: "pending", attempts: 0, lastError: null });
+  try {
+    window.localStorage.setItem(key, new Date().toISOString());
+  } catch {
+    // ohne Speicher wird es bei jedem Sync erneut versucht - harmlos, der Server ist idempotent
+  }
+}
+
 async function runSyncNow(userId: string): Promise<SyncQueueSummary> {
+  await requeueLegacyConflicts(userId).catch(() => {});
   const { summary } = await transferPendingEvents(
     userId,
     {
@@ -128,6 +149,63 @@ async function runSyncNow(userId: string): Promise<SyncQueueSummary> {
   );
   notifyQueueChanged();
   return summary;
+}
+
+/**
+ * Beim Verlassen der Seite (Hintergrund, Schließen) die Warteschlange übertragen, solange das Gerät online ist: dort, wo
+ * Background Sync fehlt (iOS), ist das die letzte Gelegenheit, bevor der Browser den Speicher räumen kann. `keepalive`
+ * lässt die Anfrage das Schließen der Seite überleben (max. 64 KB je Anfrage, daher in Teilen). Die Verbuchung ist
+ * idempotent: kommt die Antwort nicht mehr an, meldet der nächste normale Sync nur „schon verbucht“ und räumt auf.
+ */
+export async function flushQueueOnHide(userId: string): Promise<void> {
+  try {
+    if (typeof navigator === "undefined" || !navigator.onLine) return;
+    const events = (await listPendingSyncEvents(userId)).filter((e) => e.status === "pending" || e.status === "failed");
+    if (events.length === 0) return;
+    const { chunks } = chunkForKeepalive(events, userId);
+    for (const chunk of chunks) {
+      // Bewusst ohne Warten auf die Antwort: die Seite kann dabei schon weg sein.
+      void fetch("/api/sync", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, events: chunk }) })
+        .then(async (response) => {
+          if (!response.ok) return;
+          const results = ((await response.json()) as { results: SyncApiResult[] }).results;
+          for (const r of results) {
+            if (r.status === "applied" || r.status === "already_applied") await deletePendingSyncEvent(r.clientEventId);
+          }
+          setLastSyncedAt(userId, new Date().toISOString());
+          notifyQueueChanged();
+        })
+        .catch(() => {});
+    }
+  } catch {
+    // Beim Verlassen der Seite darf nichts werfen; der normale Sync beim nächsten Start übernimmt.
+  }
+}
+
+/**
+ * Gemeinsame Auslöser der Übertragung, unabhängig von der Seite (auch `/offline` ohne Header): beim Start, bei `online`
+ * und beim Zurückkehren in den Vordergrund wird übertragen, beim Wechsel in den Hintergrund oder Schließen mit `keepalive`.
+ * `resolveUserId` liefert die Person, der die Warteschlange gehört (angemeldet oder zuletzt angemeldet, siehe last-user.ts).
+ */
+export function startSyncTriggers(resolveUserId: () => string | null): () => void {
+  const sync = () => {
+    const userId = resolveUserId();
+    if (userId && navigator.onLine) void runSync(userId).catch(() => {});
+  };
+  const flush = () => {
+    const userId = resolveUserId();
+    if (userId) void flushQueueOnHide(userId);
+  };
+  const onVisibility = () => (document.visibilityState === "hidden" ? flush() : sync());
+  sync();
+  window.addEventListener("online", sync);
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", onVisibility);
+  return () => {
+    window.removeEventListener("online", sync);
+    window.removeEventListener("pagehide", flush);
+    document.removeEventListener("visibilitychange", onVisibility);
+  };
 }
 
 /** Meldet die Warteschlange beim Service Worker an (Background Sync, Chrome/Android): er überträgt sie, sobald wieder Netz da ist, auch bei geschlossener App. Wo es das nicht gibt (iOS, Firefox), bleibt es bei `online`, App-Start und manuellem Sync. */
