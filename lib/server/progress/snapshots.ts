@@ -1,7 +1,7 @@
 /** Fortschritt sichtbar (roadmap_motivation Phase 7): Stand „Lernziele sicher“ je Tag festhalten und daraus Rückblick und Einschätzung bilden. Nur für die Person selbst. */
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { domains, objectiveProgress, objectiveSnapshots, objectives, studyProfiles, users } from "@/lib/server/db/schema";
+import { certifications, domains, objectiveProgress, objectiveSnapshots, objectives, studyProfiles, users } from "@/lib/server/db/schema";
 import { examOutlook, progressReview, type Outlook, type ProgressReview, type SnapshotPoint } from "@/lib/progress/forecast";
 import { dayKey } from "@/lib/study/weekly-goal";
 
@@ -33,6 +33,19 @@ export async function recordObjectiveSnapshot(userId: string, certificationId: s
     .values({ userId, certificationId, day, secureObjectives: point.secure, totalObjectives: point.total })
     .onConflictDoUpdate({ target: [objectiveSnapshots.userId, objectiveSnapshots.certificationId, objectiveSnapshots.day], set: { secureObjectives: point.secure, totalObjectives: point.total } });
   return point;
+}
+
+/** Die Kurse, in denen die Person zuletzt Fortschritt festgehalten hat (für das Profil), jüngster zuerst. */
+export async function listProgressCourses(userId: string, limit = 3): Promise<Array<{ id: string; slug: string; name: string }>> {
+  const rows = await getDb()
+    .select({ id: certifications.id, slug: certifications.slug, name: certifications.name, last: sql<string>`max(${objectiveSnapshots.day})` })
+    .from(objectiveSnapshots)
+    .innerJoin(certifications, eq(certifications.id, objectiveSnapshots.certificationId))
+    .where(eq(objectiveSnapshots.userId, userId))
+    .groupBy(certifications.id, certifications.slug, certifications.name)
+    .orderBy(desc(sql`max(${objectiveSnapshots.day})`))
+    .limit(limit);
+  return rows.map((r) => ({ id: r.id, slug: r.slug, name: r.name }));
 }
 
 export interface ProgressView {

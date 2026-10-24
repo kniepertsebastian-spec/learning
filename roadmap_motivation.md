@@ -138,7 +138,7 @@ Ziel: Bei wenig Energie nicht nur weniger, sondern anders lernen. Das stärkt da
 
 ## Phase 7 – Fortschritt sichtbar machen (Priorität: mittel)
 
-- [ ] Rückblick im Profil und im Dashboard: „Vor 3 Wochen: 2 von 12 Lernzielen sicher. Heute: 9.“ Nur echte Werte aus Lernzielstand und Behaltensquote, keine geschätzten Prozentangaben.
+- [x] Rückblick im Profil und im Dashboard: „Vor 3 Wochen: 2 von 12 Lernzielen sicher. Heute: 9.“ Nur echte Werte aus Lernzielstand und Behaltensquote, keine geschätzten Prozentangaben.
 - [x] Verlauf je Kurs als kleine Grafik (Lernziele sicher über die Zeit).
 - [x] Persönliche Planbarkeit: Bei aktivem Prüfungstermin sieht **nur der Lernende** eine Einschätzung („bei deinem Tempo wird es knapp, sollen wir den Plan anpassen?“) mit Vorschlag (Wochenziel erhöhen, Termin verschieben). Im Firmenbereich erscheint davon nichts (Regel 2).
 - [x] Kein Vergleich mit anderen Personen.
@@ -173,7 +173,7 @@ Erweitert „Mentor fragen“ aus `roadmap_didaktik.md`, Phase 9.4.
 
 ## Phase 10 – Messen: Ausgangswerte vor Zielen (begleitend)
 
-- [ ] Kennzahlen in `psrp:metrics` ergänzen: Abbruch nach 7 und 30 Tagen (keine Session mehr), Rückkehrquote nach Pause, Kursabschlussquote, Nutzung von Notausstieg, Deeskalation und Energie-Alternativen.
+- [x] Kennzahlen in `psrp:metrics` ergänzen: Abbruch nach 7 und 30 Tagen (keine Session mehr), Rückkehrquote nach Pause, Kursabschlussquote, Nutzung von Notausstieg, Deeskalation und Energie-Alternativen. _(Abschnitt `engagement` im Export, gesamt und je Evaluationsgruppe; Energie-Alternativen standen schon unter `energyModes`; Pause = 7 Tage ohne abgeschlossene Session; `lib/server/psrp/engagement-metrics.ts`)_
 - [ ] Vor dem Einschalten einer Mechanik den Ausgangswert erfassen; Ziele erst danach festlegen.
 - [ ] Hypothesen für den Pilot (Zielwerte sind Annahmen, keine Zusagen): weniger Abbrüche nach 7 Tagen, höhere Rückkehrquote nach Pausen, mehr Hilfeanfragen bei gleichbleibender Mentorenzeit.
 

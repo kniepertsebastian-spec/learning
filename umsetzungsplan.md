@@ -189,7 +189,7 @@ Quelle: `roadmap_motivation.md`, Phase 6
 - [ ] Wirkung messen, restliche Punkte (`roadmap_didaktik.md`, Phase 7): Export nach Feature-Flags, Readiness gegen Prüfungsergebnis; sobald genug Prüfungsergebnisse vorliegen
 - [ ] Web Push (`roadmap_pwa.md`, Phase 6), sinnvoll zusammen mit PSRP-HR-Erinnerungszeiten
 - [ ] Didaktik „Später“ (`roadmap_didaktik.md`, Phase 11)
-- [ ] Motivation messen (`roadmap_motivation.md`, Phase 10): Ausgangswerte vor dem Einschalten jeder Mechanik erfassen, dann Ziele festlegen; Reaktivierung zusätzlich per Push
+- [ ] Motivation messen (`roadmap_motivation.md`, Phase 10): Kennzahlen zu Abbruch, Rückkehr und Abschluss gibt es jetzt im Export (Abschnitt `engagement`, siehe `docs/WIEDERHOLUNGSPLANUNG.md`); offen: Ausgangswerte vor jeder Mechanik erfassen, Ziele festlegen (nach Daten), Reaktivierung zusätzlich per Push
 - [ ] Qualität der Prüfer im Betrieb (`roadmap_pruefer.md`, Phase 6): Kennzahlen je Prüfer, Zweitprüfung als Stichprobe, Wiedervorlage bei neuer Prüfungsversion; sobald freigegebene Kurse Nutzer haben
 
 ---

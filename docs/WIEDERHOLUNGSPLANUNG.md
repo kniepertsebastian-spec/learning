@@ -36,6 +36,20 @@ npm run psrp:simulate -- 0.75 0.8 0.85 0.9             # Workload-Simulation üb
 
 Für `psrp:metrics` sollte `PSRP_EXPORT_SALT` gesetzt sein, damit die anonymen Nutzer-Kennungen über Exporte hinweg stabil und nicht rückrechenbar sind.
 
+### Abschnitt `engagement` (Ausgangswerte vor dem Einschalten einer Mechanik)
+
+Beschreibend, gesamt (`all`) und je Evaluationsgruppe (`byGroup`); nur Personen mit mindestens einer abgeschlossenen Session. Jede Rate steht mit Zähler und Nenner, ohne Daten als `null` statt 0.
+
+| Feld | Bedeutung |
+| --- | --- |
+| `churn7`, `churn30` | Anteil der Personen, die vor mehr als 7 bzw. 30 Tagen begonnen haben und seitdem keine abgeschlossene Session mehr hatten |
+| `returnAfterPause` | Pausen von mindestens 7 Tagen: `closed` (Person kam zurück) gegenüber `open` (noch nicht zurück); `rate` = closed / (closed + open) |
+| `courseCompletion` | Kurse mit mindestens einer abgeschlossenen Lektion, davon vollständig abgeschlossen |
+| `exit` | Anteil der Personen mit Notausstieg „Heute reicht's“ und Nutzungen je 100 Sessions |
+| `deescalation` | Anteil der Personen mit mindestens einer entlasteten Session (Frühwarnung) |
+
+Erst den Ausgangswert erfassen, dann eine Mechanik einschalten, dann Ziele festlegen (`roadmap_motivation.md` Phase 10). Bei kleinen Nutzerzahlen sind die Werte nur beschreibend.
+
 ## Vergleichsgrafik „Eine Woche Pause“
 
 `npm run psrp:pause-demo` zeigt ohne Nutzerdaten, was nach einer Pause passiert: dieselbe synthetische Person, derselbe Zufall, einmal mit reinem FSRS (wie eine klassische Lernkarten-App: alle fälligen Karten am selben Tag, neue Karten fix pro Tag, kein Tageslimit) und einmal mit der Planungsschicht (Tageslimit aus dem Zeitbudget, Rückstau wird über mehrere Tage abgebaut).
