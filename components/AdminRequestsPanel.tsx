@@ -25,6 +25,8 @@ type CatalogRow = {
   catalogStatus: CatalogStatus;
   approvedByName: string | null;
   approvedAt: string | null;
+  versionLabel: string | null;
+  changesSinceApproval: number | null;
 };
 
 export type EntitlementView = {
@@ -185,10 +187,11 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
   const de = locale === "de";
   const [status, setStatus] = useState<CatalogStatus>(c.catalogStatus);
   const [name, setName] = useState(c.approvedByName ?? "");
+  const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
-    setError(await call(`/api/admin/certifications/${c.id}/catalog`, "PATCH", { status, approvedByName: status === "approved" ? name : null }));
+    setError(await call(`/api/admin/certifications/${c.id}/catalog`, "PATCH", { status, approvedByName: status === "approved" ? name : null, confirmed: status === "approved" ? confirmed : undefined }));
     router.refresh();
   }
   return (
@@ -198,6 +201,12 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
         {c.approvedAt && (
           <span className="ml-2 text-xs text-foreground/70">
             {de ? "geprüft von" : "reviewed by"} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}
+            {c.versionLabel ? ` · ${de ? "Version" : "Version"} ${c.versionLabel}` : ""}
+          </span>
+        )}
+        {c.changesSinceApproval !== null && c.changesSinceApproval > 0 && (
+          <span className="ml-2 rounded-full bg-warning-soft px-2 py-0.5 text-xs text-warning-text" data-testid="catalog-changes">
+            {c.changesSinceApproval} {de ? (c.changesSinceApproval === 1 ? "Änderung seit Prüfung" : "Änderungen seit Prüfung") : c.changesSinceApproval === 1 ? "change since review" : "changes since review"}
           </span>
         )}
       </span>
@@ -218,6 +227,12 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
           aria-label={de ? "Name der prüfenden Person" : "Reviewer name"}
           className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
         />
+      )}
+      {status === "approved" && (
+        <label className="flex items-center gap-1.5 text-xs">
+          <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} data-testid="catalog-confirm" />
+          {de ? "Inhalte dieser Version fachlich geprüft" : "Content of this version reviewed"}
+        </label>
       )}
       <button type="button" onClick={() => void save()} className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface">
         {de ? "Speichern" : "Save"}

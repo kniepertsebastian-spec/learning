@@ -61,13 +61,13 @@ Heute vorhanden:
 
 ## Phase 2 – Freigabe an den Inhaltsstand binden (Priorität: hoch)
 
-- [ ] Tabelle `course_approvals` (append-only): id, certification_id, reviewer_user_id (oder `null` für Altbestand), reviewer_display_name (Kopie zum Zeitpunkt), content_hash, version_label (z. B. „2.1“), scope (`course` | Liste von Domains), approved_at, note.
-- [ ] `content_hash`: deterministischer Hash über alle Abschnitts- und Frage-Fingerprints des Kurses (`fingerprint()` aus `lib/server/course-editor/snapshots.ts`), inkl. aktiver Varianten (`item_variant`).
-- [ ] Freigabe-Ablauf: Prüfer bzw. Admin klickt „Freigeben“ → Hash wird berechnet und gespeichert, `catalogStatus = approved`. Die Freigabe enthält eine Bestätigung: „Ich habe die Inhalte dieser Version fachlich geprüft.“
-- [ ] Änderungserkennung: Weicht der aktuelle Hash von der letzten Freigabe ab, Status „geändert seit Prüfung“ mit Liste der geänderten Abschnitte/Fragen (Diff über Fingerprints). Neue Varianten aus der Generierung zählen als Änderung.
-- [ ] Redaktionelle Änderungen: Admin kann eine Änderung als „redaktionell“ markieren (protokolliert in `admin_audit` o. ä.); sie lösen keinen Hinweis aus, erscheinen aber im Protokoll.
-- [ ] Neufreigabe zeigt dem Prüfer nur den Diff seit seiner letzten Freigabe.
-- [ ] Migration Altbestand: vorhandene `approvedByName`/`approvedAt` als `course_approvals`-Eintrag ohne Konto übernehmen (Hash zum Migrationszeitpunkt). Die Felder in `certifications` bleiben vorerst als Lesezugriff erhalten und werden später entfernt.
+- [x] Tabelle `course_approvals` (append-only): id, certification_id, reviewer_user_id (oder `null` für Altbestand), reviewer_display_name (Kopie zum Zeitpunkt), content_hash, version_label (z. B. „2.1“), scope (`course` | Liste von Domains), approved_at, note.
+- [x] `content_hash`: deterministischer Hash über alle Abschnitts- und Frage-Fingerprints des Kurses (`fingerprint()` aus `lib/server/course-editor/snapshots.ts`), inkl. aktiver Varianten (`item_variant`).
+- [x] Freigabe-Ablauf: Prüfer bzw. Admin klickt „Freigeben“ → Hash wird berechnet und gespeichert, `catalogStatus = approved`. Die Freigabe enthält eine Bestätigung: „Ich habe die Inhalte dieser Version fachlich geprüft.“
+- [x] Änderungserkennung: Weicht der aktuelle Hash von der letzten Freigabe ab, Status „geändert seit Prüfung“ mit Liste der geänderten Abschnitte/Fragen (Diff über Fingerprints). Neue Varianten aus der Generierung zählen als Änderung.
+- [x] Redaktionelle Änderungen: Admin kann eine Änderung als „redaktionell“ markieren (protokolliert in `admin_audit` o. ä.); sie lösen keinen Hinweis aus, erscheinen aber im Protokoll.
+- [ ] (Diff-Anzeige vorhanden; Prüfer-Ansicht folgt mit 4.6b) Neufreigabe zeigt dem Prüfer nur den Diff seit seiner letzten Freigabe.
+- [x] Migration Altbestand: vorhandene `approvedByName`/`approvedAt` als `course_approvals`-Eintrag ohne Konto übernehmen (Hash zum Migrationszeitpunkt). Die Felder in `certifications` bleiben vorerst als Lesezugriff erhalten und werden später entfernt.
 
 **Akzeptanzkriterium:** Nach einer Freigabe und anschließender Änderung einer Frage in der Werkstatt zeigt der Kurs „1 Änderung seit Prüfung“; nach Neufreigabe verschwindet der Hinweis. Ein Test belegt, dass derselbe Inhalt immer denselben Hash ergibt.
 

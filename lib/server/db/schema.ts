@@ -947,6 +947,44 @@ export const objectiveSnapshots = pgTable(
   (table) => [unique("objective_snapshot_day_unique").on(table.userId, table.certificationId, table.day)],
 );
 
+export type CourseApprovalKind = "approval" | "editorial" | "legacy";
+
+/**
+ * Freigabe eines Kurses für einen Inhaltsstand (roadmap_pruefer Phase 2). Nur anhängen (Trigger verbietet UPDATE und DELETE, außer
+ * der Kurs selbst wird gelöscht). `fingerprints` hält je Abschnitt und Frage den Fingerabdruck zum Zeitpunkt der Freigabe, damit
+ * spätere Änderungen mit Diff angezeigt werden können; `content_hash` ist der Hash darüber.
+ * - `approval`: ein Mensch hat diesen Stand geprüft („Ich habe die Inhalte dieser Version fachlich geprüft“).
+ * - `editorial`: Admin hat Änderungen als redaktionell (Tippfehler, Formatierung) übernommen; Prüfer und Name bleiben die der letzten Freigabe.
+ * - `legacy`: aus den früheren Feldern `approvedByName`/`approvedAt` übernommen, Hash zum Zeitpunkt der Übernahme.
+ * `reviewer_user_id` ohne Fremdschlüssel (das Protokoll bleibt unveränderlich, auch wenn das Konto gelöscht wird); der Name ist eine Kopie.
+ */
+export const courseApprovals = pgTable(
+  "course_approvals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<CourseApprovalKind>().notNull().default("approval"),
+    reviewerUserId: uuid("reviewer_user_id"),
+    reviewerDisplayName: text("reviewer_display_name").notNull(),
+    /** Wer die Freigabe im System erfasst hat (Admin, auch wenn der Prüfer kein Konto hat). */
+    recordedByUserId: uuid("recorded_by_user_id"),
+    contentHash: text("content_hash").notNull(),
+    fingerprints: jsonb("fingerprints").$type<{ sections: Record<string, string>; questions: Record<string, string> }>().notNull(),
+    versionLabel: text("version_label").notNull(),
+    /** Geltungsbereich: der ganze Kurs oder einzelne Domains (Domain-IDs). */
+    scope: jsonb("scope").$type<"course" | { domains: string[] }>().notNull().default(sql`'"course"'::jsonb`),
+    approvedAt: timestamp("approved_at", { withTimezone: true }).notNull().defaultNow(),
+    note: text("note"),
+  },
+  (table) => [
+    index("course_approvals_cert_idx").on(table.certificationId, table.approvedAt),
+    uniqueIndex("course_approvals_legacy_unique").on(table.certificationId).where(sql`${table.kind} = 'legacy'`),
+    check("course_approvals_kind_check", sql`${table.kind} in ('approval', 'editorial', 'legacy')`),
+  ],
+);
+
 export type ReactivationStage = "d5" | "d12" | "d26";
 
 /**

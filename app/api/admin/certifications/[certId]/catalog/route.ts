@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 const schema = z.object({
   status: z.enum(["draft", "in_review", "approved"]),
   approvedByName: z.string().max(120).nullable().optional(),
+  /** Bestätigung „Ich habe die Inhalte dieser Version fachlich geprüft.“ */
+  confirmed: z.boolean().optional(),
 });
 
 /** Betreiber: Prüfstatus eines Lernpfads. „approved“ verlangt den Namen der prüfenden Person. */
@@ -25,12 +27,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ce
     throw error;
   }
   try {
-    await setCatalogStatus({ certificationId: certId, status: body.status, approvedByName: body.approvedByName, actorUserId: guard.user.id });
+    await setCatalogStatus({ certificationId: certId, status: body.status, approvedByName: body.approvedByName, confirmed: body.confirmed, actorUserId: guard.user.id });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     // Interne Lernpfade einer Firma sind für den Betreiber nicht auffindbar.
     if (error instanceof CourseNotFoundError || error instanceof InternalCourseError) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (error instanceof InvalidApprovalError) return NextResponse.json({ error: "Für die Freigabe wird der Name der prüfenden Person gebraucht." }, { status: 400 });
+    if (error instanceof InvalidApprovalError) return NextResponse.json({ error: "Für die Freigabe braucht es den Namen der prüfenden Person und die Bestätigung, dass die Inhalte dieser Version fachlich geprüft wurden." }, { status: 400 });
     throw error;
   }
 }
