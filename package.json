@@ -42,6 +42,7 @@
     "course:import-fixture": "tsx scripts/import-course-package-fixture.ts",
     "fsrs:optimize": "tsx scripts/fsrs-optimize.ts",
     "psrp:metrics": "tsx scripts/psrp-metrics.ts",
+    "psrp:baseline": "tsx scripts/psrp-baseline.ts",
     "psrp:simulate": "tsx scripts/psrp-simulate.ts",
     "psrp:pause-demo": "tsx scripts/psrp-pause-demo.ts",
     "psrp:fit-weights": "tsx scripts/psrp-fit-weights.ts",

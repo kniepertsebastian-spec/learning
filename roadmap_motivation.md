@@ -174,10 +174,10 @@ Erweitert „Mentor fragen“ aus `roadmap_didaktik.md`, Phase 9.4.
 ## Phase 10 – Messen: Ausgangswerte vor Zielen (begleitend)
 
 - [x] Kennzahlen in `psrp:metrics` ergänzen: Abbruch nach 7 und 30 Tagen (keine Session mehr), Rückkehrquote nach Pause, Kursabschlussquote, Nutzung von Notausstieg, Deeskalation und Energie-Alternativen. _(Abschnitt `engagement` im Export, gesamt und je Evaluationsgruppe; Energie-Alternativen standen schon unter `energyModes`; Pause = 7 Tage ohne abgeschlossene Session; `lib/server/psrp/engagement-metrics.ts`)_
-- [ ] Vor dem Einschalten einer Mechanik den Ausgangswert erfassen; Ziele erst danach festlegen.
-- [ ] Hypothesen für den Pilot (Zielwerte sind Annahmen, keine Zusagen): weniger Abbrüche nach 7 Tagen, höhere Rückkehrquote nach Pausen, mehr Hilfeanfragen bei gleichbleibender Mentorenzeit.
+- [x] Vor dem Einschalten einer Mechanik den Ausgangswert erfassen; Ziele erst danach festlegen. _(`npm run psrp:baseline -- save|list|compare`, Kennzahlen je Flag mit und ohne; Ablauf und Hinweise in `docs/MESSEN.md`; Ziele stehen dort erst nach den ersten Daten)_
+- [x] Hypothesen für den Pilot (Zielwerte sind Annahmen, keine Zusagen; als H1 bis H3 in `docs/MESSEN.md` festgehalten, ohne Zahlen bis zu den Ausgangswerten): weniger Abbrüche nach 7 Tagen, höhere Rückkehrquote nach Pausen, mehr Hilfeanfragen bei gleichbleibender Mentorenzeit.
 
-**Akzeptanzkriterium:** Für jedes Feature-Flag dieser Roadmap lassen sich Ausgangs- und Vergleichswerte per Skript erzeugen.
+**Akzeptanzkriterium:** Für jedes Feature-Flag dieser Roadmap lassen sich Ausgangs- und Vergleichswerte per Skript erzeugen. _(erfüllt: `psrp:baseline`, acht Flags)_
 
 ---
 

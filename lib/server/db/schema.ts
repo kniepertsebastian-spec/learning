@@ -3179,6 +3179,22 @@ export const careerSuggestions = pgTable("career_suggestions", {
 // (dort liegen Prüfungsdatum und leichte Tage bereits je Nutzer und Kurs).
 // ---------------------------------------------------------------------------
 
+/**
+ * Ausgangswerte (roadmap_motivation Phase 10): festgehaltene Kennzahlen des anonymisierten Metrik-Exports zu einem Zeitpunkt, damit man
+ * später vergleichen kann. Nur Aggregate, keine Personen (auch keine anonymisierten); darum ohne Verweis auf Nutzer.
+ */
+export const metricSnapshots = pgTable("metric_snapshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  label: text("label").notNull(),
+  takenAt: timestamp("taken_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Welcher Anteil je Feature-Flag zum Zeitpunkt galt (100 = alle, 0 = aus). */
+  flagConfig: jsonb("flag_config").$type<Record<string, number>>().notNull(),
+  /** Flache Kennzahlen (Schlüssel → Wert und Nenner), siehe lib/server/psrp/baseline.ts. */
+  figures: jsonb("figures").$type<Record<string, { value: number | null; n: number | null }>>().notNull(),
+  /** Aktive Personen und Reviews zum Zeitpunkt, um die Größe der Datenbasis zu sehen. */
+  basis: jsonb("basis").$type<{ users: number; reviews: number }>().notNull(),
+});
+
 export type ReviewLogType = "card" | "interleaved" | "probe" | "recall_check";
 
 /** FSRS-Zustand je (Nutzer, Frage). Abgeleitet aus dem Review-Log, wird mit jedem Review fortgeschrieben. */
