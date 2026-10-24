@@ -223,7 +223,7 @@ Ziel: Schwache oder fällige Inhalte tauchen in neuem Zusammenhang wieder auf, z
 
 - [x] Kandidaten: fällige oder schwache Items (niedrige Abrufwahrscheinlichkeit, Kategorie „schwach“), deren Konzept mit der aktuellen Lektion verbunden ist (gemeinsames Konzept, Voraussetzung aus 9.3 oder gleiches Themengebiet).
 - [x] Einbau in Lektionstests (`SectionQuiz`): höchstens 2 Fragen bzw. 20 % des Tests, als Variante, optisch wie normale Fragen.
-- [ ] Einbau in Simulationen: vorhandene Verknüpfung `task_item` nutzen; Generierung neuer Simulationen kann Items früherer Lektionen als Schritt einbauen (`embedded_step`).
+- [x] Einbau in Simulationen: nach einer souverän gelösten Simulation (weniger als 2 Hilfen) erscheint eine fällige Frage aus einer früheren Lektion mit gemeinsamem Konzept, als echte Antwort des Lernenden (Review `interleaved`, zählt für nichts anderes). Bewusst nicht über `task_item`: dort wäre die Gutschrift automatisch, ohne dass die Person das Wissen zeigt; eine in die Simulation hineingeschriebene Zusatzstufe (`embedded_step`) in der Generierung bleibt offen.
 - [x] **Eingewebte Fragen zählen nicht für das Bestehen der aktuellen Lektion**, nur für das Gedächtnismodell. Sonst scheitert jemand an Lektion 8 wegen Lektion 3.
 - [x] Logging als `review_type = interleaved` (vorhanden), mit Kennzeichnung der Herkunft (`woven_into_lesson_id`).
 - [x] Items im Verstehens-Modus (Phase 9) werden nicht eingewebt.

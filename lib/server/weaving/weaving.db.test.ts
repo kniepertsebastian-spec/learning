@@ -9,7 +9,8 @@ if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 import { getDb } from "@/lib/server/db/client";
 import { conceptPrerequisites, conceptStruggles, concepts, domains, itemConcepts, itemStates, itemVariants, lessons, objectiveProgress, objectives, questionOptions, questions, quizAnswers, quizAttempts, reviewLog } from "@/lib/server/db/schema";
 import { seedCourse, seedLessons, seedUser } from "@/lib/server/psrp/test-db";
-import { recordSectionQuizAttempt } from "@/lib/server/sections/attempt-service";
+import { recordSectionQuizAttempt, recordSimulationWovenAnswer } from "@/lib/server/sections/attempt-service";
+import { recordSimulationSolved } from "@/lib/server/simulations/service";
 import { pickWovenQuestions } from "./candidates";
 
 const run = TEST_DB ? describe : describe.skip;
@@ -146,5 +147,51 @@ run("Einweben (echte DB)", () => {
       { questionId: fx.qB, selectedOptionId: fx.optB.right, woven: true },
     ]);
     expect(await getDb().select().from(reviewLog).where(and(eq(reviewLog.userId, fx.userId), eq(reviewLog.itemId, fx.qB)))).toHaveLength(0);
+  });
+
+  describe("in Simulationen", () => {
+    const SIM = "```simulation\n" + JSON.stringify({ type: "terminal", title: "T", scenario: "S", steps: [{ goal: "g", accept: ["ls"], output: "", hint: "h" }], success: "ok" }) + "\n```";
+
+    async function withSimulation() {
+      const fx = await fixture();
+      await getDb().update(lessons).set({ content: { de: SIM, en: SIM } as never }).where(eq(lessons.sectionId, fx.sectionA));
+      return fx;
+    }
+
+    it("max legt die Zahl fest, unabhängig von der Testlänge", async () => {
+      const fx = await fixture();
+      expect(await pickWovenQuestions(fx.userId, fx.sectionA, 0, now, { max: 1 })).toHaveLength(1);
+      expect(await pickWovenQuestions(fx.userId, fx.sectionA, 0, now)).toHaveLength(0);
+      process.env.FEATURE_WOVEN_REVIEWS = "0";
+      expect(await pickWovenQuestions(fx.userId, fx.sectionA, 0, now, { max: 1 })).toHaveLength(0);
+    });
+
+    it("souverän gelöste Simulation liefert eine Frage von früher, mühsam gelöste nicht", async () => {
+      const fx = await withSimulation();
+      const clean = await recordSimulationSolved(fx.userId, fx.sectionA, 0, 0);
+      expect(clean.woven.map((w) => w.itemId)).toEqual([fx.qB]);
+      const struggled = await recordSimulationSolved(fx.userId, fx.sectionA, 0, 5);
+      expect(struggled.woven).toHaveLength(0);
+    });
+
+    it("die Antwort wird als Review gebucht (interleaved, mit Lektion), ohne Fortschritt im Lernziel", async () => {
+      const fx = await withSimulation();
+      expect(await recordSimulationWovenAnswer(fx.userId, fx.sectionA, { questionId: fx.qB, selectedOptionId: fx.optB.wrong })).toBe(true);
+      const [lesson] = await getDb().select().from(lessons).where(eq(lessons.sectionId, fx.sectionA));
+      const log = await getDb().select().from(reviewLog).where(and(eq(reviewLog.userId, fx.userId), eq(reviewLog.itemId, fx.qB)));
+      expect(log).toHaveLength(1);
+      expect(log[0]).toMatchObject({ reviewType: "interleaved", rawRating: 1, wovenIntoLessonId: lesson.id });
+      expect(await getDb().select().from(objectiveProgress).where(and(eq(objectiveProgress.userId, fx.userId), eq(objectiveProgress.objectiveId, fx.objB.id)))).toHaveLength(0);
+      // eigene Lektion ist kein gültiges Einweben
+      await recordSimulationWovenAnswer(fx.userId, fx.sectionA, { questionId: fx.questionIds[0], selectedOptionId: fx.optA[0].right });
+      expect(await getDb().select().from(reviewLog).where(and(eq(reviewLog.userId, fx.userId), eq(reviewLog.itemId, fx.questionIds[0])))).toHaveLength(0);
+    });
+
+    it("ohne Flag wird nichts gebucht", async () => {
+      const fx = await withSimulation();
+      process.env.FEATURE_WOVEN_REVIEWS = "0";
+      expect(await recordSimulationWovenAnswer(fx.userId, fx.sectionA, { questionId: fx.qB, selectedOptionId: fx.optB.right })).toBe(false);
+      expect(await getDb().select().from(reviewLog).where(and(eq(reviewLog.userId, fx.userId), eq(reviewLog.itemId, fx.qB)))).toHaveLength(0);
+    });
   });
 });

@@ -101,9 +101,9 @@ run("Simulationsfortschritt (echte DB)", () => {
     const { sectionId, userId, questionId } = await setup();
     const due = async () => (await getDb().select().from(reviewItems).where(eq(reviewItems.questionId, questionId)))[0].dueAt.getTime();
     const before = await due();
-    expect(await recordSimulationSolved(userId, sectionId, 0, 1)).toEqual({ struggled: false, pulledForward: 0 });
+    expect(await recordSimulationSolved(userId, sectionId, 0, 1)).toEqual({ struggled: false, pulledForward: 0, woven: [] });
     expect(await due()).toBe(before);
-    expect(await recordSimulationSolved(userId, sectionId, 0, 3)).toEqual({ struggled: true, pulledForward: 1 });
+    expect(await recordSimulationSolved(userId, sectionId, 0, 3)).toEqual({ struggled: true, pulledForward: 1, woven: [] });
     expect(await due()).toBeLessThanOrEqual(Date.now());
   });
 

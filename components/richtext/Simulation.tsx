@@ -4,6 +4,7 @@ import { BookOpen, CheckCircle2, GitBranch, Lightbulb, RotateCcw, SlidersHorizon
 import * as React from "react";
 import { MentorAskForm } from "@/components/MentorAskForm";
 import { useLessonSimulations } from "@/components/lesson/LessonSimulations";
+import { WovenStep } from "@/components/lesson/WovenStep";
 import { RichText } from "@/components/RichText";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { SelfExplanation } from "@/components/quiz/SelfExplanation";
 import { useLocaleOptional } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { fmt } from "@/lib/quiz/keys";
+import type { WovenQuestion } from "@/lib/server/weaving/candidates";
 import {
   commandMatches,
   parseSimulation,
@@ -90,12 +92,16 @@ function SolvedBanner({ helps, children, selfExplain }: { helps: number | null; 
   const lesson = useLessonSimulations();
   const meta = React.useContext(SimMeta);
   const [struggled, setStruggled] = React.useState(false);
+  const [woven, setWoven] = React.useState<WovenQuestion | null>(null);
   const reported = React.useRef(false);
   React.useEffect(() => {
     if (reported.current || !lesson || !meta) return;
     reported.current = true;
     // Ohne Zählung (nach einem Neustart der Entscheidung) gilt die Runde als „mit einer Hilfe“.
-    void lesson.reportSolved(meta.spec, helps ?? 1).then((r) => setStruggled(Boolean(r?.struggled)));
+    void lesson.reportSolved(meta.spec, helps ?? 1).then((r) => {
+      setStruggled(Boolean(r?.struggled));
+      setWoven(r?.woven?.[0] ?? null);
+    });
     // Einmal je eingeblendetem Banner.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -121,6 +127,7 @@ function SolvedBanner({ helps, children, selfExplain }: { helps: number | null; 
           </div>
         )}
         {struggled && <p className="mt-3 text-sm text-subtle" data-testid="simulation-struggled">{t.lesson_blocks.simStruggled}</p>}
+        {woven && lesson && <WovenStep sectionId={lesson.sectionId} question={woven} locale={locale} />}
         {selfExplain && <SelfExplanation storageKey={selfExplain.key} prompt={locale === "de" ? "Erkläre in einem Satz, warum dieser Weg zum Ziel geführt hat." : "Explain in one sentence why this path led to the goal."} modelAnswer={selfExplain.model} locale={locale} />}
       </div>
     </div>

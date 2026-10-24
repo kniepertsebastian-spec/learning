@@ -3,6 +3,7 @@ import { getDb } from "@/lib/server/db/client";
 import { domains, lessons, objectives, questions, reviewItems, sections, simulationResults } from "@/lib/server/db/schema";
 import { extractSimulationSources, parseSimulation } from "@/lib/markdown/simulation";
 import { recordInterleavedTask } from "@/lib/server/psrp/implicit";
+import { pickWovenQuestions, type WovenQuestion } from "@/lib/server/weaving/candidates";
 import type { Localized } from "@/lib/types";
 
 /** Ab so vielen Hilfen (Tipp, Lösung, Fehlversuche) gilt eine Simulation als „mit Mühe gelöst“ und kommt in die Wiederholung. */
@@ -25,7 +26,7 @@ export class SimulationNotFoundError extends Error {}
  * soll bald wieder auf den Tisch (roadmap3.md, Schritt 5). Es entstehen keine neuen Wiederholungseinträge, nur
  * bestehende werden vorgezogen.
  */
-export async function recordSimulationSolved(userId: string, sectionId: string, simIndex: number, helps: number): Promise<{ struggled: boolean; pulledForward: number }> {
+export async function recordSimulationSolved(userId: string, sectionId: string, simIndex: number, helps: number): Promise<{ struggled: boolean; pulledForward: number; woven: WovenQuestion[] }> {
   const db = getDb();
   const [row] = await db
     .select({ objectiveId: sections.objectiveId, content: lessons.content })
@@ -67,7 +68,10 @@ export async function recordSimulationSolved(userId: string, sectionId: string, 
       pulledForward = moved.length;
     }
   }
-  return { struggled, pulledForward };
+  // Roadmap Didaktik Phase 10: nach einer souverän gelösten Simulation eine fällige Frage aus einer früheren Lektion (Flag woven_reviews).
+  // Wer sich durchkämpfen musste, bekommt nichts obendrauf.
+  const woven = struggled ? [] : await pickWovenQuestions(userId, sectionId, 0, now, { max: 1 }).catch(() => []);
+  return { struggled, pulledForward, woven };
 }
 
 export type PracticeSimulation = { sectionId: string; title: Localized<string>; content: Localized<string>; simIndex: number };
