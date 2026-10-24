@@ -22,3 +22,12 @@ export async function requireReviewerApi(certificationId: string): Promise<{ ok:
   if (!(await canReviewCourse(user.id, certificationId))) return { ok: false, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
   return { ok: true, user };
 }
+
+/** API-Route für das eigene Expertenprofil: 401 ohne Anmeldung, 403 ohne Prüfer-Rolle. */
+export async function requireReviewerUserApi(): Promise<{ ok: true; user: SessionUser } | { ok: false; response: NextResponse }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  const user = await getCurrentUser();
+  if (!user || user.role !== "reviewer") return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  return { ok: true, user };
+}

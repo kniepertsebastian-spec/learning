@@ -77,6 +77,10 @@ ausgehende SMTP-Verbindungen.
 `npm run reactivation:run` verschickt freundliche Mails „3 Minuten reichen heute“ an Personen, die länger nicht gelernt haben: nach **5, 12 und 26 Tagen** ohne Aktivität (Session, gelöste Simulation oder Spickzettel), **höchstens drei je Pause**, danach Ruhe. Eine neue Aktivität beginnt eine neue Pause. Der Link in der Mail (`/cert/<slug>/restart`) startet direkt eine 3-Minuten-Runde; den Rückstand verteilt wie immer die Planungsschicht.
 
 - **Täglich per Cron** (tagsüber; ein Lauf außerhalb 8 bis 20 Uhr in der Zeitzone der Person verschickt nichts, der nächste holt es nach): `0 10 * * * cd /pfad/zum/projekt && docker compose exec -T app npm run reactivation:run`.
+
+## Zertifikats-Erinnerung im Expertenprofil
+
+`npm run reviewers:remind` schickt 60 Tage vor Ablauf eines Zertifikats im Expertenprofil eine Mail an die Person und an alle Admins (je Ablaufdatum einmal; ein neues Ablaufdatum startet die Erinnerung neu). Täglich per Cron: `0 7 * * * cd /pfad/zum/projekt && docker compose exec -T app npm run reviewers:remind`.
 - **Ausgeschlossen:** Personen mit Abmeldung (Konto → „Freundliche Erinnerung nach einer Pause“ oder Abmeldelink in der Mail), Personen, die die E-Mail-Erinnerungen des Prüfungsplaners abgeschaltet haben, und **alle Mitglieder einer Firma** (dort gelten nur die Fristerinnerungen; nie an Arbeitgeber oder Mentor).
 - **Abmeldelink:** `/unsubscribe/reactivation?u=…&t=…`, signiert mit `AUTH_SECRET`, ohne Anmeldung nutzbar; erst ein Klick meldet ab, damit Mail-Scanner nichts auslösen. Die Mail trägt zusätzlich den Header `List-Unsubscribe`.
 - **Ausschalten:** `FEATURE_REACTIVATION=0` (alle) oder `FEATURE_REACTIVATION_ROLLOUT=<0 bis 100>` (Anteil der Personen).

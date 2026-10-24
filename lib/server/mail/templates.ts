@@ -196,3 +196,15 @@ export function reviewerInvitationMessage(to: string, link: string): MailMessage
       `Der Link ist 7 Tage gültig und nur einmal verwendbar.${FOOTER}`,
   };
 }
+
+/** Erinnerung an ein ablaufendes Zertifikat im Expertenprofil, 60 Tage vorher. An die Person selbst und an die Betreiber (mit Namen). */
+export function reviewerCertificateExpiryMessage(to: string, input: { vendor: string; name: string; validUntil: string; link: string; reviewerName?: string }): MailMessage {
+  const who = input.reviewerName ? `Das Zertifikat von ${input.reviewerName} ` : "Dein Zertifikat ";
+  return {
+    to,
+    subject: `Zertifikat „${input.name}“ im Expertenprofil läuft bald ab`,
+    text:
+      `Hallo,\n\n${who}„${input.name}“ (${input.vendor}) ist bis ${input.validUntil} gültig.\n\n` +
+      `Nach dem Ablauf zeigt das öffentliche Profil es als „abgelaufen“. Wenn es verlängert wurde, trage bitte das neue Ablaufdatum ein:\n\n${input.link}${FOOTER}`,
+  };
+}

@@ -1,0 +1,86 @@
+import { eq } from "drizzle-orm";
+import { getDb } from "../lib/server/db/client";
+import { reviewerCertifications, reviewerExperience, reviewerProfiles, users } from "../lib/server/db/schema";
+import { USERS } from "./global-setup";
+import { expect, login, test } from "./fixtures";
+
+test("Expertenprofil: nur Freigegebenes ist öffentlich, Nachweis erst nach Admin-Prüfung, Rückzug sofort", async ({ page, browser, gateway }) => {
+  const db = getDb();
+  const [me] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.reviewer.email)).limit(1);
+  // frischer Start
+  await db.delete(reviewerCertifications).where(eq(reviewerCertifications.userId, me.id));
+  await db.delete(reviewerExperience).where(eq(reviewerExperience.userId, me.id));
+  await db.delete(reviewerProfiles).where(eq(reviewerProfiles.userId, me.id));
+
+  await login(page, gateway.url, USERS.reviewer.email);
+  await page.goto(`${gateway.url}/reviewer/profile`);
+
+  // Profil anlegen: Name und Land öffentlich, Region und Kurzvorstellung nicht
+  await page.getByTestId("profile-first-name").fill("Erika");
+  await page.getByTestId("profile-last-name").fill("Prüfer");
+  await page.getByTestId("profile-country").fill("Deutschland");
+  await page.getByTestId("profile-region").fill("Geheimland");
+  await page.getByTestId("profile-bio-de").fill("Nicht öffentliche Vorstellung");
+  await page.getByTestId("consent-name").check();
+  await page.getByTestId("consent-country").check();
+  await page.getByTestId("profile-save").click();
+  await expect(page.getByTestId("profile-message")).toContainText(/saved|gespeichert/i);
+
+  // Veröffentlichen geht noch nicht: kein öffentlicher Eintrag
+  await page.getByTestId("profile-publish").click();
+  await expect(page.getByTestId("profile-message")).toContainText(/Zertifikat|certification/i);
+
+  // Zertifikat mit Nachweis-Link (nur https)
+  await page.getByTestId("cert-new").click();
+  await page.getByTestId("cert-vendor").fill("CompTIA");
+  await page.getByTestId("cert-name").fill("Security+");
+  await page.getByTestId("cert-earned").fill("2024-01-10");
+  await page.getByTestId("cert-url").fill("http://unsicher.example.com");
+  await page.getByTestId("cert-save").click();
+  await expect(page.getByTestId("profile-message")).toContainText(/https/);
+  await page.getByTestId("cert-url").fill("https://verify.example.com/abc");
+  await page.getByTestId("cert-save").click();
+  await expect(page.getByTestId("cert-item")).toHaveCount(1);
+
+  await page.getByTestId("profile-publish").click();
+  await expect(page.getByTestId("public-link")).toBeVisible();
+  const slug = (await page.getByTestId("public-link").textContent())!.replace("/experts/", "").trim();
+
+  // Anonym: genau das Freigegebene
+  const anon = await browser.newContext({ baseURL: gateway.url });
+  const pub = await anon.newPage();
+  await pub.goto(`${gateway.url}/experts/${slug}`);
+  await expect(pub.getByTestId("expert-name")).toHaveText("Erika Prüfer");
+  await expect(pub.getByTestId("expert-place")).toHaveText("Deutschland");
+  await expect(pub.locator("body")).not.toContainText("Geheimland");
+  await expect(pub.locator("body")).not.toContainText("Nicht öffentliche Vorstellung");
+  await expect(pub.getByTestId("expert-cert")).toHaveCount(1);
+  await expect(pub.getByTestId("expert-cert-unverified")).toBeVisible();
+  await expect(pub.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+
+  // Admin prüft den Nachweis
+  const adminPage = await (await browser.newContext({ baseURL: gateway.url })).newPage();
+  await login(adminPage, gateway.url, USERS.admin.email);
+  await adminPage.goto(`${gateway.url}/admin/reviewers`);
+  const row = adminPage.getByTestId("cert-verify-row").filter({ hasText: "Erika Prüfer" }).first();
+  await row.getByTestId("cert-verify-toggle").click();
+  await expect(row.getByTestId("cert-verify-toggle")).toContainText(/Undo|zurücknehmen/);
+
+  await pub.reload();
+  await expect(pub.getByTestId("expert-cert-verified")).toBeVisible();
+
+  // Rückzug: sofort weg
+  await page.getByTestId("profile-withdraw").click();
+  await expect(page.getByTestId("publish-state")).toContainText(/Nicht veröffentlicht|Not published/);
+  const gone = await pub.goto(`${gateway.url}/experts/${slug}`);
+  expect(gone?.status()).toBe(404);
+  await anon.close();
+});
+
+test("Das Expertenprofil ist nur für die Prüfer-Rolle erreichbar", async ({ page, gateway }) => {
+  await login(page, gateway.url, USERS.learnerA.email);
+  const response = await page.goto(`${gateway.url}/reviewer/profile`);
+  expect(response?.status()).toBe(403);
+  const api = await page.request.get(`${gateway.url}/api/reviewer/profile`);
+  expect(api.status()).toBe(403);
+});

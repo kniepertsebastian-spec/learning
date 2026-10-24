@@ -165,8 +165,8 @@ Quelle: `roadmap_pruefer.md`, Phase 1 und 2
 
 ### Paket 4.7 – Expertenprofil und Siegel am Kurs · M
 Quelle: `roadmap_pruefer.md`, Phase 3 und 4 (rechtliche Punkte aus Phase 7 vorher klären)
-- [ ] Profil mit Einwilligung je Feld, Erfahrung, Zertifikate mit Nachweis-Link und Ablaufdatum, öffentliche Seite `/experts/<slug>`, Rückzug
-- [ ] Siegel „Fachlich geprüft von …“ auf Kursseite, Katalog, Offline-Paket und Bescheinigung
+- [x] Profil mit Einwilligung je Feld, Erfahrung, Zertifikate mit Nachweis-Link und Ablaufdatum, öffentliche Seite `/experts/<slug>`, Rückzug (4.7a; Foto fehlt noch, siehe `docs/EXPERTENPROFIL.md`)
+- [ ] 4.7b Siegel „Fachlich geprüft von …“ auf Kursseite, Katalog, Offline-Paket und Bescheinigung
 
 **Abhängigkeit:** 4.6. Ein fertiges Profil ist zugleich Material für Landingpage und Vertrieb.
 
