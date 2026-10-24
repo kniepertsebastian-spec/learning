@@ -82,7 +82,7 @@ Heute vorhanden:
 - [x] Self-Service für Prüfer: Profil bearbeiten, Felder einzeln veröffentlichen, Vorschau, Profil zurückziehen. Rückzug entfernt das Profil sofort öffentlich; Kurse zeigen dann den neutralen Text (siehe Platzhalter), die interne Freigabe bleibt gültig.
 - [x] Öffentliche Seite `/experts/<slug>`: Name, Foto, Region/Land, Kurzvorstellung, Berufserfahrung, Zertifikate mit Gültigkeit und Nachweis-Link, Liste der freigegebenen Kurse (mit Version und Datum). Ohne Anmeldung erreichbar, mit sauberen Metadaten (Titel, Beschreibung), indexierbar nur bei Einwilligung.
 - [x] Zertifikats-Ablauf: abgelaufene Zertifikate werden als „abgelaufen“ markiert statt versteckt; Erinnerung an Prüfer und Admin 60 Tage vorher (vorhandene E-Mail-Logik).
-- [x] Datenexport und Kontolöschung des Prüfers umfassen Profil, Erfahrung und Zertifikate. _(Der neutrale Text am Kurs nach Löschung oder Rückzug kommt mit dem Siegel, Paket 4.7b.)_
+- [x] Datenexport und Kontolöschung des Prüfers umfassen Profil, Erfahrung und Zertifikate. Nach Löschung oder Rückzug bleibt am Kurs der neutrale Text.
 
 **Akzeptanzkriterium:** Ein Prüfer legt sein Profil an, veröffentlicht nur ausgewählte Felder, und die öffentliche Seite zeigt genau diese; nach Rückzug ist die Seite nicht mehr erreichbar und die Kurse zeigen den neutralen Text.
 
@@ -90,11 +90,11 @@ Heute vorhanden:
 
 ## Phase 4 – Siegel am Kurs (Priorität: hoch)
 
-- [ ] Anzeige auf Kursseite, Kursübersicht und im Katalog: „✓ Fachlich geprüft von **Vorname Name** · Version 2.1 · Stand 14.10.2026 → Profil“.
-- [ ] Bei mehreren Prüfern (z. B. je Domain) alle nennen, mit Geltungsbereich.
-- [ ] Bei „geändert seit Prüfung“: Siegel mit Zusatz „X Änderungen seit der Prüfung“, Details per Klick. Kein Siegel ohne Freigabe.
-- [ ] Interne Lernpfade: „Freigegeben von <Name>, <Datum>“ nur innerhalb der Firma (wie heute), kein Profil-Link.
-- [ ] Siegel auch im Offline-Paket und auf Abschlussbescheinigungen (Kursversion + Prüfer).
+- [x] Anzeige auf Kursseite, Kursübersicht und im Katalog _(Kursseite und Katalog; Dashboard-Kachel offen. Der Katalog zeigt den Stand der Prüfung ohne Änderungszähler.)_: „✓ Fachlich geprüft von **Vorname Name** · Version 2.1 · Stand 14.10.2026 → Profil“.
+- [x] Bei mehreren Prüfern _(alle Prüfer desselben Inhaltsstands; ein Geltungsbereich je Domain fehlt, weil Freigaben bisher den ganzen Kurs betreffen)_ (z. B. je Domain) alle nennen, mit Geltungsbereich.
+- [x] Bei „geändert seit Prüfung“: Siegel mit Zusatz „X Änderungen seit der Prüfung“, Details per Klick. Kein Siegel ohne Freigabe.
+- [x] Interne Lernpfade: „Freigegeben von <Name>, <Datum>“ nur innerhalb der Firma (wie heute), kein Profil-Link.
+- [x] Siegel auch im Offline-Paket. _(Auf Abschlussbescheinigungen noch nicht: es gibt noch keine Bescheinigung über den Kursabschluss.)_
 
 **Akzeptanzkriterium:** Jeder freigegebene allgemeine Kurs zeigt Prüfer, Version und Datum; ein Kurs ohne Freigabe zeigt kein Siegel.
 

@@ -12,6 +12,8 @@ import {
   studySessions,
 } from "@/lib/server/db/schema";
 import type { AnswerData, AnswerFormat } from "@/lib/questions/answer-formats";
+import type { Seal } from "@/lib/reviewers/seal";
+import { getCourseSeal } from "@/lib/server/approvals/seal";
 import type { Localized } from "@/lib/types";
 
 export interface OfflineQuestionOption {
@@ -102,6 +104,8 @@ export interface OfflinePackage {
   certName: string;
   version: string;
   generatedAt: string;
+  /** Siegel „Fachlich geprüft von …“ zum Download-Zeitpunkt (fehlt bei Kursen ohne Freigabe und bei älteren Paketen). */
+  seal?: Seal | null;
   domains: OfflineDomain[];
   /** R4.3 (roadmap.md): nur gesetzt, wenn zum Download-Zeitpunkt bereits
    * eine AKTIVE (planned/in_progress) Session für heute existiert - wird
@@ -368,9 +372,10 @@ export async function getOfflinePackage(
     });
   }
 
-  const [version, session] = await Promise.all([
+  const [version, session, seal] = await Promise.all([
     getOfflinePackageVersion(certificationId).then((v) => v ?? new Date(0).toISOString()),
     getOfflineStudySession(userId, certificationId),
+    certRow.kind === "general" ? getCourseSeal(certificationId).catch(() => null) : Promise.resolve(null),
   ]);
 
   return {
@@ -379,6 +384,7 @@ export async function getOfflinePackage(
     certName: certRow.name,
     version,
     generatedAt: new Date().toISOString(),
+    seal,
     domains: domainList,
     session,
   };

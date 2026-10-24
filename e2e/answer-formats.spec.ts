@@ -1,38 +1,37 @@
 import { FORMATS_SLUG, USERS } from "./global-setup";
 import { expect, login, test } from "./fixtures";
 
-/** Löst die drei Formate der Reihe nach richtig: Reihenfolge (Lösung kennt der Test), Kurzantwort, Zuordnung. */
+/** Löst die drei Formate richtig, in der Reihenfolge, in der der Lektionstest sie zeigt (die Datenbank garantiert keine). */
 async function answerAll(page: import("@playwright/test").Page, finishLabel: RegExp) {
-  // Reihenfolge: nach oben schieben, bis die Schritte stimmen (Erkennen, Eingrenzen, Beheben).
-  await expect(page.getByTestId("answer-ordering")).toBeVisible();
-  const wanted = [/Erkennen|Identify/, /Eingrenzen|Narrow down/, /Beheben|Fix/];
-  for (let target = 0; target < 3; target++) {
-    for (let guard = 0; guard < 5; guard++) {
-      const steps = page.getByTestId("ordering-step");
-      if (await steps.nth(target).filter({ hasText: wanted[target] }).count()) break;
-      const at = await steps.evaluateAll((els, re) => els.findIndex((e) => new RegExp(re).test(e.textContent ?? "")), wanted[target].source);
-      await steps.nth(at).getByTestId("ordering-up").click();
-    }
-  }
-  await page.getByTestId("check-answer").click();
-  await expect(page.getByTestId("feedback-panel")).toHaveAttribute("data-correct", "true");
-  await page.getByTestId("next-question").click();
-
-  await page.getByTestId("short-answer-input").fill("  IPConfig /ALL ");
-  await page.getByTestId("check-answer").click();
-  await expect(page.getByTestId("feedback-panel")).toHaveAttribute("data-correct", "true");
-  await page.getByTestId("next-question").click();
-
-  const rows = page.getByTestId("matching-row");
-  for (let i = 0; i < 2; i++) {
-    const row = rows.nth(i);
-    const label = (await row.textContent()) ?? "";
-    await row.getByTestId("matching-select").selectOption({ label: /DNS/.test(label) ? (await row.locator("option", { hasText: /Namen auflösen|Resolve names/ }).textContent())! : (await row.locator("option", { hasText: /Adressen vergeben|Assign addresses/ }).textContent())! });
-  }
-  await page.getByTestId("check-answer").click();
-  await expect(page.getByTestId("feedback-panel")).toHaveAttribute("data-correct", "true");
-  await page.getByTestId("next-question").click();
   void finishLabel;
+  for (let n = 0; n < 3; n++) {
+    const format = await page.getByTestId("format-question").getAttribute("data-format");
+    if (format === "ordering") {
+      // Nach oben schieben, bis die Schritte stimmen (Erkennen, Eingrenzen, Beheben).
+      const wanted = [/Erkennen|Identify/, /Eingrenzen|Narrow down/, /Beheben|Fix/];
+      for (let target = 0; target < 3; target++) {
+        for (let guard = 0; guard < 5; guard++) {
+          const steps = page.getByTestId("ordering-step");
+          if (await steps.nth(target).filter({ hasText: wanted[target] }).count()) break;
+          const at = await steps.evaluateAll((els, re) => els.findIndex((e) => new RegExp(re).test(e.textContent ?? "")), wanted[target].source);
+          await steps.nth(at).getByTestId("ordering-up").click();
+        }
+      }
+    } else if (format === "short_answer") {
+      await page.getByTestId("short-answer-input").fill("  IPConfig /ALL ");
+    } else {
+      const rows = page.getByTestId("matching-row");
+      for (let i = 0; i < 2; i++) {
+        const row = rows.nth(i);
+        const label = (await row.textContent()) ?? "";
+        const wantedText = /DNS/.test(label) ? /Namen auflösen|Resolve names/ : /Adressen vergeben|Assign addresses/;
+        await row.getByTestId("matching-select").selectOption({ label: (await row.locator("option", { hasText: wantedText }).textContent())! });
+      }
+    }
+    await page.getByTestId("check-answer").click();
+    await expect(page.getByTestId("feedback-panel")).toHaveAttribute("data-correct", "true");
+    await page.getByTestId("next-question").click();
+  }
 }
 
 test("Lektionstest mit allen neuen Antwortformaten", async ({ page, gateway }) => {
@@ -45,7 +44,7 @@ test("Lektionstest mit allen neuen Antwortformaten", async ({ page, gateway }) =
   await answerAll(page, /Finish|Abschließen/);
   const response = await attempt;
   expect(response.ok()).toBe(true);
-  expect((response.request().postDataJSON() as { answers: Array<{ answer?: { kind: string } }> }).answers.map((a) => a.answer?.kind)).toEqual(["ordering", "short_answer", "matching"]);
+  expect((response.request().postDataJSON() as { answers: Array<{ answer?: { kind: string } }> }).answers.map((a) => a.answer?.kind).sort()).toEqual(["matching", "ordering", "short_answer"]);
 });
 
 test("falsche Antwort zeigt die Lösung, nicht vorher", async ({ page, gateway }) => {
@@ -55,7 +54,19 @@ test("falsche Antwort zeigt die Lösung, nicht vorher", async ({ page, gateway }
   await page.waitForURL(/\/section\//);
   await page.getByRole("button", { name: /Start quick check|Schnelltest starten/i }).first().click();
   await expect(page.getByTestId("answer-solution")).toHaveCount(0);
-  await page.getByTestId("check-answer").click(); // Startreihenfolge ist nie die Lösung
+  // Je nach Format bewusst falsch antworten (die Startreihenfolge einer Reihenfolge-Frage ist nie die Lösung).
+  const format = await page.getByTestId("format-question").getAttribute("data-format");
+  if (format === "short_answer") await page.getByTestId("short-answer-input").fill("falsch");
+  if (format === "matching") {
+    const rows = page.getByTestId("matching-row");
+    for (let i = 0; i < 2; i++) {
+      const row = rows.nth(i);
+      const isDns = /DNS/.test((await row.textContent()) ?? "");
+      const wrong = isDns ? /Adressen vergeben|Assign addresses/ : /Namen auflösen|Resolve names/;
+      await row.getByTestId("matching-select").selectOption({ label: (await row.locator("option", { hasText: wrong }).textContent())! });
+    }
+  }
+  await page.getByTestId("check-answer").click();
   await expect(page.getByTestId("feedback-panel")).toHaveAttribute("data-correct", "false");
   await expect(page.getByTestId("answer-solution")).toBeVisible();
 });

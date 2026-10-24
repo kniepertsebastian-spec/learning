@@ -1,7 +1,9 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
-import { reviewerCertifications, reviewerExperience, reviewerProfiles, users } from "../lib/server/db/schema";
-import { USERS } from "./global-setup";
+import { approveCourse } from "../lib/server/approvals/service";
+import { certifications, questions, reviewerCertifications, reviewerExperience, reviewerProfiles, users } from "../lib/server/db/schema";
+import { getOwnProfile, publishProfile, saveExperience, saveProfile, withdrawProfile } from "../lib/server/reviewers/profile-service";
+import { FORMATS_SLUG, USERS } from "./global-setup";
 import { expect, login, test } from "./fixtures";
 
 test("Expertenprofil: nur Freigegebenes ist öffentlich, Nachweis erst nach Admin-Prüfung, Rückzug sofort", async ({ page, browser, gateway }) => {
@@ -83,4 +85,53 @@ test("Das Expertenprofil ist nur für die Prüfer-Rolle erreichbar", async ({ pa
   expect(response?.status()).toBe(403);
   const api = await page.request.get(`${gateway.url}/api/reviewer/profile`);
   expect(api.status()).toBe(403);
+});
+
+test("Siegel am Kurs: Name mit Link nur bei veröffentlichtem Profil, sonst neutral; Änderungen sichtbar; Katalog zeigt es", async ({ page, gateway }) => {
+  const db = getDb();
+  const [me] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.reviewer.email)).limit(1);
+  const [cert] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, FORMATS_SLUG)).limit(1);
+  const [q] = await db.select({ id: questions.id }).from(questions).where(eq(questions.humanId, "E2E-FMT-SHORT")).limit(1);
+
+  await db.delete(reviewerCertifications).where(eq(reviewerCertifications.userId, me.id));
+  await db.delete(reviewerExperience).where(eq(reviewerExperience.userId, me.id));
+  await db.delete(reviewerProfiles).where(eq(reviewerProfiles.userId, me.id));
+  await saveProfile(me.id, { firstName: "Siegel", lastName: "Prüfer", country: "Deutschland", consent: { name: true, country: true } });
+  await saveExperience(me.id, { kind: "job", title: "Admin", periodFrom: "2019", isPublic: true });
+  await publishProfile(me.id);
+  const slug = (await getOwnProfile(me.id)).profile!.slug;
+  await approveCourse({ certificationId: cert.id, reviewer: { userId: me.id, displayName: "Siegel Prüfer" }, confirmed: true, recordedByUserId: null });
+  const original = (await db.select({ e: questions.explanation }).from(questions).where(eq(questions.id, q.id)))[0].e;
+
+  try {
+    await login(page, gateway.url, USERS.learnerA.email);
+    await page.goto(`${gateway.url}/cert/${FORMATS_SLUG}`);
+    const seal = page.getByTestId("course-seal").first();
+    await expect(seal).toContainText(/Reviewed by|Fachlich geprüft von/);
+    await expect(seal.getByTestId("seal-reviewer")).toHaveText("Siegel Prüfer");
+    await expect(seal.getByTestId("seal-reviewer")).toHaveAttribute("href", `/experts/${slug}`);
+    await expect(seal).toHaveAttribute("data-changed", "false");
+
+    await page.goto(`${gateway.url}/catalog`);
+    await expect(page.getByTestId(`catalog-card-${FORMATS_SLUG}`).getByTestId("course-seal")).toContainText(/Expert reviewed|Fachlich geprüft/);
+
+    // Änderung nach der Prüfung
+    await db.update(questions).set({ explanation: { de: `Geändert ${Date.now()}`, en: `Changed ${Date.now()}` } }).where(eq(questions.id, q.id));
+    await page.goto(`${gateway.url}/cert/${FORMATS_SLUG}`);
+    await expect(page.getByTestId("seal-changes")).toContainText(/1 change since the review|1 Änderung seit der Prüfung/);
+
+    // Rückzug des Profils: das Siegel bleibt, aber neutral
+    await withdrawProfile(me.id);
+    // Der Service Worker liefert eine Seite, die länger als 3 s braucht, kurz aus dem Cache: neu laden, bis die frische da ist.
+    await expect(async () => {
+      await page.reload();
+      await expect(page.getByTestId("course-seal").first()).toContainText(/an external expert|einem externen Experten/, { timeout: 2_000 });
+    }).toPass({ timeout: 60_000 });
+    const neutral = page.getByTestId("course-seal").first();
+    await expect(neutral).toContainText(/an external expert|einem externen Experten/);
+    await expect(neutral).not.toContainText("Siegel Prüfer");
+    await expect(neutral.getByTestId("seal-reviewer")).toHaveCount(0);
+  } finally {
+    await db.update(questions).set({ explanation: original }).where(eq(questions.id, q.id));
+  }
 });

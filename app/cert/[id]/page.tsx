@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { CourseSeal } from "@/components/seal/CourseSeal";
+import { getCourseSeal } from "@/lib/server/approvals/seal";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -274,6 +276,8 @@ export default async function CertDetailPage({
   const parsedOverview = courseOverviewSchema.safeParse(cert.overview);
   const overview = parsedOverview.success ? parsedOverview.data : null;
   const overviewScope = overview ? await getCourseScope(cert.id) : undefined;
+  // Siegel „Fachlich geprüft von …“: nur allgemeine Kurse mit Freigabe; interne Lernpfade nie.
+  const seal = cert.kind === "general" ? await getCourseSeal(cert.id).catch(() => null) : null;
   const hasStarted = Object.keys(progressData).some((k) => allObjectives.some((o) => o.id === k));
 
   return (
@@ -292,6 +296,7 @@ export default async function CertDetailPage({
           <p className="text-sm text-foreground/70">
             {cert.examName} {cert.examVersion}
           </p>
+          {seal && <CourseSeal seal={seal} locale={locale} className="mt-3 max-w-xl" />}
         </div>
         {session && (
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">

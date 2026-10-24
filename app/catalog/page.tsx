@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { asc } from "drizzle-orm";
+import type { Seal } from "@/lib/reviewers/seal";
+import { getSealSummaries } from "@/lib/server/approvals/seal";
 import { CatalogView } from "@/components/dashboard/CatalogView";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { visibleCertificationsCondition } from "@/lib/server/catalog/visibility";
@@ -18,9 +20,10 @@ export default async function CatalogPage() {
     db.select().from(courseCategories).orderBy(asc(courseCategories.position)),
   ]);
   const groupIds = await categoryIdsByCertification(certs.map((c) => c.id));
+  const seals = await getSealSummaries(certs.map((c) => c.id)).catch(() => new Map<string, Seal>());
   return (
     <CatalogView
-      certs={certs.map((c) => ({ id: c.id, slug: c.slug, name: c.name, provider: c.provider, version: c.examVersion, shortCode: shortCodeOf(c.name, c.shortCode), categoryId: c.categoryId, categoryIds: groupIds.get(c.id) ?? [], custom: c.courseType === "custom", summary: c.overview?.summary ?? null }))}
+      certs={certs.map((c) => ({ id: c.id, slug: c.slug, name: c.name, provider: c.provider, version: c.examVersion, shortCode: shortCodeOf(c.name, c.shortCode), categoryId: c.categoryId, categoryIds: groupIds.get(c.id) ?? [], custom: c.courseType === "custom", summary: c.overview?.summary ?? null, seal: seals.get(c.id) ?? null }))}
       groups={groups.map((g) => ({ id: g.id, name: g.name, color: g.color }))}
       signedIn={Boolean(user)}
     />
