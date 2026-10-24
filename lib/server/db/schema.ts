@@ -1686,7 +1686,8 @@ export const objectiveSourceRefs = pgTable(
  * einfach das zuvor gespeicherte Ergebnis zurück. */
 /** `simulation_result`: offline gelöste Simulation (roadmap3.md, Schritt 5). */
 export type SyncEventType = "section_quiz" | "study_session" | "simulation_result";
-export type SyncEventStatus = "applied" | "conflict" | "error";
+/** `applied_partial`: die Session war inzwischen anderswo abgeschlossen; die Antworten wurden trotzdem als Wiederholungen gezählt. */
+export type SyncEventStatus = "applied" | "applied_partial" | "conflict" | "error";
 
 export const syncEvents = pgTable(
   "sync_events",
@@ -2058,8 +2059,10 @@ export const courseGenerationObjectives = pgTable(
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  /** Offline-Pakete interner Lernpfade sind gesperrt, wenn sie so viele Tage nicht online geprüft wurden (null = aus, Standard). */
+  offlineMaxAgeDays: integer("offline_max_age_days"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [check("organizations_offline_max_age_check", sql`${table.offlineMaxAgeDays} is null or ${table.offlineMaxAgeDays} > 0`)]);
 
 /**
  * Mitgliedschaft eines Nutzers in einer Organisation. Ein Nutzer gehört zu
@@ -3256,6 +3259,8 @@ export const reviewLog = pgTable(
     thinkFirst: boolean("think_first").notNull().default(false),
     /** Abrufwahrscheinlichkeit laut FSRS unmittelbar vor diesem Review (null bei erstem Review). */
     predictedR: numeric("predicted_r", { precision: 6, scale: 5, mode: "number" }),
+    /** Falsch bei verspätet synchronisierten Antworten, deren Zeitpunkt vor dem letzten Review des Items liegt (oder zu alt ist): nur protokolliert, der FSRS-Zustand blieb unverändert. */
+    stateApplied: boolean("state_applied").notNull().default(true),
   },
   (table) => [
     index("review_log_user_time_idx").on(table.userId, table.timestampUtc),

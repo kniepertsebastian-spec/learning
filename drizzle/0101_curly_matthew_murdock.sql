@@ -1,0 +1,1 @@
+ALTER TABLE "review_log" ADD COLUMN "state_applied" boolean DEFAULT true NOT NULL;

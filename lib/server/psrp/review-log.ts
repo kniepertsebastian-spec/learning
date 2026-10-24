@@ -51,6 +51,8 @@ export interface ReviewLogInput {
   wovenIntoLessonId?: string | null;
   thinkFirst?: boolean;
   predictedR?: number | null;
+  /** Falsch, wenn die Antwort nur protokolliert wurde und den FSRS-Zustand nicht verändert hat. */
+  stateApplied?: boolean;
 }
 
 /** Zeile für `review_log` aus einem Review; rechnet die lokale Tageszeit aus. */
@@ -71,6 +73,7 @@ export function buildReviewLogRow(input: ReviewLogInput): typeof reviewLog.$infe
     wovenIntoLessonId: input.wovenIntoLessonId ?? null,
     thinkFirst: input.thinkFirst ?? false,
     predictedR: input.predictedR ?? null,
+    stateApplied: input.stateApplied ?? true,
   };
 }
 

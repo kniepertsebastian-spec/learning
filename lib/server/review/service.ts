@@ -17,6 +17,10 @@ export interface ReviewOutcomeInput {
   /** Eingewebt in den Lektionstest dieser Lektion. */
   wovenIntoLessonId?: string | null;
   thinkFirst?: boolean;
+  /** Zeitpunkt der Antwort (verspätet synchronisiert, siehe lib/server/sync/effective-time.ts); sonst jetzt. */
+  at?: Date;
+  /** Falsch: nur protokollieren, den Lernzustand nicht verändern (Ereignis zu alt). */
+  applyState?: boolean;
 }
 
 /**
@@ -43,6 +47,8 @@ export async function recordReviewOutcomes(
       confidence: result.confidence,
       responseTimeMs: result.responseTimeMs,
       sessionId: options.sessionId,
+      now: result.at,
+      applyState: result.applyState,
     });
   }
   const regular = deduped.filter((r) => !variants.has(r.questionId));
@@ -65,6 +71,8 @@ export async function recordReviewOutcomes(
         reviewType: r.reviewType,
         wovenIntoLessonId: r.wovenIntoLessonId ?? null,
         thinkFirst: r.thinkFirst,
+        at: r.at,
+        applyState: r.applyState,
       })),
     options,
   );

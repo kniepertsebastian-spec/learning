@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { reconcileCacheOwner, clearPagesCache } from "@/lib/client/cache-owner";
-import { setLastUserId } from "@/lib/client/last-user";
+import { getLastUserId, setLastUserId } from "@/lib/client/last-user";
+import { startSyncTriggers } from "@/lib/client/sync-queue";
+import { checkOfflinePackageAccess } from "@/lib/client/offline-download";
+import { deleteOfflinePackage, isOfflineStorageSupported, listOfflinePackages, markOfflinePackageVerified, notifyPackagesChanged } from "@/lib/client/offline-db";
+import { pruneRevokedPackages } from "@/lib/client/revoked-packages";
 import { useLocale } from "@/lib/i18n";
 import { toast } from "@/components/ui/toaster";
 import { startInstallCapture } from "@/lib/client/install-prompt";
@@ -14,7 +18,7 @@ import { startInstallCapture } from "@/lib/client/install-prompt";
  *    SKIP_WAITING, danach lädt die Seite beim Wechsel des Controllers neu. Ohne Klick läuft die alte Version weiter.
  */
 export function ServiceWorkerManager({ userId }: { userId: string | null }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const label = useRef({ message: t.pwa.updateAvailable, action: t.pwa.updateReload });
   useEffect(() => {
     label.current = { message: t.pwa.updateAvailable, action: t.pwa.updateReload };
@@ -22,6 +26,30 @@ export function ServiceWorkerManager({ userId }: { userId: string | null }) {
 
   // `beforeinstallprompt` feuert oft vor dem Öffnen einer Seite mit Installationshinweis: früh festhalten.
   useEffect(() => startInstallCapture(), []);
+
+  // Übertragung der Warteschlange: Start, online, Vordergrund, Hintergrund (auch auf `/offline`, wo der Header fehlt).
+  useEffect(() => startSyncTriggers(() => userId ?? getLastUserId()), [userId]);
+
+  // Entzogener Zugriff (z. B. aus der Firma entfernt): lokale Pakete verschwinden, sobald das Gerät online ist.
+  const de = locale === "de";
+  useEffect(() => {
+    const prune = async () => {
+      const id = userId ?? getLastUserId();
+      if (!id || !navigator.onLine || !isOfflineStorageSupported()) return;
+      const removed = await pruneRevokedPackages({
+        list: async () => (await listOfflinePackages(id)).map((p) => ({ certificationId: p.certificationId, certName: p.certName })),
+        check: checkOfflinePackageAccess,
+        remove: (certificationId) => deleteOfflinePackage(id, certificationId),
+        verified: (certificationId) => markOfflinePackageVerified(id, certificationId),
+      }).catch(() => []);
+      notifyPackagesChanged(); // gesperrte Pakete (Ablauf) können durch die Prüfung wieder frei sein
+      if (removed.length === 0) return;
+      toast(de ? "Ein Kurs ist nicht mehr für dich freigegeben und wurde vom Gerät entfernt." : "A course is no longer shared with you and was removed from this device.", { id: "package-revoked", duration: 8000 });
+    };
+    void prune();
+    window.addEventListener("online", prune);
+    return () => window.removeEventListener("online", prune);
+  }, [userId, de]);
 
   useEffect(() => {
     if (userId) setLastUserId(userId); // Offline-Einstieg (/offline) weiß so, welche Pakete zu zeigen sind

@@ -5,7 +5,10 @@ import { BookOpen, RefreshCw } from "lucide-react";
 import { OfflinePackageManager } from "@/components/OfflinePackageManager";
 import { Button } from "@/components/ui/button";
 import { getLastUserId } from "@/lib/client/last-user";
-import { isOfflineStorageSupported, listOfflinePackages, type StoredOfflinePackage } from "@/lib/client/offline-db";
+import { isOfflineStorageSupported, listOfflinePackages, PACKAGES_CHANGED_EVENT, type StoredOfflinePackage } from "@/lib/client/offline-db";
+import { UnsyncedNotice } from "@/components/UnsyncedNotice";
+import { formatAge, oldestAgeMs } from "@/lib/pwa/unsynced";
+import { isPackageLocked } from "@/lib/pwa/package-expiry";
 import { getSyncQueueSummary, onSyncQueueChanged, runSync } from "@/lib/client/sync-queue";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
 import { useLocale } from "@/lib/i18n";
@@ -25,17 +28,25 @@ export function OfflineHome() {
   const [state, setState] = useState<{ userId: string | null; packages: StoredOfflinePackage[] } | null>(null);
   const [selected, setSelected] = useState<StoredOfflinePackage | null>(null);
   const [pending, setPending] = useState(0);
+  const [oldestAt, setOldestAt] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       const userId = getLastUserId();
       const packages = userId && isOfflineStorageSupported() ? await listOfflinePackages(userId).catch(() => []) : [];
-      if (!cancelled) setState({ userId, packages });
-    })();
+      if (!cancelled) {
+        setState({ userId, packages });
+        // Ein geöffneter Kurs, dessen Paket entfernt wurde (Zugriff entzogen), schließt sich.
+        setSelected((current) => (current && packages.some((p) => p.key === current.key) ? current : null));
+      }
+    };
+    void load();
+    window.addEventListener(PACKAGES_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(PACKAGES_CHANGED_EVENT, load);
     };
   }, []);
 
@@ -45,7 +56,10 @@ export function OfflineHome() {
       const userId = getLastUserId();
       if (!userId) return;
       const summary = await getSyncQueueSummary(userId).catch(() => null);
-      if (summary && !cancelled) setPending(summary.pendingCount + summary.failedCount);
+      if (summary && !cancelled) {
+        setPending(summary.pendingCount + summary.failedCount);
+        setOldestAt(summary.oldestUnsyncedAt);
+      }
     };
     void load();
     const unsubscribe = onSyncQueueChanged(() => void load());
@@ -78,6 +92,7 @@ export function OfflineHome() {
   return (
     <div className="flex flex-col gap-4" data-testid="offline-home">
       <h1 className="text-2xl font-semibold">{t.pwa.offlineTitle}</h1>
+      {state.userId && <UnsyncedNotice userId={state.userId} locale={locale} />}
       {!state.userId ? (
         <>
           <p className="text-sm text-subtle">{t.pwa.offlineNoUser}</p>
@@ -93,7 +108,7 @@ export function OfflineHome() {
               <li key={pkg.key} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4">
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{pkg.certName}</span>
-                  <span className="block text-xs text-subtle">{formatBytes(pkg.sizeBytes)} · {t.pwa.offlineSaved} {new Date(pkg.downloadedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-US")}</span>
+                  <span className="block text-xs text-subtle">{formatBytes(pkg.sizeBytes)} · {t.pwa.offlineSaved} {new Date(pkg.downloadedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-US")}{isPackageLocked({ offlineMaxAgeDays: pkg.data.offlineMaxAgeDays, lastVerifiedAt: pkg.lastVerifiedAt, downloadedAt: pkg.downloadedAt }, new Date()) ? ` · ${locale === "de" ? "gesperrt, bitte online prüfen" : "locked, please check online"}` : ""}</span>
                 </span>
                 <Button size="sm" onClick={() => setSelected(pkg)} iconLeft={<BookOpen className="h-4 w-4" aria-hidden="true" />} data-testid="open-offline-course">
                   {t.pwa.offlineOpen}
@@ -106,6 +121,11 @@ export function OfflineHome() {
       {pending > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface-inset p-3 text-sm" data-testid="offline-pending">
           <span>{pending} {t.pwa.offlinePending}</span>
+          {oldestAt && oldestAgeMs(oldestAt, new Date()) !== null && (
+            <span className="text-subtle" data-testid="offline-oldest-pending">
+              {locale === "de" ? "Ältestes unübertragenes Ergebnis" : "Oldest result not uploaded"}: {formatAge(oldestAgeMs(oldestAt, new Date()) ?? 0, locale)}
+            </span>
+          )}
           {online && (
             <Button size="sm" variant="secondary" onClick={() => void syncNow()} disabled={syncing} iconLeft={<RefreshCw className="h-4 w-4" aria-hidden="true" />}>
               {t.pwa.offlineSync}

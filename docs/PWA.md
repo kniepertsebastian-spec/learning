@@ -39,6 +39,22 @@ Der Service Worker ist im Dev-Server abgeschaltet (`disable` in `next.config.ts`
 
 Lernfortschritt geht nie verloren: Reload bei Netzwechsel ist abgeschaltet (`reloadOnOnline: false`), die Warteschlange wird nie still gelöscht.
 
+## Datenintegrität über Zeit
+
+Plan: `roadmap_datenintegritaet.md`. Offline erbrachte Lernleistung soll auch nach Tagen vollständig, mit dem richtigen Zeitpunkt und nur bei Berechtigten ankommen.
+
+**Zeitpunkt der Antwort.** Jede Antwort in einer Offline-Session oder einem Lektionstest trägt `answeredAt` (Gerätezeit). Der Server begrenzt sie mit `effectiveTime()` (`lib/server/sync/effective-time.ts`): Zukunft über 5 Minuten → Serverzeit, nicht vor Erstellung der Session, älter als 30 Tage → nur Protokolleintrag. Mit diesem Zeitpunkt entstehen `review_log.timestamp_utc`, `local_hour`/`weekday`, der FSRS-Zustand, `study_sessions.completed_at` (Lernserie, Wochenziel) und der Abschluss des Lektionstests. Hat das Item inzwischen ein jüngeres `last_review` (z. B. online auf einem anderen Gerät gelernt), wird die verspätete Antwort nur geloggt (`review_log.state_applied = false`), der Zustand bleibt. Nur der Sync-Pfad wertet `answeredAt` aus; die Online-Routen ignorieren es.
+
+**Übertragung beim Verlassen.** `startSyncTriggers()` (in `ServiceWorkerManager`, daher auch auf `/offline`) überträgt beim Start, bei `online` und beim Zurückkehren in den Vordergrund. Beim Wechsel in den Hintergrund oder Schließen (`visibilitychange` → `hidden`, `pagehide`) geht die Warteschlange mit `fetch(..., { keepalive: true })` hoch, in Teilen von höchstens 60 KB; größere Einzelereignisse bleiben für den normalen Sync. Das ist die Antwort auf fehlenden Background Sync auf iOS. Die Verbuchung ist idempotent, eine nicht mehr angekommene Antwort kostet nichts.
+
+**iOS ohne Installation.** Liegt das älteste unübertragene Ergebnis länger als 24 Stunden (`lib/pwa/unsynced.ts`), erscheint im Kopf und auf `/offline` ein deutlicher Hinweis (`UnsyncedNotice`), die Offline-Übersicht nennt das Alter. Vor dem ersten Download zeigt der Offline-Manager die Installationsanleitung (überspringbar).
+
+**Konflikte.** Eine inzwischen abgeschlossene oder ausgesetzte Session endet nicht mehr als `conflict`: die Antworten werden als Wiederholungen gezählt, der Status ist `applied_partial` (Hinweis „Session war schon abgeschlossen, deine Antworten wurden trotzdem gezählt“). Ein verspäteter Lektionstest wird protokolliert und verbucht, der Lernzielstand sinkt dadurch nie. Alte Konflikte werden beim erneuten Senden mit der heutigen Logik verarbeitet; die Seite reiht lokale Konflikte einmalig wieder ein. Einmalig auf dem Server: `npm run sync:reprocess-conflicts -- --dry-run`, dann ohne `--dry-run`.
+
+**Entzogener Zugriff.** Beim Start und bei `online` fragt die Seite für jedes lokale Paket `/api/cert/<id>/offline-package/version`. 404/403 → Paket vom Gerät entfernt, kurze Meldung. Netzfehler, 401 und Serverfehler löschen nie. Bewusster Kompromiss: **offline bleibt ein Paket nutzbar**, bis das Gerät wieder Netz hat; die Sync-Warteschlange bleibt von der Löschung unberührt. Optional je Firma: `npm run company:offline-expiry -- <organization-id> <tage|off>` sperrt Pakete interner Lernpfade, die so viele Tage nicht online geprüft wurden (Standard aus).
+
+**Aufräumen.** Meldet der Server dreimal hintereinander denselben endgültigen Fehler (Lektion, Session oder Simulation nicht zuzuordnen), wird das Ereignis `rejected` und nicht mehr gesendet. Es bleibt gespeichert, der Sync-Knopf zeigt „N Ergebnisse konnten nicht zugeordnet werden“ mit „Ansehen“ und „Verwerfen“. Antworten auf Fragen, die nach dem Download gelöscht wurden, werden übersprungen und im Ergebnis gemeldet; der Rest wird verbucht. Varianten werden auch bei `active = false` dem Original-Item zugeordnet.
+
 ## Update-Fluss
 
 `skipWaiting` ist aus. Nach einem Deploy installiert sich der neue Service Worker und **wartet**. `ServiceWorkerManager` zeigt den Toast „Neue Version verfügbar“. Erst der Klick auf „Neu laden“ sendet `SKIP_WAITING`; beim `controllerchange` lädt die Seite neu. Ohne Klick läuft die alte Version weiter, es gibt keinen erzwungenen Reload. Fehlende Skript-Chunks eines alten Tabs (`ChunkLoadError`) fängt `app/error.tsx` ab: einmal neu laden, dann Fehlerseite.
@@ -49,6 +65,8 @@ Lernfortschritt geht nie verloren: Reload bei Netzwechsel ist abgeschaltet (`rel
 - **E2E** (`e2e/`, Playwright gegen den Produktions-Build): `npm run build && npm run test:e2e`. Braucht eine migrierte Postgres-Datenbank (`E2E_DATABASE_URL` oder `DATABASE_URL`); `e2e/global-setup.ts` legt Testnutzer und einen kleinen Kurs an. Der Next-Server wird von Playwright gestartet (Port 3100).
   - `offline-flow.spec.ts`: herunterladen → offline → `/offline` → Lektion + Quiz → online → Sync.
   - `background-sync.spec.ts`: Lektionstest offline, Seite zu, Netz an → der Service Worker überträgt (Headless-Chromium hat Background Sync abgeschaltet, der `sync`-Handler wird per DevTools-Protokoll angestoßen).
+  - `leave-flush.spec.ts`: Ergebnis offline, Seite in den Hintergrund, Netz an → das Ereignis ist ohne erneutes Öffnen auf dem Server (`keepalive`).
+  - `revoked-package.spec.ts`: Zugriff entzogen → Paket beim nächsten Online-Start gelöscht; ohne Netz bleibt es.
   - `install.spec.ts`: iOS-Anleitung im Dashboard, nach „Nicht jetzt“ 30 Tage Ruhe.
   - `update-flow.spec.ts`: Update-Toast nach neuem Worker, kein Reload ohne Klick.
   - `cache-privacy.spec.ts`: Admin-/Firmenseiten nie im Cache; Nutzerwechsel und Logout leeren den Seiten-Cache.

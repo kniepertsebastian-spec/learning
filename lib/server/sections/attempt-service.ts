@@ -1,9 +1,10 @@
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, gt, inArray, ne } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   domains,
   itemVariants,
   lessons,
+  objectiveProgress,
   objectives,
   questionOptions,
   questions,
@@ -15,6 +16,7 @@ import {
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { ObjectiveProgressService } from "@/lib/server/progress/service";
 import { recordReviewOutcomes } from "@/lib/server/review/service";
+import { answerTime, type ReviewTiming } from "@/lib/server/sync/effective-time";
 import { sanitizeAnswer, type AnswerPayload } from "@/lib/questions/answer-formats";
 import { gradeQuestionAnswer } from "@/lib/server/questions/grading";
 import type { AnswerConfidence } from "@/lib/types";
@@ -33,9 +35,15 @@ export interface SectionQuizAnswerInput {
   woven?: boolean;
   /** Modus „Antwort zuerst überlegen“ war aktiv (nur für die Auswertung). */
   thinkFirst?: boolean;
+  /** Zeitpunkt der Antwort auf dem Gerät (ISO); nur im Sync-Pfad ausgewertet, siehe lib/server/sync/effective-time.ts. */
+  answeredAt?: string;
 }
 
 export interface SectionQuizAttemptResult {
+  /** Antworten auf Fragen, die es inzwischen nicht mehr gibt (nach dem Download gelöscht): übersprungen statt die Verbuchung scheitern zu lassen. */
+  skipped?: number;
+  /** Offline aufgezeichneter Versuch, der älter ist als ein bereits vorhandener: protokolliert, Wiederholungen verbucht, der Lernzielstand verschlechtert sich nie. */
+  late?: boolean;
   score: number;
   results: Array<{ questionId: string; isCorrect: boolean; correctOptionId: string }>;
   attemptId: string;
@@ -52,10 +60,15 @@ export async function recordSectionQuizAttempt(
   userId: string,
   sectionId: string,
   allAnswers: SectionQuizAnswerInput[],
+  options: { timing?: ReviewTiming } = {},
 ): Promise<SectionQuizAttemptResult> {
   const db = getDb();
   // Eingewebte Antworten zählen nicht für Ergebnis und Lernzielstand dieser Lektion (nur wenn das Flag gilt, sonst werden sie verworfen).
-  const answers = allAnswers.filter((a) => !a.woven);
+  const candidates = allAnswers.filter((a) => !a.woven);
+  const candidateIds = [...new Set(candidates.map((a) => a.questionId))];
+  const existingIds = new Set(candidateIds.length > 0 ? (await db.select({ id: questions.id }).from(questions).where(inArray(questions.id, candidateIds))).map((q) => q.id) : []);
+  const answers = candidates.filter((a) => existingIds.has(a.questionId));
+  const skipped = candidates.length - answers.length;
   const wovenAnswers = isFeatureEnabled("woven_reviews", userId) ? allAnswers.filter((a) => a.woven) : [];
 
   const certInfo = await db
@@ -81,9 +94,11 @@ export async function recordSectionQuizAttempt(
     quizId = inserted[0].id;
   }
 
+  const timing = options.timing;
+  const completedAt = timing?.completedAt ?? new Date();
   const attemptInserted = await db
     .insert(quizAttempts)
-    .values({ quizId, userId, startedAt: new Date(), completedAt: new Date() })
+    .values({ quizId, userId, startedAt: completedAt, completedAt })
     .returning();
   const attemptId = attemptInserted[0].id;
 
@@ -127,7 +142,13 @@ export async function recordSectionQuizAttempt(
   const score = answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0;
   await db.update(quizAttempts).set({ score: String(score) }).where(eq(quizAttempts.id, attemptId));
 
+  // Ein verspätet synchronisierter Versuch (inzwischen gibt es einen neueren) darf den Lernzielstand nur verbessern, nie verschlechtern.
+  const late = timing
+    ? (await db.select({ id: quizAttempts.id }).from(quizAttempts).where(and(eq(quizAttempts.quizId, quizId), eq(quizAttempts.userId, userId), gt(quizAttempts.completedAt, completedAt))).limit(1)).length > 0
+    : false;
+  const touched = late ? await touchedObjectiveProgress(userId, questionIds) : [];
   await ObjectiveProgressService.updateProgressForQuizAttempt(userId, attemptId);
+  for (const before of touched) await restoreIfWorse(before);
   await recordReviewOutcomes(
     userId,
     results.map((r) => ({
@@ -135,12 +156,13 @@ export async function recordSectionQuizAttempt(
       isCorrect: r.isCorrect,
       confidence: answers.find((a) => a.questionId === r.questionId)?.confidence ?? null,
       thinkFirst: answers.find((a) => a.questionId === r.questionId)?.thinkFirst === true,
+      ...(timing ? answerTime(timing, answers.find((a) => a.questionId === r.questionId)?.answeredAt) : {}),
     })),
   );
 
-  if (wovenAnswers.length > 0) await recordWovenAnswers(userId, sectionId, certInfo[0], wovenAnswers);
+  if (wovenAnswers.length > 0) await recordWovenAnswers(userId, sectionId, certInfo[0], wovenAnswers, timing);
 
-  return { score, results, attemptId };
+  return { score, results, attemptId, ...(late ? { late: true } : {}), ...(skipped > 0 ? { skipped } : {}) };
 }
 
 /**
@@ -165,7 +187,7 @@ export async function recordSimulationWovenAnswer(userId: string, sectionId: str
  * Eingewebte Antworten als Reviews des Original-Items (`interleaved`, mit der Lektion, in der sie gestellt wurden). Nur Fragen
  * desselben Kurses aus einem anderen Lernziel; alles andere wird ignoriert.
  */
-async function recordWovenAnswers(userId: string, sectionId: string, section: { certificationId: string; objectiveId: string }, answers: SectionQuizAnswerInput[]): Promise<void> {
+async function recordWovenAnswers(userId: string, sectionId: string, section: { certificationId: string; objectiveId: string }, answers: SectionQuizAnswerInput[], timing?: ReviewTiming): Promise<void> {
   const db = getDb();
   const shownIds = [...new Set(answers.map((a) => a.questionId))];
   const valid = await db
@@ -195,7 +217,24 @@ async function recordWovenAnswers(userId: string, sectionId: string, section: { 
           confidence: a.confidence ?? null,
           reviewType: "interleaved" as const,
           wovenIntoLessonId: lesson?.id ?? null,
+          ...(timing ? answerTime(timing, a.answeredAt) : {}),
         };
       }),
   );
+}
+
+/** Stand des Lernziels vor einem verspäteten Versuch, für alle berührten Lernziele mit vorhandenem Stand. */
+async function touchedObjectiveProgress(userId: string, questionIds: string[]): Promise<Array<typeof objectiveProgress.$inferSelect>> {
+  if (questionIds.length === 0) return [];
+  const db = getDb();
+  const objectiveIds = [...new Set((await db.select({ objectiveId: questions.objectiveId }).from(questions).where(inArray(questions.id, questionIds))).map((r) => r.objectiveId))];
+  if (objectiveIds.length === 0) return [];
+  return db.select().from(objectiveProgress).where(and(eq(objectiveProgress.userId, userId), inArray(objectiveProgress.objectiveId, objectiveIds)));
+}
+
+async function restoreIfWorse(before: typeof objectiveProgress.$inferSelect): Promise<void> {
+  const db = getDb();
+  const [after] = await db.select().from(objectiveProgress).where(eq(objectiveProgress.id, before.id)).limit(1);
+  if (!after || Number(after.masteryScore) >= Number(before.masteryScore)) return;
+  await db.update(objectiveProgress).set({ masteryScore: before.masteryScore, status: before.status, lastAttemptAt: before.lastAttemptAt }).where(eq(objectiveProgress.id, before.id));
 }

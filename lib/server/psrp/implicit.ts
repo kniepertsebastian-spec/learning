@@ -29,6 +29,8 @@ export async function recordInterleavedTask(params: {
   solved: boolean;
   sessionId?: string;
   now?: Date;
+  /** Falsch: nur protokollieren (verspätet synchronisiertes Ereignis, zu alt). */
+  applyState?: boolean;
 }): Promise<number> {
   const rows = await getDb()
     .select({ itemId: taskItems.itemId })
@@ -38,7 +40,7 @@ export async function recordInterleavedTask(params: {
   const rating = implicitRating(params.solved);
   await recordRatedReviews(
     params.userId,
-    rows.map((r) => ({ itemId: r.itemId, rawRating: rating, reviewType: "interleaved" as const })),
+    rows.map((r) => ({ itemId: r.itemId, rawRating: rating, reviewType: "interleaved" as const, applyState: params.applyState })),
     { sessionId: params.sessionId, now: params.now },
   );
   return rows.length;

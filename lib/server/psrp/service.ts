@@ -44,6 +44,10 @@ export interface RatedReview {
   wovenIntoLessonId?: string | null;
   /** Antwort entstand im Modus „Antwort zuerst überlegen“. */
   thinkFirst?: boolean;
+  /** Zeitpunkt der Antwort (offline beantwortet, später synchronisiert); ohne Angabe `options.now` plus Reihenfolge. */
+  at?: Date;
+  /** Falsch: nur ins Log schreiben, den Zustand nicht verändern (z. B. Antwort älter als 30 Tage). */
+  applyState?: boolean;
 }
 
 export interface RecordOptions {
@@ -112,51 +116,65 @@ export async function recordRatedReviews(
         .where(inArray(questions.id, itemIds));
       for (const c of contexts) itemContext.set(c.itemId, { examDate: c.examDate, lightWeekdays: c.lightWeekdays ?? [] });
       // Bereits geplante Last der kommenden Tage (Fenster um die zu erwartenden Fälligkeiten).
+      // Bei verspätet synchronisierten Antworten rechnet der Lastausgleich ab dem frühesten Antwortzeitpunkt.
+      const windowStart = new Date(Math.min(now.getTime(), ...reviews.map((r) => r.at?.getTime() ?? now.getTime())));
       const horizon = new Date(now.getTime() + 400 * DAY_MS);
       const loadRows = await tx
         .select({ due: itemStates.due })
         .from(itemStates)
-        .where(and(eq(itemStates.userId, userId), between(itemStates.due, now, horizon)));
+        .where(and(eq(itemStates.userId, userId), between(itemStates.due, windowStart, horizon)));
       for (const row of loadRows) loadByDay.set(dayKey(row.due, timeZone), (loadByDay.get(dayKey(row.due, timeZone)) ?? 0) + 1);
     }
 
     const logRows: (typeof reviewLog.$inferInsert)[] = [];
     // Ein Review pro Item liegt im selben Moment; spätere Wiederholungen bekommen +1 ms,
-    // damit die Reihenfolge im Log eindeutig bleibt.
+    // damit die Reihenfolge im Log eindeutig bleibt. Mit eigenem Antwortzeitpunkt (`at`) wird nach Zeit sortiert.
     let offset = 0;
-    for (const review of reviews) {
-      const at = new Date(now.getTime() + offset++);
+    const timed = reviews
+      .map((review, index) => ({ review, index, at: review.at ?? new Date(now.getTime() + offset++) }))
+      .sort((a, b) => a.at.getTime() - b.at.getTime() || a.index - b.index);
+    // Items, deren Zustand sich geändert hat, und der Zeitpunkt ihres letzten angewendeten Reviews.
+    const changed = new Map<string, { at: Date; rating: RawRating }>();
+    for (const { review, at } of timed) {
+      const previous = states.get(review.itemId) ?? null;
+      // Ein verspätetes Ereignis ändert nie rückwirkend einen bereits neueren Zustand (Regel 3 der Roadmap).
+      const stateless = review.applyState === false || (previous?.lastReview != null && previous.lastReview.getTime() > at.getTime());
       const context = itemContext.get(review.itemId);
-      const daysToExam = daysUntilExam(context?.examDate, at);
-      const rTarget = planned ? examAdjustedTarget(baseTarget, daysToExam) : baseTarget;
-      const result = scheduleReview(states.get(review.itemId) ?? null, review.rawRating, at, rTarget, {
-        weights: params?.weights ?? (user?.ageRange ? DEFAULT_PSRP_CONFIG.fsrs.ageRangeWeights[user.ageRange] : null) ?? null,
-      });
-      let state = result.state;
-      if (planned) {
-        // Nur die Fälligkeit wird verschoben; Stabilität und Schwierigkeit bleiben unverändert (Regel 1).
-        let interval = clampIntervalToExam(result.intervalDays, daysToExam);
-        interval = balanceInterval({
-          from: at,
-          intervalDays: interval,
-          loadByDay,
-          lightWeekdays: context?.lightWeekdays,
-          weekdayOf: (d) => localTimeParts(d, timeZone).weekday,
-          daysToExam,
-          timeZone,
+      let predictedR: number | null = null;
+      if (!stateless) {
+        const daysToExam = daysUntilExam(context?.examDate, at);
+        const rTarget = planned ? examAdjustedTarget(baseTarget, daysToExam) : baseTarget;
+        const result = scheduleReview(previous, review.rawRating, at, rTarget, {
+          weights: params?.weights ?? (user?.ageRange ? DEFAULT_PSRP_CONFIG.fsrs.ageRangeWeights[user.ageRange] : null) ?? null,
         });
-        state = { ...state, due: new Date(at.getTime() + interval * DAY_MS) };
-        const key = dayKey(state.due, timeZone);
-        loadByDay.set(key, (loadByDay.get(key) ?? 0) + 1);
+        predictedR = result.predictedR;
+        let state = result.state;
+        if (planned) {
+          // Nur die Fälligkeit wird verschoben; Stabilität und Schwierigkeit bleiben unverändert (Regel 1).
+          let interval = clampIntervalToExam(result.intervalDays, daysToExam);
+          interval = balanceInterval({
+            from: at,
+            intervalDays: interval,
+            loadByDay,
+            lightWeekdays: context?.lightWeekdays,
+            weekdayOf: (d) => localTimeParts(d, timeZone).weekday,
+            daysToExam,
+            timeZone,
+          });
+          state = { ...state, due: new Date(at.getTime() + interval * DAY_MS) };
+          const key = dayKey(state.due, timeZone);
+          loadByDay.set(key, (loadByDay.get(key) ?? 0) + 1);
+        }
+        states.set(review.itemId, state);
+        changed.set(review.itemId, { at, rating: review.rawRating });
       }
-      states.set(review.itemId, state);
       logRows.push(
         buildReviewLogRow({
           userId,
           itemId: review.itemId,
           sessionId,
           timestamp: at,
-          timeZone: user?.timezone ?? "UTC",
+          timeZone,
           rawRating: review.rawRating,
           responseTimeMs: review.responseTimeMs,
           reviewType: review.reviewType,
@@ -164,14 +182,17 @@ export async function recordRatedReviews(
           variantQuestionId: review.variantQuestionId,
           wovenIntoLessonId: review.wovenIntoLessonId,
           thinkFirst: review.thinkFirst,
-          predictedR: result.predictedR,
+          predictedR,
+          stateApplied: !stateless,
         }),
       );
     }
 
     await tx.insert(reviewLog).values(logRows);
 
-    const finalRows = itemIds.map((itemId) => {
+    const changedIds = itemIds.filter((itemId) => changed.has(itemId));
+    if (changedIds.length === 0) return;
+    const finalRows = changedIds.map((itemId) => {
       const state = states.get(itemId)!;
       return {
         userId,
@@ -204,8 +225,7 @@ export async function recordRatedReviews(
       });
 
     // review_items bleibt die Fälligkeits-Sicht der bestehenden Leser.
-    const lastRating = new Map(reviews.map((r) => [r.itemId, r.rawRating]));
-    const queueRows = itemIds.map((itemId) => {
+    const queueRows = changedIds.map((itemId) => {
       const state = states.get(itemId)!;
       const dayMs = 86_400_000;
       return {
@@ -214,8 +234,8 @@ export async function recordRatedReviews(
         dueAt: state.due,
         intervalDays: Math.max(0, (state.due.getTime() - (state.lastReview ?? now).getTime()) / dayMs).toFixed(2),
         repetitions: state.reps,
-        lastOutcome: ((lastRating.get(itemId) ?? 1) >= 2 ? "correct" : "incorrect") as "correct" | "incorrect",
-        lastAnsweredAt: now,
+        lastOutcome: ((changed.get(itemId)?.rating ?? 1) >= 2 ? "correct" : "incorrect") as "correct" | "incorrect",
+        lastAnsweredAt: changed.get(itemId)?.at ?? now,
         updatedAt: now,
       };
     });

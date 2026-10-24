@@ -7,6 +7,7 @@ import { useState } from "react";
 import { SidebarContent, type ShellData } from "@/components/shell/Sidebar";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
+import { UnsyncedNotice } from "@/components/UnsyncedNotice";
 import { Badge } from "@/components/ui/badge";
 import { SearchField } from "@/components/ui/search-field";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -117,6 +118,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
               <SyncStatusBadge userId={shell.user.id} locale={locale} />
             </div>
           </div>
+          <div className="mx-auto w-full max-w-[1200px] px-4 pt-4 empty:hidden sm:px-6 lg:px-8"><UnsyncedNotice userId={shell.user.id} locale={locale} /></div>
           <main id="main" className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8">{children}</main>
         </div>
       </div>

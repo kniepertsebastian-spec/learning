@@ -1,0 +1,2 @@
+ALTER TABLE "organizations" ADD COLUMN "offline_max_age_days" integer;--> statement-breakpoint
+ALTER TABLE "organizations" ADD CONSTRAINT "organizations_offline_max_age_check" CHECK ("organizations"."offline_max_age_days" is null or "organizations"."offline_max_age_days" > 0);
