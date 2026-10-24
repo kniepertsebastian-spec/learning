@@ -144,6 +144,24 @@ export async function recordSectionQuizAttempt(
 }
 
 /**
+ * Eine eingewebte Frage nach einer gelösten Simulation (Flag `woven_reviews`): wird wie im Lektionstest als Review des Original-Items
+ * gebucht, ohne Auswirkung auf Lernziel oder Ergebnis. Gibt false zurück, wenn die Lektion fehlt oder das Flag aus ist.
+ */
+export async function recordSimulationWovenAnswer(userId: string, sectionId: string, answer: { questionId: string; selectedOptionId: string; confidence?: AnswerConfidence }): Promise<boolean> {
+  if (!isFeatureEnabled("woven_reviews", userId)) return false;
+  const [section] = await getDb()
+    .select({ certificationId: domains.certificationId, objectiveId: sections.objectiveId })
+    .from(sections)
+    .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .where(eq(sections.id, sectionId))
+    .limit(1);
+  if (!section) return false;
+  await recordWovenAnswers(userId, sectionId, section, [{ ...answer, woven: true }]);
+  return true;
+}
+
+/**
  * Eingewebte Antworten als Reviews des Original-Items (`interleaved`, mit der Lektion, in der sie gestellt wurden). Nur Fragen
  * desselben Kurses aus einem anderen Lernziel; alles andere wird ignoriert.
  */

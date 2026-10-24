@@ -180,7 +180,8 @@ async function applyEvent(userId: string, event: SyncEventInput): Promise<unknow
     const payload = event.payload as SimulationResultPayload;
     if (typeof payload?.sectionId !== "string" || !Number.isInteger(payload.simIndex) || typeof payload.helps !== "number") throw new SimulationNotFoundError("Ungültige Simulation.");
     if (await isSectionHidden(userId, payload.sectionId)) throw new SectionNotFoundError(payload.sectionId);
-    return recordSimulationSolved(userId, payload.sectionId, payload.simIndex, payload.helps);
+    const { struggled, pulledForward } = await recordSimulationSolved(userId, payload.sectionId, payload.simIndex, payload.helps);
+    return { struggled, pulledForward };
   }
   throw new Error(`Unbekannter Sync-Ereignistyp: ${event.type}`);
 }

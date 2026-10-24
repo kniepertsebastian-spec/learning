@@ -5,6 +5,7 @@ import { RichText } from "@/components/RichText";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 import { useLocaleOptional } from "@/lib/i18n";
+import type { WovenQuestion } from "@/lib/server/weaving/candidates";
 import { extractSimulationSources, simulationIndex, stripSimulations } from "@/lib/markdown/simulation";
 
 /**
@@ -16,11 +17,12 @@ import { extractSimulationSources, simulationIndex, stripSimulations } from "@/l
 export type SimulationProgressEntry = { bestHelps: number };
 
 type Ctx = {
+  sectionId: string;
   solved: ReadonlyMap<number, SimulationProgressEntry>;
   simCount: number;
   openText: (heading?: string) => void;
-  /** Meldet eine gelöste Runde (`helps` = Hilfen); gibt an, ob die Wiederholungsfragen vorgezogen wurden. */
-  reportSolved: (spec: string, helps: number) => Promise<{ struggled: boolean } | null>;
+  /** Meldet eine gelöste Runde (`helps` = Hilfen); gibt an, ob die Wiederholungsfragen vorgezogen wurden und ob eine Frage aus einer früheren Lektion eingewoben wird. */
+  reportSolved: (spec: string, helps: number) => Promise<{ struggled: boolean; woven?: WovenQuestion[] } | null>;
   headings: string[];
   /** Position der Simulation in der Lektion (0-basiert, -1 unbekannt): für Sprungmarken wie #simulation-2. */
   indexOf: (spec: string) => number;
@@ -77,7 +79,7 @@ export function LessonSimulationsProvider({
       if (!persist) return null;
       try {
         const res = await fetch(`/api/sections/${sectionId}/simulations`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ simIndex: idx, helps }) });
-        return res.ok ? ((await res.json()) as { struggled: boolean }) : null;
+        return res.ok ? ((await res.json()) as { struggled: boolean; woven?: WovenQuestion[] }) : null;
       } catch {
         return null;
       }
@@ -101,7 +103,7 @@ export function LessonSimulationsProvider({
   }, [open, target]);
 
   const indexOf = React.useCallback((spec: string) => simulationIndex(sources, spec), [sources]);
-  const value = React.useMemo<Ctx>(() => ({ solved, simCount: sources.length, openText, reportSolved, headings, indexOf, mentorAsk }), [solved, sources.length, openText, reportSolved, headings, indexOf, mentorAsk]);
+  const value = React.useMemo<Ctx>(() => ({ sectionId, solved, simCount: sources.length, openText, reportSolved, headings, indexOf, mentorAsk }), [sectionId, solved, sources.length, openText, reportSolved, headings, indexOf, mentorAsk]);
 
   return (
     <LessonSimulationsContext.Provider value={value}>

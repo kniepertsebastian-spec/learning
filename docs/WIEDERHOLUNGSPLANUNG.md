@@ -63,6 +63,8 @@ Erst den Ausgangswert erfassen, dann eine Mechanik einschalten, dann Ziele festl
 
 Im Lektionstest erscheinen bis zu **2 Fragen** (etwa 20 %, bei kleinen Tests mindestens eine) aus **früheren Lektionen**, die gerade fällig oder schwach sind (fällig, oder Abrufwahrscheinlichkeit unter 80 %) und deren Konzept mit der aktuellen Lektion verbunden ist: gemeinsames Konzept, freigegebene Voraussetzung (`concept_prerequisite`, Status `approved`) oder gleiches Themengebiet. Bevorzugt wird eine Variante (Variantenrotation). Auswahl: `lib/server/weaving/candidates.ts`, Regeln: `lib/weaving/rules.ts`.
 
+**In Simulationen:** Wer eine Simulation souverän löst (weniger als 2 Hilfen), bekommt darunter **eine** solche Frage („Kurz aufgefrischt, zählt nicht für diese Lektion“). Die Person beantwortet sie selbst; die Antwort geht über `POST /api/sections/[id]/woven` als Review `interleaved` an das Original-Item (mit Lektion), ohne Einfluss auf Lernziel oder Simulationsstand. Mühsam gelöste Simulationen und der Offline-Leser zeigen nichts. Die Verknüpfung `task_item` bleibt für Aufgaben, die das Item wirklich üben.
+
 - Die Fragen sehen aus wie normale Fragen, **zählen aber nicht** für Ergebnis, Punktzahl oder Lernzielstand der aktuellen Lektion (sie werden nicht in `quiz_answer` geschrieben).
 - Sie laufen als Review in das Gedächtnismodell: `review_log.review_type = interleaved`, `woven_into_lesson_id` nennt die Lektion, in der sie gestellt wurden; `item_state` wird wie bei jedem Review aktualisiert.
 - Items von Konzepten im **Verstehens-Modus** werden nie eingewoben. Im Offline-Leser wird nicht eingewoben.

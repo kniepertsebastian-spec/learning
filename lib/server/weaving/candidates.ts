@@ -25,8 +25,12 @@ export interface WovenQuestion {
   sourceReference: string | null;
 }
 
-export async function pickWovenQuestions(userId: string, sectionId: string, regularCount: number, now: Date = new Date()): Promise<WovenQuestion[]> {
-  if (!isFeatureEnabled("woven_reviews", userId) || regularCount <= 0) return [];
+/**
+ * `regularCount` ist die Zahl der regulären Fragen des Lektionstests (daraus ergibt sich die Obergrenze). Für eine Simulation gibt es
+ * keinen Test: dort legt `opts.max` die Zahl fest (`regularCount` wird ignoriert).
+ */
+export async function pickWovenQuestions(userId: string, sectionId: string, regularCount: number, now: Date = new Date(), opts: { max?: number } = {}): Promise<WovenQuestion[]> {
+  if (!isFeatureEnabled("woven_reviews", userId) || (opts.max === undefined && regularCount <= 0)) return [];
   const db = getDb();
   const [section] = await db
     .select({ objectiveId: sections.objectiveId, courseId: domains.certificationId })
@@ -95,7 +99,7 @@ export async function pickWovenQuestions(userId: string, sectionId: string, regu
   }
 
   const ranked = rankCandidates([...byItem.values()]);
-  const take = wovenCount(regularCount, ranked.length);
+  const take = opts.max !== undefined ? Math.min(opts.max, ranked.length) : wovenCount(regularCount, ranked.length);
   const picked = ranked.slice(0, take);
   if (picked.length === 0) return [];
 

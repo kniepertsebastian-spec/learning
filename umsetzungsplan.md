@@ -144,7 +144,7 @@ Quelle: `roadmap_pwa.md`, Phase 5
 ### Paket 4.4 – Schwächen in spätere Lektionen einweben · M
 Quelle: `roadmap_didaktik.md`, Phase 10
 - [x] Kandidaten über gemeinsame Konzepte bzw. Voraussetzungen, bis zu 2 eingewebte Varianten im Lektionstest, zählt nicht fürs Bestehen, Flag `woven_reviews`
-- [ ] Einbau in Simulationen (`task_item`/`embedded_step`), bewusst auf später verschoben
+- [x] Einbau in Simulationen: nach einer souverän gelösten Simulation eine fällige Frage aus einer früheren Lektion (Flag `woven_reviews`, zählt nur als Review). Eine in die Simulation geschriebene Zusatzstufe bei der Generierung bleibt offen
 
 **Abhängigkeit:** nach 3.5a (Items im Verstehens-Modus werden nicht eingewebt) und 3.5c (Voraussetzungen als Brücke).
 
