@@ -59,7 +59,7 @@ export type BlocksCounts = { updated: number; skipped: number; failed: number; c
 export async function backfillBlocks(
   certificationId: string,
   generate: BlocksGenerator,
-  opts: { limit?: number; onProgress?: (c: BlocksCounts) => void; usage?: { prompt: number; completion: number } } = {},
+  opts: { limit?: number; onProgress?: (c: BlocksCounts) => void; usage?: { prompt: number; completion: number }; shouldStop?: () => Promise<boolean> } = {},
 ): Promise<BlocksCounts> {
   const db = getDb();
   const rows = await db
@@ -74,6 +74,7 @@ export async function backfillBlocks(
   const counts: BlocksCounts = { updated: 0, skipped: rows.length - todo.length, failed: 0, costUsd: null, aborted: false };
   let streak = 0;
   for (let i = 0; i < todo.length && !counts.aborted; i += 2) {
+    if (await opts.shouldStop?.()) break;
     await Promise.all(
       todo.slice(i, i + 2).map(async (row) => {
         try {

@@ -1,0 +1,2 @@
+ALTER TABLE "ai_batch_runs" DROP CONSTRAINT "ai_batch_runs_kind_check";--> statement-breakpoint
+ALTER TABLE "ai_batch_runs" ADD CONSTRAINT "ai_batch_runs_kind_check" CHECK ("ai_batch_runs"."kind" in ('quality', 'simulations', 'concepts', 'variants', 'explanations', 'prerequisites', 'formats', 'rationales', 'blocks', 'possible'));

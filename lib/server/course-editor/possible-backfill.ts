@@ -42,7 +42,7 @@ export type PossibleBackfillResult = { checked: number; updated: number; skipped
 
 export async function backfillPossible(
   certId: string,
-  opts: { limit?: number; dryRun?: boolean; generate?: Generate; log?: (line: string) => void } = {},
+  opts: { limit?: number; dryRun?: boolean; generate?: Generate; log?: (line: string) => void; onProgress?: (r: PossibleBackfillResult) => void; shouldStop?: () => Promise<boolean>; startTranslation?: boolean } = {},
 ): Promise<PossibleBackfillResult> {
   const log = opts.log ?? (() => {});
   const todo = (await lessonsNeedingPossible(certId)).slice(0, opts.limit ?? Infinity);
@@ -51,6 +51,8 @@ export async function backfillPossible(
   const { name } = await ensureAiCheckpoint(certId, null);
   const changed: string[] = [];
   for (const t of todo) {
+    if (await opts.shouldStop?.()) break;
+    opts.onProgress?.({ ...result });
     try {
       const p = await proposeAi(certId, { target: "section", id: t.sectionId, action: "possible" }, { generate: opts.generate });
       result.costUsd += p.costUsd ?? 0;
@@ -79,6 +81,7 @@ export async function backfillPossible(
     }
   }
   // Übersetzung startet das Skript selbst (ein Hintergrundlauf ginge mit dem Prozess verloren).
-  if (changed.length) await finishAiAccept(certId, { sections: changed }, { userId: null, checkpoint: name, startTranslation: false });
+  if (changed.length) await finishAiAccept(certId, { sections: changed }, { userId: null, checkpoint: name, startTranslation: opts.startTranslation ?? false });
+  opts.onProgress?.({ ...result });
   return result;
 }

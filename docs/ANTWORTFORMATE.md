@@ -45,6 +45,9 @@ Neue Funktionen gelten nicht nur für neu erzeugte Kurse. Admins wenden sie in d
 | Varianten für die Wiederholung | mindestens zwei Varianten je Frage (`probe_only`, nie als normale Aufgabe sichtbar) | nein |
 | Alternativerklärungen | durchgerechnetes Beispiel, Lückenbeispiel, Analogie je Lernziel für den Verstehens-Modus | **ja**, Entwurf bis zur Freigabe auf der Kursseite im Adminbereich |
 | Voraussetzungen | welches Konzept auf welchem aufbaut | **ja**, Entwurf bis zur Freigabe |
+| Begründungen zu falschen Antworten | kurze Begründung je falscher Option, die noch keine hat; Vorhandenes wird nie überschrieben | nein |
+| Lernblöcke | Hinweise, Terminal- und Praxisbeispiele in Lektionen ganz ohne Blöcke; Text bleibt (sonst abgelehnt) | nein, Version mit Herkunft „Nachtrag“ |
+| „Was damit möglich ist“ | Hinweis und Textverweise in Simulationen; Kursstand wird vorher gemerkt | nein, Version mit Herkunft „KI“ |
 | Formatfragen | je Lernziel ohne Formatfrage zwei Fragen mit Reihenfolge, Kurzantwort oder Zuordnung | nein, Version mit Herkunft „KI“, vorher wird der Kursstand gemerkt |
 
-Alle Läufe sind wiederholbar: Was schon da ist, wird übersprungen. Sie betreffen nur allgemeine Kurse, nie interne Kurse von Firmen. Noch nicht als Lauf in der Werkstatt gibt es (nur per Skript): Begründungen je Option (`rationales:backfill`), Lernblöcke (`lessons:blocks`), „Was damit möglich ist“ (`lessons:possible`), Kursbeschreibungen (`courses:overviews`) und Merkzettel (`cheatsheets:backfill`).
+Alle Läufe sind wiederholbar: Was schon da ist, wird übersprungen. Sie betreffen nur allgemeine Kurse, nie interne Kurse von Firmen. Noch nicht als Lauf in der Werkstatt gibt es (nur per Skript): Kursbeschreibungen (`courses:overviews`, in der Werkstatt je Kurs mit einem Knopf möglich) und Merkzettel (`cheatsheets:backfill`).
