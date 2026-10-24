@@ -4,6 +4,7 @@ import { Keyboard } from "lucide-react";
 import { OptionTile, type OptionState } from "@/components/quiz/OptionTile";
 import { QuestionHead } from "@/components/quiz/QuestionHead";
 import { RichText } from "@/components/RichText";
+import { Button } from "@/components/ui/button";
 import { useLocale } from "@/lib/i18n";
 
 /** Kopf + Fragetext + Antwortkacheln + Tastaturhinweis; Zustände der Kacheln legt der Aufrufer fest. */
@@ -18,6 +19,8 @@ export function QuestionBody({
   flagged,
   onToggleFlag,
   showHint = true,
+  optionsHidden = false,
+  onShowOptions,
 }: {
   question: string;
   options: string[];
@@ -30,6 +33,9 @@ export function QuestionBody({
   flagged?: boolean;
   onToggleFlag?: () => void;
   showHint?: boolean;
+  /** Modus „Antwort zuerst überlegen“: Optionen sind verdeckt, bis die Person sie zeigt. */
+  optionsHidden?: boolean;
+  onShowOptions?: () => void;
 }) {
   const { t } = useLocale();
   return (
@@ -38,6 +44,12 @@ export function QuestionBody({
       <div className="mb-5 text-xl leading-[1.4] font-semibold sm:text-2xl" data-testid="question-text">
         <RichText text={question} />
       </div>
+      {optionsHidden ? (
+        <div className="rounded-xl border border-dashed border-border-strong bg-surface p-4" data-testid="options-hidden">
+          <p className="mb-3 text-sm text-subtle">{t.quiz.thinkFirstHint}</p>
+          <Button onClick={onShowOptions} data-testid="show-options">{t.quiz.showOptions}</Button>
+        </div>
+      ) : (
       <div role="radiogroup" aria-label={t.quiz.options} className="flex flex-col gap-2.5">
         {options.map((option, i) => (
           <OptionTile
@@ -52,7 +64,8 @@ export function QuestionBody({
           </OptionTile>
         ))}
       </div>
-      {showHint && (
+      )}
+      {showHint && !optionsHidden && (
         <p className="mt-3 hidden items-center gap-1.5 text-xs text-faint sm:flex">
           <Keyboard className="h-3.5 w-3.5" aria-hidden="true" />
           {t.quiz.hotkeys}

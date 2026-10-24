@@ -28,6 +28,7 @@ export interface OfflineQuestion {
   explanation: Localized<string>;
   sourceReference: string | null;
   options: OfflineQuestionOption[];
+  type?: string;
   /** Neue Antwortformate: Lösung im Paket, damit offline lokal ausgewertet werden kann (wie `isCorrect` bei Auswahlfragen). */
   format?: AnswerFormat;
   answerData?: AnswerData | null;
@@ -78,6 +79,7 @@ export interface OfflineSessionQuestionItem {
   /** Sofort-Feedback offline: Erklärung und Begründungen der gezeigten Frage (Original oder Variante; Variantenfragen stehen nicht im Kurspaket). */
   explanation: Localized<string>;
   sourceReference: string | null;
+  type?: string;
   format?: AnswerFormat;
   answerData?: AnswerData | null;
 }
@@ -212,6 +214,7 @@ async function getOfflineStudySession(
         options,
         explanation: q.explanation,
         sourceReference: q.sourceReference,
+        type: q.type,
         ...(q.answerFormat !== "choice" ? { format: q.answerFormat, answerData: q.answerData } : {}),
       });
     } else {
@@ -308,6 +311,7 @@ export async function getOfflinePackage(
       question: q.question,
       explanation: q.explanation,
       sourceReference: q.sourceReference,
+      type: q.type,
       ...(q.answerFormat !== "choice" ? { format: q.answerFormat, answerData: q.answerData } : {}),
       options: (optionsByQuestionId.get(q.id) ?? []).map((o) => ({
         id: o.id,

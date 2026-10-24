@@ -130,6 +130,7 @@ export default async function SectionPage({
       })),
     difficulty: q.difficulty,
     sourceReference: q.sourceReference,
+    type: q.type,
     format: q.answerFormat,
     answerData: q.answerData,
   }));

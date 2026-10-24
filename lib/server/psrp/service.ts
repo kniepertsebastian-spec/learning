@@ -42,6 +42,8 @@ export interface RatedReview {
   variantQuestionId?: string | null;
   /** Eingewebt in den Lektionstest dieser Lektion (review_type interleaved). */
   wovenIntoLessonId?: string | null;
+  /** Antwort entstand im Modus „Antwort zuerst überlegen“. */
+  thinkFirst?: boolean;
 }
 
 export interface RecordOptions {
@@ -161,6 +163,7 @@ export async function recordRatedReviews(
           probeVariantId: review.probeVariantId,
           variantQuestionId: review.variantQuestionId,
           wovenIntoLessonId: review.wovenIntoLessonId,
+          thinkFirst: review.thinkFirst,
           predictedR: result.predictedR,
         }),
       );

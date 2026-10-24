@@ -3045,6 +3045,8 @@ export const reviewLog = pgTable(
     variantQuestionId: uuid("variant_question_id"),
     /** Eingewebte Frage (roadmap_didaktik Phase 10): Lektion, in deren Test sie gestellt wurde; `review_type` ist dann `interleaved`. Ohne FK (unveränderlich). */
     wovenIntoLessonId: uuid("woven_into_lesson_id"),
+    /** Modus „Antwort zuerst überlegen“ war bei dieser Antwort aktiv (nur Auswertung der Lernhilfe; kein Einfluss auf Rating oder Planung). */
+    thinkFirst: boolean("think_first").notNull().default(false),
     /** Abrufwahrscheinlichkeit laut FSRS unmittelbar vor diesem Review (null bei erstem Review). */
     predictedR: numeric("predicted_r", { precision: 6, scale: 5, mode: "number" }),
   },

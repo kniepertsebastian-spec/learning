@@ -58,6 +58,8 @@ export interface MetricReview {
   reactivation?: boolean;
   /** Feature-Flag `woven_reviews` des Nutzers. */
   wovenReviews?: boolean;
+  /** Diese Antwort entstand im Modus „Antwort zuerst überlegen“ (Gerätepräferenz, am Review vermerkt). */
+  thinkFirst?: boolean;
   /** Feature-Flag `energy_modes` des Nutzers. */
   energyModes?: boolean;
 }
@@ -196,6 +198,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       predictedR: reviewLog.predictedR,
       variantQuestionId: reviewLog.variantQuestionId,
       wovenIntoLessonId: reviewLog.wovenIntoLessonId,
+      thinkFirst: reviewLog.thinkFirst,
     })
     .from(reviewLog)
     .innerJoin(users, eq(users.id, reviewLog.userId))
@@ -219,6 +222,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       energyModes: isFeatureEnabled("energy_modes", r.userId),
       reactivation: isFeatureEnabled("reactivation", r.userId),
       wovenReviews: isFeatureEnabled("woven_reviews", r.userId),
+      thinkFirst: r.thinkFirst,
     }));
 
   // Energie-Alternativen: Anteil gewählter Alternativen an den Abenden mit niedriger Energie oder Entlastung, und ob am Folgetag gelernt wurde.
@@ -315,5 +319,5 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     })),
     salt,
   );
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), wovenReviews: { arms: computeFlagArms(reviews, (r) => Boolean(r.wovenReviews)), woven: wovenStats }, reactivation: { arms: computeFlagArms(reviews, (r) => Boolean(r.reactivation)), messages: await reactivationStats(asOf) }, energyModes: { arms: computeFlagArms(reviews, (r) => Boolean(r.energyModes)), choices: energyChoices }, recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults };
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), thinkFirst: computeFlagArms(reviews, (r) => Boolean(r.thinkFirst)), wovenReviews: { arms: computeFlagArms(reviews, (r) => Boolean(r.wovenReviews)), woven: wovenStats }, reactivation: { arms: computeFlagArms(reviews, (r) => Boolean(r.reactivation)), messages: await reactivationStats(asOf) }, energyModes: { arms: computeFlagArms(reviews, (r) => Boolean(r.energyModes)), choices: energyChoices }, recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults };
 }

@@ -100,10 +100,10 @@ Ziel: Mehr Abfragen, bei denen die Antwort aktiv erzeugt werden muss. Das festig
 - [x] Session-Mix: bis 20 % solche Fragen, bevorzugt bei Items mit Rating 4 („sicher“), um Überschätzung früh zu erkennen.
 
 ### 3.2 Erst denken, dann Optionen sehen
-- [ ] Modus „Antwort zuerst überlegen“ für Single-Choice: Optionen sind zunächst verdeckt, Nutzer tippt auf „Optionen zeigen“, wenn er eine Antwort im Kopf hat. Kein zusätzliches Rating, reine Lernhilfe. Standard aus, in den Einstellungen aktivierbar; im Metrik-Export auswertbar.
+- [x] Modus „Antwort zuerst überlegen“ für Single-Choice: Optionen sind zunächst verdeckt, Nutzer tippt auf „Optionen zeigen“, wenn er eine Antwort im Kopf hat. Kein zusätzliches Rating, reine Lernhilfe. Standard aus, in den Einstellungen aktivierbar; im Metrik-Export auswertbar.
 
 ### 3.3 Selbsterklärung (nicht gewertet)
-- [ ] Nach einer Simulation oder einer falsch beantworteten Szenario-Frage optional: „Erkläre in einem Satz, warum …“. Freitext wird nicht bewertet und nicht für das Rating genutzt; danach Musterantwort zum Vergleich zeigen. Speicherung nur lokal oder ausdrücklich im Datenexport, nicht im Firmenbereich sichtbar.
+- [x] Nach einer Simulation oder einer falsch beantworteten Szenario-Frage optional: „Erkläre in einem Satz, warum …“. Freitext wird nicht bewertet und nicht für das Rating genutzt; danach Musterantwort zum Vergleich zeigen. Speicherung nur lokal oder ausdrücklich im Datenexport, nicht im Firmenbereich sichtbar.
 
 **Akzeptanzkriterium:** Mindestens ein Pilotkurs enthält alle drei neuen Formate; sie funktionieren in Session, Lektionstest und Offline-Leser und erzeugen korrekte Ratings.
 

@@ -7,6 +7,7 @@ import { useLessonSimulations } from "@/components/lesson/LessonSimulations";
 import { RichText } from "@/components/RichText";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SelfExplanation } from "@/components/quiz/SelfExplanation";
 import { useLocaleOptional } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { fmt } from "@/lib/quiz/keys";
@@ -84,8 +85,8 @@ function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () =>
  * Abschluss; `helps` = genutzte Hilfen (Tipp, Lösung, Fehlversuche), `null` = ohne Zählung („Gelöst“). Meldet die Lösung
  * einmal an die Lektion (Speichern, Wiederholung) und verweist auf die Textstellen, die man nachlesen kann.
  */
-function SolvedBanner({ helps, children }: { helps: number | null; children: React.ReactNode }) {
-  const { t } = useLocaleOptional();
+function SolvedBanner({ helps, children, selfExplain }: { helps: number | null; children: React.ReactNode; selfExplain?: { key: string; model: string } }) {
+  const { t, locale } = useLocaleOptional();
   const lesson = useLessonSimulations();
   const meta = React.useContext(SimMeta);
   const [struggled, setStruggled] = React.useState(false);
@@ -120,6 +121,7 @@ function SolvedBanner({ helps, children }: { helps: number | null; children: Rea
           </div>
         )}
         {struggled && <p className="mt-3 text-sm text-subtle" data-testid="simulation-struggled">{t.lesson_blocks.simStruggled}</p>}
+        {selfExplain && <SelfExplanation storageKey={selfExplain.key} prompt={locale === "de" ? "Erkläre in einem Satz, warum dieser Weg zum Ziel geführt hat." : "Explain in one sentence why this path led to the goal."} modelAnswer={selfExplain.model} locale={locale} />}
       </div>
     </div>
   );
@@ -312,7 +314,7 @@ function DecisionSim({ sim, restarts, onRestart }: { sim: DecisionSimulation; re
         </div>
       )}
       {node.outcome === "success" ? (
-        <SolvedBanner helps={restarts === 0 ? 0 : null}>
+        <SolvedBanner helps={restarts === 0 ? 0 : null} selfExplain={{ key: `sim:${sim.title}`, model: node.text }}>
           <RichText text={node.text} />
         </SolvedBanner>
       ) : node.outcome === "failure" ? (

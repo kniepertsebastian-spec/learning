@@ -56,6 +56,7 @@ export default async function StudySessionPage({
             recall: item.recall ? { sectionId: item.recall.sectionId, lessonTitle: item.recall.lessonTitle } : undefined,
             question: item.question.question,
             options: item.question.options,
+            type: item.question.type,
             format: item.question.format,
             prompt: item.question.prompt,
           },

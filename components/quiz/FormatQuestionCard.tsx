@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ConfidenceBar } from "@/components/quiz/ConfidenceBar";
 import { FormatAnswerInput, initialDraft, isDraftComplete } from "@/components/quiz/FormatAnswerInput";
 import { FormatFeedbackPanel } from "@/components/quiz/FormatFeedbackPanel";
+import { isSelfExplainType } from "@/lib/questions/self-explain";
 import { QuestionHead } from "@/components/quiz/QuestionHead";
 import { RichText } from "@/components/RichText";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export function FormatQuestionCard({
   objectiveLabel,
   difficulty,
   restored,
+  questionType,
 }: {
   question: string;
   explanation: string;
@@ -50,6 +52,7 @@ export function FormatQuestionCard({
   objectiveLabel?: string;
   difficulty?: string | null;
   /** Schon beantwortete Aufgabe wieder öffnen (z. B. beim Zurückblättern in der Session): zeigt Antwort und Auswertung statt einer leeren Eingabe. */
+  questionType?: string | null;
   restored?: { answer: AnswerPayload; result: FormatEvaluation; confidence: AnswerConfidence | null };
 }) {
   const { locale } = useLocale();
@@ -111,6 +114,7 @@ export function FormatQuestionCard({
           nextLabel={nextLabel}
           onNext={onNext}
           locale={locale}
+          selfExplain={isSelfExplainType(questionType)}
         />
       )}
       {busy && <p className="text-sm text-subtle" role="status">…</p>}

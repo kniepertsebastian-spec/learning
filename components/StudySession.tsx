@@ -7,6 +7,8 @@ import type { AnswerConfidence, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 import { ConfidenceBar } from "@/components/quiz/ConfidenceBar";
 import { FormatQuestionCard, type FormatEvaluation } from "@/components/quiz/FormatQuestionCard";
+import { useThinkFirst } from "@/lib/client/use-think-first";
+import { isSelfExplainType } from "@/lib/questions/self-explain";
 import { buildPrompt, buildSolution, gradeAnswer, type AnswerData, type AnswerFormat, type AnswerPayload, type AnswerPrompt, type AnswerSolution } from "@/lib/questions/answer-formats";
 import { FeedbackPanel } from "@/components/quiz/FeedbackPanel";
 import { FocusFrame } from "@/components/quiz/FocusFrame";
@@ -48,6 +50,8 @@ interface SessionQuestionItem {
   format?: AnswerFormat;
   prompt?: AnswerPrompt;
   answerData?: AnswerData | null;
+  /** Fragetyp (kognitive Stufe), für die Selbsterklärung bei Szenario-Fragen. */
+  type?: string;
 }
 
 interface SessionLessonItem {
@@ -140,6 +144,10 @@ export function StudySession({
   const [error, setError] = useState<string | null>(null);
   // Sofort-Feedback: Antwort sperren, Sicherheit vor dem Aufdecken abfragen, dann aufdecken.
   const [feedbackMode, setFeedbackMode] = useFeedbackMode();
+  // „Antwort zuerst überlegen“: gilt ab Beginn der Session; je Frage merken wir, ob die Optionen schon gezeigt wurden.
+  const [thinkFirstOn] = useThinkFirst();
+  const [thinkFirst] = useState(thinkFirstOn);
+  const [optionsShown, setOptionsShown] = useState<boolean[]>(() => questionItems.map(() => false));
   const instant = feedbackMode === "instant";
   const [reveals, setReveals] = useState<Array<QuestionReveal | "failed" | "loading" | null>>(() =>
     questionItems.map(() => null),
@@ -289,7 +297,7 @@ export function StudySession({
         // Nur beantwortete Aufgaben: die übrigen bekommen kein Rating und bleiben fällig.
         body: JSON.stringify({
           openItemId: item.itemId,
-          answers: questionItems.flatMap((q, i) => (answers[i] ? [{ itemId: q.itemId, selectedOptionId: payloads[i] ? "" : answers[i], answer: payloads[i] ?? undefined, confidence: confidences[i] ?? undefined }] : [])),
+          answers: questionItems.flatMap((q, i) => (answers[i] ? [{ itemId: q.itemId, selectedOptionId: payloads[i] ? "" : answers[i], answer: payloads[i] ?? undefined, confidence: confidences[i] ?? undefined, thinkFirst: thinkFirst && !payloads[i] ? true : undefined }] : [])),
         }),
       });
       const data = await response.json();
@@ -315,6 +323,7 @@ export function StudySession({
         selectedOptionId: payloads[i] ? "" : (answers[i] ?? ""),
         answer: payloads[i] ?? undefined,
         confidence: confidences[i] ?? undefined,
+        thinkFirst: thinkFirst && !payloads[i] ? true : undefined,
       })),
     };
 
@@ -364,7 +373,7 @@ export function StudySession({
     if (!item) return;
     const sorted = [...item.options].sort((a, b) => a.orderNum - b.orderNum);
     const option = sorted[index];
-    if (!option || formatPromptOf(item)) return;
+    if (!option || formatPromptOf(item) || (thinkFirst && !optionsShown[currentIndex])) return;
     if (instant && answers[currentIndex]) return; // Antwort ist nach dem Wählen gesperrt
     setAnswers((prev) => {
       const next = [...prev];
@@ -583,6 +592,7 @@ export function StudySession({
           explanation={item.explanation?.[locale] ?? ""}
           prompt={formatPrompt}
           evaluate={(answer) => evaluateFormat(item, answer)}
+          questionType={item.type}
           onAnswered={(_correct, answer, confidence, evaluation) => handleFormatAnswered(currentIndex, answer, confidence, evaluation)}
           askConfidence={askConfidence}
           sourceReference={item.sourceReference}
@@ -598,6 +608,8 @@ export function StudySession({
         states={states}
         onPick={pickOption}
         locked={instant && Boolean(answers[currentIndex])}
+        optionsHidden={thinkFirst && !optionsShown[currentIndex] && !answers[currentIndex]}
+        onShowOptions={() => setOptionsShown((prev) => prev.map((v, k) => (k === currentIndex ? true : v)))}
       />
 
       {askConfidence && answers[currentIndex] && instant && currentReveal === null && (
@@ -635,6 +647,7 @@ export function StudySession({
             nextLabel={isLast ? t.quiz.finish : t.quiz.nextShort}
             onNext={isLast ? () => void handleSubmit() : () => setCurrentIndex((i) => i + 1)}
             nextDisabled={submitting}
+            selfExplain={isSelfExplainType(item.type)}
           />
         </div>
       )}

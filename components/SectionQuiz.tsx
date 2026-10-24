@@ -32,6 +32,8 @@ export interface SectionQuizQuestion {
   sourceReference: string | null;
   /** Aus einer früheren Lektion eingewoben (Flag `woven_reviews`): sieht aus wie jede Frage, zählt aber nicht fürs Ergebnis dieser Lektion. */
   woven?: boolean;
+  /** Fragetyp (kognitive Stufe); bei Szenario-Fragen wird nach einer falschen Antwort die Selbsterklärung angeboten. */
+  type?: string | null;
   /** Antwortformat; fehlt oder „choice“ = Auswahlfrage. Bei den anderen Formaten steht die Lösung in `answerData` (Lektionstest wird im Browser ausgewertet). */
   format?: AnswerFormat;
   answerData?: AnswerData | null;
@@ -68,9 +70,10 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
     answer?: AnswerPayload;
     confidence?: AnswerConfidence;
     woven?: boolean;
+    thinkFirst?: boolean;
   } | null>(null);
   const [answers, setAnswers] = useState<
-    Array<{ questionId: string; selectedOptionId: string; answer?: AnswerPayload; confidence?: AnswerConfidence; woven?: boolean }>
+    Array<{ questionId: string; selectedOptionId: string; answer?: AnswerPayload; confidence?: AnswerConfidence; woven?: boolean; thinkFirst?: boolean }>
   >([]);
 
   function mapQuestion(q: SectionQuizQuestion): QuizQuestion {
@@ -91,7 +94,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
     };
   }
 
-  function handleAnswered(isCorrect: boolean, selectedIndex: number, confidence?: AnswerConfidence) {
+  function handleAnswered(isCorrect: boolean, selectedIndex: number, confidence?: AnswerConfidence, thinkFirst?: boolean) {
     setResults((r) => [...r, isCorrect]);
     setHasAnsweredCurrent(true);
     const q = questions[quizIndex];
@@ -101,6 +104,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
       selectedOptionId: sorted[selectedIndex]?.id ?? "",
       confidence,
       woven: q.woven || undefined,
+      thinkFirst,
     });
   }
 
@@ -225,6 +229,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
           nextLabel={quizIndex + 1 >= questions.length ? t.quiz.finish : t.quiz.next}
           objectiveLabel={objectiveLabel}
           difficulty={current.difficulty}
+          questionType={current.type}
         />
       ) : (
       <QuizQuestionCard
@@ -237,6 +242,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
         nextLabel={quizIndex + 1 >= questions.length ? t.quiz.finish : t.quiz.next}
         objectiveLabel={objectiveLabel}
         difficulty={current.difficulty}
+        questionType={current.type}
       />
       )}
       {exitEnabled && !offline && (
