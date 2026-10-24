@@ -49,11 +49,11 @@ Heute vorhanden:
 
 ## Phase 1 – Prüfer-Konto und Rolle (Priorität: hoch)
 
-- [ ] Rolle `reviewer` in `UserRole` ergänzen (Migration, Typen, Guards in `lib/server/auth-guards.ts`).
-- [ ] Einladung durch Admin per E-Mail (vorhandene Einladungs- und Verifizierungslogik wiederverwenden).
-- [ ] Zuweisung je Kurs: Tabelle `course_reviewers` (certification_id, user_id, assigned_at, assigned_by). Nur **allgemeine** Kurse zuweisbar, nie interne Lernpfade einer Firma.
-- [ ] Prüfer sieht in der Werkstatt nur zugewiesene Kurse: lesen, kommentieren, Fragen als fehlerhaft markieren, freigeben. Keine Kursgenerierung, keine KI-Kosten, kein Zugriff auf Lernende oder Firmen.
-- [ ] Prüfer-Kommentare je Abschnitt/Frage (vorhandene `content_reports` mit Quelle `reviewer` erweitern oder eigene Tabelle), damit Admins sie abarbeiten können.
+- [x] Rolle `reviewer` in `UserRole` ergänzen (Migration, Typen, Guards in `lib/server/auth-guards.ts`).
+- [x] Einladung durch Admin per E-Mail (vorhandene Einladungs- und Verifizierungslogik wiederverwenden).
+- [x] Zuweisung je Kurs: Tabelle `course_reviewers` (certification_id, user_id, assigned_at, assigned_by). Nur **allgemeine** Kurse zuweisbar, nie interne Lernpfade einer Firma.
+- [x] Prüfer sieht in der Werkstatt nur zugewiesene Kurse: lesen, kommentieren, Fragen als fehlerhaft markieren, freigeben. Keine Kursgenerierung, keine KI-Kosten, kein Zugriff auf Lernende oder Firmen. (eigene, rein lesende Prüfer-Ansicht unter `/reviewer`; die Admin-Werkstatt bleibt Admins vorbehalten)
+- [x] Prüfer-Kommentare je Abschnitt/Frage (vorhandene `content_reports` mit Quelle `reviewer` erweitern oder eigene Tabelle), damit Admins sie abarbeiten können. (eigene Tabelle `reviewer_comments`)
 
 **Akzeptanzkriterium:** Ein eingeladener Prüfer sieht genau seine zugewiesenen allgemeinen Kurse; Tests belegen, dass er weder interne Lernpfade noch fremde Kurse noch Lerndaten abrufen kann.
 
@@ -66,7 +66,7 @@ Heute vorhanden:
 - [x] Freigabe-Ablauf: Prüfer bzw. Admin klickt „Freigeben“ → Hash wird berechnet und gespeichert, `catalogStatus = approved`. Die Freigabe enthält eine Bestätigung: „Ich habe die Inhalte dieser Version fachlich geprüft.“
 - [x] Änderungserkennung: Weicht der aktuelle Hash von der letzten Freigabe ab, Status „geändert seit Prüfung“ mit Liste der geänderten Abschnitte/Fragen (Diff über Fingerprints). Neue Varianten aus der Generierung zählen als Änderung.
 - [x] Redaktionelle Änderungen: Admin kann eine Änderung als „redaktionell“ markieren (protokolliert in `admin_audit` o. ä.); sie lösen keinen Hinweis aus, erscheinen aber im Protokoll.
-- [ ] (Diff-Anzeige vorhanden; Prüfer-Ansicht folgt mit 4.6b) Neufreigabe zeigt dem Prüfer nur den Diff seit seiner letzten Freigabe.
+- [x] Neufreigabe zeigt dem Prüfer nur den Diff seit seiner letzten Freigabe.
 - [x] Migration Altbestand: vorhandene `approvedByName`/`approvedAt` als `course_approvals`-Eintrag ohne Konto übernehmen (Hash zum Migrationszeitpunkt). Die Felder in `certifications` bleiben vorerst als Lesezugriff erhalten und werden später entfernt.
 
 **Akzeptanzkriterium:** Nach einer Freigabe und anschließender Änderung einer Frage in der Werkstatt zeigt der Kurs „1 Änderung seit Prüfung“; nach Neufreigabe verschwindet der Hinweis. Ein Test belegt, dass derselbe Inhalt immer denselben Hash ergibt.

@@ -18,3 +18,11 @@ Kurse, die früher nur mit Name und Datum freigegeben wurden (`certifications.ap
 ## Grenzen
 
 Interne Lernpfade einer Firma sind nicht betroffen (die Werkstatt fasst sie nicht an, die Freigabe bleibt Name und Datum der Firma). Geltungsbereich „einzelne Domains“, Prüfer-Konten und Siegel am Kurs folgen mit den Paketen 4.6b und 4.7.
+
+## Fachliche Prüfer (Rolle `reviewer`)
+
+- **Einladen:** Admin → Fachliche Prüfer (`/admin/reviewers`): E-Mail und Kurse angeben. Die Einladung (7 Tage gültig, nur der Hash des Tokens liegt in der Datenbank) geht per E-Mail; ohne Mail-Versand zeigt die Seite den Link zum Weitergeben. Mit einer offenen Einladung darf sich genau diese E-Mail auch ohne Allowlist registrieren. Die Person nimmt die Einladung unter `/reviewer-invite/<Token>` an (angemeldet mit genau der eingeladenen Adresse); sie bekommt die Rolle `reviewer` (Admins bleiben Admin) und die Kurse zugewiesen. Bestehende Konten lassen sich auch per `npm run user:set-role -- <email> reviewer` zum Prüfer machen und dann zuweisen.
+- **Zuweisung:** je allgemeinem Kurs (`course_reviewers`), nie einem internen Lernpfad einer Firma.
+- **Prüfer-Ansicht** (`/reviewer`, `/reviewer/<Kurs>`): nur zugewiesene Kurse, ausschließlich lesend (Lektionen, Fragen mit Lösung und Erklärung); keine Bearbeitung, keine KI, keine Kosten, keine Lerndaten, kein Admin- und Firmenbereich. Nicht zugewiesene und interne Kurse sehen aus wie nicht vorhanden (404). Im Lernkatalog gilt der Prüfer wie jede Lernende.
+- **Kommentare** je Lektion oder Frage und „Als fehlerhaft melden“ (nur Fragen) landen in `reviewer_comments`; Admins sehen sie offen unter `/admin/reviewers` und markieren sie als erledigt.
+- **Freigabe:** nur mit Namen und der Bestätigung „Ich habe die Inhalte dieser Version fachlich geprüft.“ Das Protokoll hält die Konto-ID des Prüfers fest. Bei einer Neufreigabe zeigt die Ansicht nur die Änderungen seit **seiner** letzten Freigabe.

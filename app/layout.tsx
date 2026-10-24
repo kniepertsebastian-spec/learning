@@ -104,7 +104,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     ? {
         contexts,
         companyName: hasCompanyAccess ? (membership?.organizationName ?? null) : null,
-        nav: { canAssign: isRoleAllowed(membership, ASSIGN_ROLES), isCompanyAdmin: membership?.role === "company_admin" },
+        nav: { canAssign: isRoleAllowed(membership, ASSIGN_ROLES), isCompanyAdmin: membership?.role === "company_admin", isReviewer: user.role === "reviewer" },
         user: { id: user.id, email: user.email },
       }
     : null;

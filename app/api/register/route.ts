@@ -7,6 +7,7 @@ import { getDb } from "@/lib/server/db/client";
 import { users } from "@/lib/server/db/schema";
 import { checkRegistrationRateLimit, clientIp } from "@/lib/server/auth-rate-limit";
 import { hasPendingInvitationForEmail } from "@/lib/server/company/invitations";
+import { hasPendingReviewerInvitationForEmail } from "@/lib/server/reviewers/service";
 import { normalizeEmail } from "@/lib/server/email";
 import { sendVerificationEmail } from "@/lib/server/account/recovery";
 import { isMailConfigured } from "@/lib/server/mail/config";
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     const body = registerRequestSchema.parse(await request.json());
 
     // Zugelassen: E-Mail auf der Allowlist ODER mit offener, gültiger Einladung einer Organisation.
-    if (!isEmailAllowed(body.email) && !(await hasPendingInvitationForEmail(body.email))) {
+    if (!isEmailAllowed(body.email) && !(await hasPendingInvitationForEmail(body.email)) && !(await hasPendingReviewerInvitationForEmail(body.email))) {
       return NextResponse.json(
         { error: "Registrierung ist derzeit nur auf Einladung möglich." },
         { status: 403 },

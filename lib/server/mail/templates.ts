@@ -184,3 +184,15 @@ export function reactivationMessage(to: string, input: { link: string; unsubscri
     headers: { "List-Unsubscribe": `<${input.unsubscribeLink}>` },
   };
 }
+
+/** Einladung als fachliche Prüferin oder Prüfer eines Kurses. */
+export function reviewerInvitationMessage(to: string, link: string): MailMessage {
+  return {
+    to,
+    subject: "Einladung als fachlicher Prüfer",
+    text:
+      `Hallo,\n\ndu wurdest eingeladen, Kurse fachlich zu prüfen und freizugeben. Du siehst nur die Kurse, die dir zugewiesen sind.\n\n` +
+      `Hier kannst du die Einladung annehmen (Registrieren oder Anmelden mit genau dieser E-Mail-Adresse):\n\n${link}\n\n` +
+      `Der Link ist 7 Tage gültig und nur einmal verwendbar.${FOOTER}`,
+  };
+}

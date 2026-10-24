@@ -159,7 +159,7 @@ Quelle: `roadmap_didaktik.md`, Phase 3
 ### Paket 4.6 – Prüfer-Rolle und Freigabe je Inhaltsstand · L
 Quelle: `roadmap_pruefer.md`, Phase 1 und 2
 - [x] 4.6a Freigabe an Inhaltsstand binden: `course_approvals`, `content_hash`, Änderungserkennung mit Diff, Migration von `approvedByName` · M
-- [ ] 4.6b Rolle `reviewer`, Einladung, Zuweisung je allgemeinem Kurs, eingeschränkte Werkstatt mit Kommentaren und Freigabe · M
+- [x] 4.6b Rolle `reviewer`, Einladung, Zuweisung je allgemeinem Kurs, eingeschränkte Werkstatt mit Kommentaren und Freigabe · M
 
 **Abhängigkeit:** keine. **Spätestens bevor der erste externe Experte einen Kurs freigibt**, auch wenn das vor dem Launch passiert; sonst steht sein Name unter späteren Änderungen.
 

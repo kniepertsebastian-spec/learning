@@ -18,15 +18,15 @@ import { recordAuditEvent } from "../lib/server/audit/service";
  * registriert hat. requireAdmin() (lib/server/auth-guards.ts) liest die Rolle
  * bei jedem Request frisch aus der DB, ein Entzug wirkt also sofort.
  *
- * Usage: npm run user:set-role -- <email> <admin|learner>
+ * Usage: npm run user:set-role -- <email> <admin|learner|reviewer>
  */
 async function main() {
   const [, , emailArg, roleArg] = process.argv;
   const email = emailArg?.trim().toLowerCase();
   const role = roleArg?.trim().toLowerCase() as UserRole | undefined;
 
-  if (!email || (role !== "admin" && role !== "learner")) {
-    console.error("Usage: npm run user:set-role -- <email> <admin|learner>");
+  if (!email || (role !== "admin" && role !== "learner" && role !== "reviewer")) {
+    console.error("Usage: npm run user:set-role -- <email> <admin|learner|reviewer>");
     process.exit(1);
   }
 
