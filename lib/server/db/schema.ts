@@ -2929,6 +2929,8 @@ export const reviewLog = pgTable(
     probeVariantId: uuid("probe_variant_id"),
     /** Variantenrotation: gezeigte Variante (questions.id), wenn nicht das Original selbst; `item_id` bleibt das Original. Ohne FK, da review_log unveränderlich ist. */
     variantQuestionId: uuid("variant_question_id"),
+    /** Eingewebte Frage (roadmap_didaktik Phase 10): Lektion, in deren Test sie gestellt wurde; `review_type` ist dann `interleaved`. Ohne FK (unveränderlich). */
+    wovenIntoLessonId: uuid("woven_into_lesson_id"),
     /** Abrufwahrscheinlichkeit laut FSRS unmittelbar vor diesem Review (null bei erstem Review). */
     predictedR: numeric("predicted_r", { precision: 6, scale: 5, mode: "number" }),
   },

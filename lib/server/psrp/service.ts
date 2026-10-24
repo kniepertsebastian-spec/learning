@@ -40,6 +40,8 @@ export interface RatedReview {
   reviewType?: ReviewLogType;
   probeVariantId?: string | null;
   variantQuestionId?: string | null;
+  /** Eingewebt in den Lektionstest dieser Lektion (review_type interleaved). */
+  wovenIntoLessonId?: string | null;
 }
 
 export interface RecordOptions {
@@ -158,6 +160,7 @@ export async function recordRatedReviews(
           reviewType: review.reviewType,
           probeVariantId: review.probeVariantId,
           variantQuestionId: review.variantQuestionId,
+          wovenIntoLessonId: review.wovenIntoLessonId,
           predictedR: result.predictedR,
         }),
       );

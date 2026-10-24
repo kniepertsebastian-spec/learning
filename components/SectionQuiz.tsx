@@ -28,6 +28,8 @@ export interface SectionQuizQuestion {
   /** R1.4: knappe Quellenangabe (z. B. "S. 4"), falls die Frage
    * quellengebunden generiert wurde - sonst null. */
   sourceReference: string | null;
+  /** Aus einer früheren Lektion eingewoben (Flag `woven_reviews`): sieht aus wie jede Frage, zählt aber nicht fürs Ergebnis dieser Lektion. */
+  woven?: boolean;
 }
 
 interface SectionQuizProps {
@@ -59,9 +61,10 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
     questionId: string;
     selectedOptionId: string;
     confidence?: AnswerConfidence;
+    woven?: boolean;
   } | null>(null);
   const [answers, setAnswers] = useState<
-    Array<{ questionId: string; selectedOptionId: string; confidence?: AnswerConfidence }>
+    Array<{ questionId: string; selectedOptionId: string; confidence?: AnswerConfidence; woven?: boolean }>
   >([]);
 
   function mapQuestion(q: SectionQuizQuestion): QuizQuestion {
@@ -91,6 +94,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
       questionId: q.id,
       selectedOptionId: sorted[selectedIndex]?.id ?? "",
       confidence,
+      woven: q.woven || undefined,
     });
   }
 
@@ -150,11 +154,14 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
   if (questions.length === 0) return null;
   if (exitState) return <ExitSummary certSlug={certSlug} winSession={exitState.winSession} contextLabel={contextLabel ?? t.quiz.sectionQuiz} />;
 
-  const correctCount = results.filter(Boolean).length;
-  const wrongCount = results.length - correctCount;
+  // Eingewebte Fragen erscheinen im Ablauf, zählen aber nicht für Ergebnis und Wertung dieser Lektion.
+  const countedResults = results.filter((_, i) => !questions[i]?.woven);
+  const regularTotal = questions.filter((q) => !q.woven).length;
+  const correctCount = countedResults.filter(Boolean).length;
+  const wrongCount = countedResults.length - correctCount;
 
   if (quizFinished) {
-    const score = Math.round((correctCount / questions.length) * 100);
+    const score = Math.round((correctCount / Math.max(1, regularTotal)) * 100);
     return (
       <FocusFrame
         exitHref={`/cert/${certSlug}`}
@@ -162,11 +169,11 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
         contextLabel={contextLabel ?? t.quiz.sectionQuiz}
         mode="practice"
         segments={results.map((r): SegmentState => (r ? "correct" : "wrong"))}
-        counterText={fmt(t.quiz.correctCount, { a: correctCount, b: questions.length })}
+        counterText={fmt(t.quiz.correctCount, { a: correctCount, b: regularTotal })}
       >
         <ResultSummary
           score={score}
-          headline={fmt(t.quiz.correctCount, { a: correctCount, b: questions.length })}
+          headline={fmt(t.quiz.correctCount, { a: correctCount, b: regularTotal })}
           offlineNote={Boolean(offline)}
           actions={[{ href: `/cert/${certSlug}`, label: t.quiz.backToCourse, primary: true }]}
         />
