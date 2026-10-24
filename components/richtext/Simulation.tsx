@@ -258,7 +258,7 @@ function TerminalSim({ sim }: { sim: TerminalSimulation }) {
           </Button>
         </div>
       ) : (
-        <SolvedBanner helps={helps}>
+        <SolvedBanner helps={helps} selfExplain={{ key: `sim:${sim.title}`, model: sim.success }}>
           <RichText text={sim.success} />
         </SolvedBanner>
       )}
@@ -464,7 +464,7 @@ function ConfigSim({ sim }: { sim: ConfigSimulation }) {
         </div>
       ) : (
         <>
-          <SolvedBanner helps={helps}>
+          <SolvedBanner helps={helps} selfExplain={{ key: `sim:${sim.title}`, model: sim.success }}>
             <RichText text={sim.success} />
           </SolvedBanner>
           <ul className="mt-3 flex flex-col gap-2" data-testid="simulation-explanations">
