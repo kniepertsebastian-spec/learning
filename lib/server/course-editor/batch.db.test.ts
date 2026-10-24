@@ -178,3 +178,63 @@ run("Sammelläufe: Varianten, Erklärungen, Voraussetzungen, Formatfragen (echte
     await expect(startBatch({ kind: "formats", certificationId: certId, userId }, { generate })).rejects.toBeInstanceOf(BatchNothingToDoError);
   });
 });
+
+run("Sammelläufe: Begründungen, Lernblöcke, „Was damit möglich ist“ (echte DB, gefälschte KI)", () => {
+  let userId = "";
+  let certId = "";
+  let questionId = "";
+  let wrongId = "";
+  const LESSON = "## Partitionen\n\nEine Festplatte wird in Partitionen aufgeteilt, damit mehrere Systeme nebeneinander laufen können.";
+
+  beforeAll(async () => {
+    userId = await seedUser();
+    const course = await seedCourse(1);
+    certId = course.certId;
+    questionId = course.questionIds[0];
+    await getDb().update(certifications).set({ kind: "general" }).where(eq(certifications.id, certId));
+    await seedLessons(course.objectiveId, [LESSON]);
+    const [, wrong] = await getDb()
+      .insert(questionOptions)
+      .values([
+        { questionId, orderNum: 1, text: { de: "Datenträger unterteilen", en: "Divide the disk" }, isCorrect: true },
+        { questionId, orderNum: 2, text: { de: "Daten verschlüsseln", en: "Encrypt data" }, isCorrect: false },
+      ])
+      .returning();
+    wrongId = wrong.id;
+  });
+  afterAll(async () => {
+    await getDb().delete(users).where(eq(users.id, userId));
+  });
+
+  it("Begründungen: ergänzt die fehlende, überschreibt nichts, danach nichts mehr zu tun", async () => {
+    const reason = { de: "Verschlüsseln ist etwas anderes als Aufteilen: dabei bleibt die Größe der Bereiche gleich.", en: "Encrypting is different from splitting: the size of the areas stays the same." };
+    const { runId } = await startBatch({ kind: "rationales", certificationId: certId, userId }, { rationaleGenerator: async () => ({ [wrongId]: reason }) });
+    await awaitBatch(runId);
+    expect(await getBatchStatus("rationales", certId)).toMatchObject({ status: "done", total: 1, applied: 1, failed: 0 });
+    const [row] = await getDb().select({ rationale: questionOptions.rationale }).from(questionOptions).where(eq(questionOptions.id, wrongId));
+    expect(row.rationale).toEqual(reason);
+    await expect(startBatch({ kind: "rationales", certificationId: certId, userId }, { rationaleGenerator: async () => ({}) })).rejects.toBeInstanceOf(BatchNothingToDoError);
+  });
+
+  it("Lernblöcke: fügt Blöcke ein, der Text bleibt, danach nichts mehr zu tun", async () => {
+    const withBlock = `${LESSON}\n\n> [!NOTE]\n> Vor dem Aufteilen ein Backup anlegen.`;
+    const { runId } = await startBatch({ kind: "blocks", certificationId: certId, userId }, { blocksGenerator: async () => ({ de: withBlock, en: withBlock }) });
+    await awaitBatch(runId);
+    expect(await getBatchStatus("blocks", certId)).toMatchObject({ status: "done", total: 1, applied: 1, failed: 0 });
+    const rows = await getDb().select({ content: lessons.content }).from(lessons);
+    expect(rows.some((r) => r.content.de.includes("[!NOTE]") && r.content.de.includes("Eine Festplatte wird in Partitionen"))).toBe(true);
+    await expect(startBatch({ kind: "blocks", certificationId: certId, userId }, { blocksGenerator: async (l) => l.content })).rejects.toBeInstanceOf(BatchNothingToDoError);
+  });
+
+  it("Was damit möglich ist: ergänzt den Hinweis, danach nichts mehr zu tun", async () => {
+    const content = `${LESSON}\n\n> [!NOTE]\n> Vor dem Aufteilen ein Backup anlegen.\n\n> [!POSSIBLE]\n> Mit Partitionen betreibst du zwei Systeme auf einem Rechner.`;
+    const generate: Generate = async (_system, _user, schema) => schema.parse({ title: "Partitionen", content, keyTakeaways: ["Merke"], examFocusPoints: ["Fokus"], cheatSheet: null, changes: "Hinweis ergänzt" });
+    expect((await estimateBatch("possible", certId)).items).toBe(1);
+    const { runId } = await startBatch({ kind: "possible", certificationId: certId, userId }, { generate });
+    await awaitBatch(runId);
+    expect(await getBatchStatus("possible", certId)).toMatchObject({ status: "done", total: 1, applied: 1, failed: 0 });
+    const rows = await getDb().select({ content: lessons.content }).from(lessons);
+    expect(rows.some((r) => r.content.de.includes("[!POSSIBLE]"))).toBe(true);
+    await expect(startBatch({ kind: "possible", certificationId: certId, userId }, { generate })).rejects.toBeInstanceOf(BatchNothingToDoError);
+  });
+});

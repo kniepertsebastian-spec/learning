@@ -6,6 +6,9 @@
  *  - variants:    Varianten für die Wiederholung (mindestens zwei je Frage) ergänzen
  *  - explanations: Alternativerklärungen für den Verstehens-Modus als Entwurf ergänzen (Freigabe in der Werkstatt)
  *  - prerequisites: Voraussetzungen zwischen den Konzepten als Entwurf vorschlagen (Freigabe in der Werkstatt)
+ *  - rationales:  Begründungen je falscher Antwortoption ergänzen
+ *  - blocks:      Lernblöcke (Hinweise, Terminal, Praxisbeispiel) in Lektionen ohne Blöcke einfügen
+ *  - possible:    „Was damit möglich ist“ und Textverweise in Simulationen ergänzen
  *  - formats:     Formatfragen (Reihenfolge, Kurzantwort, Zuordnung) für Lernziele ergänzen, die nur Auswahlfragen haben
  *
  * Die KI-Aktionen sind dieselben wie in der Kurs-Werkstatt; hier werden die Vorschläge ohne Einzelprüfung übernommen. Das
@@ -21,6 +24,8 @@ import { clientFor } from "@/lib/server/course-translation/service";
 import { getDb } from "@/lib/server/db/client";
 import { aiBatchRuns, certifications, conceptPrerequisites, concepts, domains, lessons, objectives, questions, sections, type AiBatchKind, type AiBatchStatus } from "@/lib/server/db/schema";
 import { backfillExplanations, createExplanationGenerator, estimateRun as estimateExplanations, loadExplanationSources, missingKinds, type ExplanationGenerator } from "@/lib/server/explanations/generate";
+import { backfillBlocks, createBlocksGenerator, HAS_BLOCKS, type BlocksGenerator } from "@/lib/server/lessons/blocks-backfill";
+import { backfillRationales, createRationaleGenerator, questionsWithoutRationales, type RationaleGenerator } from "@/lib/server/questions/rationales";
 import { createSimulationGenerator, backfillSimulations, HAS_SIMULATION, type SimulationGenerator } from "@/lib/server/lessons/simulations-backfill";
 import { backfillPrerequisites, createPrerequisiteGenerator, estimateRun as estimatePrerequisites, loadCourseConcepts, type PrerequisiteGenerator } from "@/lib/server/prerequisites/generate";
 import { backfillVariants, createVariantGenerator, estimateRun as estimateVariants, loadVariantSources, missingVariantCount, type VariantGenerator } from "@/lib/server/variants/generate";
@@ -37,10 +42,11 @@ import {
   type AiRequest,
   type Generate,
 } from "./ai";
+import { backfillPossible, lessonsNeedingPossible } from "./possible-backfill";
 import { getCourseReport, type Improvement, type ImprovementKind } from "./report";
 import { createQuestion, editableCourse, saveQuestion, saveSection } from "./service";
 
-export const BATCH_KINDS = ["quality", "simulations", "concepts", "variants", "explanations", "prerequisites", "formats"] as const;
+export const BATCH_KINDS = ["quality", "simulations", "concepts", "variants", "explanations", "prerequisites", "formats", "rationales", "blocks", "possible"] as const;
 
 /** Formatfragen je Lernziel, wenn der Sammellauf sie ergänzt. */
 export const FORMAT_QUESTIONS_PER_OBJECTIVE = 2;
@@ -221,6 +227,18 @@ async function objectivesWithoutFormatQuestions(certIds: string[]): Promise<Arra
   return rows.map(({ certId, objectiveId }) => ({ certId, objectiveId }));
 }
 
+async function lessonsWithoutBlocks(certIds: string[]) {
+  if (!certIds.length) return [];
+  const rows = await getDb()
+    .select({ certId: domains.certificationId, content: lessons.content })
+    .from(lessons)
+    .innerJoin(sections, eq(sections.id, lessons.sectionId))
+    .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .where(inArray(domains.certificationId, certIds));
+  return rows.filter((r) => !HAS_BLOCKS.test(r.content.de) && !HAS_BLOCKS.test(r.content.en));
+}
+
 export async function estimateBatch(kind: AiBatchKind, certId: string | null, params?: unknown): Promise<BatchEstimate> {
   if (kind === "quality") {
     if (!certId) throw new BatchNothingToDoError("Der Qualitätsbericht gilt für einen Kurs.");
@@ -275,6 +293,35 @@ export async function estimateBatch(kind: AiBatchKind, certId: string | null, pa
       usd = usd !== null && e.costUsd !== null ? usd + e.costUsd : null;
     }
     return { kind, items, usd: items ? usd : 0, courses: withWork };
+  }
+  if (kind === "rationales") {
+    let items = 0, withWork = 0;
+    for (const c of courses) {
+      const n = (await questionsWithoutRationales(c.id)).length;
+      items += n;
+      if (n) withWork++;
+    }
+    const each = estimateCostUsd(SYSTEM_TOKENS + tokens(1500), tokens(1200), LESSONS_MODEL);
+    return { kind, items, usd: each === null ? null : items * each, courses: withWork };
+  }
+  if (kind === "blocks") {
+    const todo = await lessonsWithoutBlocks(courses.map((c) => c.id));
+    const usd = todo.reduce<number | null>((sum, l) => {
+      const chars = l.content.de.length + l.content.en.length;
+      const c = estimateCostUsd(SYSTEM_TOKENS + tokens(chars), tokens(chars * 1.2), LESSONS_MODEL);
+      return sum !== null && c !== null ? sum + c : null;
+    }, 0);
+    return { kind, items: todo.length, usd, courses: new Set(todo.map((l) => l.certId)).size };
+  }
+  if (kind === "possible") {
+    let items = 0, withWork = 0;
+    for (const c of courses) {
+      const n = (await lessonsNeedingPossible(c.id)).length;
+      items += n;
+      if (n) withWork++;
+    }
+    const each = estimateCostUsd(SYSTEM_TOKENS + tokens(8000), tokens(8000), LESSONS_MODEL);
+    return { kind, items, usd: each === null ? null : items * each, courses: withWork };
   }
   if (kind === "formats") {
     const todo = await objectivesWithoutFormatQuestions(courses.map((c) => c.id));
@@ -365,6 +412,8 @@ export type BatchDeps = {
   variantGenerator?: VariantGenerator;
   explanationGenerator?: ExplanationGenerator;
   prerequisiteGenerator?: PrerequisiteGenerator;
+  rationaleGenerator?: RationaleGenerator;
+  blocksGenerator?: BlocksGenerator;
 };
 
 function isUniqueViolation(error: unknown): boolean {
@@ -426,6 +475,9 @@ async function execute(run: Row, userId: string | null, params: unknown, deps: B
   if (run.kind === "explanations") return executeExplanations(run, userId, deps);
   if (run.kind === "prerequisites") return executePrerequisites(run, userId, deps);
   if (run.kind === "formats") return executeFormats(run, userId, deps);
+  if (run.kind === "rationales") return executeRationales(run, userId, deps);
+  if (run.kind === "blocks") return executeBlocks(run, userId, deps);
+  if (run.kind === "possible") return executePossible(run, userId, deps);
   return executeConcepts(run, userId, deps);
 }
 
@@ -638,4 +690,33 @@ async function executeFormats(run: Row, userId: string | null, deps: BatchDeps) 
   }
   for (const [certId, ids] of changedQuestions) await finishAiAccept(certId, { sections: [], questions: ids }, { userId, checkpoint: null });
   await finish(run, counts, aborted, userId);
+}
+
+async function executeRationales(run: Row, userId: string | null, deps: BatchDeps) {
+  await perCourse(run, userId, Boolean(deps.rationaleGenerator), async (course, report, shouldStop) => {
+    const generator = deps.rationaleGenerator ?? createRationaleGenerator(await clientFor(course));
+    const r = await backfillRationales(course.id, generator, { shouldStop, onProgress: (c) => report({ processed: c.created + c.failed, applied: c.created, failed: c.failed }) });
+    return { processed: r.created + r.failed, applied: r.created, failed: r.failed, aborted: r.aborted };
+  });
+}
+
+async function executeBlocks(run: Row, userId: string | null, deps: BatchDeps) {
+  await perCourse(run, userId, Boolean(deps.blocksGenerator), async (course, report, shouldStop) => {
+    const generator = deps.blocksGenerator ?? createBlocksGenerator(await clientFor(course));
+    // „übersprungen“ des Nachtrags enthält auch Lektionen, die schon Blöcke hatten; hier zählt nur, was zwischenzeitlich geändert wurde.
+    const r = await backfillBlocks(course.id, generator, { shouldStop, onProgress: (c) => report({ processed: c.updated + c.failed, applied: c.updated, failed: c.failed }) });
+    return { processed: r.updated + r.failed, applied: r.updated, failed: r.failed, aborted: r.aborted };
+  });
+}
+
+async function executePossible(run: Row, userId: string | null, deps: BatchDeps) {
+  await perCourse(run, userId, Boolean(deps.generate), async (course, report, shouldStop) => {
+    const r = await backfillPossible(course.id, {
+      generate: deps.generate,
+      shouldStop,
+      startTranslation: true,
+      onProgress: (c) => report({ processed: c.updated + c.skipped + c.failed, applied: c.updated, skipped: c.skipped, failed: c.failed }),
+    });
+    return { processed: r.updated + r.skipped + r.failed, applied: r.updated, skipped: r.skipped, failed: r.failed, aborted: r.failed > 0 && r.updated === 0 && r.skipped === 0 };
+  });
 }

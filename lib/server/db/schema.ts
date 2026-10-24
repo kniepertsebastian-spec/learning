@@ -3464,7 +3464,7 @@ export const taskItems = pgTable(
   ],
 );
 
-export type AiBatchKind = "quality" | "simulations" | "concepts" | "variants" | "explanations" | "prerequisites" | "formats";
+export type AiBatchKind = "quality" | "simulations" | "concepts" | "variants" | "explanations" | "prerequisites" | "formats" | "rationales" | "blocks" | "possible";
 export type AiBatchStatus = "running" | "done" | "failed" | "cancelled";
 
 /**
@@ -3498,7 +3498,7 @@ export const aiBatchRuns = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (table) => [
-    check("ai_batch_runs_kind_check", sql`${table.kind} in ('quality', 'simulations', 'concepts', 'variants', 'explanations', 'prerequisites', 'formats')`),
+    check("ai_batch_runs_kind_check", sql`${table.kind} in ('quality', 'simulations', 'concepts', 'variants', 'explanations', 'prerequisites', 'formats', 'rationales', 'blocks', 'possible')`),
     check("ai_batch_runs_status_check", sql`${table.status} in ('running', 'done', 'failed', 'cancelled')`),
     index("ai_batch_runs_kind_idx").on(table.kind, table.startedAt),
     // Höchstens ein laufender Lauf je Art und Kurs, und einer je Art für „alle Kurse“.

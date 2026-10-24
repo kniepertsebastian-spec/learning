@@ -64,6 +64,30 @@ export function AdminAiBatches({ locale }: { locale: Lang }) {
           description={tr("Ergänzt für Lernziele, die nur Auswahlfragen haben, je zwei Fragen mit Reihenfolge, Kurzantwort oder Zuordnung.", "Adds two questions with ordering, short answer or matching for objectives that only have multiple-choice questions.")}
           startLabel={tr("Schätzen und starten …", "Estimate and start …")}
         />
+        <AiBatchPanel
+          kind="rationales"
+          certificationId={null}
+          locale={locale}
+          title={tr("Begründungen zu falschen Antworten ergänzen", "Add reasons for wrong answers")}
+          description={tr("Erzeugt für Fragen, bei denen eine falsche Option noch keine Begründung hat, kurze Begründungen. Vorhandene werden nie überschrieben.", "Creates short reasons for questions where a wrong option has none yet. Existing ones are never overwritten.")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+        />
+        <AiBatchPanel
+          kind="blocks"
+          certificationId={null}
+          locale={locale}
+          title={tr("Lernblöcke in Lektionen einfügen", "Add learning blocks to lessons")}
+          description={tr("Fügt in Lektionen ganz ohne Hinweise, Terminal- oder Praxisbeispiele solche Blöcke ein. Der Text bleibt, die Änderung wird abgelehnt, wenn Sätze fehlen.", "Adds notes, terminal and practice blocks to lessons that have none. The text stays; the change is rejected if sentences go missing.")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+        />
+        <AiBatchPanel
+          kind="possible"
+          certificationId={null}
+          locale={locale}
+          title={tr("„Was damit möglich ist“ ergänzen", "Add “what this makes possible”")}
+          description={tr("Ergänzt in Lektionen den Hinweis „Was damit möglich ist“ und Textverweise in Simulationen. Vorher wird der Kursstand gemerkt.", "Adds the “what this makes possible” note to lessons and text references to simulations. The course state is saved first.")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+        />
       </div>
     </details>
   );

@@ -127,13 +127,14 @@ const ABORT_AFTER_FAILURES = 3;
 export async function backfillRationales(
   certificationId: string,
   generate: RationaleGenerator,
-  opts: { limit?: number; onProgress?: (c: RationaleCounts) => void } = {},
+  opts: { limit?: number; onProgress?: (c: RationaleCounts) => void; shouldStop?: () => Promise<boolean> } = {},
 ): Promise<RationaleCounts> {
   const todo = (await questionsWithoutRationales(certificationId)).slice(0, opts.limit ?? Infinity);
   const counts: RationaleCounts = { created: 0, failed: 0, aborted: false };
   let consecutiveFailures = 0;
   const db = getDb();
   for (let i = 0; i < todo.length && !counts.aborted; i += PARALLEL) {
+    if (await opts.shouldStop?.()) break;
     await Promise.all(
       todo.slice(i, i + PARALLEL).map(async (q) => {
         try {
