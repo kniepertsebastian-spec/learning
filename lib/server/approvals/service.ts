@@ -263,3 +263,15 @@ export async function describeChanges(diff: FingerprintDiff): Promise<{ sections
   };
 }
 
+
+/**
+ * Sicht eines Prüfers auf die Freigabe: Stand des Kurses und der Diff seit SEINER letzten Freigabe (bei der ersten Prüfung gibt es keinen,
+ * dann ist der ganze Kurs zu prüfen). Neufreigabe zeigt so nur, was seit seiner letzten Prüfung dazugekommen ist.
+ */
+export async function getReviewerApprovalView(certId: string, reviewerUserId: string): Promise<{ status: ApprovalStatus; ownLastApprovalAt: Date | null; diffSinceOwn: FingerprintDiff | null; changesSinceOwn: number }> {
+  const status = await getApprovalStatus(certId);
+  const own = (await latestRows(certId)).find((r) => r.kind === "approval" && r.reviewerUserId === reviewerUserId);
+  if (!own) return { status, ownLastApprovalAt: null, diffSinceOwn: null, changesSinceOwn: 0 };
+  const diff = diffFingerprints(own.fingerprints, await computeCourseFingerprints(certId));
+  return { status, ownLastApprovalAt: own.approvedAt, diffSinceOwn: diff, changesSinceOwn: countChanges(diff) };
+}

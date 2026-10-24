@@ -1,13 +1,14 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
-import { certifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, studySessions, users } from "../lib/server/db/schema";
+import { certifications, courseReviewers, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, studySessions, users } from "../lib/server/db/schema";
 
 export const PASSWORD = "E2e-Passw0rd!";
 export const USERS = {
   learnerA: { email: "e2e-learner-a@test.example", role: "learner" },
   learnerB: { email: "e2e-learner-b@test.example", role: "learner" },
   admin: { email: "e2e-admin@test.example", role: "admin" },
+  reviewer: { email: "e2e-reviewer@test.example", role: "reviewer" },
   placement: { email: "e2e-placement@test.example", role: "learner" },
   recallAnswer: { email: "e2e-recall-answer@test.example", role: "learner" },
   recallSkip: { email: "e2e-recall-skip@test.example", role: "learner" },
@@ -46,6 +47,11 @@ export default async function globalSetup() {
   }
   await ensureQuestions(objectiveId);
   await ensureVariants(objectiveId);
+
+  // Prüfer-Nutzer: genau dem E2E-Kurs zugewiesen.
+  const [reviewer] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.reviewer.email)).limit(1);
+  const [reviewCourse] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, COURSE_SLUG)).limit(1);
+  await db.insert(courseReviewers).values({ certificationId: reviewCourse.id, userId: reviewer.id }).onConflictDoNothing();
 
   // Rückblick-Nutzer starten jeden Lauf neu (Nutzer löschen entfernt auch das unveränderliche review_log): Lektion vor 2 Tagen abgeschlossen.
   const [section] = await db.select({ id: sections.id }).from(sections).where(eq(sections.objectiveId, objectiveId)).limit(1);

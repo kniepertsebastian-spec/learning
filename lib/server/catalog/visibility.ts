@@ -1,5 +1,5 @@
 import { and, eq, or, type SQL } from "drizzle-orm";
-import { certifications } from "@/lib/server/db/schema";
+import { certifications, type UserRole } from "@/lib/server/db/schema";
 import { getCompanyMembership } from "@/lib/server/company/access";
 
 /**
@@ -12,7 +12,7 @@ import { getCompanyMembership } from "@/lib/server/company/access";
  *    Firmendaten gehören der Firma.
  * Die Lern-APIs prüfen dieselbe Regel über lib/server/catalog/access.ts.
  */
-export type Viewer = { id: string; role: "learner" | "admin" } | null;
+export type Viewer = { id: string; role: UserRole } | null;
 
 /** SQL-Bedingung für Listen. */
 export async function visibleCertificationsCondition(viewer: Viewer): Promise<SQL | undefined> {

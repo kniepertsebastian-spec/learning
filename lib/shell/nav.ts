@@ -22,6 +22,7 @@ const PUBLIC_PREFIXES = [
   "/sso",
   "/confirm-company",
   "/unsubscribe",
+  "/reviewer-invite",
 ];
 
 export function isPublicPath(pathname: string): boolean {
@@ -48,7 +49,9 @@ export type NavLabelKey =
   | "adminRequests"
   | "adminStats"
   | "adminSalary"
-  | "adminUi";
+  | "adminUi"
+  | "adminReviewers"
+  | "reviewerCourses";
 
 export type NavIcon =
   | "home"
@@ -66,7 +69,7 @@ export type NavIcon =
 
 export type NavItem = { href: string; label: NavLabelKey; icon: NavIcon; exact?: boolean };
 
-export type CompanyNavOptions = { canAssign: boolean; isCompanyAdmin: boolean };
+export type CompanyNavOptions = { canAssign: boolean; isCompanyAdmin: boolean; /** Fachliche Prüfer sehen den Eintrag „Kurse prüfen“. */ isReviewer?: boolean };
 
 export function navItems(context: ShellContext, opts: CompanyNavOptions = { canAssign: false, isCompanyAdmin: false }): NavItem[] {
   switch (context) {
@@ -78,6 +81,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
         { href: "/certificates", label: "certificates", icon: "shield" },
         { href: "/career", label: "career", icon: "chart" },
         { href: "/profile", label: "profile", icon: "user" },
+        ...(opts.isReviewer ? [{ href: "/reviewer", label: "reviewerCourses" as const, icon: "tasks" as const }] : []),
         { href: "/account", label: "account", icon: "shield" },
       ];
     case "company":
@@ -96,6 +100,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
       return [
         { href: "/admin", label: "adminOverview", icon: "layers", exact: true },
         { href: "/admin/requests", label: "adminRequests", icon: "inbox" },
+        { href: "/admin/reviewers", label: "adminReviewers", icon: "users" },
         { href: "/admin/stats", label: "adminStats", icon: "chart" },
         { href: "/admin/salary", label: "adminSalary", icon: "file" },
         { href: "/admin/ui", label: "adminUi", icon: "layers" },

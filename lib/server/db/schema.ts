@@ -23,7 +23,7 @@ import type { CourseOverview } from "@/lib/course-overview";
 
 /** R0.2 (roadmap.md): learner is the default, admin unlocks /admin and every
  * admin API route/server action. */
-export type UserRole = "learner" | "admin";
+export type UserRole = "learner" | "admin" | "reviewer";
 export const AGE_RANGES = ["under_18", "18_24", "25_34", "35_44", "45_54", "55_plus"] as const;
 export type AgeRange = (typeof AGE_RANGES)[number];
 export const EVALUATION_GROUPS = ["vanilla", "planning", "planning_state"] as const;
@@ -125,7 +125,7 @@ export const users = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    check("users_role_check", sql`${table.role} in ('learner', 'admin')`),
+    check("users_role_check", sql`${table.role} in ('learner', 'admin', 'reviewer')`),
     check(
       "users_age_range_check",
       sql`${table.ageRange} is null or ${table.ageRange} in ('under_18', '18_24', '25_34', '35_44', '45_54', '55_plus')`,
@@ -945,6 +945,74 @@ export const objectiveSnapshots = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique("objective_snapshot_day_unique").on(table.userId, table.certificationId, table.day)],
+);
+
+/**
+ * Fachliche Prüfer (roadmap_pruefer Phase 1): Zuweisung je allgemeinem Kurs. Ein Prüfer sieht und prüft nur die ihm zugewiesenen Kurse
+ * (nie interne Lernpfade einer Firma, nie Lerndaten), kommentiert, markiert Fragen als fehlerhaft und kann freigeben.
+ */
+export const courseReviewers = pgTable(
+  "course_reviewers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+    assignedByUserId: uuid("assigned_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [unique("course_reviewers_cert_user_unique").on(table.certificationId, table.userId), index("course_reviewers_user_idx").on(table.userId)],
+);
+
+/** Einladung eines Prüfers durch einen Admin (7 Tage gültig, nur der Hash des Tokens wird gespeichert). Erlaubt die Registrierung mit genau dieser E-Mail. */
+export const reviewerInvitations = pgTable(
+  "reviewer_invitations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    /** Kurse, die bei Annahme zugewiesen werden (allgemeine Kurse). */
+    certificationIds: jsonb("certification_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("reviewer_invitations_email_idx").on(table.email)],
+);
+
+export type ReviewerCommentTarget = "section" | "question";
+export type ReviewerCommentKind = "comment" | "faulty";
+export type ReviewerCommentStatus = "open" | "resolved";
+
+/** Kommentare und Fehlermeldungen der Prüfer je Abschnitt oder Frage; Admins arbeiten sie ab (Status). */
+export const reviewerComments = pgTable(
+  "reviewer_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    reviewerUserId: uuid("reviewer_user_id").references(() => users.id, { onDelete: "set null" }),
+    targetType: text("target_type").$type<ReviewerCommentTarget>().notNull(),
+    targetId: uuid("target_id").notNull(),
+    kind: text("kind").$type<ReviewerCommentKind>().notNull(),
+    text: text("text").notNull(),
+    status: text("status").$type<ReviewerCommentStatus>().notNull().default("open"),
+    resolvedByUserId: uuid("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("reviewer_comments_cert_idx").on(table.certificationId, table.status),
+    check("reviewer_comments_target_check", sql`${table.targetType} in ('section', 'question')`),
+    check("reviewer_comments_kind_check", sql`${table.kind} in ('comment', 'faulty')`),
+    check("reviewer_comments_status_check", sql`${table.status} in ('open', 'resolved')`),
+  ],
 );
 
 export type CourseApprovalKind = "approval" | "editorial" | "legacy";
