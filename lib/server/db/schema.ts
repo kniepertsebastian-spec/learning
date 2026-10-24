@@ -2059,8 +2059,10 @@ export const courseGenerationObjectives = pgTable(
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  /** Offline-Pakete interner Lernpfade sind gesperrt, wenn sie so viele Tage nicht online geprüft wurden (null = aus, Standard). */
+  offlineMaxAgeDays: integer("offline_max_age_days"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [check("organizations_offline_max_age_check", sql`${table.offlineMaxAgeDays} is null or ${table.offlineMaxAgeDays} > 0`)]);
 
 /**
  * Mitgliedschaft eines Nutzers in einer Organisation. Ein Nutzer gehört zu

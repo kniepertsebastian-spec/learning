@@ -5,6 +5,7 @@ import {
   domains,
   lessons,
   objectives,
+  organizations,
   questionOptions,
   questions,
   sections,
@@ -106,6 +107,8 @@ export interface OfflinePackage {
   generatedAt: string;
   /** Siegel „Fachlich geprüft von …“ zum Download-Zeitpunkt (fehlt bei Kursen ohne Freigabe und bei älteren Paketen). */
   seal?: Seal | null;
+  /** Interner Lernpfad einer Firma mit Ablauf: nach so vielen Tagen ohne Online-Prüfung ist das Paket gesperrt (null/fehlt = kein Ablauf). */
+  offlineMaxAgeDays?: number | null;
   domains: OfflineDomain[];
   /** R4.3 (roadmap.md): nur gesetzt, wenn zum Download-Zeitpunkt bereits
    * eine AKTIVE (planned/in_progress) Session für heute existiert - wird
@@ -372,6 +375,9 @@ export async function getOfflinePackage(
     });
   }
 
+  const offlineMaxAgeDays = certRow.kind === "internal" && certRow.ownerOrganizationId
+    ? ((await db.select({ days: organizations.offlineMaxAgeDays }).from(organizations).where(eq(organizations.id, certRow.ownerOrganizationId)).limit(1))[0]?.days ?? null)
+    : null;
   const [version, session, seal] = await Promise.all([
     getOfflinePackageVersion(certificationId).then((v) => v ?? new Date(0).toISOString()),
     getOfflineStudySession(userId, certificationId),
@@ -385,6 +391,7 @@ export async function getOfflinePackage(
     version,
     generatedAt: new Date().toISOString(),
     seal,
+    offlineMaxAgeDays,
     domains: domainList,
     session,
   };

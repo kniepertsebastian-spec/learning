@@ -8,10 +8,12 @@ import {
   deleteOfflinePackage,
   getOfflinePackageRecord,
   isOfflineStorageSupported,
+  PACKAGES_CHANGED_EVENT,
   type StoredOfflinePackage,
 } from "@/lib/client/offline-db";
 import { downloadOfflinePackage, fetchOfflinePackageVersion, type DownloadProgress } from "@/lib/client/offline-download";
 import { getStorageStatus, type StorageStatus } from "@/lib/client/storage-status";
+import { isPackageLocked } from "@/lib/pwa/package-expiry";
 import { isUninstalledIosSafari } from "@/lib/client/install-prompt";
 import { SectionContent } from "@/components/SectionContent";
 import { reviewersText, changeLabel } from "@/lib/reviewers/seal";
@@ -71,16 +73,20 @@ export function OfflinePackageManager({
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       const stored = isOfflineStorageSupported()
         ? await getOfflinePackageRecord(userId, certificationId).catch(() => undefined)
         : undefined;
       if (cancelled) return;
       setRecord(stored ?? null);
       setLoadingRecord(false);
-    })();
+    };
+    void load();
+    // Zugriff entzogen: das Paket wurde vom Gerät entfernt, die Ansicht liest neu.
+    window.addEventListener(PACKAGES_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(PACKAGES_CHANGED_EVENT, load);
     };
   }, [userId, certificationId]);
 
@@ -146,7 +152,9 @@ export function OfflinePackageManager({
       ? Math.round((progress.loadedBytes / progress.totalBytes) * 100)
       : null;
 
-  const flatSections = (record?.data.domains ?? []).flatMap((domain) =>
+  // Interner Lernpfad mit Ablauf (je Firma): ohne Online-Prüfung gesperrt, bis das Gerät wieder Netz hat.
+  const locked = record ? isPackageLocked({ offlineMaxAgeDays: record.data.offlineMaxAgeDays, lastVerifiedAt: record.lastVerifiedAt, downloadedAt: record.downloadedAt }, new Date()) : false;
+  const flatSections = (locked ? [] : record?.data.domains ?? []).flatMap((domain) =>
     domain.objectives.flatMap((objective) =>
       objective.sections.map((section) => ({ section, objective, domainName: domain.name })),
     ),
@@ -180,7 +188,7 @@ export function OfflinePackageManager({
     );
   }
 
-  if (showSession && record?.data.session) {
+  if (showSession && record?.data.session && !locked) {
     return (
       <div>
         <button
@@ -205,6 +213,13 @@ export function OfflinePackageManager({
   return (
     <div className="flex flex-col gap-4">
       <InstallBanner />
+      {locked && (
+        <div role="alert" data-testid="package-locked" className="rounded-lg border border-warning-text/40 bg-surface p-4 text-sm">
+          {locale === "de"
+            ? "Dieser Kurs ist gesperrt, weil er zu lange nicht online geprüft wurde. Verbinde das Gerät mit dem Internet und öffne die App, dann ist er wieder nutzbar."
+            : "This course is locked because it has not been checked online for too long. Connect to the internet and open the app to unlock it."}
+        </div>
+      )}
       <div className="rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-1 text-sm font-medium">{certName}</h2>
         {record?.data.seal && (

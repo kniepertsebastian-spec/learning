@@ -5,9 +5,10 @@ import { BookOpen, RefreshCw } from "lucide-react";
 import { OfflinePackageManager } from "@/components/OfflinePackageManager";
 import { Button } from "@/components/ui/button";
 import { getLastUserId } from "@/lib/client/last-user";
-import { isOfflineStorageSupported, listOfflinePackages, type StoredOfflinePackage } from "@/lib/client/offline-db";
+import { isOfflineStorageSupported, listOfflinePackages, PACKAGES_CHANGED_EVENT, type StoredOfflinePackage } from "@/lib/client/offline-db";
 import { UnsyncedNotice } from "@/components/UnsyncedNotice";
 import { formatAge, oldestAgeMs } from "@/lib/pwa/unsynced";
+import { isPackageLocked } from "@/lib/pwa/package-expiry";
 import { getSyncQueueSummary, onSyncQueueChanged, runSync } from "@/lib/client/sync-queue";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
 import { useLocale } from "@/lib/i18n";
@@ -32,13 +33,20 @@ export function OfflineHome() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       const userId = getLastUserId();
       const packages = userId && isOfflineStorageSupported() ? await listOfflinePackages(userId).catch(() => []) : [];
-      if (!cancelled) setState({ userId, packages });
-    })();
+      if (!cancelled) {
+        setState({ userId, packages });
+        // Ein geöffneter Kurs, dessen Paket entfernt wurde (Zugriff entzogen), schließt sich.
+        setSelected((current) => (current && packages.some((p) => p.key === current.key) ? current : null));
+      }
+    };
+    void load();
+    window.addEventListener(PACKAGES_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(PACKAGES_CHANGED_EVENT, load);
     };
   }, []);
 
@@ -100,7 +108,7 @@ export function OfflineHome() {
               <li key={pkg.key} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4">
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{pkg.certName}</span>
-                  <span className="block text-xs text-subtle">{formatBytes(pkg.sizeBytes)} · {t.pwa.offlineSaved} {new Date(pkg.downloadedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-US")}</span>
+                  <span className="block text-xs text-subtle">{formatBytes(pkg.sizeBytes)} · {t.pwa.offlineSaved} {new Date(pkg.downloadedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-US")}{isPackageLocked({ offlineMaxAgeDays: pkg.data.offlineMaxAgeDays, lastVerifiedAt: pkg.lastVerifiedAt, downloadedAt: pkg.downloadedAt }, new Date()) ? ` · ${locale === "de" ? "gesperrt, bitte online prüfen" : "locked, please check online"}` : ""}</span>
                 </span>
                 <Button size="sm" onClick={() => setSelected(pkg)} iconLeft={<BookOpen className="h-4 w-4" aria-hidden="true" />} data-testid="open-offline-course">
                   {t.pwa.offlineOpen}

@@ -22,6 +22,8 @@ import { recordAuditEvent } from "../lib/server/audit/service";
  *   npm run company:create -- "<Firmenname>"
  *   npm run company:set-member -- <organization-id> <email> <company_admin|mentor|learner>
  *   npm run company:remove-member -- <email>
+ *   npm run company:offline-expiry -- <organization-id> <tage|off>
+ *       Pakete interner Lernpfade sind nach so vielen Tagen ohne Online-Prüfung gesperrt (Standard: off).
  *   npm run company:ensure -- "<Firmenname>" <email> [rolle]
  *       Für Betreiber/Tests: legt die Firma an, falls es noch keine mit diesem Namen gibt,
  *       und trägt das Konto mit der Rolle ein (Standard company_admin). Mehrfach ausführbar.
@@ -34,7 +36,7 @@ const ROLES: CompanyRole[] = ["company_admin", "mentor", "learner"];
 
 function usage(): never {
   console.error(
-    'Usage:\n  company:create -- "<Firmenname>"\n  company:set-member -- <organization-id> <email> <company_admin|mentor|learner>\n  company:remove-member -- <email>\n  company:ensure -- "<Firmenname>" <email> [rolle]',
+    'Usage:\n  company:create -- "<Firmenname>"\n  company:set-member -- <organization-id> <email> <company_admin|mentor|learner>\n  company:remove-member -- <email>\n  company:offline-expiry -- <organization-id> <tage|off>\n  company:ensure -- "<Firmenname>" <email> [rolle]',
   );
   process.exit(1);
 }
@@ -169,6 +171,23 @@ async function main() {
       metadata: { organizationId: removed[0].organizationId },
     }).catch((err) => console.error("Audit-Log fehlgeschlagen:", err));
     console.log(`OK: ${user.email} ist aus der Organisation entfernt (Zuweisungen sind mit entfernt).`);
+  } else if (command === "offline-expiry") {
+    const [orgId, value] = args;
+    const days = value === "off" ? null : Number(value);
+    if (!orgId || value === undefined || (days !== null && (!Number.isInteger(days) || days <= 0))) usage();
+    const [org] = await db.update(organizations).set({ offlineMaxAgeDays: days }).where(eq(organizations.id, orgId)).returning();
+    if (!org) {
+      console.error(`Organisation "${orgId}" nicht gefunden.`);
+      process.exit(1);
+    }
+    await recordAuditEvent({
+      actorType: "cli",
+      action: "organization.offline_expiry_set",
+      targetType: "organization",
+      targetId: org.id,
+      metadata: { offlineMaxAgeDays: days },
+    }).catch((err) => console.error("Audit-Log fehlgeschlagen:", err));
+    console.log(days === null ? `OK: Ablauf der Offline-Pakete für "${org.name}" ist aus.` : `OK: Offline-Pakete von "${org.name}" sind nach ${days} Tagen ohne Online-Prüfung gesperrt.`);
   } else {
     usage();
   }

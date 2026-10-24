@@ -17,6 +17,7 @@
     "sync:reprocess-conflicts": "tsx scripts/sync-reprocess-conflicts.ts",
     "company:create": "tsx scripts/manage-company.ts create",
     "company:ensure": "tsx scripts/manage-company.ts ensure",
+    "company:offline-expiry": "tsx scripts/manage-company.ts offline-expiry",
     "gate3": "tsx scripts/gate3.ts",
     "mandatory:run": "tsx scripts/mandatory-run.ts",
     "cheatsheets:backfill": "tsx scripts/backfill-cheat-sheets.ts",

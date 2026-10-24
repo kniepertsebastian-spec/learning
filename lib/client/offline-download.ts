@@ -1,6 +1,7 @@
 import type { OfflinePackage } from "@/lib/server/offline/manifest";
 import { requestPersistentStorage } from "@/lib/client/storage-status";
 import { saveOfflinePackage, type StoredOfflinePackage } from "@/lib/client/offline-db";
+import { accessFromStatus, type PackageAccess } from "@/lib/client/revoked-packages";
 
 export interface DownloadProgress {
   loadedBytes: number;
@@ -65,4 +66,14 @@ export async function fetchOfflinePackageVersion(certificationId: string): Promi
   if (!response.ok) return null;
   const data = (await response.json()) as { version: string };
   return data.version;
+}
+
+/** Darf diese Person das Paket noch haben? 404/403 = Zugriff entzogen; Netzfehler, 401 und Serverfehler = unbekannt. */
+export async function checkOfflinePackageAccess(certificationId: string): Promise<PackageAccess> {
+  try {
+    const response = await fetch(`/api/cert/${certificationId}/offline-package/version`, { cache: "no-store" });
+    return accessFromStatus(response.status);
+  } catch {
+    return "unknown";
+  }
 }

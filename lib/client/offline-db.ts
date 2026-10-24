@@ -14,6 +14,8 @@ export interface StoredOfflinePackage {
   certName: string;
   version: string;
   downloadedAt: string;
+  /** Letzte erfolgreiche Online-Prüfung des Zugriffs (für den Ablauf interner Lernpfade, lib/pwa/package-expiry.ts). */
+  lastVerifiedAt?: string;
   sizeBytes: number;
   data: OfflinePackage;
 }
@@ -123,6 +125,7 @@ export async function saveOfflinePackage(
     certName: pkg.certName,
     version: pkg.version,
     downloadedAt: new Date().toISOString(),
+    lastVerifiedAt: new Date().toISOString(),
     sizeBytes,
     data: pkg,
   };
@@ -135,6 +138,24 @@ export async function getOfflinePackageRecord(
   certificationId: string,
 ): Promise<StoredOfflinePackage | undefined> {
   return withStore(PACKAGES_STORE, "readonly", (store) => store.get(packageKey(userId, certificationId)));
+}
+
+/** Zugriff wurde online bestätigt: ein gesperrtes Paket (Ablauf) wird wieder nutzbar. */
+export async function markOfflinePackageVerified(userId: string, certificationId: string): Promise<void> {
+  const record = await getOfflinePackageRecord(userId, certificationId);
+  if (!record) return;
+  await withStore(PACKAGES_STORE, "readwrite", (store) => store.put({ ...record, lastVerifiedAt: new Date().toISOString() }));
+}
+
+export const PACKAGES_CHANGED_EVENT = "certstudy:packages-changed";
+
+/** Lokale Pakete wurden verändert (z. B. Zugriff entzogen): offene Listen neu lesen. */
+export function notifyPackagesChanged(): void {
+  try {
+    window.dispatchEvent(new Event(PACKAGES_CHANGED_EVENT));
+  } catch {
+    // kein window (SSR)
+  }
 }
 
 export async function deleteOfflinePackage(userId: string, certificationId: string): Promise<void> {
