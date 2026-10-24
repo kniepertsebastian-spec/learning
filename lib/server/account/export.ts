@@ -144,6 +144,7 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "mentor_requests.mentor_user_id": "Betrifft die fragende Person (steht in deren Export); der Verweis auf den Mentor wird bei Löschung anonymisiert (SET NULL)",
   "mentor_requests.answered_by_user_id": "Betrifft die fragende Person (steht in deren Export); der Verweis auf die antwortende Person wird bei Löschung anonymisiert (SET NULL)",
   "onboardings.status_by_user_id": "Betrifft die onboardete Person; der Verweis auf die setzende Person wird bei Löschung anonymisiert (SET NULL)",
+  "framework_goals.created_by_user_id": "Der Eintrag gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "practice_tasks.created_by_user_id": "Die Aufgabe gehört der Firma, nicht der Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",
   "practice_task_submissions.reviewed_by_user_id": "Bestätigung betrifft die abgebende Person (steht in deren Export); der Verweis auf die prüfende Person wird bei Löschung anonymisiert (SET NULL)",
   "course_reviewers.assigned_by_user_id": "Die Zuweisung betrifft den Prüfer, nicht die zuweisende Person; der Verweis wird bei Löschung anonymisiert (SET NULL)",

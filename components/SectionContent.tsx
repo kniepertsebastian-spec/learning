@@ -68,7 +68,7 @@ interface SectionContentProps {
   /** Feature-Flag `pretest_questions`: zwei Vorabfragen vor dem Lektionstext (ohne Wertung). */
   pretestEnabled?: boolean;
   /** „Warum lerne ich das?“: Gewicht der Domäne in der Prüfung und Praxisaufgaben, die diese Lektion freischaltet (nur Firmenbereich). */
-  relevance?: { examWeight: number | null; tasks: Array<{ title: string; unlocked: boolean }> } | null;
+  relevance?: { examWeight: number | null; tasks: Array<{ title: string; unlocked: boolean }>; frameworkGoals?: Array<{ code: string | null; title: string }>; assignment?: { dueAt: string | null } | null; careerPaths?: string[] } | null;
 }
 
 export function SectionContent({
@@ -195,7 +195,7 @@ export function SectionContent({
               <p className="mt-2 text-sm text-subtle">{objectiveCode} · {objectiveTitle}</p>
             </header>
 
-            {relevance && (relevance.examWeight !== null || relevance.tasks.length > 0) && (
+            {relevance && (relevance.examWeight !== null || relevance.tasks.length > 0 || (relevance.frameworkGoals?.length ?? 0) > 0 || relevance.assignment || (relevance.careerPaths?.length ?? 0) > 0) && (
               <Card className="mb-6" data-testid="lesson-why">
                 <p className="mb-1 text-sm font-semibold">{locale === "de" ? "Warum lerne ich das?" : "Why am I learning this?"}</p>
                 <ul className="flex flex-col gap-1 text-sm text-muted">
@@ -204,6 +204,25 @@ export function SectionContent({
                       {locale === "de"
                         ? `Der Bereich „${domainName}“ macht etwa ${relevance.examWeight} % der Prüfung aus.`
                         : `The “${domainName}” domain makes up about ${relevance.examWeight}% of the exam.`}
+                    </li>
+                  )}
+                  {(relevance.frameworkGoals?.length ?? 0) > 0 && (
+                    <li data-testid="lesson-framework">
+                      {locale === "de" ? "Im Ausbildungsrahmenplan deiner Firma: " : "In your company's training framework: "}
+                      {relevance.frameworkGoals!.map((g) => `${g.code ? `${g.code} ` : ""}${g.title}`).join("; ")}
+                    </li>
+                  )}
+                  {relevance.assignment && (
+                    <li data-testid="lesson-assignment">
+                      {locale === "de"
+                        ? `Dieser Kurs ist dir zugewiesen${relevance.assignment.dueAt ? `, Frist: ${new Date(relevance.assignment.dueAt).toLocaleDateString("de-DE", { timeZone: "UTC" })}` : ""}.`
+                        : `This course is assigned to you${relevance.assignment.dueAt ? `, due ${new Date(relevance.assignment.dueAt).toLocaleDateString("en-GB", { timeZone: "UTC" })}` : ""}.`}
+                    </li>
+                  )}
+                  {(relevance.careerPaths?.length ?? 0) > 0 && (
+                    <li data-testid="lesson-career">
+                      {locale === "de" ? "Er gehört zu deinen Karrierepfaden: " : "It is part of your career paths: "}
+                      <Link href="/career" className="text-link hover:underline">{relevance.careerPaths!.join(", ")}</Link>
                     </li>
                   )}
                   {relevance.tasks.map((task) => (

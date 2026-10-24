@@ -124,7 +124,7 @@ Quelle: `roadmap_didaktik.md`, Phase 5 und 6; `roadmap_motivation.md`, Phase 4, 
 - [x] Wochenziel statt Tagesserie, Willkommen-zurück-Ablauf
 - [x] Erste Session ohne Zusatz-Eingaben, Sicherheitsangabe ab Session 3, Check-in ab Session 5, Seite „Wie ich lerne“
 - [x] Aufgabenart nach Energie (Simulation, Spickzettel, „nur eine Aufgabe“), Flag `energy_modes`
-- [x] Praxisaufgabe wird durch Lektion freigeschaltet, „Warum lerne ich das?“ je Lektion (Prüfungsgewicht + Praxisaufgabe; Rahmenplan/Karrierepfad offen)
+- [x] Praxisaufgabe wird durch Lektion freigeschaltet, „Warum lerne ich das?“ je Lektion (Prüfungsgewicht, Praxisaufgabe, Ausbildungsrahmenplan der Firma, Zuweisung mit Frist, eigene Karrierepfade)
 - [x] Fortschritt sichtbar mit echten Zahlen; Einschätzung zum Prüfungstermin nur für den Lernenden
 
 **Zuschnitt:** zwei bis drei PRs (Einstieg und Wochenziel · Energie-Alternativen und Fortschritt · Praxisbezug).
@@ -190,6 +190,7 @@ Quelle: `roadmap_motivation.md`, Phase 6
 - [ ] Web Push (`roadmap_pwa.md`, Phase 6), sinnvoll zusammen mit PSRP-HR-Erinnerungszeiten
 - [ ] Didaktik „Später“ (`roadmap_didaktik.md`, Phase 11)
 - [ ] Motivation messen (`roadmap_motivation.md`, Phase 10): Kennzahlen zu Abbruch, Rückkehr und Abschluss gibt es jetzt im Export (Abschnitt `engagement`, siehe `docs/WIEDERHOLUNGSPLANUNG.md`); offen: Ausgangswerte vor jeder Mechanik erfassen, Ziele festlegen (nach Daten), Reaktivierung zusätzlich per Push
+- [x] Nachträge für bestehende Kurse: Varianten, Alternativerklärungen, Voraussetzungen und Formatfragen laufen als Sammelläufe in der Kurs-Werkstatt und für alle Kurse im Adminbereich (siehe `docs/ANTWORTFORMATE.md`)
 - [ ] Qualität der Prüfer im Betrieb (`roadmap_pruefer.md`, Phase 6): Kennzahlen je Prüfer, Zweitprüfung als Stichprobe, Wiedervorlage bei neuer Prüfungsversion; sobald freigegebene Kurse Nutzer haben
 
 ---

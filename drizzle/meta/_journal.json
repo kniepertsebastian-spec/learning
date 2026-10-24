@@ -673,6 +673,20 @@
       "when": 1792829981149,
       "tag": "0095_probe_review",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1792846894055,
+      "tag": "0096_framework_goals",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1792847240728,
+      "tag": "0097_batch_more_kinds",
+      "breakpoints": true
     }
   ]
 }
