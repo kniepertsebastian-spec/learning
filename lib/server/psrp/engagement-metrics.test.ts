@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeEngagement, computeEngagementByGroup, type EngagementUser } from "./engagement-metrics";
+import { computeEngagement, computeEngagementByFlag, computeEngagementByGroup, type EngagementUser } from "./engagement-metrics";
 
 const asOf = new Date("2026-10-31T12:00:00Z");
 const user = (over: Partial<EngagementUser> & { sessionDays: string[] }): EngagementUser => ({ userHash: "u", group: "vanilla", sessions: over.sessionDays.length, exits: 0, deescalatedSessions: 0, courses: [], ...over });
@@ -66,5 +66,23 @@ describe("Abschluss, Notausstieg, Entlastung", () => {
     expect(Object.keys(r.byGroup).sort()).toEqual(["planning", "vanilla"]);
     expect(r.byGroup.vanilla!.churn7.rate).toBe(1);
     expect(r.byGroup.planning!.churn7.rate).toBeNull();
+  });
+});
+
+describe("je Feature-Flag", () => {
+  it("trennt Personen mit und ohne Flag; ohne Kontrollgruppe bleibt die Seite „ohne“ leer", () => {
+    const users = [
+      user({ userHash: "a", sessionDays: ["2026-09-01"], flags: { exit_with_win: true, reactivation: true } }),
+      user({ userHash: "b", sessionDays: ["2026-10-30"], flags: { exit_with_win: false, reactivation: true } }),
+      user({ userHash: "c", sessionDays: ["2026-10-29"] }), // ohne Angabe: gilt als an
+    ];
+    const byFlag = computeEngagementByFlag(users, asOf);
+    expect(byFlag.exit_with_win.enabled.users).toBe(2);
+    expect(byFlag.exit_with_win.disabled.users).toBe(1);
+    expect(byFlag.exit_with_win.enabled.churn7).toEqual({ numerator: 1, denominator: 1, rate: 1 }); // nur a ist lange genug dabei und seitdem weg
+    expect(byFlag.exit_with_win.disabled.churn7.rate).toBeNull(); // b ist erst einen Tag dabei: zählt nicht
+    expect(byFlag.reactivation.disabled.users).toBe(0);
+    expect(byFlag.reactivation.disabled.churn7.rate).toBeNull();
+    expect(Object.keys(byFlag)).toHaveLength(8);
   });
 });

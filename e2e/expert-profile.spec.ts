@@ -142,3 +142,51 @@ test("Siegel am Kurs: Name mit Link nur bei veröffentlichtem Profil, sonst neut
     await db.update(questions).set({ explanation: original }).where(eq(questions.id, q.id));
   }
 });
+
+// Kleinstes gültiges PNG (1×1 Pixel).
+const PNG_1X1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+
+test("Expertenprofil: Foto nur mit Einwilligung öffentlich, Rückzug löscht es", async ({ page, browser, gateway }) => {
+  const db = getDb();
+  const [me] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.reviewer.email)).limit(1);
+  await db.delete(reviewerCertifications).where(eq(reviewerCertifications.userId, me.id));
+  await db.delete(reviewerExperience).where(eq(reviewerExperience.userId, me.id));
+  await db.delete(reviewerProfiles).where(eq(reviewerProfiles.userId, me.id));
+  await saveProfile(me.id, { firstName: "Foto", lastName: "Prüfer", country: "Deutschland", consent: { name: true, country: true } });
+  await saveExperience(me.id, { kind: "job", title: "Administrator", periodFrom: "2019", isPublic: true });
+  await publishProfile(me.id);
+  const slug = (await getOwnProfile(me.id)).profile!.slug;
+
+  await login(page, gateway.url, USERS.reviewer.email);
+  await page.goto(`${gateway.url}/reviewer/profile`);
+  await page.getByTestId("photo-input").setInputFiles({ name: "ich.png", mimeType: "image/png", buffer: PNG_1X1 });
+  await expect(page.getByTestId("photo-preview")).toBeVisible();
+
+  // Ohne Einwilligung: weder auf der Seite noch über die Adresse
+  const anon = await browser.newContext({ baseURL: gateway.url });
+  const pub = await anon.newPage();
+  await pub.goto(`${gateway.url}/experts/${slug}`);
+  await expect(pub.getByTestId("expert-photo")).toHaveCount(0);
+  expect((await pub.request.get(`${gateway.url}/api/experts/${slug}/photo`)).status()).toBe(404);
+
+  // Mit Einwilligung: sichtbar und abrufbar
+  await page.getByTestId("consent-photo").check();
+  await page.getByTestId("profile-save").click();
+  await expect(page.getByTestId("profile-message")).toContainText(/saved|gespeichert/i);
+  await pub.reload();
+  await expect(pub.getByTestId("expert-photo")).toBeVisible();
+  const served = await pub.request.get(`${gateway.url}/api/experts/${slug}/photo`);
+  expect(served.status()).toBe(200);
+  expect(served.headers()["content-type"]).toBe("image/png");
+
+  // Falscher Inhalt unter .png wird abgelehnt
+  await page.getByTestId("photo-input").setInputFiles({ name: "boese.png", mimeType: "image/png", buffer: Buffer.from("<html>kein Bild</html>") });
+  await expect(page.getByTestId("profile-message")).toContainText(/Bildtyp|Inhalt|content/i);
+
+  // Rückzug: Foto gelöscht
+  await page.getByTestId("profile-withdraw").click();
+  await expect(page.getByTestId("publish-state")).toContainText(/Nicht veröffentlicht|Not published/);
+  expect((await pub.request.get(`${gateway.url}/api/experts/${slug}/photo`)).status()).toBe(404);
+  await expect(page.getByTestId("photo-preview")).toHaveCount(0);
+  await anon.close();
+});

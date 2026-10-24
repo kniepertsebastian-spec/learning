@@ -20,6 +20,10 @@ export function ExpertProfileView({ profile, courses, locale }: { profile: Publi
   return (
     <article className="mx-auto flex w-full max-w-3xl flex-col gap-6" data-testid="expert-profile">
       <header>
+        {profile.photoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- kleines Profilbild aus eigener Route, nicht optimierbar
+          <img src={profile.photoUrl} alt={`${de ? "Foto von" : "Photo of"} ${profile.name}`} width={96} height={96} className="mb-3 h-24 w-24 rounded-full border border-border object-cover" data-testid="expert-photo" />
+        )}
         <p className="text-xs font-semibold tracking-wide text-subtle uppercase">{de ? "Fachlicher Prüfer" : "Expert reviewer"}</p>
         <h1 className="mt-1 text-3xl font-semibold" data-testid="expert-name">{profile.name}</h1>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-subtle" data-testid="expert-place">

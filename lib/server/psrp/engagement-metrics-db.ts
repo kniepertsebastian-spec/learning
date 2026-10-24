@@ -1,7 +1,8 @@
 import { and, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { domains, learningExits, lessonCompletions, objectives, sections, studySessions, users, type EvaluationGroup } from "@/lib/server/db/schema";
-import { computeEngagementByGroup, utcDay, type EngagementUser } from "./engagement-metrics";
+import { FEATURE_FLAGS, isFeatureEnabled } from "@/lib/server/feature-flags";
+import { computeEngagementByFlag, computeEngagementByGroup, utcDay, type EngagementUser } from "./engagement-metrics";
 
 /** Liest die Rohdaten für die Kennzahlen zu Abbruch, Rückkehr und Abschluss (nur Personen mit Evaluationsgruppe, nur bis zum Stichtag). */
 export async function loadEngagementUsers(asOf: Date, hash: (userId: string) => string): Promise<EngagementUser[]> {
@@ -45,9 +46,11 @@ export async function loadEngagementUsers(asOf: Date, hash: (userId: string) => 
     exits: exits.find((e) => e.userId === p.id)?.n ?? 0,
     deescalatedSessions: deescalated.find((d) => d.userId === p.id)?.n ?? 0,
     courses: done.filter((d) => d.userId === p.id).map((d) => ({ done: d.n, total: totalOf.get(d.certId) ?? 0 })),
+    flags: Object.fromEntries(FEATURE_FLAGS.map((flag) => [flag, isFeatureEnabled(flag, p.id)])),
   }));
 }
 
 export async function engagementMetrics(asOf: Date, hash: (userId: string) => string) {
-  return computeEngagementByGroup(await loadEngagementUsers(asOf, hash), asOf);
+  const people = await loadEngagementUsers(asOf, hash);
+  return { ...computeEngagementByGroup(people, asOf), byFlag: computeEngagementByFlag(people, asOf) };
 }

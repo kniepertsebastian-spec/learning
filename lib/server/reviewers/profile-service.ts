@@ -9,6 +9,7 @@ import {
   courseApprovals,
   reviewerCertifications,
   reviewerExperience,
+  reviewerPhotos,
   reviewerProfiles,
   users,
   type ReviewerExperienceKind,
@@ -52,14 +53,17 @@ export interface OwnProfile {
   profile: (ProfileData & { slug: string; published: boolean; publishedAt: Date | null }) | null;
   experience: ExperienceData[];
   certifications: Array<CertificationData & { remindersSent: { d60?: string } }>;
+  /** Versionsnummer des eigenen Fotos, null ohne Foto. */
+  photoVersion: number | null;
 }
 
 export async function getOwnProfile(userId: string): Promise<OwnProfile> {
   const db = getDb();
   const [row] = await db.select().from(reviewerProfiles).where(eq(reviewerProfiles.userId, userId)).limit(1);
-  const [experience, certs] = await Promise.all([
+  const [experience, certs, photo] = await Promise.all([
     db.select().from(reviewerExperience).where(eq(reviewerExperience.userId, userId)).orderBy(desc(reviewerExperience.periodFrom)),
     db.select().from(reviewerCertifications).where(eq(reviewerCertifications.userId, userId)).orderBy(asc(reviewerCertifications.vendor), asc(reviewerCertifications.name)),
+    db.select({ updatedAt: reviewerPhotos.updatedAt }).from(reviewerPhotos).where(eq(reviewerPhotos.userId, userId)).limit(1),
   ]);
   return {
     profile: row
@@ -67,6 +71,7 @@ export async function getOwnProfile(userId: string): Promise<OwnProfile> {
       : null,
     experience: experience.map((e) => ({ id: e.id, kind: e.kind, title: e.title, organization: e.organization, periodFrom: e.periodFrom, periodTo: e.periodTo, description: e.description, isPublic: e.isPublic })),
     certifications: certs.map((c) => ({ id: c.id, vendor: c.vendor, name: c.name, earnedOn: c.earnedOn, validUntil: c.validUntil, verificationUrl: c.verificationUrl, verifiedAt: c.verifiedAt, isPublic: c.isPublic, remindersSent: c.remindersSent })),
+    photoVersion: photo[0] ? photo[0].updatedAt.getTime() : null,
   };
 }
 
@@ -247,6 +252,7 @@ export async function withdrawProfile(userId: string, now = new Date()): Promise
     await tx.update(reviewerProfiles).set({ published: false, consent: {}, updatedAt: now }).where(eq(reviewerProfiles.userId, userId));
     await tx.update(reviewerExperience).set({ isPublic: false }).where(eq(reviewerExperience.userId, userId));
     await tx.update(reviewerCertifications).set({ isPublic: false }).where(eq(reviewerCertifications.userId, userId));
+    await tx.delete(reviewerPhotos).where(eq(reviewerPhotos.userId, userId));
   });
   await recordAuditEvent({ actorUserId: userId, action: "reviewer.profile_withdrawn", targetType: "reviewer_profile", targetId: userId }).catch(logAuditFailure);
 }
@@ -279,7 +285,7 @@ export async function getPublicProfile(slug: string, today = new Date()): Promis
   if (!row) return null;
   const own = await getOwnProfile(row.userId);
   if (!own.profile) return null;
-  const view = publicView({ slug, published: own.profile.published, profile: own.profile, experience: own.experience, certifications: own.certifications, today });
+  const view = publicView({ slug, published: own.profile.published, profile: own.profile, experience: own.experience, certifications: own.certifications, today, photoVersion: own.photoVersion });
   if (!view) return null;
   return { profile: view, courses: await listApprovedCourses(row.userId) };
 }

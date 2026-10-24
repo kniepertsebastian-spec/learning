@@ -3,6 +3,7 @@
  * Sie dienen als Ausgangswert VOR dem Einschalten einer Mechanik (Notausstieg, Entlastung, Reaktivierung); Ziele legt man erst danach fest.
  */
 import type { EvaluationGroup } from "@/lib/server/db/schema";
+import { FEATURE_FLAGS, type FeatureFlag } from "@/lib/server/feature-flags";
 
 const DAY_MS = 86_400_000;
 /** Eine Pause beginnt, wenn so viele Tage ohne abgeschlossene Session vergehen. */
@@ -21,6 +22,8 @@ export interface EngagementUser {
   deescalatedSessions: number;
   /** Kurse mit mindestens einer abgeschlossenen Lektion: erledigt und gesamt. */
   courses: Array<{ done: number; total: number }>;
+  /** Welche Feature-Flags für diese Person gelten (stabile Zuteilung, siehe feature-flags.ts). */
+  flags?: Partial<Record<FeatureFlag, boolean>>;
 }
 
 export interface Rate {
@@ -90,4 +93,17 @@ export function computeEngagement(users: EngagementUser[], asOf: Date): Engageme
 export function computeEngagementByGroup(users: EngagementUser[], asOf: Date): { all: EngagementMetrics; byGroup: Partial<Record<EvaluationGroup, EngagementMetrics>> } {
   const groups = [...new Set(users.map((u) => u.group))];
   return { all: computeEngagement(users, asOf), byGroup: Object.fromEntries(groups.map((g) => [g, computeEngagement(users.filter((u) => u.group === g), asOf)])) };
+}
+
+/** Je Feature-Flag: Personen mit und ohne das Flag. Gibt es keine Kontrollgruppe (Flag für alle an), ist die Seite „ohne“ leer (Rate null). */
+export function computeEngagementByFlag(users: EngagementUser[], asOf: Date): Record<FeatureFlag, { enabled: EngagementMetrics; disabled: EngagementMetrics }> {
+  return Object.fromEntries(
+    FEATURE_FLAGS.map((flag) => [
+      flag,
+      {
+        enabled: computeEngagement(users.filter((u) => u.flags?.[flag] !== false), asOf),
+        disabled: computeEngagement(users.filter((u) => u.flags?.[flag] === false), asOf),
+      },
+    ]),
+  ) as Record<FeatureFlag, { enabled: EngagementMetrics; disabled: EngagementMetrics }>;
 }

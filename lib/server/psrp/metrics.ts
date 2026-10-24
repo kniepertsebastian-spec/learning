@@ -322,3 +322,23 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
   );
   return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), thinkFirst: computeFlagArms(reviews, (r) => Boolean(r.thinkFirst)), wovenReviews: { arms: computeFlagArms(reviews, (r) => Boolean(r.wovenReviews)), woven: wovenStats }, reactivation: { arms: computeFlagArms(reviews, (r) => Boolean(r.reactivation)), messages: await reactivationStats(asOf) }, energyModes: { arms: computeFlagArms(reviews, (r) => Boolean(r.energyModes)), choices: energyChoices }, recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults, engagement: await engagementMetrics(asOf, (id) => anonymize(id, salt)) };
 }
+
+/** Der Teil des Exports, der als Ausgangswert festgehalten wird: nur Aggregate, keine Personen (auch nicht anonymisiert). */
+export function baselineSource(metrics: Awaited<ReturnType<typeof exportMetrics>>) {
+  return {
+    asOf: metrics.asOf,
+    engagement: { all: metrics.engagement.all, byFlag: metrics.engagement.byFlag },
+    retentionByFlag: {
+      pretest_questions: metrics.pretestQuestions,
+      understanding_mode: metrics.understandingMode,
+      dropout_guard: metrics.dropoutGuard,
+      exit_with_win: metrics.exitWithWin,
+      energy_modes: metrics.energyModes.arms,
+      reactivation: metrics.reactivation.arms,
+      recall_check: metrics.recallCheck.arms,
+      woven_reviews: metrics.wovenReviews.arms,
+      think_first: metrics.thinkFirst,
+      variant_rotation: metrics.variantRotation,
+    },
+  } satisfies import("./baseline").BaselineSource;
+}

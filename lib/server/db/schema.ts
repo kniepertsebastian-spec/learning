@@ -1096,7 +1096,7 @@ export const reviewerQualifications = pgTable("reviewer_qualifications", {
 });
 
 /** Felder des öffentlichen Prüferprofils, für die die Person einzeln einwilligt (roadmap_pruefer Phase 3). */
-export type ReviewerProfileField = "name" | "country" | "region" | "bio" | "linkedin" | "indexing";
+export type ReviewerProfileField = "name" | "country" | "region" | "bio" | "linkedin" | "indexing" | "photo";
 
 /**
  * Expertenprofil einer Person mit Prüfer-Rolle. Öffentlich ist nur, was die Person einzeln freigegeben hat: `consent` hält je Feld den Zeitpunkt
@@ -2335,6 +2335,20 @@ export const companyDocumentImages = pgTable(
 );
 
 /**
+ * Profilfoto eines Prüfers: höchstens eines je Person, als Bild in der Datenbank (wie die Screenshots der Firmendokumente), damit kein
+ * zusätzliches Volume nötig ist. Öffentlich nur mit veröffentlichtem Profil UND Einwilligung `photo`; der Rückzug löscht es.
+ */
+export const reviewerPhotos = pgTable("reviewer_photos", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  data: bytea("data").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Anfrage einer Firma nach einem allgemeinen Lernpfad. Entweder wird ein vorhandener Lernpfad gewählt
  * (certification_id) oder frei beschrieben (wish_title/-description). Wir (Betreiber) geben frei oder erstellen
  * den Lernpfad, lassen ihn extern prüfen und geben dann frei; bis dahin steht die Anfrage mit aktuellem Status
@@ -3164,6 +3178,22 @@ export const careerSuggestions = pgTable("career_suggestions", {
 // Zertifizierung (`certifications`), `course_enrollment` = `study_profiles`
 // (dort liegen Prüfungsdatum und leichte Tage bereits je Nutzer und Kurs).
 // ---------------------------------------------------------------------------
+
+/**
+ * Ausgangswerte (roadmap_motivation Phase 10): festgehaltene Kennzahlen des anonymisierten Metrik-Exports zu einem Zeitpunkt, damit man
+ * später vergleichen kann. Nur Aggregate, keine Personen (auch keine anonymisierten); darum ohne Verweis auf Nutzer.
+ */
+export const metricSnapshots = pgTable("metric_snapshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  label: text("label").notNull(),
+  takenAt: timestamp("taken_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Welcher Anteil je Feature-Flag zum Zeitpunkt galt (100 = alle, 0 = aus). */
+  flagConfig: jsonb("flag_config").$type<Record<string, number>>().notNull(),
+  /** Flache Kennzahlen (Schlüssel → Wert und Nenner), siehe lib/server/psrp/baseline.ts. */
+  figures: jsonb("figures").$type<Record<string, { value: number | null; n: number | null }>>().notNull(),
+  /** Aktive Personen und Reviews zum Zeitpunkt, um die Größe der Datenbasis zu sehen. */
+  basis: jsonb("basis").$type<{ users: number; reviews: number }>().notNull(),
+});
 
 export type ReviewLogType = "card" | "interleaved" | "probe" | "recall_check";
 

@@ -28,8 +28,14 @@ Tabellen `reviewer_profiles`, `reviewer_experience`, `reviewer_certifications` (
 - **Interne Lernpfade** bekommen kein Siegel; dort bleibt „Freigegeben von …“ im Firmenbereich.
 - **Katalog ohne Änderungszähler:** Die Änderungserkennung liest alle Inhalte eines Kurses. Für Listen wäre das zu teuer; der Katalog zeigt deshalb den Stand der letzten Prüfung, die Kursseite den genauen Zustand.
 
+## Foto
+Optional, ein Bild je Person (PNG, JPEG oder WebP, höchstens 2 MB; Typ, Endung und Dateikopf müssen zusammenpassen). Es liegt als Bild in der Datenbank (Tabelle `reviewer_photos`), wie die Screenshots der Firmendokumente, es braucht also kein zusätzliches Volume.
+- **Öffentlich** unter `/api/experts/<slug>/photo` nur bei veröffentlichtem Profil mit Einwilligung für Name UND Foto (Einwilligung `photo`, wie bei den anderen Feldern); sonst 404 ohne Hinweis, ob es ein Foto gibt. Die Seite zeigt es als rundes Bild über dem Namen.
+- **Die Person selbst** sieht es immer in der Vorschau (`/api/reviewer/profile/photo`) und kann es ersetzen oder löschen.
+- **Rückzug** des Profils löscht das Foto. Das Konto löschen entfernt es mit. Im Datenexport steht es mit Typ, Größe und Inhalt (Base64).
+- Es wird nicht umgerechnet oder verkleinert; wer ein sehr großes Bild hochlädt, bekommt die Fehlermeldung zur Größe.
+
 ## Noch offen
-- Foto (braucht Dateispeicher).
 - Siegel auf **Abschlussbescheinigungen**: Eine Bescheinigung über den Kursabschluss gibt es im Produkt noch nicht (das PDF im Firmenbereich ist das Zertifikats-Register). Sobald sie existiert, baut sie das Siegel aus `getCourseSeal` und `reviewersText` (`lib/reviewers/seal.ts`).
 - Geltungsbereich je Domain (Freigaben gelten bisher für den ganzen Kurs). Das braucht eine Entscheidung zum Gesamtzustand eines Kurses, dessen Domains von verschiedenen Prüfern in unterschiedlichem Stand freigegeben sind; solange ein Experte den ganzen Kurs freigibt, ist es nicht nötig.
 - Rechtliches (`roadmap_pruefer.md` Phase 7): Expertenvertrag, Datenschutzerklärung für öffentliche Prüferprofile, Prüfung des Siegel-Hinweistexts. Das ist Organisation, kein Code, und sollte vor der ersten Veröffentlichung eines echten Profils geklärt sein.

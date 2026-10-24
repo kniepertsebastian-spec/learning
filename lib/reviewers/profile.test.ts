@@ -97,3 +97,14 @@ describe("Zertifikate: Ablauf und Erinnerung", () => {
     expect(needsExpiryReminder({ validUntil: null, remindersSent: {} }, now)).toBe(false);
   });
 });
+
+describe("Foto", () => {
+  const view = (consent: ProfileData["consent"], photoVersion: number | null) =>
+    publicView({ slug: "eva-mueller", published: true, profile: { ...profile, consent }, experience: [exp(true)], certifications: [], today: now, photoVersion });
+  it("öffentlich nur mit Einwilligung und vorhandenem Foto; die Adresse trägt die Version", () => {
+    expect(view({ name: "x", country: "x", photo: "x" }, 1234)?.photoUrl).toBe("/api/experts/eva-mueller/photo?v=1234");
+    expect(view({ name: "x", country: "x" }, 1234)?.photoUrl).toBeNull();
+    expect(view({ name: "x", country: "x", photo: "x" }, null)?.photoUrl).toBeNull();
+    expect(view({ name: "x", country: "x", photo: "x" }, undefined as never)?.photoUrl).toBeNull();
+  });
+});
