@@ -40,11 +40,9 @@ test("Kurs herunterladen → offline → /offline → Lektion + Quiz → online 
   await page.goto(`${gateway.url}/admin`);
   await expect(page.getByTestId("offline-fallback")).toBeVisible();
 
-  // Wieder online: Ergebnis wird übertragen
+  // Wieder online: das Ergebnis wird beim Öffnen von /offline von selbst übertragen (Start-Sync, Datenintegrität Phase 2)
   gateway.setOnline(true);
   await context.setOffline(false);
   await page.goto(`${gateway.url}/offline`);
-  await expect(page.getByTestId("offline-pending")).toBeVisible();
-  await page.getByRole("button", { name: /Upload now|Jetzt übertragen/ }).click();
   await expect.poll(async () => (await pendingSyncEvents(page)).length, { timeout: 30_000 }).toBe(0);
 });

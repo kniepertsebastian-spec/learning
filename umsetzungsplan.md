@@ -190,29 +190,29 @@ Ergebnis des PWA-Reviews vom 24.10.2026: Offline-Lernleistung kommt an, aber nac
 
 ### Paket 4.10 – Zeitpunkt der Antwort verbuchen · M
 Quelle: `roadmap_datenintegritaet.md`, Phase 1
-- [ ] `answeredAt` je Antwort, `effectiveTime()` mit Grenzen, Zeit bis `recordReviewOutcomes` durchreichen, Reihenfolge-Regel bei neuerem Zustand, `local_hour` aus dem Antwortzeitpunkt, abgeleitete Werte (Lernserie, Lernzeit, Rückblick, Frühwarnung)
+- [x] `answeredAt` je Antwort, `effectiveTime()` mit Grenzen, Zeit bis `recordReviewOutcomes` durchreichen, Reihenfolge-Regel bei neuerem Zustand, `local_hour` aus dem Antwortzeitpunkt, abgeleitete Werte (Lernserie, Lernzeit, Rückblick, Frühwarnung)
 
 **Abhängigkeit:** keine. **Vor dem Pilot**, weil es die Daten des Human Layer auf allen Plattformen still verfälscht.
 
 ### Paket 4.11 – iOS: Ergebnisse vor der Löschung retten · S
 Quelle: `roadmap_datenintegritaet.md`, Phase 2
-- [ ] Übertragen beim Wechsel in den Hintergrund (`keepalive`), Hinweis bei alten unübertragenen Ergebnissen, Installationsschritt vor dem ersten Offline-Download auf iOS
+- [x] Übertragen beim Wechsel in den Hintergrund (`keepalive`), Hinweis bei alten unübertragenen Ergebnissen, Installationsschritt vor dem ersten Offline-Download auf iOS
 
 **Abhängigkeit:** keine; zusammen mit 4.10.
 
 ### Paket 4.12 – Entzogenen Zugriff lokal durchsetzen · S
 Quelle: `roadmap_datenintegritaet.md`, Phase 4
-- [ ] Pakete mit 404/403 beim Online-Start lokal löschen, optional Ablaufdatum für Pakete interner Lernpfade
+- [x] Pakete mit 404/403 beim Online-Start lokal löschen, optional Ablaufdatum für Pakete interner Lernpfade
 
 **Abhängigkeit:** keine. Vor dem ersten Firmenkunden mit vertraulichen internen Lernpfaden.
 
 ### Paket 4.13 – Konflikte und Grenzfälle · M
 Quelle: `roadmap_datenintegritaet.md`, Phase 3 und 5
-- [ ] Antworten aus Konflikten als Wiederholungen verbuchen, Skript für bestehende Konflikte, `rejected`-Status mit „Verwerfen“, gelöschte Fragen und deaktivierte Varianten, Doku
+- [x] Antworten aus Konflikten als Wiederholungen verbuchen, Skript für bestehende Konflikte, `rejected`-Status mit „Verwerfen“, gelöschte Fragen und deaktivierte Varianten, Doku
 
 **Abhängigkeit:** 4.10 (Zeitpunkt und Reihenfolge-Regel).
 
-Begleitend ohne Code: Backup-Betrieb prüfen (`roadmap_datenintegritaet.md`, Phase 6).
+Begleitend ohne Code: Backup-Betrieb prüfen (`roadmap_datenintegritaet.md`, Phase 6; Checkliste in `docs/BACKUP.md`, **offen**, nur auf dem Server möglich).
 
 ---
 
@@ -252,10 +252,10 @@ Begleitend ohne Code: Backup-Betrieb prüfen (`roadmap_datenintegritaet.md`, Pha
 | 4.7 | Expertenprofil & Siegel ✅ | Prüfer 3, 4 | M | Vor Launch | 4.6, Recht |
 | 4.8 | Probe-Review ✅ | Prüfer 5 | M | Vor Launch | 4.6b |
 | 4.9 | Reaktivierung per E-Mail ✅ | Motivation 6 | S | Vor Launch | 4.1 |
-| 4.10 | Zeitpunkt der Antwort verbuchen | Datenintegrität 1 | M | Vor Pilot | – |
-| 4.11 | iOS: Ergebnisse vor der Löschung retten | Datenintegrität 2 | S | Vor Pilot | – |
-| 4.12 | Entzogenen Zugriff lokal durchsetzen | Datenintegrität 4 | S | Vor 1. Firmenkunden | – |
-| 4.13 | Konflikte und Grenzfälle | Datenintegrität 3, 5 | M | Vor Launch | 4.10 |
+| 4.10 | Zeitpunkt der Antwort verbuchen ✅ | Datenintegrität 1 | M | Vor Pilot | – |
+| 4.11 | iOS: Ergebnisse vor der Löschung retten ✅ | Datenintegrität 2 | S | Vor Pilot | – |
+| 4.12 | Entzogenen Zugriff lokal durchsetzen ✅ | Datenintegrität 4 | S | Vor 1. Firmenkunden | – |
+| 4.13 | Konflikte und Grenzfälle ✅ | Datenintegrität 3, 5 | M | Vor Launch | 4.10 |
 | 5 | Messung, Push, Später, Prüfer-Qualität | Didaktik 7, 11; PWA 6; Prüfer 6; Motivation 10 | – | Nach Bedarf | Daten |
 
 Pakete ohne Abhängigkeit innerhalb einer Stufe können parallel bearbeitet werden.

@@ -152,7 +152,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
           ) : null}
           {summary && summary.rejectedCount > 0 && (
             <div className="mb-2" data-testid="sync-rejected">
-              <p className="mb-1 text-red-600 dark:text-red-400">
+              <p className="mb-1 text-danger-text">
                 {locale === "de" ? `${summary.rejectedCount} Ergebnisse konnten nicht zugeordnet werden` : `${summary.rejectedCount} results could not be matched`}
               </p>
               <div className="flex gap-2">

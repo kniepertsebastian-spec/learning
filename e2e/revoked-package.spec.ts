@@ -29,7 +29,7 @@ test("entzogener Zugriff entfernt das lokale Paket beim nächsten Online-Start",
   await page.goto(`${gateway.url}/cert/${COURSE_SLUG}/offline`);
   await page.getByRole("button", { name: /Save for offline|Für offline speichern/ }).click();
   await expect(page.getByText(/Available offline|Für offline verfügbar/).first()).toBeVisible();
-  expect(await packageCount(page)).toBe(1);
+  await expect.poll(() => packageCount(page)).toBe(1);
 
   const db = getDb();
   await db.update(certifications).set({ catalogStatus: "draft" }).where(eq(certifications.slug, COURSE_SLUG));
@@ -53,5 +53,5 @@ test("ohne Netz bleibt das Paket erhalten (Netzfehler löscht nie)", async ({ pa
   await context.setOffline(true);
   await page.goto(`${gateway.url}/offline`);
   await expect(page.getByTestId("open-offline-course")).toBeVisible();
-  expect(await packageCount(page)).toBe(1);
+  await expect.poll(() => packageCount(page)).toBe(1);
 });
