@@ -736,6 +736,13 @@
       "when": 1792940643934,
       "tag": "0104_course_abandonments",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1792961475843,
+      "tag": "0105_chapter_quizzes",
+      "breakpoints": true
     }
   ]
 }

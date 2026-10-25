@@ -56,6 +56,7 @@ export const QUALITY_KINDS = [
   "open_report",
   "hard_question",
   "few_questions",
+  "small_chapter_pool",
   "one_question_type",
   "hands_on_without_simulation",
   "no_exam_callout",
@@ -113,6 +114,9 @@ export function planQualityTasks(improvements: Improvement[], kinds: readonly Im
         break;
       case "few_questions":
         if (i.objectiveId) add(`objective:${i.objectiveId}`, { target: "objective", id: i.objectiveId, action: "add_questions", count: Math.min(MAX_NEW_QUESTIONS, Math.max(1, i.needed ?? 4)) }, i.kind, label);
+        break;
+      case "small_chapter_pool":
+        for (const t of i.chapterPool?.perObjective ?? []) add(`objective:${t.objectiveId}`, { target: "objective", id: t.objectiveId, action: "add_questions", count: Math.min(MAX_NEW_QUESTIONS, Math.max(1, t.count)) }, i.kind, label);
         break;
       case "one_question_type":
         if (i.objectiveId) add(`objective:${i.objectiveId}`, { target: "objective", id: i.objectiveId, action: "add_questions", count: 3, instruction: ONE_TYPE_NOTE }, i.kind, label);

@@ -16,6 +16,7 @@ import {
 import { baselineFor, buildSourceReport, compareCoverage, sourceChange, type CoverageResult, type SourceChange } from "@/lib/server/course-generation/coverage";
 import { fetchSources, SourceFetchError, type FetchedSource } from "@/lib/server/course-generation/sources";
 import { isHandsOn } from "@/lib/markdown/toc";
+import { CHAPTER_POOL_MIN, distributeMissingQuestions } from "@/lib/chapters/logic";
 import { editableCourse } from "./service";
 
 /**
@@ -29,7 +30,7 @@ export const HARD_QUESTION_MAX_ACCURACY = 0.4;
 export const MIN_QUESTIONS_PER_OBJECTIVE = 4;
 export const THIN_LESSON_CHARS = 500;
 
-export type ImprovementKind = "missing_objective" | "open_report" | "hard_question" | "few_questions" | "one_question_type" | "hands_on_without_simulation" | "no_exam_callout" | "thin_lesson";
+export type ImprovementKind = "missing_objective" | "open_report" | "hard_question" | "few_questions" | "small_chapter_pool" | "one_question_type" | "hands_on_without_simulation" | "no_exam_callout" | "thin_lesson";
 export type Severity = "high" | "medium" | "low";
 export type Improvement = {
   id: string;
@@ -42,6 +43,8 @@ export type Improvement = {
   questionId?: string;
   /** Nur bei „few_questions“: wie viele Fragen zur Empfehlung fehlen. */
   needed?: number;
+  /** Nur bei „small_chapter_pool“: Kapitel mit weniger als 30 Fragen und wie viele je Lernziel ergänzt werden sollen. */
+  chapterPool?: { domainId: string; size: number; needed: number; perObjective: Array<{ objectiveId: string; count: number }> };
   text: { de: string; en: string };
   /** Nur bei „missing_objective“: das offizielle Lernziel und die Domain, in die es vermutlich gehört (gleiche erste Stelle der Nummer). */
   missing?: { code: string; title: string; domainId: string | null };
@@ -155,6 +158,25 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
       practice: dSecs.filter((s) => has(s.content, PRACTICE)).length,
     };
   });
+
+  // Kapitel-Quiz: jedes Kapitel braucht einen Pool von mindestens 30 Fragen (daraus werden je Aufruf 10 gezogen).
+  for (const d of doms) {
+    const dObjs = objs.filter((o) => o.domainId === d.id);
+    const size = qs.filter((q) => dObjs.some((o) => o.id === q.objectiveId)).length;
+    if (dObjs.length === 0 || size >= CHAPTER_POOL_MIN) continue;
+    const needed = CHAPTER_POOL_MIN - size;
+    const counts = distributeMissingQuestions(needed, dObjs.length);
+    push({
+      kind: "small_chapter_pool",
+      severity: "medium",
+      objectiveId: null,
+      objectiveCode: null,
+      sectionId: null,
+      needed,
+      chapterPool: { domainId: d.id, size, needed, perObjective: dObjs.map((o, i) => ({ objectiveId: o.id, count: counts[i] ?? 0 })).filter((x) => x.count > 0) },
+      text: { de: `Kapitel „${d.name}“: Fragenpool hat ${size} Fragen, für das Kapitel-Quiz sind mindestens ${CHAPTER_POOL_MIN} nötig.`, en: `Chapter “${d.name}”: question pool has ${size} questions, the chapter quiz needs at least ${CHAPTER_POOL_MIN}.` },
+    });
+  }
 
   for (const o of objs) {
     const qCount = qs.filter((q) => q.objectiveId === o.id).length;

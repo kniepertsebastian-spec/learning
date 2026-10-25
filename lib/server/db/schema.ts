@@ -499,16 +499,26 @@ export const objectiveGenerationCosts = pgTable("objective_generation_costs", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const quizzes = pgTable("quizzes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  sectionId: uuid("section_id")
-    .notNull()
-    .references(() => sections.id, { onDelete: "cascade" }),
-  certificationId: uuid("certification_id")
-    .notNull()
-    .references(() => certifications.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+/**
+ * „Sitzt das?“-Quiz. Neu: am Kapitelende (`domainId`, Pool von mindestens 30 Fragen, je Aufruf 10 gezogen). Alte Lektionstests
+ * (`sectionId`) bleiben für bestehende Versuche und den Offline-Sync erhalten. Genau eines von beiden ist gesetzt.
+ */
+export const quizzes = pgTable(
+  "quizzes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sectionId: uuid("section_id").references(() => sections.id, { onDelete: "cascade" }),
+    domainId: uuid("domain_id").references(() => domains.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("quizzes_one_target_check", sql`num_nonnulls(${table.sectionId}, ${table.domainId}) = 1`),
+    uniqueIndex("quizzes_domain_unique").on(table.domainId).where(sql`${table.domainId} is not null`),
+  ],
+);
 
 export const quizAttempts = pgTable("quiz_attempts", {
   id: uuid("id").primaryKey().defaultRandom(),

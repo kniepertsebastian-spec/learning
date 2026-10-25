@@ -174,3 +174,15 @@ export async function featuresOfObjective(objectiveId: string): Promise<Certific
     .limit(1);
   return row ?? null;
 }
+
+/** Kapitel (Domain) gehört zu einem für diese Person gesperrten Kurs? Unbekannte Kapitel gelten ebenfalls als gesperrt. */
+export async function isDomainHidden(userId: string, domainId: string): Promise<boolean> {
+  const [domain] = await getDb().select({ certificationId: domains.certificationId }).from(domains).where(eq(domains.id, domainId)).limit(1);
+  if (!domain) return true;
+  return isCertificationHidden(userId, domain.certificationId);
+}
+
+export async function featuresOfDomain(domainId: string): Promise<CertificationFeatures | null> {
+  const [domain] = await getDb().select({ certificationId: domains.certificationId }).from(domains).where(eq(domains.id, domainId)).limit(1);
+  return domain ? featuresOfCertification(domain.certificationId) : null;
+}

@@ -1,3 +1,4 @@
+import { raiseQuestionTargets } from "@/lib/chapters/logic";
 import { isRetryableError, type AIUsage } from "@/lib/ai/generate";
 import { estimateCostUsd } from "@/lib/server/admin/content-generation";
 import {
@@ -176,6 +177,17 @@ function generationModeOf(job: CourseGenerationJob, outline: boolean) {
 function plannedSlugFor(job: CourseGenerationJob): string {
   const base = suggestCourseSlug(job.courseTitle, job.certificationVersion ?? undefined);
   return job.organizationId ? `${base.slice(0, 60)}-${job.id.slice(0, 8)}` : base;
+}
+
+/** Setzt je Kapitel die gewünschte Fragenzahl der Lernziele so, dass der Pool für das Kapitel-Quiz (30 Fragen) erreichbar ist. */
+export function withChapterQuestionPools(blueprint: CourseBlueprintV1): CourseBlueprintV1 {
+  return {
+    ...blueprint,
+    domains: blueprint.domains.map((domain) => {
+      const raised = raiseQuestionTargets(domain.objectives.map((o) => o.recommendedQuestions));
+      return { ...domain, objectives: domain.objectives.map((o, i) => ({ ...o, poolQuestions: Math.max(o.recommendedQuestions, raised[i] ?? o.recommendedQuestions) })) };
+    }),
+  };
 }
 
 interface ObjectiveEntry {
@@ -577,6 +589,9 @@ export async function executeCourseGenerationJob(
       await recordSpend(blueprintCostUsd);
       blueprint = { ...blueprintResult, requestId: jobId };
     }
+
+    // Kapitel-Quiz braucht je Kapitel einen Pool von mindestens 30 Fragen: die KI bekommt je Lernziel eine entsprechend höhere Fragenzahl genannt.
+    if (job.includeSectionQuizzes) blueprint = withChapterQuestionPools(blueprint);
 
     // Gate B: Blueprint-Validierung
     await updateCourseGenerationJob(jobId, {

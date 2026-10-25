@@ -137,7 +137,7 @@ export async function studyWeeksFor(userId: string, certificationId: string, exa
     getTopWeakObjectives(userId, certificationId, 3),
   ]);
   const doneAt = new Map<string, Date>();
-  for (const d of [...done, ...quizDone]) if (d.at && (!doneAt.has(d.id) || d.at < doneAt.get(d.id)!)) doneAt.set(d.id, d.at);
+  for (const d of [...done, ...quizDone]) if (d.id && d.at && (!doneAt.has(d.id) || d.at < doneAt.get(d.id)!)) doneAt.set(d.id, d.at);
   const result = buildStudyPlan({ examDate, now, lessons: sectionRows.map((s) => ({ id: s.id, title: s.title.de, minutes: s.minutes, done: doneAt.has(s.id) })), weakTopics: weak.map((w) => w.objectiveTitle), weeklyHours });
   const monday = mondayOf(now).toISOString().slice(0, 10);
   return { scores, overflowMinutes: result.overflowMinutes, weeks: result.weeks.map((w) => ({ ...w, doneLessons: w.lessonIds.filter((id) => doneAt.has(id)).length, current: w.start === monday, past: w.start < monday })) };

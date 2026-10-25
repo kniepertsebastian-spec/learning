@@ -41,7 +41,7 @@ async function lessonCompletionTimes(userId: string, sectionIds: string[]): Prom
   ]);
   const first = new Map<string, Date>();
   for (const row of [...completions, ...attempts]) {
-    if (!row.at) continue;
+    if (!row.at || !row.sectionId) continue;
     const known = first.get(row.sectionId);
     if (!known || row.at < known) first.set(row.sectionId, row.at);
   }

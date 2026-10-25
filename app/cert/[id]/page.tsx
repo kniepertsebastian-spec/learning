@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, domains, objectives, sections, lessons, lessonCompletions, lessonSkips, objectiveProgress, questions } from "@/lib/server/db/schema";
+import { certifications, domains, objectives, sections, lessons, lessonSkips, objectiveProgress, questions } from "@/lib/server/db/schema";
 import { getCompanyMembership } from "@/lib/server/company/access";
 import { listModulesForPath } from "@/lib/server/company/modules";
 import { CompanyModulesSection } from "@/components/CompanyModulesSection";
@@ -36,6 +36,8 @@ import { getProgressView, type ProgressView } from "@/lib/server/progress/snapsh
 import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { StartSessionPicker } from "@/components/StartSessionPicker";
+import { getChapterOverview } from "@/lib/server/chapters/service";
+import { completedSectionIds } from "@/lib/server/sections/completed";
 import { SelfAssessmentCard } from "@/components/SelfAssessmentCard";
 import { getSelfAssessment, type SelfAssessmentTopic } from "@/lib/server/psrp/self-assessment";
 import { ReadinessCard } from "@/components/ReadinessCard";
@@ -111,15 +113,10 @@ export default async function CertDetailPage({
   // Interne Lernpfade können ohne Lektionstests und/oder Abschlussprüfung bestehen („reine Absolvierung“).
   const quizzes = cert.includeSectionQuizzes;
   const hasExam = cert.includeFinalExam;
-  // Ohne Lektionstests zählt das Durcharbeiten: welche Lektionen hat die Person schon abgeschlossen?
-  const completedSections = new Set<string>();
-  if (session?.user?.id && !quizzes && sectionIds.length > 0) {
-    const done = await db
-      .select({ sectionId: lessonCompletions.sectionId })
-      .from(lessonCompletions)
-      .where(and(eq(lessonCompletions.userId, session.user.id), inArray(lessonCompletions.sectionId, sectionIds)));
-    done.forEach((d) => completedSections.add(d.sectionId));
-  }
+  // Eine Lektion gilt als erledigt, wenn die Person sie durchgearbeitet hat („Lektion abschließen“; alte Lektionstests zählen mit).
+  const completedSections = session?.user?.id && sectionIds.length > 0 ? await completedSectionIds(session.user.id, sectionIds) : new Set<string>();
+  // Kapitel: Lektionen, Pool-Größe und Ergebnis im Kapitel-Quiz („Sitzt das?“ am Kapitelende).
+  const chapterByDomain = new Map((session?.user?.id ? await getChapterOverview(session.user.id, cert.id).catch(() => []) : []).map((c) => [c.domainId, c]));
 
   // Einstiegstest (Kapitel testen): nur mit Lektionstests und für Domains, deren Lernziele Fragen haben; übersprungene Lektionen anzeigen.
   const skippedSections = new Set<string>();
@@ -464,6 +461,17 @@ export default async function CertDetailPage({
                     {locale === "de" ? "Kenne ich schon? Kapitel testen" : "Know this already? Test the chapter"}
                   </Link>
                 )}
+                {session && quizzes && chapterByDomain.get(domain.id)?.poolSize ? (
+                  <Link
+                    href={`/cert/${slug}/chapter/${domain.id}/quiz`}
+                    className="shrink-0 rounded-md border border-accent px-2.5 py-1 text-sm font-medium text-link hover:bg-accent/10"
+                    data-testid="chapter-quiz-entry"
+                  >
+                    {chapterByDomain.get(domain.id)?.quizPassed
+                      ? (locale === "de" ? `Kapitelquiz bestanden (${Math.round(chapterByDomain.get(domain.id)?.bestScore ?? 0)} %)` : `Chapter quiz passed (${Math.round(chapterByDomain.get(domain.id)?.bestScore ?? 0)}%)`)
+                      : (locale === "de" ? "Kapitelquiz: Sitzt das?" : "Chapter quiz: does it stick?")}
+                  </Link>
+                ) : null}
                 {session && quizzes && (
                   <div className="flex shrink-0 items-center gap-2">
                     <div className="h-2 w-24 rounded-full bg-gray-300">
