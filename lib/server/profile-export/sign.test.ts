@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { LearningProfilePayload } from "@/lib/server/db/schema";
 import { payloadHash, signProfile, verificationCode, verifyProfile } from "./sign";
 
@@ -28,9 +28,15 @@ describe("Lernprofil-PDF: Signatur", () => {
   it("ohne den Schlüssel oder mit einem anderen lässt sich keine gültige Signatur erzeugen", () => {
     const signature = signProfile(base, secret);
     expect(verifyProfile({ ...base, signature }, "anderes-geheimnis")).toBe(false);
-    expect(verifyProfile({ ...base, signature }, undefined)).toBe(false);
     expect(verifyProfile({ ...base, signature: "x" }, secret)).toBe(false);
-    expect(() => signProfile(base, undefined)).toThrow();
+    // Ohne Schlüssel (auch nicht aus der Umgebung) gibt es weder Signatur noch Bestätigung.
+    vi.stubEnv("AUTH_SECRET", "");
+    try {
+      expect(verifyProfile({ ...base, signature }, undefined)).toBe(false);
+      expect(() => signProfile(base, undefined)).toThrow();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
   it("Prüfcode: 20 Zeichen in Vierergruppen", () => {
     expect(verificationCode(signProfile(base, secret))).toMatch(/^[A-Z0-9]{4}(-[A-Z0-9]{4}){4}$/);

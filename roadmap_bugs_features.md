@@ -103,3 +103,31 @@ Diese Roadmap dient als verbindliche Spezifikation zur Behebung von Darstellungs
   * Lernende können im Profil ein berufliches Entwicklungsziel festlegen (z. B. *Aktuelle Rolle: Cloud Engineer* $\rightarrow$ *Zielrolle: Site Reliability Engineer (SRE)*).
   * Das System ermittelt die Kompetenzlücke (Skill-Gap) und spielt passende Folgekurse aus.
   * Jeder Vorschlag enthält einen aufklappbaren Bereich **„Warum dieser Kurs?“**, der konkret begründet, welche Lücke im Hinblick auf das definierte Rollenprofil geschlossen wird.
+---
+
+## Umsetzungsstand
+
+Alle Punkte 1.1–5.3 sind umgesetzt (Migrationen 0104–0110, Unit-/DB-Tests und E2E-Specs je Punkt).
+
+- [x] 1.1 Zentraler Einstufungstest (10 MC einmal nach der Kurswahl, Lektions-Vortest entfernt)
+- [x] 1.2 „Sitzt das?“ nur am Kapitelende, Pool ≥ 30 je Kapitel, 10 Zufallsfragen je Aufruf
+- [x] 2.1 Merkzettel wächst mit abgeschlossenen Kapiteln
+- [x] 2.2 Simulations-Hub nur für abgeschlossene Kapitel
+- [x] 3.1 Prüfer genau einem Kurs zugeordnet; Abschnitte, Simulationen, Fragenkatalog bearbeiten und freigeben
+- [x] 3.2 Experten-Badge im Kurskopf („Dieser Kurs wurde fachlich von … geprüft.“, Profil-Link); Garantie-/Rechtsaussagen in die AGB
+- [x] 4.1 Brüche/Formeln per KaTeX
+- [x] 4.2 Einklappbare „Quellen & Fachliteratur“ am Kursende
+- [x] 4.3 Prüfungstermin-Hinweis (unverbindlich) und direkte Bearbeitung im Kurs-Dashboard
+- [x] 4.4 „Problem melden / Feedback“ mit Kurs-/Kapitel-/Lektions-/Frage-IDs, Bearbeitung im Admin
+- [x] 5.1 Schwächen-Radar (Top 3) in der Statusleiste
+- [x] 5.2 Lernprofil-PDF nur bei erfolgreicher Zertifikatsprüfung in der DB, HMAC-signiert, Prüfseite `/verify/[id]`, Widerruf
+- [x] 5.3 Rollenbasierte Kursempfehlungen (Ist → Zielrolle, Skill-Lücke, „Warum dieser Kurs?“)
+
+### Bewusste Abweichungen / Hinweise
+
+- Der Offline-Leser behält die Lektionstests; online ersetzt das Kapitel-Quiz sie.
+- „Fachgebiet“ des Prüfers = der ihm zugewiesene Kurs.
+- Die AGB-Seite (`/agb`) ist ein Auszug; der Betreiber muss den Rechtstext vervollständigen.
+- Die echte Prüfungsbuchung (ExamPlanner) trägt den „unverbindlich“-Hinweis bewusst nicht.
+- Eine Lektion zu löschen entfernt den Lernfortschritt dazu; die letzte Fassung bleibt in den Revisionen.
+- Durch das entfernte Lektions-Quiz erscheinen eingewebte Wiederholungen nicht mehr in Lektionen online.

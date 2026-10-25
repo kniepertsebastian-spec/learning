@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
-import { certifications, courseReviewers, preAssessments, reviewerQualifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, studySessions, users } from "../lib/server/db/schema";
+import { certifications, courseReviewers, preAssessments, userCertificates, reviewerQualifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, studySessions, users } from "../lib/server/db/schema";
 
 export const PASSWORD = "E2e-Passw0rd!";
 export const USERS = {
@@ -23,6 +23,10 @@ export const USERS = {
   preAssessmentSkip: { email: "e2e-pre-assessment-skip@test.example", role: "learner" },
   /** Schaltet Merkzettel und Simulationen Kapitel für Kapitel frei (Kurs mit zwei Kapiteln). */
   unlock: { email: "e2e-unlock@test.example", role: "learner" },
+  /** Beantwortet Kapitel-Quizzes falsch und sieht den Schwächen-Radar. */
+  radar: { email: "e2e-radar@test.example", role: "learner" },
+  /** Hat einen Namen und ein hinterlegtes Zertifikat zum Demo-Kurs: erstellt das PDF, pflegt die Zielrolle. */
+  profileUser: { email: "e2e-profile-user@test.example", role: "learner" },
 } as const;
 export const COURSE_SLUG = "e2e-demo";
 export const COURSE_NAME = "E2E Demo Course";
@@ -214,9 +218,15 @@ async function ensurePreAssessmentRecords() {
   const db = getDb();
   const courses = await db.select({ id: certifications.id }).from(certifications).where(inArray(certifications.slug, [COURSE_SLUG, FORMATS_SLUG, UNLOCK_SLUG]));
   const fresh: string[] = [USERS.preAssessment.email, USERS.preAssessmentSkip.email];
-  // Der Unlock-Nutzer startet jeden Lauf ohne Lernstand (Nutzer löschen entfernt auch das unveränderliche review_log).
-  await db.delete(users).where(eq(users.email, USERS.unlock.email));
-  await db.insert(users).values({ email: USERS.unlock.email, passwordHash: await bcrypt.hash(PASSWORD, 4), role: "learner", emailVerifiedAt: new Date() });
+  // Diese Nutzer starten jeden Lauf ohne Lernstand (Nutzer löschen entfernt auch das unveränderliche review_log).
+  const passwordHash = await bcrypt.hash(PASSWORD, 4);
+  for (const { email, name } of [{ email: USERS.unlock.email, name: null }, { email: USERS.radar.email, name: null }, { email: USERS.profileUser.email, name: "Erika Beispiel" }]) {
+    await db.delete(users).where(eq(users.email, email));
+    await db.insert(users).values({ email, name, passwordHash, role: "learner", emailVerifiedAt: new Date() });
+  }
+  const [demo] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, COURSE_SLUG)).limit(1);
+  const [profileUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.profileUser.email)).limit(1);
+  await db.insert(userCertificates).values({ userId: profileUser.id, certificationId: demo.id, title: "E2E Demo Certified", vendor: "E2E", earnedAt: new Date("2026-01-15") });
   const rows = await db.select({ id: users.id, email: users.email }).from(users).where(inArray(users.email, Object.values(USERS).map((u) => u.email)));
   for (const user of rows) {
     for (const course of courses) {

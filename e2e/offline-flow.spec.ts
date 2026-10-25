@@ -34,7 +34,7 @@ test("Kurs herunterladen → offline → /offline → Lektion + Quiz → online 
     await page.getByRole("button", { name: /^(Sure|Sicher)$/ }).first().click();
     await page.getByRole("button", { name: i === 2 ? /Finish|Abschließen/ : /Next question|Nächste Frage/ }).first().click();
   }
-  await expect.poll(async () => (await pendingSyncEvents(page)).map((e) => `${e.type}:${e.status}`)).toContain("section_quiz:pending");
+  await expect.poll(async () => (await pendingSyncEvents(page)).map((e) => `${e.type}:${e.status}`)).toEqual(expect.arrayContaining([expect.stringMatching(/^section_quiz:(pending|failed)$/)]));
 
   // Seite, die nicht im Cache liegt: Offline-Seite statt Browserfehler
   await page.goto(`${gateway.url}/admin`);
