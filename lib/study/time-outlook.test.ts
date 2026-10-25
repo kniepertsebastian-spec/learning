@@ -45,7 +45,7 @@ describe("computeTimeOutlook", () => {
 describe("Umrechnungen", () => {
   it("Restaufwand und Tagesziel in Minuten", () => {
     expect(remainingNeededMinutes({ lessonMinutes: 120, unseenQuestions: 90 })).toBe(300);
-    expect(dailyMinutes("questions", 20)).toBe(20);
+    expect(dailyMinutes("questions", 20)).toBe(15); // 45 s je Frage
     expect(dailyMinutes("minutes", 15)).toBe(15);
   });
 });

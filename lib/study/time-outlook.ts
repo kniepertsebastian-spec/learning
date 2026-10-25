@@ -6,8 +6,8 @@
 
 /** Minuten je Frage: erste Begegnung mit Feedback plus eine Wiederholung (grobe Annahme). */
 export const MINUTES_PER_NEW_QUESTION = 2;
-/** Eine Frage der Tages-Session dauert etwa eine Minute (siehe MINUTES_PER_SESSION_QUESTION). */
-export const MINUTES_PER_DAILY_QUESTION = 1;
+/** Eine Frage der Tages-Session dauert etwa 45 Sekunden (siehe MINUTES_PER_SESSION_QUESTION). */
+export const MINUTES_PER_DAILY_QUESTION = 0.75;
 
 export type OutlookStatus = "ok" | "tight" | "short";
 

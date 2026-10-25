@@ -13,8 +13,10 @@ import type { StudyGoalType } from "@/lib/server/db/schema";
  * lib/server/exam/blueprint.ts (dort geht es um Prüfungsbedingungen, hier um
  * schnelles Wiederholen mit sofortigem Feedback). Reine Schätzung für die
  * Minuten<->Fragen-Umrechnung, keine exakte Vorhersage. Entspricht dem Rückfall der Planungsschicht
- * (60 s je Frage, siehe psrp/config.ts), damit beide Wege dieselbe Zahl Fragen ergeben. */
-export const MINUTES_PER_SESSION_QUESTION = 1;
+ * (45 s je Frage, siehe psrp/config.ts), damit beide Wege dieselbe Zahl Fragen ergeben.
+ * Herleitung: Auswahlfragen brauchen etwa 30-45 s, Freitext/Formatfragen 60-90 s. Da Formatfragen höchstens
+ * FORMAT_QUESTION_SHARE (20 %) einer Session ausmachen, liegt der Schnitt bei rund 45 s. */
+export const MINUTES_PER_SESSION_QUESTION = 0.75;
 
 /**
  * "Session anhand des Zeitbudgets erstellen" (roadmap.md): übersetzt das
