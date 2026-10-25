@@ -3,11 +3,11 @@ export const dynamic = "force-dynamic";
 import { CourseSeal } from "@/components/seal/CourseSeal";
 import { getCourseSeal } from "@/lib/server/approvals/seal";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, domains, objectives, sections, lessons, lessonCompletions, lessonSkips, objectiveProgress, questions } from "@/lib/server/db/schema";
+import { certifications, domains, objectives, sections, lessons, lessonSkips, objectiveProgress, questions } from "@/lib/server/db/schema";
 import { getCompanyMembership } from "@/lib/server/company/access";
 import { listModulesForPath } from "@/lib/server/company/modules";
 import { CompanyModulesSection } from "@/components/CompanyModulesSection";
@@ -36,6 +36,16 @@ import { getProgressView, type ProgressView } from "@/lib/server/progress/snapsh
 import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { StartSessionPicker } from "@/components/StartSessionPicker";
+import { CourseSources } from "@/components/CourseSources";
+import { ExamDateInline } from "@/components/ExamDateInline";
+import { FeedbackButton } from "@/components/FeedbackButton";
+import { WeaknessRadar } from "@/components/WeaknessRadar";
+import { getWeaknessRadar } from "@/lib/server/weakness/radar";
+import { getChapterOverview } from "@/lib/server/chapters/service";
+import { getCourseSources } from "@/lib/server/sources/course-sources";
+import { getCurrentUser } from "@/lib/server/auth-guards";
+import { getPreAssessmentRecord, shouldOfferPreAssessment } from "@/lib/server/pre-assessment/service";
+import { completedSectionIds } from "@/lib/server/sections/completed";
 import { SelfAssessmentCard } from "@/components/SelfAssessmentCard";
 import { getSelfAssessment, type SelfAssessmentTopic } from "@/lib/server/psrp/self-assessment";
 import { ReadinessCard } from "@/components/ReadinessCard";
@@ -108,18 +118,21 @@ export default async function CertDetailPage({
 
   const [session, locale] = await Promise.all([auth(), getServerLocale()]);
 
+  // Einstufungstest: einmalig direkt nach der Kurswahl, bevor das erste Kapitel beginnt (nur Lernende, solange noch nichts gelernt wurde).
+  let preAssessment: Awaited<ReturnType<typeof getPreAssessmentRecord>> = null;
+  if (session?.user?.id) {
+    const me = await getCurrentUser();
+    if (me?.role === "learner" && (await shouldOfferPreAssessment(me.id, cert.id))) redirect(`/cert/${slug}/pre-assessment`);
+    preAssessment = await getPreAssessmentRecord(session.user.id, cert.id);
+  }
+
   // Interne Lernpfade können ohne Lektionstests und/oder Abschlussprüfung bestehen („reine Absolvierung“).
   const quizzes = cert.includeSectionQuizzes;
   const hasExam = cert.includeFinalExam;
-  // Ohne Lektionstests zählt das Durcharbeiten: welche Lektionen hat die Person schon abgeschlossen?
-  const completedSections = new Set<string>();
-  if (session?.user?.id && !quizzes && sectionIds.length > 0) {
-    const done = await db
-      .select({ sectionId: lessonCompletions.sectionId })
-      .from(lessonCompletions)
-      .where(and(eq(lessonCompletions.userId, session.user.id), inArray(lessonCompletions.sectionId, sectionIds)));
-    done.forEach((d) => completedSections.add(d.sectionId));
-  }
+  // Eine Lektion gilt als erledigt, wenn die Person sie durchgearbeitet hat („Lektion abschließen“; alte Lektionstests zählen mit).
+  const completedSections = session?.user?.id && sectionIds.length > 0 ? await completedSectionIds(session.user.id, sectionIds) : new Set<string>();
+  // Kapitel: Lektionen, Pool-Größe und Ergebnis im Kapitel-Quiz („Sitzt das?“ am Kapitelende).
+  const chapterByDomain = new Map((session?.user?.id ? await getChapterOverview(session.user.id, cert.id).catch(() => []) : []).map((c) => [c.domainId, c]));
 
   // Einstiegstest (Kapitel testen): nur mit Lektionstests und für Domains, deren Lernziele Fragen haben; übersprungene Lektionen anzeigen.
   const skippedSections = new Set<string>();
@@ -283,6 +296,8 @@ export default async function CertDetailPage({
   const overviewScope = overview ? await getCourseScope(cert.id) : undefined;
   // Siegel „Fachlich geprüft von …“: nur allgemeine Kurse mit Freigabe; interne Lernpfade nie.
   const seal = cert.kind === "general" ? await getCourseSeal(cert.id).catch(() => null) : null;
+  const courseSources = await getCourseSources(cert.id).catch(() => []);
+  const weaknessRadar = session?.user?.id && quizzes ? await getWeaknessRadar(session.user.id, cert.id).catch(() => null) : null;
   const hasStarted = Object.keys(progressData).some((k) => allObjectives.some((o) => o.id === k));
 
   return (
@@ -293,7 +308,7 @@ export default async function CertDetailPage({
           <p className="text-sm text-foreground/70">
             {cert.examName} {cert.examVersion}
           </p>
-          {seal && <CourseSeal seal={seal} locale={locale} className="mt-3 max-w-xl" />}
+          {seal && <CourseSeal seal={seal} locale={locale} field={cert.name} className="mt-3 max-w-xl" />}
         </div>
         {session && (
           <div className="flex flex-wrap items-center gap-2 xl:max-w-[55%] xl:shrink-0 xl:justify-end">
@@ -323,6 +338,7 @@ export default async function CertDetailPage({
                 {locale === "de" ? "Meine Prüfungen" : "My exams"}
               </Link>
             )}
+            {weaknessRadar && <WeaknessRadar radar={weaknessRadar} slug={slug} locale={locale} />}
             {quizzes && (
               <Link
                 href={`/cert/${slug}/offline`}
@@ -371,6 +387,26 @@ export default async function CertDetailPage({
           </Link>
         </div>
       )}
+
+      {preAssessment?.status === "completed" && preAssessment.domainResults && (
+        <details className="mb-6 rounded-2xl border border-border bg-surface p-4" data-testid="pre-assessment-card">
+          <summary className="cursor-pointer text-sm font-semibold">
+            {locale === "de"
+              ? `Dein Einstufungstest: ${preAssessment.correctCount} von ${preAssessment.totalCount} richtig`
+              : `Your entry assessment: ${preAssessment.correctCount} of ${preAssessment.totalCount} correct`}
+          </summary>
+          <ul className="mt-3 flex flex-col gap-1.5 text-sm text-foreground/80">
+            {preAssessment.domainResults.map((d) => (
+              <li key={d.domainId} className="flex items-center justify-between gap-3">
+                <span className="min-w-0 truncate">{d.name}</span>
+                <span className="shrink-0 tabular-nums text-foreground/60">{d.correct} / {d.total}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {session && quizzes && <ExamDateInline certId={cert.id} locale={locale} goal={studyGoal} />}
 
       {session && quizzes && todayDashboard && (
         <TodayDashboard certSlug={slug} locale={locale} data={todayDashboard} />
@@ -464,6 +500,17 @@ export default async function CertDetailPage({
                     {locale === "de" ? "Kenne ich schon? Kapitel testen" : "Know this already? Test the chapter"}
                   </Link>
                 )}
+                {session && quizzes && chapterByDomain.get(domain.id)?.poolSize ? (
+                  <Link
+                    href={`/cert/${slug}/chapter/${domain.id}/quiz`}
+                    className="shrink-0 rounded-md border border-accent px-2.5 py-1 text-sm font-medium text-link hover:bg-accent/10"
+                    data-testid="chapter-quiz-entry"
+                  >
+                    {chapterByDomain.get(domain.id)?.quizPassed
+                      ? (locale === "de" ? `Kapitelquiz bestanden (${Math.round(chapterByDomain.get(domain.id)?.bestScore ?? 0)} %)` : `Chapter quiz passed (${Math.round(chapterByDomain.get(domain.id)?.bestScore ?? 0)}%)`)
+                      : (locale === "de" ? "Kapitelquiz: Sitzt das?" : "Chapter quiz: does it stick?")}
+                  </Link>
+                ) : null}
                 {session && quizzes && (
                   <div className="flex shrink-0 items-center gap-2">
                     <div className="h-2 w-24 rounded-full bg-gray-300">
@@ -553,6 +600,14 @@ export default async function CertDetailPage({
           );
         })}
       </div>
+
+      <CourseSources sources={courseSources} locale={locale} />
+
+      {session && cert.kind === "general" && (
+        <div className="mt-6">
+          <FeedbackButton certificationId={cert.id} />
+        </div>
+      )}
     </div>
   );
 }

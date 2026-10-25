@@ -21,11 +21,8 @@ test("Unterseite eines Kurses: Zurück zum Kurs und Dashboard sind sichtbar", as
 test("Fokusmodus: beschriftete Knöpfe zum Kurs und zum Dashboard", async ({ page, gateway }) => {
   await login(page, gateway.url, USERS.learnerB.email);
   await page.goto(`${gateway.url}/cert/${COURSE_SLUG}`);
-  await page.getByRole("link", { name: /First lesson|Erste Lektion/ }).first().click();
-  await page.waitForURL(/\/section\//);
-  const skip = page.getByTestId("pretest-skip");
-  if (await skip.isVisible().catch(() => false)) await skip.click();
-  await page.getByRole("button", { name: /Start quick check|Schnelltest starten/i }).first().click();
+  await page.getByTestId("chapter-quiz-entry").first().click();
+  await page.waitForURL(/\/chapter\/.+\/quiz/);
   await expect(page.getByTestId("focus-close")).toContainText(/Back to (the )?course|Zurück zum Kurs/);
   await page.getByTestId("focus-dashboard").click();
   await page.waitForURL(`${gateway.url}/`);

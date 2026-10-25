@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
-import { certifications, courseReviewers, reviewerQualifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, studySessions, users } from "../lib/server/db/schema";
+import { certifications, courseReviewers, preAssessments, userCertificates, reviewerQualifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, studySessions, users } from "../lib/server/db/schema";
 
 export const PASSWORD = "E2e-Passw0rd!";
 export const USERS = {
@@ -18,11 +18,22 @@ export const USERS = {
   formatsSession: { email: "e2e-formats-session@test.example", role: "learner" },
   /** Pausiert die Tages-Session und macht später weiter. */
   pauser: { email: "e2e-pauser@test.example", role: "learner" },
+  /** Durchläuft den Einstiegstest direkt nach der Kurswahl (alle anderen haben ihn schon übersprungen). */
+  preAssessment: { email: "e2e-pre-assessment@test.example", role: "learner" },
+  preAssessmentSkip: { email: "e2e-pre-assessment-skip@test.example", role: "learner" },
+  /** Schaltet Merkzettel und Simulationen Kapitel für Kapitel frei (Kurs mit zwei Kapiteln). */
+  unlock: { email: "e2e-unlock@test.example", role: "learner" },
+  /** Beantwortet Kapitel-Quizzes falsch und sieht den Schwächen-Radar. */
+  radar: { email: "e2e-radar@test.example", role: "learner" },
+  /** Hat einen Namen und ein hinterlegtes Zertifikat zum Demo-Kurs: erstellt das PDF, pflegt die Zielrolle. */
+  profileUser: { email: "e2e-profile-user@test.example", role: "learner" },
 } as const;
 export const COURSE_SLUG = "e2e-demo";
 export const COURSE_NAME = "E2E Demo Course";
 /** Kleiner Kurs nur mit den neuen Antwortformaten (Reihenfolge, Kurzantwort, Zuordnung). */
 export const FORMATS_SLUG = "e2e-formats";
+/** Kurs mit zwei Kapiteln, je einer Lektion mit Merkzettel und Simulation und zwei Fragen. */
+export const UNLOCK_SLUG = "e2e-unlock";
 
 /** Legt Testnutzer und einen kleinen, freigegebenen Kurs an (idempotent: ein vorhandener Kurs bleibt unverändert). */
 export default async function globalSetup() {
@@ -56,6 +67,7 @@ export default async function globalSetup() {
   await ensureQuestions(objectiveId);
   await ensureVariants(objectiveId);
   await ensureFormatsCourse();
+  await ensureUnlockCourse();
   await resetFormatsSessionUser(passwordHash);
   await resetPauseUser(passwordHash);
 
@@ -79,6 +91,7 @@ export default async function globalSetup() {
       await db.insert(studySessions).values({ userId: user.id, certificationId: course.id, status: "completed", goalType: "minutes", goalValue: 10, plannedAt: at, completedAt: at });
     }
   }
+  await ensurePreAssessmentRecords();
 }
 
 /** Frisch angelegt, Lektion gelesen, noch keine Antworten: die Tages-Session bietet die Formatfragen als neue Aufgaben an. */
@@ -194,5 +207,67 @@ async function ensureQuestions(objectiveId: string) {
       { questionId: question.id, orderNum: 2, text: { de: "Falsch", en: "Wrong" }, isCorrect: false },
       { questionId: question.id, orderNum: 3, text: { de: "Auch falsch", en: "Also wrong" }, isCorrect: false },
     ]);
+  }
+}
+
+/**
+ * Der Einstufungstest erscheint einmalig nach der Kurswahl. Damit die übrigen Tests direkt in den Kurs kommen, gilt er für alle
+ * Testnutzer als übersprungen; nur die beiden Einstufungstest-Nutzer starten jeden Lauf ohne Eintrag.
+ */
+async function ensurePreAssessmentRecords() {
+  const db = getDb();
+  const courses = await db.select({ id: certifications.id }).from(certifications).where(inArray(certifications.slug, [COURSE_SLUG, FORMATS_SLUG, UNLOCK_SLUG]));
+  const fresh: string[] = [USERS.preAssessment.email, USERS.preAssessmentSkip.email];
+  // Diese Nutzer starten jeden Lauf ohne Lernstand (Nutzer löschen entfernt auch das unveränderliche review_log).
+  const passwordHash = await bcrypt.hash(PASSWORD, 4);
+  for (const { email, name } of [{ email: USERS.unlock.email, name: null }, { email: USERS.radar.email, name: null }, { email: USERS.profileUser.email, name: "Erika Beispiel" }]) {
+    await db.delete(users).where(eq(users.email, email));
+    await db.insert(users).values({ email, name, passwordHash, role: "learner", emailVerifiedAt: new Date() });
+  }
+  const [demo] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, COURSE_SLUG)).limit(1);
+  const [profileUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.profileUser.email)).limit(1);
+  await db.insert(userCertificates).values({ userId: profileUser.id, certificationId: demo.id, title: "E2E Demo Certified", vendor: "E2E", earnedAt: new Date("2026-01-15") });
+  const rows = await db.select({ id: users.id, email: users.email }).from(users).where(inArray(users.email, Object.values(USERS).map((u) => u.email)));
+  for (const user of rows) {
+    for (const course of courses) {
+      if (fresh.includes(user.email)) await db.delete(preAssessments).where(and(eq(preAssessments.userId, user.id), eq(preAssessments.certificationId, course.id)));
+      else await db.insert(preAssessments).values({ userId: user.id, certificationId: course.id, status: "skipped" }).onConflictDoNothing();
+    }
+  }
+}
+
+const SIM = (title: string) => '```simulation\n{"type":"terminal","title":"' + title + '","scenario":"S","steps":[{"goal":"g","accept":["a"],"output":"","hint":"h"}],"success":"ok"}\n```';
+
+/** Zwei Kapitel mit je einer Lektion (Merkzettel, Simulation) und zwei Auswahlfragen: zeigt, wie Merkzettel und Simulationen freigeschaltet werden. */
+async function ensureUnlockCourse() {
+  const db = getDb();
+  const [have] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, UNLOCK_SLUG)).limit(1);
+  if (have) return;
+  const [cert] = await db
+    .insert(certifications)
+    .values({ slug: UNLOCK_SLUG, name: "E2E Unlock Course", provider: "E2E", examName: "E2E", examVersion: "1", catalogStatus: "approved", includeSectionQuizzes: true })
+    .returning();
+  for (const n of [1, 2]) {
+    const [domain] = await db.insert(domains).values({ certificationId: cert.id, orderNum: n, name: `Kapitel ${n}`, weightPercent: "50" }).returning();
+    const [objective] = await db.insert(objectives).values({ domainId: domain.id, code: `${n}.1`, title: `Thema ${n}` }).returning();
+    const [section] = await db.insert(sections).values({ objectiveId: objective.id, orderNum: 1, title: bi(`Lektion ${n}`, `Lesson ${n}`), estimatedMinutes: 5, difficulty: "beginner" }).returning();
+    await db.insert(lessons).values({
+      sectionId: section.id,
+      content: bi(`# Lektion ${n}\n\nText.\n\n${SIM(`Sim ${n}`)}`, `# Lesson ${n}\n\nText.\n\n${SIM(`Sim ${n}`)}`),
+      keyTakeaways: { de: ["a"], en: ["a"] },
+      examFocusPoints: { de: ["b"], en: ["b"] },
+      cheatSheet: bi(`Merksatz ${n}`, `Key point ${n}`),
+      modelVersion: "e2e",
+    });
+    for (const q of [1, 2]) {
+      const [question] = await db
+        .insert(questions)
+        .values({ humanId: `E2E-UNL-${n}-${q}`, objectiveId: objective.id, difficulty: "beginner", type: "knowledge", question: bi(`Frage ${n}.${q}?`, `Question ${n}.${q}?`), explanation: bi("Weil.", "Because.") })
+        .returning();
+      await db.insert(questionOptions).values([
+        { questionId: question.id, orderNum: 1, text: bi("Richtig", "Right"), isCorrect: true },
+        { questionId: question.id, orderNum: 2, text: bi("Falsch", "Wrong"), isCorrect: false },
+      ]);
+    }
   }
 }

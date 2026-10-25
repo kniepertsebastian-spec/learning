@@ -8,7 +8,7 @@ import { newQuestionSchema } from "@/lib/server/course-editor/snapshots";
 export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ certId: string; objectiveId: string }> }) {
-  return workshopRoute(params, async ({ certId, ids }) => NextResponse.json({ questions: await getObjectiveQuestions(certId, ids.objectiveId) }));
+  return workshopRoute(params, async ({ certId, ids }) => NextResponse.json({ questions: await getObjectiveQuestions(certId, ids.objectiveId) }), { reviewers: true });
 }
 
 const postSchema = z.union([z.object({ question: newQuestionSchema }), z.object({ questions: z.array(newQuestionSchema).min(1).max(20), ai: z.literal(true) })]);
@@ -17,6 +17,8 @@ const postSchema = z.union([z.object({ question: newQuestionSchema }), z.object(
 export async function POST(request: Request, { params }: { params: Promise<{ certId: string; objectiveId: string }> }) {
   return workshopRoute(params, async ({ certId, ids, user, audit }) => {
     const body = postSchema.parse(await request.json());
+    // Übernommene KI-Vorschläge gibt es nur für Admins.
+    if (!("question" in body) && user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     if ("question" in body) {
       const result = await createQuestion(certId, ids.objectiveId, body.question);
       await audit("course.question_created", "question", result.questionId);
@@ -31,5 +33,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ cer
     }
     const after = await finishAiAccept(certId, { questions: created.map((c) => c.questionId) }, { userId: user.id, checkpoint: name });
     return NextResponse.json({ created, ...after }, { status: 201 });
-  });
+  }, { reviewers: true });
 }

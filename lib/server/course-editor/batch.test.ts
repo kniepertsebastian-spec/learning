@@ -40,4 +40,13 @@ describe("planQualityTasks", () => {
     expect(planQualityTasks([missing, imp("thin_lesson", { sectionId: "s1" })], ["thin_lesson"])).toHaveLength(1);
     expect(planQualityTasks([imp("thin_lesson", { sectionId: "s1" }), imp("thin_lesson", { sectionId: "s2" })], QUALITY_KINDS, 1)).toHaveLength(1);
   });
+
+  it("Fragenpool je Kapitel: fehlende Fragen werden auf die Lernziele des Kapitels verteilt, mit „Fragen ergänzen“ zusammengelegt", () => {
+    const pool = imp("small_chapter_pool", { objectiveId: null, objectiveCode: null, needed: 8, chapterPool: { domainId: "d1", size: 22, needed: 8, perObjective: [{ objectiveId: "o1", count: 4 }, { objectiveId: "o2", count: 4 }] } });
+    const tasks = planQualityTasks([pool, imp("few_questions", { needed: 6 })], QUALITY_KINDS);
+    const byObjective = Object.fromEntries(tasks.map((t) => [t.request.target === "objective" ? t.request.id : "", t.request]));
+    expect(byObjective.o1).toMatchObject({ action: "add_questions", count: 6 }); // größere Anzahl gewinnt
+    expect(byObjective.o2).toMatchObject({ action: "add_questions", count: 4 });
+    expect(planQualityTasks([pool], ["few_questions"])).toHaveLength(0); // nur wenn die Art gewählt ist
+  });
 });

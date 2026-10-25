@@ -12,5 +12,5 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cert
     await reorderSections(certId, ids.objectiveId, body.sectionIds);
     await audit("course.sections_reordered", "objective", ids.objectiveId);
     return new NextResponse(null, { status: 204 });
-  });
+  }, { reviewers: true });
 }

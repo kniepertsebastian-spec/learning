@@ -8,9 +8,9 @@ import { createReviewerInvitation, NotAGeneralCourseError } from "@/lib/server/r
 
 export const dynamic = "force-dynamic";
 
-const schema = z.object({ email: z.string().email().max(200), certificationIds: z.array(z.string().uuid()).max(50) });
+const schema = z.object({ email: z.string().email().max(200), certificationIds: z.array(z.string().uuid()).length(1) });
 
-/** Betreiber: Prüfer per E-Mail einladen (mit den Kursen, die er nach Annahme bekommt). Ohne Mail-Versand kommt der Link in der Antwort. */
+/** Betreiber: Prüfer per E-Mail einladen (mit dem einen Kurs, den er nach Annahme bekommt). Ohne Mail-Versand kommt der Link in der Antwort. */
 export async function POST(request: Request) {
   const guard = await requireAdminApi();
   if (!guard.ok) return guard.response;

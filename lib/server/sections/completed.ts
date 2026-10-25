@@ -17,6 +17,6 @@ export async function completedSectionIds(userId: string, sectionIds: string[]):
     .from(quizAttempts)
     .innerJoin(quizzes, eq(quizzes.id, quizAttempts.quizId))
     .where(and(eq(quizAttempts.userId, userId), isNotNull(quizAttempts.completedAt), inArray(quizzes.sectionId, sectionIds)));
-  attempted.forEach((a) => done.add(a.id));
+  attempted.forEach((a) => { if (a.id) done.add(a.id); }); // Kapitel-Quizzes (ohne Lektion) zählen hier nicht
   return done;
 }

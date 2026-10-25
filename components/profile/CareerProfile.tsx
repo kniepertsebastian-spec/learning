@@ -13,7 +13,7 @@ type Level = "basic" | "confident" | "expert";
 type Recency = "current" | "recent" | "older";
 export type ProfileSkill = { id: string; kind: Kind; name: string; level: Level; recency: Recency | null; source: "manual" | "course" | "certificate"; sourceCourse: string | null };
 export type ProfileData = {
-  profile: { jobTitle: string | null; jobDescription: string | null; focusAreas: string | null; state: string | null };
+  profile: { jobTitle: string | null; jobDescription: string | null; focusAreas: string | null; targetRole?: string | null; state: string | null };
   autoSkills: boolean;
   skills: ProfileSkill[];
 };
@@ -50,6 +50,7 @@ export function CareerProfile({ initial, courseNames }: { initial: ProfileData; 
   const [data, setData] = React.useState(initial);
   const [form, setForm] = React.useState({
     jobTitle: initial.profile.jobTitle ?? "",
+    targetRole: initial.profile.targetRole ?? "",
     jobDescription: initial.profile.jobDescription ?? "",
     focusAreas: initial.profile.focusAreas ?? "",
     state: initial.profile.state ?? "",
@@ -72,7 +73,7 @@ export function CareerProfile({ initial, courseNames }: { initial: ProfileData; 
     const res = await fetch("/api/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobTitle: form.jobTitle, jobDescription: form.jobDescription, focusAreas: form.focusAreas, state: form.state || null }),
+      body: JSON.stringify({ jobTitle: form.jobTitle, targetRole: form.targetRole, jobDescription: form.jobDescription, focusAreas: form.focusAreas, state: form.state || null }),
     });
     setSaved(res.ok ? "ok" : "error");
   }
@@ -149,6 +150,11 @@ export function CareerProfile({ initial, courseNames }: { initial: ProfileData; 
         <label className="block text-sm">
           <span className="mb-1 block font-medium">{tr("Aktuelle Stelle", "Current job")}</span>
           <input className={field} value={form.jobTitle} onChange={(e) => setForm({ ...form, jobTitle: e.target.value })} maxLength={120} placeholder={tr("z. B. Systemadministrator", "e.g. System administrator")} data-testid="profile-job-title" />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block font-medium">{tr("Zielrolle (optional)", "Target role (optional)")}</span>
+          <input className={field} value={form.targetRole} onChange={(e) => setForm({ ...form, targetRole: e.target.value })} maxLength={120} placeholder={tr("z. B. Site Reliability Engineer (SRE)", "e.g. Site Reliability Engineer (SRE)")} data-testid="profile-target-role" />
+          <span className="mt-1 block text-xs text-subtle">{tr("Wir zeigen dir die Lücke zwischen deinem Stand und dieser Rolle und passende Folgekurse.", "We show the gap between where you are and this role, and suitable follow-up courses.")}</span>
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-medium">{tr("Bundesland", "German state")}</span>

@@ -48,3 +48,28 @@ describe("RichText (Fragen, Antworten, Erklärungen)", () => {
     expect(html("Zeile 1\nZeile 2")).toMatch(/Zeile 1\nZeile 2/);
   });
 });
+
+describe("RichText: Formeln und Brüche (KaTeX)", () => {
+  it("\\frac wird als Bruch gesetzt (Zähler über Nenner), in allen üblichen Schreibweisen", () => {
+    for (const source of ["Rate: $$\\frac{a}{b}$$", "Rate: $\\frac{a}{b}$", "Rate: \\(\\frac{a}{b}\\)", "Rate: \\frac{a}{b}"]) {
+      const out = html(source);
+      expect(out, source).toContain("katex");
+      expect(out, source).toContain("mfrac");
+      expect(out.replace(/<annotation[\s\S]*?<\/annotation>/g, ""), source).not.toContain("\\frac"); // der TeX-Quelltext steht nur im MathML-Hinweis
+    }
+  });
+  it("abgesetzte Formeln und Hochstellung", () => {
+    const out = html("Vor\n\n\\[ x^{2} + \\frac{1}{2} \\]\n\nNach");
+    expect(out).toContain("katex-display");
+    expect(out).toContain("msup");
+  });
+  it("Währungen bleiben Text, Code bleibt Code", () => {
+    const out = html("Kostet $5 bis $10. Befehl: `echo $a_b$`");
+    expect(out).not.toContain("katex");
+    expect(out).toContain("$5 bis $10");
+    expect(out).toContain("echo $a_b$");
+  });
+  it("eine kaputte Formel bricht nicht ab", () => {
+    expect(() => html("$$\\frac{a}{$$")).not.toThrow();
+  });
+});

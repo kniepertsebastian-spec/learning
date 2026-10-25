@@ -39,6 +39,23 @@ describe("Bereinigung der KI-Antwort", () => {
     expect(pflege).not.toContain("informatik");
     expect(hintTerms({ jobTitle: null, jobDescription: null, focusAreas: null, state: null }, [])).toEqual([]);
   });
+  it("Zielrolle: der Pfad dorthin steht zuerst und trägt die Lücke je Kurs; ohne Zielrolle gibt es keine Markierung", () => {
+    const withTarget: CareerInput = { ...input, profile: { ...input.profile, jobTitle: "Cloud Engineer", targetRole: "Site Reliability Engineer" } };
+    const raw = { paths: [path({ title: "Platform Engineer" }), path({ title: "Site Reliability Engineer", isTarget: true, courses: [{ courseId: "c1", reason: "Grundlage", closesGap: "Monitoring und Alarmierung" }] }), path({ title: "DevOps", isTarget: true })] };
+    const paths = sanitizePaths(raw, withTarget);
+    expect(paths.map((p) => p.title)).toEqual(["Site Reliability Engineer", "Platform Engineer", "DevOps"]);
+    expect(paths.map((p) => Boolean(p.isTarget))).toEqual([true, false, false]); // höchstens ein Zielpfad
+    expect(paths[0].courses[0]).toMatchObject({ courseId: "c1", closesGap: "Monitoring und Alarmierung" });
+    // Ohne Zielrolle ignoriert die Bereinigung die Markierung der KI
+    expect(sanitizePaths(raw, input).some((p) => p.isTarget)).toBe(false);
+    expect(sanitizePaths(raw, input).map((p) => p.title)).toEqual(["Platform Engineer", "Site Reliability Engineer", "DevOps"]);
+  });
+  it("Zielrolle zählt als genug Profil und ändert den Fingerabdruck nur, wenn sie gesetzt ist", () => {
+    const bare = { ...input, profile: { ...input.profile, jobTitle: null } };
+    expect(hasEnoughProfile(bare)).toBe(false);
+    expect(hasEnoughProfile({ ...bare, profile: { ...bare.profile, targetRole: "SRE" } })).toBe(true);
+    expect(inputHash({ ...input, profile: { ...input.profile, targetRole: "SRE" } })).not.toBe(inputHash(input));
+  });
   it("höchstens fünf Pfade", () => {
     expect(sanitizePaths({ paths: Array.from({ length: 6 }, () => path()) }, input)).toHaveLength(5);
   });

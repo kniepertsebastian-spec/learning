@@ -6,5 +6,5 @@ export const dynamic = "force-dynamic";
 
 /** Kurs-Werkstatt: Gliederung mit Hinweisen (Meldungen, Simulationen, Revisionen). */
 export async function GET(_request: Request, { params }: { params: Promise<{ certId: string }> }) {
-  return workshopRoute(params, async ({ certId }) => NextResponse.json({ tree: await getWorkshopTree(certId) }));
+  return workshopRoute(params, async ({ certId }) => NextResponse.json({ tree: await getWorkshopTree(certId) }), { reviewers: true });
 }

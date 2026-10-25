@@ -51,6 +51,14 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
         </Button>
       </header>
 
+      {view.roles.target && (
+        <p className="rounded-xl border border-accent-border bg-accent-soft p-3 text-sm" data-testid="career-roles">
+          <span className="text-subtle">{tr("Aktuelle Rolle", "Current role")}:</span> <strong>{view.roles.current ?? tr("nicht angegeben", "not set")}</strong>
+          <span aria-hidden="true"> → </span>
+          <span className="text-subtle">{tr("Zielrolle", "Target role")}:</span> <strong>{view.roles.target}</strong>
+        </p>
+      )}
+
       {!view.enoughProfile && (
         <p className="rounded-xl border border-warning/40 bg-warning-soft p-3 text-sm text-warning-text" role="status">
           {tr("Trag zuerst im Profil deine aktuelle Stelle oder mindestens zwei Skills ein. ", "First add your current job or at least two skills in your profile. ")}
@@ -76,7 +84,10 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
             <li key={p.id} className="rounded-2xl border border-border bg-surface" data-testid="career-path">
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold">{p.title}</h2>
+                  <h2 className="flex flex-wrap items-center gap-2 font-semibold">
+                    {p.title}
+                    {p.isTarget && <Badge tone="mint" data-testid="career-target-badge">{tr("Deine Zielrolle", "Your target role")}</Badge>}
+                  </h2>
                   <p className="mt-1 text-sm text-foreground/80">{p.fit}</p>
                   <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-subtle">
                     <span>{LEVEL[p.level as 1 | 2 | 3 | 4]?.[de ? 0 : 1]}</span>
@@ -115,7 +126,17 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
                             </span>
                             <span className="min-w-0">
                               <Link href={`/cert/${c.slug}`} className="font-medium hover:text-link">{c.name}</Link>
-                              <span className="block text-xs text-subtle">{c.reason}</span>
+                              <details className="mt-0.5 text-xs text-subtle" data-testid="career-why">
+                                <summary className="cursor-pointer text-link hover:underline">{tr("Warum dieser Kurs?", "Why this course?")}</summary>
+                                <div className="mt-1 flex flex-col gap-1 text-foreground/80">
+                                  {c.closesGap && (
+                                    <p>
+                                      <span className="font-medium">{tr("Schließt diese Lücke", "Closes this gap")}:</span> {c.closesGap}
+                                    </p>
+                                  )}
+                                  <p>{c.reason}</p>
+                                </div>
+                              </details>
                             </span>
                           </li>
                         ))}

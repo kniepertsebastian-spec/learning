@@ -2,8 +2,11 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { auth } from "@/lib/server/auth";
+import { unlockedForCheatSheets } from "@/lib/chapters/logic";
+import { getChapterOverview } from "@/lib/server/chapters/service";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, sections } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
@@ -23,8 +26,9 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
   const locale = await getServerLocale();
   const de = locale === "de";
 
-  const rows = await db
+  const allRows = await db
     .select({
+      domainId: domains.id,
       domain: domains.name,
       domainOrder: domains.orderNum,
       objectiveCode: objectives.code,
@@ -40,6 +44,13 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
     .innerJoin(domains, eq(domains.id, objectives.domainId))
     .where(and(eq(domains.certificationId, cert.id), isNotNull(lessons.cheatSheet)))
     .orderBy(asc(domains.orderNum), asc(objectives.code), asc(sections.orderNum));
+
+  // Der Merkzettel wächst mit dem Lernfortschritt: das erste Kapitel (Grundlagen) von Anfang an, jedes weitere nach dem Abschluss.
+  const session = await auth();
+  const chapters = session?.user?.id ? await getChapterOverview(session.user.id, cert.id) : (await db.select({ id: domains.id, orderNum: domains.orderNum, name: domains.name }).from(domains).where(eq(domains.certificationId, cert.id)).orderBy(asc(domains.orderNum))).map((d) => ({ domainId: d.id, orderNum: d.orderNum, name: d.name, completed: false }));
+  const unlocked = unlockedForCheatSheets(chapters);
+  const rows = allRows.filter((r) => unlocked.has(r.domainId));
+  const lockedNames = chapters.filter((c) => !unlocked.has(c.domainId) && allRows.some((r) => r.domainId === c.domainId)).map((c) => c.name);
 
   return (
     <div className="mx-auto w-full max-w-3xl" data-testid="cheatsheets-page">
@@ -57,7 +68,9 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
 
       {rows.length === 0 ? (
         <p className="text-sm text-foreground/70" data-testid="cheatsheets-empty">
-          {de ? "Zu diesem Kurs gibt es noch keine Merkzettel. Neue Kurse bekommen nach jeder Lektion einen." : "This course has no cheat sheets yet. New courses get one after every lesson."}
+          {allRows.length > 0
+            ? de ? "Dein Merkzettel ist noch leer. Er füllt sich Kapitel für Kapitel, sobald du ein Kapitel abgeschlossen hast." : "Your cheat sheet is still empty. It fills up chapter by chapter as you complete chapters."
+            : de ? "Zu diesem Kurs gibt es noch keine Merkzettel. Neue Kurse bekommen nach jeder Lektion einen." : "This course has no cheat sheets yet. New courses get one after every lesson."}
         </p>
       ) : (
         <div className="flex flex-col gap-6">
@@ -77,6 +90,24 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
             </section>
           ))}
         </div>
+      )}
+      {lockedNames.length > 0 && (
+        <aside className="mt-6 rounded-lg border border-dashed border-border p-4 text-sm text-foreground/70 print:hidden" data-testid="cheatsheets-locked">
+          <p className="mb-2 flex items-center gap-2 font-medium text-foreground">
+            <Lock className="h-4 w-4" aria-hidden="true" />
+            {de ? "Wächst mit deinem Fortschritt" : "Grows with your progress"}
+          </p>
+          <p className="mb-2">
+            {de
+              ? "Die Merksätze eines Kapitels kommen dazu, sobald du es abgeschlossen hast (alle Lektionen durchgearbeitet und das Kapitelquiz bestanden)."
+              : "A chapter's key points are added once you have completed it (all lessons done and the chapter quiz passed)."}
+          </p>
+          <ul className="list-disc pl-5">
+            {lockedNames.map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
+        </aside>
       )}
       {rows.length > 0 && <CheatSheetDone certificationId={cert.id} />}
     </div>

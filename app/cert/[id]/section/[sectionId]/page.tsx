@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { loadSectionOutline } from "@/lib/server/sections/outline";
 import { notFound } from "next/navigation";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import {
@@ -12,21 +12,17 @@ import {
   domains,
   lessonCompletions,
   lessons,
-  questions,
-  questionOptions,
 } from "@/lib/server/db/schema";
 import { getCompanyMembership } from "@/lib/server/company/access";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { findMentorUserId } from "@/lib/server/company/mentor-requests";
 import { frameworkGoalsForObjective } from "@/lib/server/company/framework-goals";
 import { loadCourseRelevance } from "@/lib/server/relevance/service";
-import { pickWovenQuestions } from "@/lib/server/weaving/candidates";
-import { interleave } from "@/lib/weaving/rules";
 import { listTasksUnlockedBySection } from "@/lib/server/company/practice-tasks";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { listSimulationProgress } from "@/lib/server/simulations/service";
+import { getChapterOverview } from "@/lib/server/chapters/service";
 import { SectionContent } from "@/components/SectionContent";
-import type { SectionQuizQuestion } from "@/components/SectionQuiz";
 
 export default async function SectionPage({
   params,
@@ -67,12 +63,14 @@ export default async function SectionPage({
   // Funktionsumfang des Lernpfads: interne Lernpfade können ohne Lektionstests bestehen („reine Absolvierung“).
   const [certRow] = domainRows[0]
     ? await db
-        .select({ includeSectionQuizzes: certifications.includeSectionQuizzes, contentLocale: certifications.contentLocale, translationStatus: certifications.translationStatus })
+        .select({ kind: certifications.kind, includeSectionQuizzes: certifications.includeSectionQuizzes, contentLocale: certifications.contentLocale, translationStatus: certifications.translationStatus })
         .from(certifications)
         .where(eq(certifications.id, domainRows[0].certificationId))
         .limit(1)
     : [];
-  const quizEnabled = certRow?.includeSectionQuizzes ?? true;
+  // „Sitzt das?“ gibt es nur noch am Kapitelende (Kapitel-Quiz); die Lektion selbst schließt man mit „Lektion abschließen“ ab.
+  const chapterQuizAvailable = certRow?.includeSectionQuizzes ?? true;
+  const quizEnabled = false;
   const session = await auth();
   const outline = await loadSectionOutline(session?.user?.id ?? null, sectionId);
   const [certNameRow] = domainRows[0]
@@ -92,7 +90,7 @@ export default async function SectionPage({
   const frameworkGoals = membership ? await frameworkGoalsForObjective(membership.organizationId, objective.id).catch(() => []) : [];
   const courseRelevance = session?.user?.id && domainRows[0] ? await loadCourseRelevance(session.user.id, domainRows[0].certificationId).catch(() => null) : null;
   let completed = false;
-  if (session?.user?.id && !quizEnabled) {
+  if (session?.user?.id) {
     const [done] = await db
       .select({ id: lessonCompletions.id })
       .from(lessonCompletions)
@@ -101,47 +99,20 @@ export default async function SectionPage({
     completed = Boolean(done);
   }
 
-  // Fetch questions for this objective - R1.5: veraltete (stale) Fragen
-  // nicht mehr an Lernende ausliefern, sie bleiben nur für bereits
-  // bestehende Quiz-/Prüfungsverläufe lesbar.
-  const questionRows = await db
-    .select()
-    .from(questions)
-    .where(and(eq(questions.objectiveId, objective.id), eq(questions.stale, false), eq(questions.probeOnly, false)));
-
-  const questionIds = questionRows.map((q) => q.id);
-  const optionRows =
-    questionIds.length > 0
-      ? await db
-          .select()
-          .from(questionOptions)
-          .where(inArray(questionOptions.questionId, questionIds))
-          .orderBy(questionOptions.orderNum)
-      : [];
-
-  const quizQuestions: SectionQuizQuestion[] = questionRows.map((q) => ({
-    id: q.id,
-    question: q.question,
-    explanation: q.explanation,
-    options: optionRows
-      .filter((o) => o.questionId === q.id)
-      .map((o) => ({
-        id: o.id,
-        text: o.text,
-        orderNum: o.orderNum,
-        isCorrect: o.isCorrect,
-        rationale: o.rationale,
-      })),
-    difficulty: q.difficulty,
-    sourceReference: q.sourceReference,
-    type: q.type,
-    format: q.answerFormat,
-    answerData: q.answerData,
-  }));
-
-  // Schwächen aus früheren Lektionen einweben (Flag woven_reviews): bis zu 2, sehen aus wie normale Fragen, zählen nicht fürs Ergebnis.
-  const woven = session?.user?.id && quizEnabled ? await pickWovenQuestions(session.user.id, sectionId, quizQuestions.length).catch(() => []) : [];
-  const quizWithWoven: SectionQuizQuestion[] = interleave<SectionQuizQuestion>(quizQuestions, woven);
+  // Kapitel-Quiz: Link auf der letzten Lektion des Kapitels (Stand: Pool-Größe, bestes Ergebnis, bestanden).
+  let chapterQuiz: { href: string; poolSize: number; isLast: boolean; passed: boolean; bestScore: number | null } | null = null;
+  if (session?.user?.id && chapterQuizAvailable && domainRows[0]) {
+    const chapter = (await getChapterOverview(session.user.id, domainRows[0].certificationId).catch(() => [])).find((c) => c.domainId === domainRows[0].id);
+    if (chapter) {
+      chapterQuiz = {
+        href: `/cert/${certSlug}/chapter/${chapter.domainId}/quiz`,
+        poolSize: chapter.poolSize,
+        isLast: !outline?.nextId,
+        passed: chapter.quizPassed,
+        bestScore: chapter.bestScore,
+      };
+    }
+  }
 
   return (
     <SectionContent
@@ -153,6 +124,7 @@ export default async function SectionPage({
       domainName={domainName}
       courseName={certName}
       lessonId={lesson.id}
+      feedbackContext={domainRows[0] && certRow?.kind === "general" ? { certificationId: domainRows[0].certificationId, domainId: domainRows[0].id } : null}
       outline={outline}
       estimatedMinutes={section.estimatedMinutes}
       lesson={{
@@ -161,8 +133,9 @@ export default async function SectionPage({
         examFocusPoints: lesson.examFocusPoints ?? null,
         cheatSheet: lesson.cheatSheet ?? null,
       }}
-      questions={quizEnabled ? quizWithWoven : []}
+      questions={[]}
       quizEnabled={quizEnabled}
+      chapterQuiz={chapterQuiz}
       signedIn={Boolean(session?.user?.id)}
       initialCompleted={completed}
       contentLocale={certRow?.contentLocale ?? "de"}
@@ -171,7 +144,6 @@ export default async function SectionPage({
       relevance={{ examWeight: examWeight && examWeight > 0 ? Math.round(examWeight) : null, tasks: unlockTasks.map((t) => ({ title: t.title, unlocked: t.unlocked })), frameworkGoals, assignment: courseRelevance?.assignment ?? null, careerPaths: courseRelevance?.careerPaths ?? [] }}
       askConfidence={askConfidence}
       exitEnabled={Boolean(session?.user?.id) && isFeatureEnabled("exit_with_win", session!.user!.id!)}
-      pretestEnabled={Boolean(session?.user?.id) && isFeatureEnabled("pretest_questions", session!.user!.id!)}
       simulationProgress={session?.user?.id ? await listSimulationProgress(session.user.id, sectionId) : []}
     />
   );

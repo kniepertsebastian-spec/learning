@@ -13,6 +13,7 @@ const putSchema = z.object({ snapshot: questionSnapshotSchema, baseFingerprint: 
 export async function PUT(request: Request, { params }: { params: Promise<{ certId: string; questionId: string }> }) {
   return workshopRoute(params, async ({ certId, ids, user, audit }) => {
     const body = putSchema.parse(await request.json());
+    if (body.ai && user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     if (!body.ai) {
       const result = await saveQuestion(certId, ids.questionId, body.snapshot, body.baseFingerprint, { userId: user.id, origin: "manual", note: body.note || null });
       if (result.changed) await audit("course.question_edited", "question", ids.questionId);
@@ -24,5 +25,5 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cert
     if (result.changed) await audit("course.question_edited", "question", ids.questionId, { origin: "ai", action: body.ai.action });
     const after = await finishAiAccept(certId, { questions: [ids.questionId] }, { userId: user.id, resolveReports: body.ai.resolveReports, checkpoint: name });
     return NextResponse.json({ ...result, ...after });
-  });
+  }, { reviewers: true });
 }

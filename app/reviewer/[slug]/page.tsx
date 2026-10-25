@@ -13,11 +13,15 @@ import { requireReviewerPage } from "@/lib/server/reviewers/guard";
 import { canReviewCourse, listOwnComments } from "@/lib/server/reviewers/service";
 import { isQualified } from "@/lib/server/reviewers/probe-service";
 import { getReviewerCourseView } from "@/lib/server/reviewers/course-view";
+import { CourseSources } from "@/components/CourseSources";
 import { RichText } from "@/components/RichText";
+import { getCourseSources } from "@/lib/server/sources/course-sources";
+import { FeedbackQueue } from "@/components/FeedbackQueue";
+import { listOpenFeedback } from "@/lib/server/feedback/service";
 import { ReviewerApprovalPanel, type ReviewerApprovalData } from "@/components/reviewer/ReviewerApprovalPanel";
 import { ReviewerItemComment } from "@/components/reviewer/ReviewerItemComment";
 
-/** Prüfer-Ansicht eines zugewiesenen Kurses: Inhalt lesen (ohne Bearbeiten, ohne KI, ohne Lerndaten), kommentieren, Fragen melden, freigeben. */
+/** Prüfer-Ansicht des zugewiesenen Kurses: Inhalt lesen (ohne Lerndaten, ohne KI), kommentieren, Fragen melden, von Hand bearbeiten und freigeben. */
 export default async function ReviewerCoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const user = await requireReviewerPage(`/reviewer/${slug}`);
@@ -27,11 +31,13 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
   // Nicht zugewiesene und interne Kurse sehen aus wie nicht vorhanden.
   if (!cert || !(await canReviewCourse(user.id, cert.id))) notFound();
 
-  const [tree, view, own, [me]] = await Promise.all([
+  const [tree, view, own, [me], courseSources, feedback] = await Promise.all([
     getReviewerCourseView(cert.id),
     getReviewerApprovalView(cert.id, user.id),
     listOwnComments(cert.id, user.id),
     getDb().select({ name: users.name }).from(users).where(eq(users.id, user.id)).limit(1),
+    getCourseSources(cert.id).catch(() => []),
+    listOpenFeedback(cert.id),
   ]);
   const described = view.diffSinceOwn && view.changesSinceOwn > 0 ? await describeChanges(view.diffSinceOwn) : null;
   const approval: ReviewerApprovalData = {
@@ -50,7 +56,13 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {de ? "Zurück zu meinen Kursen" : "Back to my courses"}
       </Link>
-      <h1 className="mb-4 text-2xl font-semibold">{cert.name}</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{cert.name}</h1>
+        <Link href={`/reviewer/${slug}/workshop`} className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-link hover:bg-accent/10" data-testid="reviewer-edit-link">
+          {de ? "Kurs bearbeiten" : "Edit course"}
+        </Link>
+      </div>
+      <FeedbackQueue items={feedback.map((f) => ({ ...f, createdAt: f.createdAt.toISOString() }))} locale={locale} canResolve={false} />
       <ReviewerApprovalPanel certId={cert.id} data={approval} locale={locale} canApprove={await isQualified(user.id)} />
       {tree.map((domain) => (
         <section key={domain.id} className="mb-8">
@@ -91,6 +103,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
           ))}
         </section>
       ))}
+      <CourseSources sources={courseSources} locale={locale} />
     </div>
   );
 }

@@ -27,6 +27,7 @@ const BATCH_LABELS: Array<{ kind: ImprovementKind; de: string; en: string }> = [
   { kind: "open_report", de: "Gemeldete Fehler beheben", en: "Fix reported problems" },
   { kind: "hard_question", de: "Schwierige Fragen verbessern", en: "Improve hard questions" },
   { kind: "few_questions", de: "Fehlende Fragen ergänzen", en: "Add missing questions" },
+  { kind: "small_chapter_pool", de: "Fragenpool je Kapitel auf 30 auffüllen", en: "Fill chapter question pools to 30" },
   { kind: "one_question_type", de: "Fragetypen mischen", en: "Mix question types" },
   { kind: "hands_on_without_simulation", de: "Simulationen bei praxisnahen Lektionen", en: "Simulations for hands-on lessons" },
   { kind: "no_exam_callout", de: "Prüfungshinweise ergänzen", en: "Add exam callouts" },

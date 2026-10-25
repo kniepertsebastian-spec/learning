@@ -62,6 +62,8 @@ export function SectionEditor({
   onDirtyChange,
   openReports = 0,
   initialAiAction = null,
+  noAi = false,
+  onDeleted,
 }: {
   certId: string;
   sectionId: string | null;
@@ -72,6 +74,10 @@ export function SectionEditor({
   openReports?: number;
   /** Aus dem Qualitätsbericht: KI-Panel gleich mit dieser Aktion öffnen. */
   initialAiAction?: AiAction | null;
+  /** Prüfer arbeiten von Hand: ohne KI-Vorschläge. */
+  noAi?: boolean;
+  /** Lektion löschen ist möglich, sobald dies gesetzt ist. */
+  onDeleted?: () => void;
 }) {
   const tr = useTr(locale);
   const [saved, setSaved] = React.useState<{ snapshot: SectionSnapshot; fingerprint: string } | null>(null);
@@ -111,6 +117,17 @@ export function SectionEditor({
   }, [draft, saved]);
   React.useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   useUnsavedWarning(dirty);
+
+  async function remove() {
+    if (!sectionId || !onDeleted) return;
+    if (!window.confirm(tr("Diese Lektion endgültig löschen? Lektionstext, Merkzettel, Simulationen und der Lernfortschritt dazu gehen verloren. Der letzte Stand bleibt in der Versionsgeschichte.", "Delete this lesson for good? Its text, cheat sheet, simulations and learner progress are lost. The last version stays in the history."))) return;
+    setBusy(true);
+    const r = await api(`/api/admin/certifications/${certId}/workshop/sections/${sectionId}`, { method: "DELETE" });
+    setBusy(false);
+    if (!r.ok) return setResult({ kind: "error", title: r.error });
+    onDirtyChange(false);
+    onDeleted();
+  }
 
   const problems = React.useMemo(() => {
     if (!draft) return [];
@@ -183,7 +200,7 @@ export function SectionEditor({
         dirty && <p className="-mt-2 text-xs text-warning-text">{tr(`Denk an die andere Sprache (${otherLang}): sie wird nicht automatisch angepasst.`, `Remember the other language (${otherLang}): it isn't updated automatically.`)}</p>
       )}
 
-      {sectionId && saved && !proposal && (
+      {sectionId && saved && !proposal && !noAi && (
         <AiAssist
           key={`ai-${saved.fingerprint}`}
           certId={certId}
@@ -299,6 +316,11 @@ export function SectionEditor({
           {sectionId ? tr("Speichern", "Save") : tr("Lektion anlegen", "Create lesson")}
         </Button>
         {dirty && <span className="text-xs text-warning-text">{tr("Ungespeicherte Änderungen", "Unsaved changes")}</span>}
+        {sectionId && onDeleted && (
+          <Button variant="ghost" onClick={() => void remove()} disabled={busy} className="ml-auto text-danger-text" data-testid="section-delete">
+            {tr("Lektion löschen", "Delete lesson")}
+          </Button>
+        )}
       </div>
 
       {sectionId && saved && (

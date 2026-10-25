@@ -17,13 +17,10 @@ export function LessonPhases({
   quizStarted,
   completed,
   hasEvaluation,
-  pretest,
 }: {
   quizStarted: boolean;
   completed: boolean;
   hasEvaluation: boolean;
-  /** Vorabfragen: "pending" solange sie offen sind, "done" nach Beantworten oder Überspringen; ohne Angabe gibt es keinen Schritt. */
-  pretest?: "pending" | "done";
 }) {
   const { t } = useLocale();
   const lp = t.lesson_page;
@@ -34,10 +31,7 @@ export function LessonPhases({
   const understood = solvedCount > 0 || quizStarted || completed;
   const applyDone = simCount > 0 && solvedCount === simCount;
   const steps: Array<{ key: string; label: string; sub?: string; state: State; go: () => void }> = [
-    ...(pretest
-      ? [{ key: "pretest", label: lp.phasePretest, state: (pretest === "done" ? "done" : "current") as State, go: () => document.querySelector('[data-testid="lesson-pretest"]')?.scrollIntoView({ behavior: "smooth", block: "center" }) }]
-      : []),
-    { key: "understand", label: lp.phaseUnderstand, state: pretest === "pending" ? "todo" : understood ? "done" : "current", go: () => document.querySelector('[data-testid="lesson-article"]')?.scrollIntoView({ behavior: "smooth", block: "start" }) },
+    { key: "understand", label: lp.phaseUnderstand, state: understood ? "done" : "current", go: () => document.querySelector('[data-testid="lesson-article"]')?.scrollIntoView({ behavior: "smooth", block: "start" }) },
   ];
   if (simCount > 0) {
     steps.push({

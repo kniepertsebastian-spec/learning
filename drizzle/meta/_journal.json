@@ -736,6 +736,48 @@
       "when": 1792940643934,
       "tag": "0104_course_abandonments",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1792961475843,
+      "tag": "0105_chapter_quizzes",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1792962046149,
+      "tag": "0106_pre_assessments",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1792962946176,
+      "tag": "0107_reviewer_one_course",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1792963886393,
+      "tag": "0108_feedback_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1792964192254,
+      "tag": "0109_learning_profile_exports",
+      "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1792964414374,
+      "tag": "0110_profile_target_role",
+      "breakpoints": true
     }
   ]
 }

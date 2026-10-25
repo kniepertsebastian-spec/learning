@@ -3,10 +3,12 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
-import { certifications } from "@/lib/server/db/schema";
+import { unlockedForSimulations } from "@/lib/chapters/logic";
+import { getChapterOverview } from "@/lib/server/chapters/service";
+import { certifications, domains } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { listCourseSimulations } from "@/lib/server/simulations/service";
 import { SimulationsOverview } from "@/components/SimulationsOverview";
@@ -21,7 +23,17 @@ export default async function SimulationsPage({ params }: { params: Promise<{ id
   if (!cert) notFound();
   const [session, locale] = await Promise.all([auth(), getServerLocale()]);
   const de = locale === "de";
-  const items = await listCourseSimulations(cert.id, session?.user?.id ?? null);
+  const all = await listCourseSimulations(cert.id, session?.user?.id ?? null);
+  // Wiederholungs-Hub: anwählbar sind nur Simulationen aus abgeschlossenen Kapiteln, die übrigen bleiben gesperrt.
+  const chapters = session?.user?.id
+    ? await getChapterOverview(session.user.id, cert.id)
+    : (await getDb().select({ id: domains.id, orderNum: domains.orderNum, name: domains.name }).from(domains).where(eq(domains.certificationId, cert.id)).orderBy(asc(domains.orderNum))).map((d) => ({ domainId: d.id, orderNum: d.orderNum, name: d.name, completed: false }));
+  const unlocked = unlockedForSimulations(chapters);
+  const items = all.filter((i) => unlocked.has(i.domainId));
+  const locked = chapters
+    .filter((c) => !unlocked.has(c.domainId))
+    .map((c) => ({ name: c.name, count: all.filter((i) => i.domainId === c.domainId).length }))
+    .filter((c) => c.count > 0);
 
   return (
     <div className="mx-auto w-full max-w-3xl" data-testid="simulations-page">
@@ -33,12 +45,12 @@ export default async function SimulationsPage({ params }: { params: Promise<{ id
         <h1 className="text-2xl font-semibold">{de ? "Simulationen" : "Simulations"}</h1>
         <p className="text-sm text-foreground/70">{de ? "Hier wendest du das Gelernte selbst an. Jede Simulation steht in ihrer Lektion; ein Klick führt direkt dorthin." : "Apply what you've learned. Each simulation lives in its lesson; one click takes you straight there."}</p>
       </div>
-      {items.length === 0 ? (
+      {all.length === 0 ? (
         <p className="text-sm text-foreground/70" data-testid="simulations-empty">
           {de ? "Dieser Kurs hat noch keine Simulationen." : "This course has no simulations yet."}
         </p>
       ) : (
-        <SimulationsOverview certSlug={slug} items={items} locale={locale} signedIn={Boolean(session?.user?.id)} />
+        <SimulationsOverview certSlug={slug} items={items} locked={locked} locale={locale} signedIn={Boolean(session?.user?.id)} />
       )}
     </div>
   );

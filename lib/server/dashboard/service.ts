@@ -128,7 +128,7 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
   // Erledigte Sektionen und zuletzt Bearbeitetes
   const doneAt = new Map<string, Date>();
   for (const r of [...completions, ...quizDone]) {
-    if (!r.at) continue;
+    if (!r.at || !r.sectionId) continue;
     const prev = doneAt.get(r.sectionId);
     if (!prev || r.at > prev) doneAt.set(r.sectionId, r.at);
   }

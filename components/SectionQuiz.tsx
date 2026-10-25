@@ -40,7 +40,14 @@ export interface SectionQuizQuestion {
 }
 
 interface SectionQuizProps {
-  sectionId: string;
+  /** Lektionstest: Lektion, an die das Ergebnis geht. Beim Kapitel-Quiz stattdessen `attemptUrl`. */
+  sectionId?: string;
+  /** Endpunkt für das Ergebnis; ohne Angabe `/api/sections/{sectionId}/attempt`. */
+  attemptUrl?: string;
+  /** Bestehensmarke (Prozent) im Ergebnis, z. B. beim Kapitel-Quiz. */
+  passPercent?: number;
+  /** Aktionen im Ergebnis; ohne Angabe nur „Zurück zum Kurs“. */
+  resultActions?: Array<{ href: string; label: string; primary?: boolean }>;
   questions: SectionQuizQuestion[];
   certSlug: string;
   locale: Locale;
@@ -58,7 +65,7 @@ interface SectionQuizProps {
   askConfidence?: boolean;
 }
 
-export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLabel, objectiveLabel, offline, exitEnabled, askConfidence = true }: SectionQuizProps) {
+export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions, questions, certSlug, locale, contextLabel, objectiveLabel, offline, exitEnabled, askConfidence = true }: SectionQuizProps) {
   const { t } = useLocale();
   const [quizIndex, setQuizIndex] = useState(0);
   const [results, setResults] = useState<boolean[]>([]);
@@ -124,7 +131,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
 
     if (quizIndex + 1 >= questions.length) {
       setQuizFinished(true);
-      if (offline) {
+      if (offline && sectionId) {
         enqueueSyncEvent(
           offline.userId,
           "section_quiz",
@@ -132,7 +139,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
           locale === "de" ? "Abschnittsquiz" : "Section quiz",
         ).catch(() => {});
       } else {
-        fetch(`/api/sections/${sectionId}/attempt`, {
+        fetch(attemptUrl ?? `/api/sections/${sectionId}/attempt`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ answers: nextAnswers }),
@@ -194,8 +201,9 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
         <ResultSummary
           score={score}
           headline={fmt(t.quiz.correctCount, { a: correctCount, b: regularTotal })}
+          passPercent={passPercent}
           offlineNote={Boolean(offline)}
-          actions={[{ href: `/cert/${certSlug}`, label: t.quiz.backToCourse, primary: true }]}
+          actions={resultActions ?? [{ href: `/cert/${certSlug}`, label: t.quiz.backToCourse, primary: true }]}
         />
       </FocusFrame>
     );
@@ -248,7 +256,7 @@ export function SectionQuiz({ sectionId, questions, certSlug, locale, contextLab
         questionType={current.type}
       />
       )}
-      {exitEnabled && !offline && (
+      {exitEnabled && !offline && sectionId && (
         <div className="mt-4">
           <Button variant="ghost" size="sm" onClick={() => void exitToday()} disabled={exiting} data-testid="exit-today">{t.quiz.exitToday}</Button>
           {exitError && <p role="alert" className="mt-2 text-sm text-danger-text">{t.quiz.exitError}</p>}

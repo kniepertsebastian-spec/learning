@@ -29,7 +29,10 @@ import {
   listAssignedCourses,
   listOpenReviewerComments,
   NotAGeneralCourseError,
+  InvalidInvitationError,
   NotAReviewerError,
+  ReviewerAlreadyAssignedError,
+  unassignReviewer,
   resolveReviewerComment,
 } from "./service";
 
@@ -82,6 +85,24 @@ run("Prüfer-Rolle (echte DB)", () => {
     await expect(createReviewerInvitation({ email: "x@test.example", certificationIds: [internalCertId], createdByUserId: u.admin })).rejects.toBeInstanceOf(NotAGeneralCourseError);
     await assignReviewer({ certificationId: c.g1.certId, userId: u.reviewer, assignedByUserId: u.admin }); // idempotent
     expect(await getDb().select().from(courseReviewers).where(eq(courseReviewers.userId, u.reviewer))).toHaveLength(1);
+  });
+
+  it("1:1: ein Prüfer betreut genau einen Kurs, eine Einladung gilt für genau einen Kurs", async () => {
+    // reviewer hat schon g1: ein zweiter Kurs wird abgelehnt (erst die Zuweisung aufheben)
+    await expect(assignReviewer({ certificationId: c.g2.certId, userId: u.reviewer, assignedByUserId: u.admin })).rejects.toBeInstanceOf(ReviewerAlreadyAssignedError);
+    expect((await listAssignedCourses(u.reviewer)).map((x) => x.id)).toEqual([c.g1.certId]);
+    // die Datenbank erzwingt es zusätzlich
+    await expect(getDb().insert(courseReviewers).values({ certificationId: c.g2.certId, userId: u.reviewer })).rejects.toThrow();
+    // Einladung: genau ein Kurs
+    await expect(createReviewerInvitation({ email: "zwei@test.example", certificationIds: [c.g1.certId, c.g2.certId], createdByUserId: u.admin })).rejects.toBeInstanceOf(InvalidInvitationError);
+    await expect(createReviewerInvitation({ email: "keiner@test.example", certificationIds: [], createdByUserId: u.admin })).rejects.toBeInstanceOf(InvalidInvitationError);
+    // Zuweisung aufheben, dann ist ein anderer Kurs möglich; mehrere Prüfer je Kurs sind erlaubt
+    expect(await unassignReviewer({ certificationId: c.g1.certId, userId: u.reviewer2, actorUserId: u.admin })).toBe(false);
+    await assignReviewer({ certificationId: c.g1.certId, userId: u.reviewer2, assignedByUserId: u.admin });
+    expect(await unassignReviewer({ certificationId: c.g1.certId, userId: u.reviewer2, actorUserId: u.admin })).toBe(true);
+    await assignReviewer({ certificationId: c.g2.certId, userId: u.reviewer2, assignedByUserId: u.admin });
+    expect((await listAssignedCourses(u.reviewer2)).map((x) => x.id)).toEqual([c.g2.certId]);
+    await unassignReviewer({ certificationId: c.g2.certId, userId: u.reviewer2, actorUserId: u.admin });
   });
 
   it("Rolle ohne Zuweisung wirkt nicht: Admin und Lernende haben keinen Prüferzugriff", async () => {
@@ -145,7 +166,7 @@ run("Prüfer-Rolle (echte DB)", () => {
   it("Einladung: Vorschau, falsche E-Mail, Annahme (Rolle und Zuweisung), nur einmal, Ablauf, Widerruf", async () => {
     const email = `neu-${tag}@test.example`;
     expect(await hasPendingReviewerInvitationForEmail(email)).toBe(false);
-    const { token } = await createReviewerInvitation({ email: ` ${email.toUpperCase()} `, certificationIds: [c.g1.certId, c.g2.certId], createdByUserId: u.admin });
+    const { token } = await createReviewerInvitation({ email: ` ${email.toUpperCase()} `, certificationIds: [c.g1.certId], createdByUserId: u.admin });
     expect(await hasPendingReviewerInvitationForEmail(email)).toBe(true); // erlaubt die Registrierung
     expect(await getReviewerInvitationPreview(token)).toMatchObject({ email, courses: expect.arrayContaining([expect.any(String)]) });
     expect(await getReviewerInvitationPreview("falsch")).toBeNull();
@@ -156,15 +177,15 @@ run("Prüfer-Rolle (echte DB)", () => {
     expect(await acceptReviewerInvitation(token, u.newcomer)).toEqual({ ok: false, reason: "email_mismatch" });
 
     await getDb().update(users).set({ email }).where(eq(users.id, u.newcomer));
-    expect(await acceptReviewerInvitation(token, u.newcomer)).toEqual({ ok: true, courses: 2 });
+    expect(await acceptReviewerInvitation(token, u.newcomer)).toEqual({ ok: true, courses: 1 });
     const [after] = await getDb().select().from(users).where(eq(users.id, u.newcomer));
     expect(after.role).toBe("reviewer");
-    expect((await listAssignedCourses(u.newcomer)).map((x) => x.id).sort()).toEqual([c.g1.certId, c.g2.certId].sort());
+    expect((await listAssignedCourses(u.newcomer)).map((x) => x.id)).toEqual([c.g1.certId]);
     expect(await acceptReviewerInvitation(token, u.newcomer)).toEqual({ ok: false, reason: "invalid" });
     expect(await hasPendingReviewerInvitationForEmail(email)).toBe(false);
 
     // abgelaufen
-    const old = await createReviewerInvitation({ email: `alt-${tag}@test.example`, certificationIds: [], createdByUserId: u.admin, now: new Date("2020-01-01T00:00:00Z") });
+    const old = await createReviewerInvitation({ email: `alt-${tag}@test.example`, certificationIds: [c.g2.certId], createdByUserId: u.admin, now: new Date("2020-01-01T00:00:00Z") });
     expect(await getReviewerInvitationPreview(old.token)).toBeNull();
   });
 

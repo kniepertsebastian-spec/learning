@@ -11,5 +11,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ cert
     const url = new URL(request.url);
     const q = z.object({ type: z.enum(["section", "question"]), id: z.string().uuid() }).parse({ type: url.searchParams.get("type"), id: url.searchParams.get("id") });
     return NextResponse.json({ revisions: await listRevisions(certId, q.type, q.id) });
-  });
+  }, { reviewers: true });
 }

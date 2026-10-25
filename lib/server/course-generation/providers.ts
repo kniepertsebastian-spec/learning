@@ -334,7 +334,7 @@ export const CONTENT_SYSTEM_PROMPT_TEMPLATE = (input: Pick<ObjectiveGenerationIn
     ...(withQuestions
       ? [
           "",
-          "Fragen: genau die im Objective angegebene `recommendedQuestions`-Anzahl, Mischung aus knowledge/comprehension/application/scenario/troubleshooting,",
+          "Fragen: genau die im Objective angegebene Anzahl (`poolQuestions`, sonst `recommendedQuestions`), Mischung aus knowledge/comprehension/application/scenario/troubleshooting,",
           "genau 4 Antwortoptionen pro Frage, genau EINE davon korrekt, mit Frage, Antworten und Erklärung.",
           ...QUESTION_VARIETY_PROMPT,
           FEEDBACK_TONE_PROMPT,
@@ -374,7 +374,7 @@ function objectiveUserPrompt(input: ObjectiveGenerationInput): string {
       ? `Häufige Missverständnisse: ${input.objective.commonMisconceptions.join(", ")}`
       : "",
     `Lektionsgliederung: ${input.objective.lessonPlan.join(" | ")}`,
-    input.withQuestions === false ? "" : `Empfohlene Fragenanzahl: ${input.objective.recommendedQuestions}`,
+    input.withQuestions === false ? "" : `Empfohlene Fragenanzahl: ${input.objective.poolQuestions ?? input.objective.recommendedQuestions}`,
     input.objective.requiredScenarios.length
       ? `Erforderliche Szenarien: ${input.objective.requiredScenarios.join(", ")}`
       : "",

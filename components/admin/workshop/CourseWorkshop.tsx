@@ -40,7 +40,7 @@ function toHash(s: Selection): string {
  * Kurs-Werkstatt (roadmap3.md, Schritt 1): links die Gliederung mit Hinweisen (offene Meldungen, Simulation,
  * bearbeitet), rechts der Editor der gewählten Lektion, die Fragen eines Lernziels oder die gemerkten Kursstände.
  */
-export function CourseWorkshop({ certId, courseName, locale }: { certId: string; courseName: string; locale: Lang }) {
+export function CourseWorkshop({ certId, courseName, locale, reviewer = false }: { certId: string; courseName: string; locale: Lang; /** Prüfer-Ansicht: nur Lektionen und Fragen von Hand bearbeiten (kein KI-Zugriff, keine Kursverwaltung). */ reviewer?: boolean }) {
   const tr = useTr(locale);
   const [tree, setTree] = React.useState<WorkshopTree | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -84,6 +84,7 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
 
   const outline = (
     <nav aria-label={tr("Gliederung", "Outline")} className="flex flex-col gap-4" data-testid="workshop-tree">
+      {!reviewer && (<>
       <button type="button" onClick={() => select({ kind: "overview" })} className={cn("flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm font-medium hover:bg-surface-2", selection?.kind === "overview" && "border-accent-border bg-accent-soft")} data-testid="open-overview">
         <BookOpen className="h-4 w-4" aria-hidden="true" />
         {tr("Kursbeschreibung", "Course description")}
@@ -96,6 +97,7 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
         <Bookmark className="h-4 w-4" aria-hidden="true" />
         {tr("Gemerkte Stände", "Saved checkpoints")}
       </button>
+      </>)}
       {tree?.length === 0 && <p className="text-sm text-subtle">{tr("Der Kurs hat noch keine Inhalte.", "This course has no content yet.")}</p>}
       {tree?.map((d) => (
         <div key={d.id}>
@@ -196,8 +198,15 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
             locale={locale}
             openReports={sectionOf(selection.id)?.openReports ?? 0}
             initialAiAction={selection.ai}
+            noAi={reviewer}
             onDirtyChange={setDirty}
             onSaved={() => void loadTree()}
+            onDeleted={() => {
+              void loadTree();
+              setDirty(false);
+              setSelection(null);
+              window.history.replaceState(null, "", "#");
+            }}
           />
         )}
         {selection?.kind === "new-section" && (
@@ -207,6 +216,7 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
             sectionId={null}
             objectiveId={selection.objectiveId}
             locale={locale}
+            noAi={reviewer}
             onDirtyChange={setDirty}
             onSaved={(id) => {
               void loadTree();
@@ -216,8 +226,8 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
             }}
           />
         )}
-        {selection?.kind === "questions" && <QuestionsPanel key={selection.objectiveId} certId={certId} objectiveId={selection.objectiveId} locale={locale} initialAiAction={selection.ai} onDirtyChange={setDirty} onChanged={() => void loadTree()} />}
-        {selection?.kind === "report" && (
+        {selection?.kind === "questions" && <QuestionsPanel key={selection.objectiveId} certId={certId} objectiveId={selection.objectiveId} locale={locale} noAi={reviewer} initialAiAction={selection.ai} onDirtyChange={setDirty} onChanged={() => void loadTree()} />}
+        {!reviewer && selection?.kind === "report" && (
           <CourseReport
             certId={certId}
             locale={locale}
@@ -225,8 +235,8 @@ export function CourseWorkshop({ certId, courseName, locale }: { certId: string;
             onObjectiveCreated={() => void loadTree()}
           />
         )}
-        {selection?.kind === "overview" && <OverviewEditor key="overview" certId={certId} locale={locale} onDirtyChange={setDirty} />}
-        {selection?.kind === "checkpoints" && <Checkpoints certId={certId} locale={locale} onRestored={() => void loadTree()} />}
+        {!reviewer && selection?.kind === "overview" && <OverviewEditor key="overview" certId={certId} locale={locale} onDirtyChange={setDirty} />}
+        {!reviewer && selection?.kind === "checkpoints" && <Checkpoints certId={certId} locale={locale} onRestored={() => void loadTree()} />}
       </div>
     </div>
   );

@@ -58,6 +58,11 @@ export const courseBlueprintObjectiveSchema = z.object({
   lessonPlan: z.array(z.string().min(1)).min(1),
   sourceLocators: z.array(z.string().min(1)),
   recommendedQuestions: z.number().int().min(1).max(15),
+  /**
+   * Kapitel-Quiz: Fragenzahl, die erzeugt werden soll, damit der Pool des Kapitels mindestens 30 Fragen erreicht. Nur ein Wunsch an die KI
+   * (Prompt); geprüft wird weiter `recommendedQuestions`. Fehlende Fragen füllt der Qualitätsbericht („Fragenpool je Kapitel auffüllen“) nach.
+   */
+  poolQuestions: z.number().int().min(1).max(15).optional(),
   requiredScenarios: z.array(z.string().min(1)),
 });
 export type CourseBlueprintObjective = z.infer<typeof courseBlueprintObjectiveSchema>;

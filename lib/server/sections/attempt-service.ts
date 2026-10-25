@@ -63,12 +63,6 @@ export async function recordSectionQuizAttempt(
   options: { timing?: ReviewTiming } = {},
 ): Promise<SectionQuizAttemptResult> {
   const db = getDb();
-  // Eingewebte Antworten zählen nicht für Ergebnis und Lernzielstand dieser Lektion (nur wenn das Flag gilt, sonst werden sie verworfen).
-  const candidates = allAnswers.filter((a) => !a.woven);
-  const candidateIds = [...new Set(candidates.map((a) => a.questionId))];
-  const existingIds = new Set(candidateIds.length > 0 ? (await db.select({ id: questions.id }).from(questions).where(inArray(questions.id, candidateIds))).map((q) => q.id) : []);
-  const answers = candidates.filter((a) => existingIds.has(a.questionId));
-  const skipped = candidates.length - answers.length;
   const wovenAnswers = isFeatureEnabled("woven_reviews", userId) ? allAnswers.filter((a) => a.woven) : [];
 
   const certInfo = await db
@@ -94,7 +88,50 @@ export async function recordSectionQuizAttempt(
     quizId = inserted[0].id;
   }
 
-  const timing = options.timing;
+  const result = await recordQuizAttemptCore(userId, quizId, allAnswers, options.timing);
+  if (wovenAnswers.length > 0) await recordWovenAnswers(userId, sectionId, certInfo[0], wovenAnswers, options.timing);
+  return result;
+}
+
+/**
+ * Kapitel-Quiz („Sitzt das?“ am Kapitelende): gleiche Verbuchung wie beim Lektionstest (Lernzielstand, Wiederholungen), aber das
+ * Quiz hängt am Kapitel. Der Pool umfasst alle Lernziele des Kapitels; gezogene Fragen kommen aus `chapter-quiz.ts`.
+ */
+export async function recordChapterQuizAttempt(
+  userId: string,
+  domainId: string,
+  allAnswers: SectionQuizAnswerInput[],
+  options: { timing?: ReviewTiming } = {},
+): Promise<SectionQuizAttemptResult> {
+  const db = getDb();
+  const [domain] = await db.select({ certificationId: domains.certificationId }).from(domains).where(eq(domains.id, domainId)).limit(1);
+  if (!domain) throw new SectionNotFoundError(`Kapitel ${domainId} nicht gefunden.`);
+  // Ein Quiz je Kapitel (eindeutiger Index auf domain_id); parallele erste Versuche treffen dasselbe.
+  const [existing] = await db.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.domainId, domainId)).limit(1);
+  let quizId = existing?.id;
+  if (!quizId) {
+    await db.insert(quizzes).values({ domainId, certificationId: domain.certificationId }).onConflictDoNothing();
+    quizId = (await db.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.domainId, domainId)).limit(1))[0].id;
+  }
+  // Eingewebte Antworten gibt es im Kapitel-Quiz nicht.
+  return recordQuizAttemptCore(userId, quizId, allAnswers.filter((a) => !a.woven), options.timing);
+}
+
+/** Auswertung und Verbuchung eines Versuchs für ein vorhandenes Quiz (Lektion oder Kapitel). */
+async function recordQuizAttemptCore(
+  userId: string,
+  quizId: string,
+  allAnswers: SectionQuizAnswerInput[],
+  timing?: ReviewTiming,
+): Promise<SectionQuizAttemptResult> {
+  const db = getDb();
+  // Eingewebte Antworten zählen nicht für Ergebnis und Lernzielstand dieser Lektion (nur wenn das Flag gilt, sonst werden sie verworfen).
+  const candidates = allAnswers.filter((a) => !a.woven);
+  const candidateIds = [...new Set(candidates.map((a) => a.questionId))];
+  const existingIds = new Set(candidateIds.length > 0 ? (await db.select({ id: questions.id }).from(questions).where(inArray(questions.id, candidateIds))).map((q) => q.id) : []);
+  const answers = candidates.filter((a) => existingIds.has(a.questionId));
+  const skipped = candidates.length - answers.length;
+
   const completedAt = timing?.completedAt ?? new Date();
   const attemptInserted = await db
     .insert(quizAttempts)
@@ -159,8 +196,6 @@ export async function recordSectionQuizAttempt(
       ...(timing ? answerTime(timing, answers.find((a) => a.questionId === r.questionId)?.answeredAt) : {}),
     })),
   );
-
-  if (wovenAnswers.length > 0) await recordWovenAnswers(userId, sectionId, certInfo[0], wovenAnswers, timing);
 
   return { score, results, attemptId, ...(late ? { late: true } : {}), ...(skipped > 0 ? { skipped } : {}) };
 }

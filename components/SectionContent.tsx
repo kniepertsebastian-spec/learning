@@ -10,17 +10,16 @@ import { SectionQuiz } from "@/components/SectionQuiz";
 import type { SectionQuizQuestion } from "@/components/SectionQuiz";
 import { ContentLanguageSwitch } from "@/components/lesson/ContentLanguageSwitch";
 import { LessonPhases } from "@/components/lesson/LessonPhases";
-import { LessonPretest } from "@/components/lesson/LessonPretest";
 import { LessonSimulationsProvider } from "@/components/lesson/LessonSimulations";
 import { OutlineList } from "@/components/lesson/OutlineList";
 import { ReadingProgress } from "@/components/lesson/ReadingProgress";
 import { TocList } from "@/components/lesson/TocList";
+import { FeedbackButton } from "@/components/FeedbackButton";
 import { ReportProblem } from "@/components/quiz/ReportProblem";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { pickPretestQuestions } from "@/lib/lesson/pretest";
 import { extractToc, isHandsOn, readingMinutes } from "@/lib/markdown/toc";
 import { fmt } from "@/lib/quiz/keys";
 import type { SectionOutline } from "@/lib/server/sections/outline";
@@ -36,6 +35,8 @@ interface SectionContentProps {
   /** Kursname für den Breadcrumb. */
   courseName?: string;
   lessonId?: string;
+  /** Kontext für „Problem melden / Feedback“: Kurs und Kapitel dieser Lektion (fehlt im Offline-Reader, dort gibt es den Knopf nicht). */
+  feedbackContext?: { certificationId: string; domainId: string } | null;
   lesson: {
     content: Localized<string>;
     keyTakeaways: Localized<string[]> | null;
@@ -65,8 +66,8 @@ interface SectionContentProps {
   translationPending?: boolean;
   /** Gelöste Simulationen dieser Person in dieser Lektion. */
   simulationProgress?: Array<{ simIndex: number; bestHelps: number }>;
-  /** Feature-Flag `pretest_questions`: zwei Vorabfragen vor dem Lektionstext (ohne Wertung). */
-  pretestEnabled?: boolean;
+  /** „Sitzt das?“ gibt es am Kapitelende: Link zum Kapitel-Quiz, wenn dies die letzte Lektion des Kapitels ist. */
+  chapterQuiz?: { href: string; poolSize: number; isLast: boolean; passed: boolean; bestScore: number | null } | null;
   /** „Warum lerne ich das?“: Gewicht der Domäne in der Prüfung und Praxisaufgaben, die diese Lektion freischaltet (nur Firmenbereich). */
   relevance?: { examWeight: number | null; tasks: Array<{ title: string; unlocked: boolean }>; frameworkGoals?: Array<{ code: string | null; title: string }>; assignment?: { dueAt: string | null } | null; careerPaths?: string[] } | null;
 }
@@ -80,6 +81,7 @@ export function SectionContent({
   domainName,
   courseName,
   lessonId,
+  feedbackContext = null,
   lesson,
   questions,
   outline = null,
@@ -94,7 +96,7 @@ export function SectionContent({
   contentLocale = null,
   translationPending = false,
   simulationProgress = [],
-  pretestEnabled = false,
+  chapterQuiz = null,
   relevance = null,
 }: SectionContentProps) {
   const { locale, t } = useLocale();
@@ -104,9 +106,6 @@ export function SectionContent({
   const [completed, setCompleted] = useState(initialCompleted);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
-  const pretestQuestions = pretestEnabled && quizEnabled && !initialCompleted ? pickPretestQuestions(questions.filter((q) => !q.woven && (!q.format || q.format === "choice")), sectionId) : [];
-  const [pretestState, setPretestState] = useState<"pending" | "done">("pending");
-  const pretestPending = pretestQuestions.length > 0 && pretestState === "pending";
 
   const content = lesson.content[locale];
   // Einsprachig erzeugte Lektionen tragen denselben Text in beiden Feldern, bis der Übersetzungslauf sie füllt.
@@ -243,11 +242,9 @@ export function SectionContent({
               </Card>
             )}
 
-            {pretestQuestions.length > 0 && pretestPending && <LessonPretest questions={pretestQuestions} onDone={() => setPretestState("done")} />}
+            <LessonPhases quizStarted={showQuiz} completed={completed} hasEvaluation={hasQuiz || !quizEnabled} />
 
-            <LessonPhases quizStarted={showQuiz} completed={completed} hasEvaluation={hasQuiz || !quizEnabled} pretest={pretestQuestions.length > 0 ? pretestState : undefined} />
-
-            {!pretestPending && (<>
+            <>
             <div className="text-base leading-[1.7] text-text-2 [&_p:first-child]:text-[17px] [&_p]:my-3 [&_p]:whitespace-normal">
               <RichText text={content} headingIds />
             </div>
@@ -302,7 +299,7 @@ export function SectionContent({
                 </div>
               </section>
             )}
-            </>)}
+            </>
 
             <div className="mt-8">
               {!quizEnabled ? (
@@ -331,6 +328,16 @@ export function SectionContent({
                   </Button>
                 </Card>
               ) : null}
+              {chapterQuiz && chapterQuiz.poolSize > 0 && chapterQuiz.isLast && (
+                <Card variant="hero" className="mt-6" data-testid="chapter-quiz-cta">
+                  <h2 className="text-xl font-semibold">{lp.chapterQuizTitle}</h2>
+                  <p className="mt-1 text-sm text-muted">{lp.chapterQuizBody}</p>
+                  {chapterQuiz.passed && chapterQuiz.bestScore !== null && (
+                    <p className="mt-2 text-sm font-semibold text-mint-text" role="status">{fmt(lp.chapterQuizPassed, { n: Math.round(chapterQuiz.bestScore) })}</p>
+                  )}
+                  <Button asChild className="mt-4"><Link href={chapterQuiz.href} data-testid="start-chapter-quiz">{lp.chapterQuizStart}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></Button>
+                </Card>
+              )}
               {showQuiz && hasQuiz && (
                 <SectionQuiz
                   sectionId={sectionId}
@@ -345,6 +352,12 @@ export function SectionContent({
                 />
               )}
             </div>
+
+            {feedbackContext && !offline && (
+              <div className="mt-6 border-t border-border pt-3">
+                <FeedbackButton certificationId={feedbackContext.certificationId} domainId={feedbackContext.domainId} sectionId={sectionId} />
+              </div>
+            )}
 
             {outline && (outline.prevId || outline.nextId) && (
               <nav className="mt-8 flex flex-wrap justify-between gap-3 border-t border-border pt-4" aria-label={lp.outline}>

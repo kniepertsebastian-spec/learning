@@ -6,6 +6,8 @@ import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, users } from "@/lib/server/db/schema";
 import { CareerProfile } from "@/components/profile/CareerProfile";
+import { LearningProfileExport } from "@/components/profile/LearningProfileExport";
+import { listEligibleCourses, listIssuedProfiles } from "@/lib/server/profile-export/service";
 import { getProfile } from "@/lib/server/profile/service";
 import { listMyAssignments, type MyAssignment } from "@/lib/server/assignments/sync";
 import { getCurrentUser } from "@/lib/server/auth-guards";
@@ -93,6 +95,12 @@ export default async function ProfilePage() {
           )}
         </section>
       )}
+
+      <LearningProfileExport
+        locale={locale}
+        courses={(await listEligibleCourses(user.id).catch(() => [])).map((c) => ({ course: c.course, certificate: c.certificate }))}
+        issued={(await listIssuedProfiles(user.id).catch(() => [])).map((i) => ({ id: i.id, issuedAt: i.issuedAt.toISOString(), revokedAt: i.revokedAt ? i.revokedAt.toISOString() : null }))}
+      />
 
       <CareerProfile initial={career} courseNames={catalog.map((c) => c.name)} />
 

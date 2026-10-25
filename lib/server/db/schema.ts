@@ -499,16 +499,26 @@ export const objectiveGenerationCosts = pgTable("objective_generation_costs", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const quizzes = pgTable("quizzes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  sectionId: uuid("section_id")
-    .notNull()
-    .references(() => sections.id, { onDelete: "cascade" }),
-  certificationId: uuid("certification_id")
-    .notNull()
-    .references(() => certifications.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+/**
+ * „Sitzt das?“-Quiz. Neu: am Kapitelende (`domainId`, Pool von mindestens 30 Fragen, je Aufruf 10 gezogen). Alte Lektionstests
+ * (`sectionId`) bleiben für bestehende Versuche und den Offline-Sync erhalten. Genau eines von beiden ist gesetzt.
+ */
+export const quizzes = pgTable(
+  "quizzes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sectionId: uuid("section_id").references(() => sections.id, { onDelete: "cascade" }),
+    domainId: uuid("domain_id").references(() => domains.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("quizzes_one_target_check", sql`num_nonnulls(${table.sectionId}, ${table.domainId}) = 1`),
+    uniqueIndex("quizzes_domain_unique").on(table.domainId).where(sql`${table.domainId} is not null`),
+  ],
+);
 
 export const quizAttempts = pgTable("quiz_attempts", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -684,6 +694,105 @@ export const studyProfiles = pgTable(
       "study_profiles_preferred_locale_check",
       sql`${table.preferredLocale} is null or ${table.preferredLocale} in ('de', 'en')`,
     ),
+  ],
+);
+
+/**
+ * „Problem melden / Feedback“ (roadmap_bugs_features 4.4): freie Rückmeldung zu einem Kurs, mit Kontext (Kurs, Kapitel, Lektion), für Bugs,
+ * Tippfehler und inhaltliche Unstimmigkeiten. Getrennt von `content_reports` (Fragen/Lektionen melden mit festen Gründen), weil hier Text
+ * und eine Kategorie dazugehören. Jede Meldung ist ein eigenes Signal.
+ */
+export type FeedbackCategory = "bug" | "typo" | "content" | "other";
+export type FeedbackStatus = "open" | "resolved" | "dismissed";
+export const feedbackReports = pgTable(
+  "feedback_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reporterUserId: uuid("reporter_user_id").references(() => users.id, { onDelete: "set null" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    domainId: uuid("domain_id").references(() => domains.id, { onDelete: "set null" }),
+    sectionId: uuid("section_id").references(() => sections.id, { onDelete: "set null" }),
+    category: text("category").$type<FeedbackCategory>().notNull(),
+    message: text("message").notNull(),
+    status: text("status").$type<FeedbackStatus>().notNull().default("open"),
+    resolvedByUserId: uuid("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("feedback_reports_cert_status_idx").on(table.certificationId, table.status),
+    check("feedback_reports_category_check", sql`${table.category} in ('bug', 'typo', 'content', 'other')`),
+    check("feedback_reports_status_check", sql`${table.status} in ('open', 'resolved', 'dismissed')`),
+  ],
+);
+
+/**
+ * Ausgestellte Lernprofil-PDFs (roadmap_bugs_features 5.2): was im PDF steht (`payload`) und die Signatur darüber. Die öffentliche Prüfseite
+ * /verify/[id] vergleicht das PDF mit diesem Eintrag und der Signatur; die Person kann ein PDF jederzeit widerrufen.
+ */
+export interface LearningProfileCourse {
+  course: string;
+  certificate: string;
+  vendor: string;
+  earnedAt: string;
+  expiresAt: string | null;
+  chaptersCompleted: number;
+  chaptersTotal: number;
+  lessonsDone: number;
+  lessonsTotal: number;
+}
+export interface LearningProfilePayload {
+  holder: string;
+  courses: LearningProfileCourse[];
+}
+export const learningProfileExports = pgTable(
+  "learning_profile_exports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    payload: jsonb("payload").$type<LearningProfilePayload>().notNull(),
+    signature: text("signature").notNull(),
+    issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [index("learning_profile_exports_user_idx").on(table.userId)],
+);
+
+/**
+ * Einstufungstest direkt nach der Kurswahl (roadmap_bugs_features 1.1): einmalig je Person und Kurs, 10 Auswahlfragen quer durch
+ * die Kapitel. Ergebnis je Kapitel zur Orientierung; fließt weder in den Lernstand noch in die Wiederholungsplanung ein.
+ * `skipped`: die Person hat ihn übersprungen (er wird dann nicht noch einmal angeboten).
+ */
+export type PreAssessmentStatus = "completed" | "skipped";
+export interface PreAssessmentDomainResult {
+  domainId: string;
+  name: string;
+  correct: number;
+  total: number;
+}
+export const preAssessments = pgTable(
+  "pre_assessments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    status: text("status").$type<PreAssessmentStatus>().notNull(),
+    correctCount: integer("correct_count"),
+    totalCount: integer("total_count"),
+    domainResults: jsonb("domain_results").$type<PreAssessmentDomainResult[]>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("pre_assessments_user_certification_unique").on(table.userId, table.certificationId),
+    check("pre_assessments_status_check", sql`${table.status} in ('completed', 'skipped')`),
   ],
 );
 
@@ -992,7 +1101,7 @@ export const objectiveSnapshots = pgTable(
 );
 
 /**
- * Fachliche Prüfer (roadmap_pruefer Phase 1): Zuweisung je allgemeinem Kurs. Ein Prüfer sieht und prüft nur die ihm zugewiesenen Kurse
+ * Fachliche Prüfer (roadmap_pruefer Phase 1): Zuweisung je allgemeinem Kurs, jeder Prüfer genau einem Kurs. Ein Prüfer sieht und prüft nur den ihm zugewiesenen Kurs
  * (nie interne Lernpfade einer Firma, nie Lerndaten), kommentiert, markiert Fragen als fehlerhaft und kann freigeben.
  */
 export const courseReviewers = pgTable(
@@ -1008,7 +1117,8 @@ export const courseReviewers = pgTable(
     assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
     assignedByUserId: uuid("assigned_by_user_id").references(() => users.id, { onDelete: "set null" }),
   },
-  (table) => [unique("course_reviewers_cert_user_unique").on(table.certificationId, table.userId), index("course_reviewers_user_idx").on(table.userId)],
+  // Rollenmodell 1:1: ein Prüfer ist genau einem Kurs zugewiesen (roadmap_bugs_features 3.1); ein Kurs kann mehrere Prüfer haben.
+  (table) => [unique("course_reviewers_cert_user_unique").on(table.certificationId, table.userId), unique("course_reviewers_user_unique").on(table.userId)],
 );
 
 /** Einladung eines Prüfers durch einen Admin (7 Tage gültig, nur der Hash des Tokens wird gespeichert). Erlaubt die Registrierung mit genau dieser E-Mail. */
@@ -3111,6 +3221,8 @@ export const userProfiles = pgTable(
     jobTitle: text("job_title"),
     jobDescription: text("job_description"),
     focusAreas: text("focus_areas"),
+    /** Zielrolle (roadmap_bugs_features 5.3): die Stelle, auf die die Person hinarbeitet; die aktuelle Rolle steht in `jobTitle`. */
+    targetRole: text("target_role"),
     state: text("state").$type<GermanState>(),
     /** Skills aus bestandenen Abschlussprüfungen und Zertifikaten automatisch ergänzen (Einstellung, Standard aus). */
     autoSkills: boolean("auto_skills").notNull().default(false),

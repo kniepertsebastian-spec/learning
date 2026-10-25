@@ -20,7 +20,7 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
   const router = useRouter();
   const de = locale === "de";
   const [email, setEmail] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string>("");
   const [link, setLink] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,13 +37,13 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
     e.preventDefault();
     setLink(null);
     setMessage(null);
-    const r = await act("/api/admin/reviewers/invitations", "POST", { email, certificationIds: selected });
+    const r = await act("/api/admin/reviewers/invitations", "POST", { email, certificationIds: [selected] });
     if (r.error) return;
     const data = r.data as { mailed: boolean; link: string | null } | null;
     if (data?.mailed) setMessage(de ? "Einladung per E-Mail verschickt." : "Invitation sent by email.");
     else if (data?.link) setLink(`${window.location.origin}${data.link}`);
     setEmail("");
-    setSelected([]);
+    setSelected("");
   }
 
   return (
@@ -53,17 +53,17 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
         <form onSubmit={invite} className="mt-3 flex flex-col gap-3 text-sm">
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={de ? "E-Mail-Adresse" : "Email address"} aria-label={de ? "E-Mail-Adresse" : "Email address"} data-testid="reviewer-invite-email" className="rounded-md border border-border bg-background px-3 py-2" />
           <fieldset>
-            <legend className="mb-1 text-subtle">{de ? "Kurse, die er nach Annahme bekommt (nur allgemeine Kurse)" : "Courses assigned after acceptance (general courses only)"}</legend>
+            <legend className="mb-1 text-subtle">{de ? "Der eine Kurs, den er nach Annahme betreut (nur allgemeine Kurse)" : "The one course they will review after acceptance (general courses only)"}</legend>
             <div className="flex flex-col gap-1">
               {courses.map((c) => (
                 <label key={c.id} className="flex items-center gap-2">
-                  <input type="checkbox" checked={selected.includes(c.id)} onChange={(e) => setSelected((s) => (e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)))} />
+                  <input type="radio" name="reviewer-invite-course" required checked={selected === c.id} onChange={() => setSelected(c.id)} />
                   {c.name}
                 </label>
               ))}
             </div>
           </fieldset>
-          <Button type="submit" className="w-fit" disabled={!email} data-testid="reviewer-invite-send">{de ? "Einladen" : "Invite"}</Button>
+          <Button type="submit" className="w-fit" disabled={!email || !selected} data-testid="reviewer-invite-send">{de ? "Einladen" : "Invite"}</Button>
         </form>
         {message && <p role="status" className="mt-2 text-sm">{message}</p>}
         {link && (
@@ -80,7 +80,7 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
           <ul className="mt-2 flex flex-col gap-1 text-sm">
             {invitations.map((i) => (
               <li key={i.id} className="flex items-center gap-3">
-                <span>{i.email} · {i.courses} {de ? "Kurs(e)" : "course(s)"} · {de ? "gültig bis" : "valid until"} {new Date(i.expiresAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}</span>
+                <span>{i.email} · {de ? "gültig bis" : "valid until"} {new Date(i.expiresAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}</span>
                 <button type="button" className="text-link hover:underline" onClick={() => void act(`/api/admin/reviewers/invitations/${i.id}`, "DELETE")}>{de ? "Widerrufen" : "Revoke"}</button>
               </li>
             ))}
@@ -102,17 +102,19 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
                     <button type="button" className="text-link hover:underline" onClick={() => void act("/api/admin/reviewers/assignments", "DELETE", { certificationId: c.id, userId: r.id })}>{de ? "Zuweisung aufheben" : "Unassign"}</button>
                   </li>
                 ))}
-                {r.courses.length === 0 && <li className="text-subtle">{de ? "Keine Kurse zugewiesen" : "No courses assigned"}</li>}
+                {r.courses.length === 0 && <li className="text-subtle">{de ? "Noch kein Kurs zugewiesen (ein Prüfer betreut genau einen Kurs)" : "No course assigned yet (a reviewer looks after exactly one course)"}</li>}
               </ul>
+              {r.courses.length === 0 && (
               <div className="mt-1 flex gap-2">
                 <select value={assign[r.id] ?? ""} onChange={(e) => setAssign((a) => ({ ...a, [r.id]: e.target.value }))} aria-label={de ? "Kurs zuweisen" : "Assign course"} className="rounded-md border border-border bg-background px-2 py-1">
                   <option value="">{de ? "Kurs wählen …" : "Choose course …"}</option>
-                  {courses.filter((c) => !r.courses.some((x) => x.id === c.id)).map((c) => (
+                  {courses.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
                 <Button size="sm" variant="secondary" disabled={!assign[r.id]} onClick={() => void act("/api/admin/reviewers/assignments", "POST", { certificationId: assign[r.id], userId: r.id })}>{de ? "Zuweisen" : "Assign"}</Button>
               </div>
+              )}
             </li>
           ))}
         </ul>
