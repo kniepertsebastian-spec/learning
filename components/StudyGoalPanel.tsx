@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarClock, CheckCircle2, Loader2, Target } from "lucide-react";
 import type { Locale } from "@/lib/types";
+import { computeTimeOutlook, dailyMinutes } from "@/lib/study/time-outlook";
 
 export interface StudyGoalState {
   examDate: string | null;
@@ -46,10 +47,13 @@ export function StudyGoalPanel({
   certId,
   locale,
   initialGoal,
+  neededMinutes = 0,
 }: {
   certId: string;
   locale: Locale;
   initialGoal: StudyGoalState | null;
+  /** Geschätzter Restaufwand in Minuten (Lektionen lesen, neue Fragen üben) für „Reicht die Zeit?“. */
+  neededMinutes?: number;
 }) {
   const [goal, setGoal] = useState<StudyGoalState>(initialGoal ?? DEFAULT_GOAL);
   const [saving, setSaving] = useState(false);
@@ -195,6 +199,61 @@ export function StudyGoalPanel({
           })}
         </div>
       </div>
+
+      {(() => {
+        const de = locale === "de";
+        const outlook = computeTimeOutlook({ examDate: goal.examDate, now: new Date(), activeDays: goal.activeDays, minutesPerDay: dailyMinutes(goal.dailyGoalType, goal.dailyGoalValue), neededMinutes });
+        if (!goal.examDate || neededMinutes <= 0) return null;
+        if (!outlook) {
+          return (
+            <p className="mt-3 text-xs text-foreground/60" data-testid="time-outlook">
+              {de ? "Mit diesem Termin und diesen Lerntagen ist keine Rechnung möglich. Wähle einen Termin in der Zukunft und mindestens einen Lerntag." : "No estimate possible with this date and these study days. Choose a future date and at least one study day."}
+            </p>
+          );
+        }
+        const tone = outlook.status === "ok" ? "text-mint-text" : outlook.status === "tight" ? "text-warning-text" : "text-danger-text";
+        const headline =
+          outlook.status === "ok"
+            ? de ? "Die Zeit reicht." : "You have enough time."
+            : outlook.status === "tight"
+              ? de ? "Es wird knapp." : "It will be tight."
+              : de ? "So reicht die Zeit nicht." : "This is not enough time.";
+        return (
+          <div className="mt-3 rounded-md border border-border bg-background p-3 text-xs" data-testid="time-outlook" data-status={outlook.status}>
+            <p className={`font-medium ${tone}`}>{headline}</p>
+            <p className="mt-1 text-foreground/70">
+              {de
+                ? `Bis zum Termin hast du ${outlook.studyDays} Lerntage mit je ${dailyMinutes(goal.dailyGoalType, goal.dailyGoalValue)} Minuten, zusammen ${outlook.availableMinutes} Minuten. Geschätzt fehlen dir noch ${outlook.neededMinutes} Minuten (Lektionen lesen und neue Fragen üben, ohne spätere Wiederholungen).`
+                : `Until the exam you have ${outlook.studyDays} study days of ${dailyMinutes(goal.dailyGoalType, goal.dailyGoalValue)} minutes each, ${outlook.availableMinutes} minutes in total. You still need an estimated ${outlook.neededMinutes} minutes (reading lessons and practising new questions, without later reviews).`}
+            </p>
+            {outlook.status !== "ok" && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {outlook.neededPerDay !== null && (
+                  <button
+                    type="button"
+                    data-testid="outlook-more-time"
+                    onClick={() => setGoal({ ...goal, dailyGoalType: "minutes", dailyGoalValue: Math.ceil(outlook.neededPerDay! * 1.2) })}
+                    className="rounded-md border border-border px-2.5 py-1 font-medium hover:bg-surface"
+                  >
+                    {de ? `Mit ${Math.ceil(outlook.neededPerDay * 1.2)} Min./Tag planen` : `Plan with ${Math.ceil(outlook.neededPerDay * 1.2)} min/day`}
+                  </button>
+                )}
+                {outlook.suggestedExamDate && (
+                  <button
+                    type="button"
+                    data-testid="outlook-shift-date"
+                    onClick={() => setGoal({ ...goal, examDate: outlook.suggestedExamDate })}
+                    className="rounded-md border border-border px-2.5 py-1 font-medium hover:bg-surface"
+                  >
+                    {de ? `Termin auf ${new Date(outlook.suggestedExamDate).toLocaleDateString("de-DE")} schieben` : `Move the date to ${new Date(outlook.suggestedExamDate).toLocaleDateString("en-US")}`}
+                  </button>
+                )}
+              </div>
+            )}
+            <p className="mt-2 text-foreground/50">{de ? "Das ist eine grobe Schätzung. Der Termin darf sich verschieben, du kannst das Ziel jederzeit anpassen." : "This is a rough estimate. The date may shift, you can adjust the goal at any time."}</p>
+          </div>
+        );
+      })()}
 
       <div className="mt-4 flex items-center gap-3">
         <button

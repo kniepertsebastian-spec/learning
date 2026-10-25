@@ -15,13 +15,14 @@ const cand = (id: string, r: number, extra: Partial<DueCandidate> = {}): DueCand
 });
 
 describe("Tageslimit", () => {
-  it("floor(Budget·60 / Ø-Sekunden) mit Rückfall 15 s", () => {
-    expect(dailyLimit({ timeBudgetMin: 10 })).toBe(40);
+  it("floor(Budget·60 / Ø-Sekunden) mit Rückfall 60 s (eine volle Frage mit Feedback je Minute)", () => {
+    expect(dailyLimit({ timeBudgetMin: 10 })).toBe(10);
+    expect(dailyLimit({ timeBudgetMin: 2 })).toBe(2);
     expect(dailyLimit({ timeBudgetMin: 10, avgSecondsPerReview: 20 })).toBe(30);
   });
   it("Φ senkt, leichte Tage halbieren, „Mehr lernen“ erhöht", () => {
-    expect(dailyLimit({ timeBudgetMin: 10, phi: 1 })).toBe(28);
-    expect(dailyLimit({ timeBudgetMin: 10, lightDay: true })).toBe(20);
+    expect(dailyLimit({ timeBudgetMin: 20, phi: 1 })).toBe(14);
+    expect(dailyLimit({ timeBudgetMin: 20, lightDay: true })).toBe(10);
     const limit = dailyLimit({ timeBudgetMin: 10 });
     expect(dailyLimit({ timeBudgetMin: 10, extra: moreStudyExtra(limit) })).toBeGreaterThan(limit);
   });
@@ -102,7 +103,7 @@ describe("Simulation: Wiedereinstieg nach 7 Tagen Pause", () => {
       });
     }
     const budgetMin = 10;
-    const limit = dailyLimit({ timeBudgetMin: budgetMin, phi: 0.4 });
+    const limit = dailyLimit({ timeBudgetMin: budgetMin, phi: 0.4, avgSecondsPerReview: 15 }); // Karteikarten-Simulation, nicht die App-Fragen
     let backlogDay = -1;
     for (let day = 0; day < 60; day++) {
       const now = new Date(start.getTime() + day * DAY);

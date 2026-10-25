@@ -77,7 +77,7 @@ Folgende Punkte sind noch nicht final entschieden. Implementiere sie mit dem ang
 ## Phase 3 – Planungsschicht
 
 - [x] Funktion `buildDailyQueue(user, now, timeBudgetMin, phi) -> Item[]`
-- [x] Tageslimit aus Zeitbudget: `limit = floor(timeBudgetMin * 60 / avgSecondsPerReview)`, mit persönlichem Durchschnitt, Fallback 15 s
+- [x] Tageslimit aus Zeitbudget: `limit = floor(timeBudgetMin * 60 / avgSecondsPerReview)`, mit persönlichem Durchschnitt, Fallback 60 s (eine volle Frage mit Feedback; vorher 15 s ergab 40 Fragen für 10 Minuten), gemessene Antwortzeit plus 20 s für Feedback
 - [x] Priorisierung fälliger Karten: niedrigste aktuelle Retrievability zuerst; bei aktivem Prüfungsdatum prüfungsrelevante Items höher gewichten (Gewicht konfigurierbar)
 - [x] Nicht gezeigte fällige Karten bleiben fällig (kein künstliches Neusetzen von `due`)
 - [x] Load Balancing: bei der Intervallberechnung das Intervall innerhalb ±5 % (min. ±1 Tag ab Intervall ≥ 7) auf den Tag mit der geringsten bereits geplanten Last legen

@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, X } from "lucide-react";
+import { ArrowLeft, House, LayoutGrid } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
@@ -42,14 +42,17 @@ export function FocusFrame({
   const { t } = useLocale();
   const router = useRouter();
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaveTo, setLeaveTo] = useState(exitHref);
   const [navOpen, setNavOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   // Im Browser nach document.body (außerhalb der App-Shell, die währenddessen inert ist); auf dem Server inline.
   const inBrowser = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
-  function requestClose() {
-    if (confirmLeave) setLeaveOpen(true);
-    else router.push(exitHref);
+  function requestClose(target: string = exitHref) {
+    if (confirmLeave) {
+      setLeaveTo(target);
+      setLeaveOpen(true);
+    } else router.push(target);
   }
 
   useEffect(() => {
@@ -57,7 +60,7 @@ export function FocusFrame({
       if (e.key !== "Escape" || e.ctrlKey || e.metaKey || e.altKey) return;
       if (document.querySelector('[role="dialog"]')) return;
       e.preventDefault();
-      requestClose();
+      requestClose(exitHref);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -74,9 +77,16 @@ export function FocusFrame({
   const frame = (
     <div ref={rootRef} tabIndex={-1} className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-background text-foreground outline-none" data-testid="focus-frame" data-mode={mode}>
       <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-sidebar-border bg-sidebar px-4 py-2.5 sm:px-6">
-        <button type="button" onClick={requestClose} aria-label={t.quiz.close} data-testid="focus-close" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border-strong bg-control hover:bg-surface-2">
-          <X className="h-5 w-5" aria-hidden="true" />
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button type="button" onClick={() => requestClose(exitHref)} data-testid="focus-close" className="flex h-11 items-center gap-1.5 rounded-md border border-border-strong bg-control px-3 text-sm font-medium hover:bg-surface-2">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            {t.quiz.backToCourse}
+          </button>
+          <button type="button" onClick={() => requestClose("/")} aria-label={t.quiz.toDashboard} data-testid="focus-dashboard" className="flex h-11 items-center gap-1.5 rounded-md border border-border-strong bg-control px-3 text-sm font-medium hover:bg-surface-2">
+            <House className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{t.quiz.toDashboard}</span>
+          </button>
+        </div>
         <div className="min-w-0 flex-1 basis-40">
           <div className="flex items-center gap-2">
             {contextLabel && <p className="truncate text-sm font-semibold">{contextLabel}</p>}
@@ -111,7 +121,7 @@ export function FocusFrame({
           <DialogDescription>{t.quiz.leaveBody}</DialogDescription>
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setLeaveOpen(false)}>{t.quiz.stay}</Button>
-            <Button variant="inverted" onClick={() => router.push(exitHref)} data-testid="leave-confirm">{t.quiz.leave}</Button>
+            <Button variant="inverted" onClick={() => router.push(leaveTo)} data-testid="leave-confirm">{t.quiz.leave}</Button>
           </div>
         </DialogContent>
       </Dialog>

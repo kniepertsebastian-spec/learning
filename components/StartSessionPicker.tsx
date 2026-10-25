@@ -88,7 +88,7 @@ export function StartSessionPicker({
           <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
           {de ? "Los geht's" : "Let's go"}
         </h2>
-        <p className="mb-3 text-xs text-foreground/60">{de ? "Zehn Minuten reichen für den Anfang. Weitere Einstellungen kommen später, Schritt für Schritt." : "Ten minutes are enough to start. More settings come later, step by step."}</p>
+        <p className="mb-3 text-xs text-foreground/60">{de ? "Zehn Minuten reichen für den Anfang: etwa zehn Fragen, eine pro Minute. Das ist kein Einstiegstest (den gibt es je Kapitel separat und optional). Mit „Pause für heute“ machst du später weiter." : "Ten minutes are enough to start: about ten questions, one per minute. This is not an entry test (those are separate per chapter and optional). Use “Pause for today” to continue later."}</p>
         <button
           type="button"
           onClick={() => void handleStart("first", "minutes", 10)}
@@ -115,6 +115,9 @@ export function StartSessionPicker({
           {de ? "Wiederholungen werden über die nächsten Tage verteilt, es wartet kein Berg auf dich." : "Reviews are spread over the next days, there is no mountain waiting for you."}
         </p>
       )}
+      <p className="mb-3 text-xs text-foreground/60" data-testid="session-length-hint">
+        {de ? "Etwa eine Frage pro Minute. Das ist die Tages-Session, kein Einstiegstest, und du kannst sie jederzeit pausieren." : "About one question per minute. This is the daily session, not an entry test, and you can pause it any time."}
+      </p>
       <div className="flex flex-wrap gap-2">
         {TIME_BUDGETS.map((minutes) => {
           const key = `minutes-${minutes}`;

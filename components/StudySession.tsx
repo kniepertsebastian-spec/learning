@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/toaster";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
 import type { AnswerConfidence, Locale } from "@/lib/types";
@@ -108,6 +110,8 @@ interface StudySessionProps {
   exitEnabled?: boolean;
   /** Im Firmenbereich mit zugeordnetem Mentor: „Mentor fragen“ in der Verstehens-Aufgabe (nur online). */
   mentorAsk?: { certificationId: string } | null;
+  /** „Pause für heute“: gespeicherter Zwischenstand, die Session geht dort weiter (nur online). */
+  resume?: { answers: Array<{ itemId: string; selectedOptionId: string; answer?: unknown; confidence?: AnswerConfidence; thinkFirst?: boolean; answeredAt?: string }>; currentIndex: number } | null;
   /** Sicherheitsangabe ab der 3. Session (und wenn nicht abgeschaltet, „Wie ich lerne“); sonst gilt wie bisher das Rating ohne Angabe. */
   askConfidence?: boolean;
 }
@@ -130,16 +134,19 @@ export function StudySession({
   deescalated,
   exitEnabled,
   mentorAsk,
+  resume,
   askConfidence = true,
 }: StudySessionProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map(() => null));
+  // Zwischenstand einer pausierten Session: bereits gegebene Antworten je Frage.
+  const savedByItem = new Map((resume?.answers ?? []).map((a) => [a.itemId, a]));
+  const [currentIndex, setCurrentIndex] = useState(() => (resume ? Math.min(resume.currentIndex, Math.max(0, questionItems.length - 1)) : 0));
+  const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map((q) => { const saved = savedByItem.get(q.itemId); return saved ? (saved.answer ? FORMAT_ANSWER : saved.selectedOptionId || null) : null; }));
   // Zeitpunkt der Antwort je Frage; offline gespeichert, damit die Verbuchung später den richtigen Zeitpunkt kennt.
-  const answeredAtRef = useRef<Record<number, string>>({});
-  const [payloads, setPayloads] = useState<Array<AnswerPayload | null>>(() => questionItems.map(() => null));
+  const answeredAtRef = useRef<Record<number, string>>(Object.fromEntries(questionItems.flatMap((q, i) => { const at = savedByItem.get(q.itemId)?.answeredAt; return at ? [[i, at] as const] : []; })));
+  const [payloads, setPayloads] = useState<Array<AnswerPayload | null>>(() => questionItems.map((q) => (savedByItem.get(q.itemId)?.answer as AnswerPayload | undefined) ?? null));
   const [formatResults, setFormatResults] = useState<Array<FormatEvaluation | null>>(() => questionItems.map(() => null));
   const [confidences, setConfidences] = useState<Array<AnswerConfidence | null>>(() =>
-    questionItems.map(() => null),
+    questionItems.map((q) => savedByItem.get(q.itemId)?.confidence ?? null),
   );
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<StudySessionResult | null>(null);
@@ -211,6 +218,51 @@ export function StudySession({
     if (!response.ok) throw new Error("reveal failed");
     const data = (await response.json()) as QuestionReveal;
     return { correct: Boolean(data.isCorrect), partial: data.partial, solution: data.solution, explanation: data.explanation[locale] };
+  }
+
+  // Pausierte Session: die Rückmeldungen der bereits beantworteten Fragen wieder holen, damit man zurückblättern kann.
+  useEffect(() => {
+    if (!resume || offline) return;
+    questionItems.forEach((q, i) => {
+      const saved = savedByItem.get(q.itemId);
+      if (!saved) return;
+      if (saved.answer) {
+        void evaluateFormat(q, saved.answer as AnswerPayload)
+          .then((evaluation) => setFormatResults((prev) => prev.map((value, k) => (k === i ? evaluation : value))))
+          .catch(() => {});
+      } else if (instant) {
+        void revealAnswer(i, saved.selectedOptionId);
+      }
+    });
+    // Nur einmal beim Öffnen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const router = useRouter();
+  const [pausing, setPausing] = useState(false);
+  /** „Pause für heute“: fertig beantwortete Fragen speichern, die Session bleibt offen und geht später dort weiter. */
+  async function pauseToday() {
+    if (pausing || result || exitState) return;
+    setPausing(true);
+    setError(null);
+    try {
+      const finished = questionItems.map((_, i) => Boolean(answers[i]) && (payloads[i] ? formatResults[i] !== null : !instant || (typeof reveals[i] === "object" && reveals[i] !== null)));
+      const firstOpen = finished.findIndex((done) => !done);
+      const response = await fetch(`/api/study-sessions/${sessionId}/pause`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentIndex: !finished[currentIndex] ? currentIndex : firstOpen === -1 ? currentIndex : firstOpen,
+          answers: questionItems.flatMap((q, i) => (finished[i] ? [{ itemId: q.itemId, selectedOptionId: payloads[i] ? "" : answers[i], answer: payloads[i] ?? undefined, confidence: confidences[i] ?? undefined, thinkFirst: thinkFirst && !payloads[i] ? true : undefined, answeredAt: answeredAtRef.current[i] }] : [])),
+        }),
+      });
+      if (!response.ok) throw new Error(`Status ${response.status}`);
+      toast(t.quiz.pauseSaved);
+      router.push(`/cert/${certSlug}`);
+    } catch {
+      setError(t.quiz.pauseFailed);
+      setPausing(false);
+    }
   }
 
   function handleFormatAnswered(index: number, answer: AnswerPayload, confidence?: AnswerConfidence, evaluation?: FormatEvaluation) {
@@ -503,6 +555,17 @@ export function StudySession({
       scoreText={fmt(t.quiz.answeredXofY, { x: answeredCount, y: questionItems.length })}
       navigator={<QuestionNavigator mode="exam" hideNote states={navStates} currentIndex={currentIndex} flagged={new Set()} onJump={setCurrentIndex} />}
     >
+      {answeredCount === 0 && currentIndex === 0 && !resume && (
+        <Card variant="inset" className="mb-4" data-testid="session-intro">
+          <p className="text-sm font-semibold">{fmt(t.quiz.sessionIntroTitle, { n: questionItems.length, m: Math.max(1, questionItems.length) })}</p>
+          <p className="mt-1 text-xs text-subtle">{t.quiz.sessionIntroBody}</p>
+        </Card>
+      )}
+      {resume && answeredCount > 0 && currentIndex === Math.min(resume.currentIndex, questionItems.length - 1) && (
+        <Card variant="inset" className="mb-4" data-testid="resume-note">
+          <p className="text-sm font-semibold">{fmt(t.quiz.resumedNote, { n: currentIndex + 1 })}</p>
+        </Card>
+      )}
       {deescalated && !offline && (
         <Card variant="inset" className="mb-4" data-testid="ease-intro">
           <p className="text-sm font-semibold">{t.quiz.easeTitle}</p>
@@ -683,9 +746,10 @@ export function StudySession({
 
       {error && <p role="alert" className="mt-3 text-sm text-danger-text">{error}</p>}
 
-      {exitEnabled && !offline && item.category !== "win" && (
-        <div className="mt-4">
-          <Button variant="ghost" size="sm" onClick={() => void exitToday()} disabled={exiting || submitting} data-testid="exit-today">{t.quiz.exitToday}</Button>
+      {!offline && item.category !== "win" && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => void pauseToday()} disabled={pausing || submitting || exiting} title={t.quiz.pauseHint} data-testid="pause-today">{t.quiz.pauseToday}</Button>
+          {exitEnabled && <Button variant="ghost" size="sm" onClick={() => void exitToday()} disabled={exiting || submitting || pausing} data-testid="exit-today">{t.quiz.exitToday}</Button>}
         </div>
       )}
 

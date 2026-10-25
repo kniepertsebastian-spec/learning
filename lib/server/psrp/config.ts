@@ -19,6 +19,8 @@ export interface PsrpConfig {
   planning: {
     /** Rückfall für die Sekunden je Review. */
     fallbackSecondsPerReview: number;
+    /** Zeit für Feedback und Erklärung je Frage, die die gemessene Antwortzeit nicht enthält. */
+    feedbackSecondsPerReview: number;
     /** Zusatzgewicht prüfungsrelevanter Items bei aktivem Prüfungsdatum. */
     examRelevanceWeight: number;
     /** Load Balancing: Streuung in Prozent des Intervalls; ab `loadBalanceWideFromDays` mindestens ±1 Tag. */
@@ -93,7 +95,10 @@ export interface PsrpConfig {
 export const DEFAULT_PSRP_CONFIG: PsrpConfig = {
   fsrs: { rMin: 0.75, rMax: 0.9, minReviewsForFit: 400, refitIntervalDays: 7, ageRangeWeights: {} },
   planning: {
-    fallbackSecondsPerReview: 15,
+    // Eine Session-Frage ist eine volle Frage mit Sofort-Feedback, keine Karteikarte: ohne eigene Messwerte rechnen wir mit
+    // einer Minute je Frage (10 Minuten ≈ 10 Fragen).
+    fallbackSecondsPerReview: 60,
+    feedbackSecondsPerReview: 20,
     examRelevanceWeight: 0.15,
     loadBalanceFraction: 0.05,
     loadBalanceWideFromDays: 7,

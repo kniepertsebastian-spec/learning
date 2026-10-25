@@ -27,6 +27,8 @@ import {
 import { getDueReviewCount } from "@/lib/server/review/service";
 import { getReadiness } from "@/lib/server/readiness/service";
 import type { ReadinessResult } from "@/lib/server/readiness/engine";
+import { getRemainingWorkload } from "@/lib/server/study/workload";
+import { remainingNeededMinutes } from "@/lib/study/time-outlook";
 import { StudyGoalPanel, type StudyGoalState } from "@/components/StudyGoalPanel";
 import { TodayDashboard, type TodayDashboardData } from "@/components/TodayDashboard";
 import { isDeescalated } from "@/lib/server/engagement/service";
@@ -145,6 +147,7 @@ export default async function CertDetailPage({
   let progressData: ProgressData = {};
   let needsRemediation: Array<{ objectiveId: string; objectiveTitle: string }> = [];
   let studyGoal: StudyGoalState | null = null;
+  let neededMinutes = 0;
   let todayDashboard: TodayDashboardData | null = null;
   let readiness: ReadinessResult | null = null;
   let learningIntro = { firstSession: false, offerCheckin: true };
@@ -201,6 +204,8 @@ export default async function CertDetailPage({
           lightWeekdays: studyProfile.lightWeekdays,
         }
       : null;
+    // „Reicht die Zeit?“ im Lernziel: geschätzter Restaufwand (Lektionen lesen, neue Fragen üben).
+    neededMinutes = remainingNeededMinutes(await getRemainingWorkload(session.user.id, cert.id).catch(() => ({ lessonMinutes: 0, unseenQuestions: 0 })));
     if (sessionSummary) {
       // R2 (neue Roadmap-Fassung): "Empfehlungen mit Gründen anzeigen" +
       // "Nutzerfeedback auf Empfehlungen erfassen" - beide hängen an der
@@ -224,6 +229,7 @@ export default async function CertDetailPage({
         categoryBreakdown,
         feedback,
         isComeback: sessionSummary.isComeback,
+        paused: sessionSummary.paused,
       };
     }
   }
@@ -389,7 +395,7 @@ export default async function CertDetailPage({
 
       {session && quizzes && <SelfAssessmentCard locale={locale} topics={selfAssessment} />}
 
-      {session && quizzes && <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} />}
+      {session && quizzes && <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} neededMinutes={neededMinutes} />}
 
       {quizzes && needsRemediation.length > 0 && (
         <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
