@@ -77,7 +77,14 @@ test("Tages-Session mit neuen Formaten: Aufgabe ohne Lösung, Auswertung vom Ser
   await expect(page.getByTestId("format-question").first()).toBeVisible();
   // Die Lösung steht nicht im ausgelieferten HTML.
   expect(await page.content()).not.toContain("ipconfig /all");
-  const reveal = page.waitForResponse((r) => /\/reveal$/.test(r.url()));
+  // Die Reihenfolge der Session ist nicht garantiert (gleiche Gewichtung): Kurzantwort und Zuordnung brauchen eine Eingabe, bevor „Antwort prüfen“ aktiv ist.
+  const format = await page.getByTestId("format-question").first().getAttribute("data-format");
+  if (format === "short_answer") await page.getByTestId("short-answer-input").fill("irgendeine Antwort");
+  if (format === "matching") {
+    const rows = page.getByTestId("matching-row");
+    for (let i = 0; i < 2; i++) await rows.nth(i).getByTestId("matching-select").selectOption({ index: 1 });
+  }
+  const reveal =page.waitForResponse((r) => /\/reveal$/.test(r.url()));
   await page.getByTestId("check-answer").click();
   expect((await reveal).ok()).toBe(true);
   await expect(page.getByTestId("feedback-panel")).toBeVisible();
