@@ -4,7 +4,6 @@ import { CourseSeal } from "@/components/seal/CourseSeal";
 import { getCourseSeal } from "@/lib/server/approvals/seal";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
@@ -288,16 +287,8 @@ export default async function CertDetailPage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <Link
-        href="/"
-        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {locale === "de" ? "Zurück zum Dashboard" : "Back to dashboard"}
-      </Link>
-
-      <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-        <div className="min-w-0">
+      <div className="mb-6 flex flex-col items-start gap-4 xl:flex-row xl:justify-between">
+        <div className="min-w-0 xl:flex-1">
           <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
           <p className="text-sm text-foreground/70">
             {cert.examName} {cert.examVersion}
@@ -305,7 +296,7 @@ export default async function CertDetailPage({
           {seal && <CourseSeal seal={seal} locale={locale} className="mt-3 max-w-xl" />}
         </div>
         {session && (
-          <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+          <div className="flex flex-wrap items-center gap-2 xl:max-w-[55%] xl:shrink-0 xl:justify-end">
             {withCheatSheet && (
               <Link
                 href={`/cert/${slug}/cheatsheets`}
