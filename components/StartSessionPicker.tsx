@@ -8,6 +8,9 @@ import type { Locale } from "@/lib/types";
 import { alternativeHref, ENERGY_ALTERNATIVES, offerEnergyAlternatives, type EnergyAlternative } from "@/lib/study/energy-modes";
 
 const TIME_BUDGETS = [2, 5, 10, 20];
+/** Grenzen der freien Eingabe; die API erlaubt 1-180 Minuten (startSessionSchema). */
+const CUSTOM_MIN = 1;
+const CUSTOM_MAX = 180;
 
 /**
  * R2 (roadmap.md, neue Fassung): "Nutzer wählt 2, 5, 10 oder 20 Minuten" -
@@ -50,6 +53,10 @@ export function StartSessionPicker({
   const [error, setError] = useState<string | null>(null);
   const [energy, setEnergy] = useState<number | null>(null);
   const [workday, setWorkday] = useState<boolean | null>(null);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState("");
+  const customValue = Number(customMinutes);
+  const customValid = Number.isInteger(customValue) && customValue >= CUSTOM_MIN && customValue <= CUSTOM_MAX;
 
   const showAlternatives = offerEnergyAlternatives({ enabled: energyModes, energy, deescalated });
 
@@ -149,7 +156,56 @@ export function StartSessionPicker({
           )}
           {locale === "de" ? "Nur eine Aufgabe" : "Just one task"}
         </button>
+        <button
+          type="button"
+          onClick={() => setCustomOpen((open) => !open)}
+          disabled={starting !== null}
+          aria-expanded={customOpen}
+          data-testid="custom-time-toggle"
+          className="flex items-center gap-1.5 rounded-md border border-dashed border-border bg-surface px-4 py-2 text-sm font-medium hover:border-accent hover:bg-background disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {de ? "Eigene Zeit" : "Custom"}
+        </button>
       </div>
+      {customOpen && (
+        <form
+          className="mt-3 flex flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!customValid) return;
+            logChoice("normal");
+            void handleStart("custom", "minutes", customValue);
+          }}
+        >
+          <label className="text-xs text-foreground/60" htmlFor="custom-minutes">
+            {de ? `Minuten (${CUSTOM_MIN}–${CUSTOM_MAX})` : `Minutes (${CUSTOM_MIN}–${CUSTOM_MAX})`}
+          </label>
+          <input
+            id="custom-minutes"
+            type="number"
+            inputMode="numeric"
+            min={CUSTOM_MIN}
+            max={CUSTOM_MAX}
+            step={1}
+            value={customMinutes}
+            onChange={(event) => setCustomMinutes(event.target.value)}
+            placeholder="50"
+            autoFocus
+            disabled={starting !== null}
+            data-testid="custom-minutes-input"
+            className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={starting !== null || !customValid}
+            data-testid="custom-start"
+            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {starting === "custom" && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+            {de ? "Starten" : "Start"}
+          </button>
+        </form>
+      )}
 
       {intro.offerCheckin && (
         <>
