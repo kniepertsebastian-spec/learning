@@ -34,13 +34,12 @@ async function answerAll(page: import("@playwright/test").Page, finishLabel: Reg
   }
 }
 
-test("Lektionstest mit allen neuen Antwortformaten", async ({ page, gateway }) => {
+test("Kapitel-Quiz mit allen neuen Antwortformaten", async ({ page, gateway }) => {
   await login(page, gateway.url, USERS.formats.email);
   await page.goto(`${gateway.url}/cert/${FORMATS_SLUG}`);
-  await page.getByRole("link", { name: /Formats lesson|Formate-Lektion/ }).first().click();
-  await page.waitForURL(/\/section\//);
-  await page.getByRole("button", { name: /Start quick check|Schnelltest starten/i }).first().click();
-  const attempt = page.waitForResponse((r) => /\/api\/sections\/.+\/attempt/.test(r.url()) && r.request().method() === "POST");
+  await page.getByTestId("chapter-quiz-entry").first().click();
+  await page.waitForURL(/\/chapter\/.+\/quiz/);
+  const attempt = page.waitForResponse((r) => /\/api\/chapters\/.+\/attempt/.test(r.url()) && r.request().method() === "POST");
   await answerAll(page, /Finish|Abschließen/);
   const response = await attempt;
   expect(response.ok()).toBe(true);
@@ -50,9 +49,8 @@ test("Lektionstest mit allen neuen Antwortformaten", async ({ page, gateway }) =
 test("falsche Antwort zeigt die Lösung, nicht vorher", async ({ page, gateway }) => {
   await login(page, gateway.url, USERS.formats.email);
   await page.goto(`${gateway.url}/cert/${FORMATS_SLUG}`);
-  await page.getByRole("link", { name: /Formats lesson|Formate-Lektion/ }).first().click();
-  await page.waitForURL(/\/section\//);
-  await page.getByRole("button", { name: /Start quick check|Schnelltest starten/i }).first().click();
+  await page.getByTestId("chapter-quiz-entry").first().click();
+  await page.waitForURL(/\/chapter\/.+\/quiz/);
   await expect(page.getByTestId("answer-solution")).toHaveCount(0);
   // Je nach Format bewusst falsch antworten (die Startreihenfolge einer Reihenfolge-Frage ist nie die Lösung).
   const format = await page.getByTestId("format-question").getAttribute("data-format");

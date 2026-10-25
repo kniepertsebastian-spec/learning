@@ -10,11 +10,9 @@ const HUMAN_IDS = ["E2E-1.1-Q001", "E2E-1.1-Q002", "E2E-1.1-Q003"];
 async function openQuickCheck(page: Page, baseUrl: string) {
   await login(page, baseUrl, USERS.learnerB.email);
   await page.goto(`${baseUrl}/cert/${COURSE_SLUG}`);
-  await page.getByRole("link", { name: /First lesson|Erste Lektion/ }).first().click();
-  await page.waitForURL(/\/section\//);
-  const skip = page.getByTestId("pretest-skip");
-  if (await skip.isVisible().catch(() => false)) await skip.click();
-  await page.getByRole("button", { name: /Start quick check|Schnelltest starten/i }).first().click();
+  // „Sitzt das?“ gibt es am Kapitelende: der Kurs führt je Kapitel zum Kapitel-Quiz.
+  await page.getByTestId("chapter-quiz-entry").first().click();
+  await page.waitForURL(/\/chapter\/.+\/quiz/);
 }
 
 test("Antwort zuerst überlegen: Optionen bleiben verdeckt, bis man sie zeigt", async ({ page, gateway }) => {

@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
-import { certifications, courseReviewers, reviewerQualifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, studySessions, users } from "../lib/server/db/schema";
+import { certifications, courseReviewers, preAssessments, reviewerQualifications, domains, itemVariants, lessonCompletions, lessons, objectives, questionOptions, questions, sections, studySessions, users } from "../lib/server/db/schema";
 
 export const PASSWORD = "E2e-Passw0rd!";
 export const USERS = {
@@ -18,6 +18,9 @@ export const USERS = {
   formatsSession: { email: "e2e-formats-session@test.example", role: "learner" },
   /** Pausiert die Tages-Session und macht später weiter. */
   pauser: { email: "e2e-pauser@test.example", role: "learner" },
+  /** Durchläuft den Einstiegstest direkt nach der Kurswahl (alle anderen haben ihn schon übersprungen). */
+  preAssessment: { email: "e2e-pre-assessment@test.example", role: "learner" },
+  preAssessmentSkip: { email: "e2e-pre-assessment-skip@test.example", role: "learner" },
 } as const;
 export const COURSE_SLUG = "e2e-demo";
 export const COURSE_NAME = "E2E Demo Course";
@@ -79,6 +82,7 @@ export default async function globalSetup() {
       await db.insert(studySessions).values({ userId: user.id, certificationId: course.id, status: "completed", goalType: "minutes", goalValue: 10, plannedAt: at, completedAt: at });
     }
   }
+  await ensurePreAssessmentRecords();
 }
 
 /** Frisch angelegt, Lektion gelesen, noch keine Antworten: die Tages-Session bietet die Formatfragen als neue Aufgaben an. */
@@ -194,5 +198,22 @@ async function ensureQuestions(objectiveId: string) {
       { questionId: question.id, orderNum: 2, text: { de: "Falsch", en: "Wrong" }, isCorrect: false },
       { questionId: question.id, orderNum: 3, text: { de: "Auch falsch", en: "Also wrong" }, isCorrect: false },
     ]);
+  }
+}
+
+/**
+ * Der Einstufungstest erscheint einmalig nach der Kurswahl. Damit die übrigen Tests direkt in den Kurs kommen, gilt er für alle
+ * Testnutzer als übersprungen; nur die beiden Einstufungstest-Nutzer starten jeden Lauf ohne Eintrag.
+ */
+async function ensurePreAssessmentRecords() {
+  const db = getDb();
+  const courses = await db.select({ id: certifications.id }).from(certifications).where(inArray(certifications.slug, [COURSE_SLUG, FORMATS_SLUG]));
+  const fresh: string[] = [USERS.preAssessment.email, USERS.preAssessmentSkip.email];
+  const rows = await db.select({ id: users.id, email: users.email }).from(users).where(inArray(users.email, Object.values(USERS).map((u) => u.email)));
+  for (const user of rows) {
+    for (const course of courses) {
+      if (fresh.includes(user.email)) await db.delete(preAssessments).where(and(eq(preAssessments.userId, user.id), eq(preAssessments.certificationId, course.id)));
+      else await db.insert(preAssessments).values({ userId: user.id, certificationId: course.id, status: "skipped" }).onConflictDoNothing();
+    }
   }
 }

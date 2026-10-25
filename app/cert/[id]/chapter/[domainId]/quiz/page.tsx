@@ -58,6 +58,8 @@ export default async function ChapterQuizPage({ params }: { params: Promise<{ id
         </Card>
       )}
       <SectionQuiz
+        // Eine neue Ziehung ist ein neues Quiz: Zustand der alten zurücksetzen.
+        key={draw.questions.map((q) => q.id).join(",")}
         attemptUrl={`/api/chapters/${domainId}/attempt`}
         questions={draw.questions}
         certSlug={slug}
@@ -68,7 +70,7 @@ export default async function ChapterQuizPage({ params }: { params: Promise<{ id
         resultActions={[
           { href: `/cert/${slug}`, label: de ? "Zurück zum Kurs" : "Back to the course", primary: true },
           // Neuer Aufruf = neue Ziehung aus dem Pool.
-          { href: `${here}?neu=${Date.now().toString(36)}`, label: de ? "Neue Fragen ziehen" : "Draw new questions" },
+          { href: here, label: de ? "Neue Fragen ziehen" : "Draw new questions" },
         ]}
       />
     </div>

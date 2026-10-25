@@ -698,6 +698,40 @@ export const studyProfiles = pgTable(
 );
 
 /**
+ * Einstufungstest direkt nach der Kurswahl (roadmap_bugs_features 1.1): einmalig je Person und Kurs, 10 Auswahlfragen quer durch
+ * die Kapitel. Ergebnis je Kapitel zur Orientierung; fließt weder in den Lernstand noch in die Wiederholungsplanung ein.
+ * `skipped`: die Person hat ihn übersprungen (er wird dann nicht noch einmal angeboten).
+ */
+export type PreAssessmentStatus = "completed" | "skipped";
+export interface PreAssessmentDomainResult {
+  domainId: string;
+  name: string;
+  correct: number;
+  total: number;
+}
+export const preAssessments = pgTable(
+  "pre_assessments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    status: text("status").$type<PreAssessmentStatus>().notNull(),
+    correctCount: integer("correct_count"),
+    totalCount: integer("total_count"),
+    domainResults: jsonb("domain_results").$type<PreAssessmentDomainResult[]>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("pre_assessments_user_certification_unique").on(table.userId, table.certificationId),
+    check("pre_assessments_status_check", sql`${table.status} in ('completed', 'skipped')`),
+  ],
+);
+
+/**
  * „Kurs abbrechen“: der Kurs verschwindet aus dem Dashboard der Person. Bewusst eine eigene Tabelle und kein Löschen:
  * Fortschritt, Wiederholungen und Lernprofil bleiben unangetastet, damit man später weitermachen kann. Die Zeile
  * verschwindet wieder, sobald die Person den Kurs erneut aufnimmt (z. B. eine Session startet).

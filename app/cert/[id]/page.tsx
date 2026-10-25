@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { CourseSeal } from "@/components/seal/CourseSeal";
 import { getCourseSeal } from "@/lib/server/approvals/seal";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
@@ -37,6 +37,8 @@ import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { StartSessionPicker } from "@/components/StartSessionPicker";
 import { getChapterOverview } from "@/lib/server/chapters/service";
+import { getCurrentUser } from "@/lib/server/auth-guards";
+import { getPreAssessmentRecord, shouldOfferPreAssessment } from "@/lib/server/pre-assessment/service";
 import { completedSectionIds } from "@/lib/server/sections/completed";
 import { SelfAssessmentCard } from "@/components/SelfAssessmentCard";
 import { getSelfAssessment, type SelfAssessmentTopic } from "@/lib/server/psrp/self-assessment";
@@ -109,6 +111,14 @@ export default async function CertDetailPage({
   const sectionsWithLessons = new Set(lessonRows.map((lesson) => lesson.sectionId));
 
   const [session, locale] = await Promise.all([auth(), getServerLocale()]);
+
+  // Einstufungstest: einmalig direkt nach der Kurswahl, bevor das erste Kapitel beginnt (nur Lernende, solange noch nichts gelernt wurde).
+  let preAssessment: Awaited<ReturnType<typeof getPreAssessmentRecord>> = null;
+  if (session?.user?.id) {
+    const me = await getCurrentUser();
+    if (me?.role === "learner" && (await shouldOfferPreAssessment(me.id, cert.id))) redirect(`/cert/${slug}/pre-assessment`);
+    preAssessment = await getPreAssessmentRecord(session.user.id, cert.id);
+  }
 
   // Interne Lernpfade können ohne Lektionstests und/oder Abschlussprüfung bestehen („reine Absolvierung“).
   const quizzes = cert.includeSectionQuizzes;
@@ -367,6 +377,24 @@ export default async function CertDetailPage({
             {locale === "de" ? "Anmelden" : "Sign in"}
           </Link>
         </div>
+      )}
+
+      {preAssessment?.status === "completed" && preAssessment.domainResults && (
+        <details className="mb-6 rounded-2xl border border-border bg-surface p-4" data-testid="pre-assessment-card">
+          <summary className="cursor-pointer text-sm font-semibold">
+            {locale === "de"
+              ? `Dein Einstufungstest: ${preAssessment.correctCount} von ${preAssessment.totalCount} richtig`
+              : `Your entry assessment: ${preAssessment.correctCount} of ${preAssessment.totalCount} correct`}
+          </summary>
+          <ul className="mt-3 flex flex-col gap-1.5 text-sm text-foreground/80">
+            {preAssessment.domainResults.map((d) => (
+              <li key={d.domainId} className="flex items-center justify-between gap-3">
+                <span className="min-w-0 truncate">{d.name}</span>
+                <span className="shrink-0 tabular-nums text-foreground/60">{d.correct} / {d.total}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
       {session && quizzes && todayDashboard && (
