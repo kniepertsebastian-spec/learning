@@ -39,6 +39,8 @@ import { StartSessionPicker } from "@/components/StartSessionPicker";
 import { CourseSources } from "@/components/CourseSources";
 import { ExamDateInline } from "@/components/ExamDateInline";
 import { FeedbackButton } from "@/components/FeedbackButton";
+import { WeaknessRadar } from "@/components/WeaknessRadar";
+import { getWeaknessRadar } from "@/lib/server/weakness/radar";
 import { getChapterOverview } from "@/lib/server/chapters/service";
 import { getCourseSources } from "@/lib/server/sources/course-sources";
 import { getCurrentUser } from "@/lib/server/auth-guards";
@@ -295,6 +297,7 @@ export default async function CertDetailPage({
   // Siegel „Fachlich geprüft von …“: nur allgemeine Kurse mit Freigabe; interne Lernpfade nie.
   const seal = cert.kind === "general" ? await getCourseSeal(cert.id).catch(() => null) : null;
   const courseSources = await getCourseSources(cert.id).catch(() => []);
+  const weaknessRadar = session?.user?.id && quizzes ? await getWeaknessRadar(session.user.id, cert.id).catch(() => null) : null;
   const hasStarted = Object.keys(progressData).some((k) => allObjectives.some((o) => o.id === k));
 
   return (
@@ -335,6 +338,7 @@ export default async function CertDetailPage({
                 {locale === "de" ? "Meine Prüfungen" : "My exams"}
               </Link>
             )}
+            {weaknessRadar && <WeaknessRadar radar={weaknessRadar} slug={slug} locale={locale} />}
             {quizzes && (
               <Link
                 href={`/cert/${slug}/offline`}

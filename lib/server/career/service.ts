@@ -24,7 +24,7 @@ export const MAX_RUNS_PER_DAY = 5;
 export type CatalogCourse = { id: string; name: string; provider: string; topics: string[] };
 export type CareerInput = {
   locale: Locale;
-  profile: { jobTitle: string | null; jobDescription: string | null; focusAreas: string | null; state: string | null };
+  profile: { jobTitle: string | null; jobDescription: string | null; focusAreas: string | null; state: string | null; /** Zielrolle der Person (nur gesetzt, wenn angegeben). */ targetRole?: string | null };
   skills: Array<{ kind: string; name: string; level: string; recency: string | null }>;
   completedCourseIds: string[];
   certificateTitles: string[];
@@ -39,8 +39,10 @@ const pathSchema = z.object({
   summary: z.string().min(1).max(1500),
   tasks: z.array(z.string().min(1).max(300)).max(8),
   fit: z.string().max(800),
+  /** Pfad zur Zielrolle der Person (höchstens einer, steht dann zuerst). */
+  isTarget: z.boolean().optional(),
   missingSkills: z.array(z.string().min(1).max(160)).max(10),
-  courses: z.array(z.object({ courseId: z.string(), reason: z.string().max(400) })).max(10),
+  courses: z.array(z.object({ courseId: z.string(), reason: z.string().max(400), /** Welche Lücke zum Rollenprofil dieser Kurs schließt (für „Warum dieser Kurs?“). */ closesGap: z.string().max(400).optional() })).max(10),
   uncoveredTopics: z.array(z.string().min(1).max(160)).max(8),
 });
 const responseSchema = z.object({ paths: z.array(pathSchema).min(1).max(6) });
@@ -54,6 +56,8 @@ const SYSTEM_PROMPT = [
   "Je Stelle: `title` (übliche deutsche Stellenbezeichnung), `summary` (was die Stelle macht, 2–4 Sätze, konkret), `tasks` (3–6 typische Aufgaben), `fit` (warum sie zum Profil passt, 1–2 Sätze), `missingSkills` (was noch fehlt).",
   "`kldb`: der 5-stellige Code der Klassifikation der Berufe 2010 (KldB 2010), dessen 5. Stelle das Anforderungsniveau ist; nimm bevorzugt einen Code aus `occupationHints`, sonst den nach KldB 2010 passenden. `level`: Anforderungsniveau 1 Helfer, 2 Fachkraft, 3 Spezialist, 4 Experte.",
   "`courses`: die sinnvollste Reihenfolge aus dem Katalog, NUR mit `courseId` aus `catalog`, je mit kurzer Begründung; schon abgeschlossene Kurse (`completedCourseIds`) nicht empfehlen. Was der Katalog nicht abdeckt, gehört in `uncoveredTopics`, erfinde keine Kurse.",
+  "Hat die Person eine Zielrolle (`profile.targetRole`), ist der ERSTE Pfad der Weg dorthin: `title` ist die Zielrolle, `isTarget` ist true (bei allen anderen Pfaden weglassen oder false). Vergleiche die Skills und Abschlüsse der Person mit dem üblichen Rollenprofil der Zielrolle und nenne die Kompetenzlücke in `missingSkills`.",
+  "Je Kurs in `courses`: `reason` (kurz, warum er in dieser Reihenfolge kommt) und `closesGap` (genau welche Lücke zum Rollenprofil er schließt, z. B. die fehlende Fähigkeit aus `missingSkills`).",
   "Nenne keine Gehälter. Schreibe in der Sprache `locale` (de = Deutsch, en = Englisch).",
   'Antworte ausschließlich als JSON: {"paths": [...]}.',
 ].join("\n");
@@ -66,11 +70,17 @@ export function createCareerGenerator(client?: GoogleGenAI, onUsage?: (u: AIUsag
 export function sanitizePaths(raw: z.infer<typeof responseSchema>, input: CareerInput): CareerPath[] {
   const known = new Set(input.catalog.map((c) => c.id));
   const done = new Set(input.completedCourseIds);
-  return raw.paths.slice(0, 5).map((p, i) => {
+  const target = Boolean(input.profile.targetRole?.trim());
+  // Der Pfad zur Zielrolle steht zuerst und es gibt höchstens einen; ohne Zielrolle gibt es keinen.
+  const firstTarget = target ? raw.paths.findIndex((p) => p.isTarget) : -1;
+  const ordered = firstTarget > 0 ? [raw.paths[firstTarget], ...raw.paths.filter((_, i) => i !== firstTarget)] : raw.paths;
+  return ordered.slice(0, 5).map((p, i) => {
     const seen = new Set<string>();
     const courses = p.courses.filter((c) => known.has(c.courseId) && !done.has(c.courseId) && !seen.has(c.courseId) && seen.add(c.courseId));
     const kldb = /^\d{3,5}$/.test(p.kldb.trim()) ? p.kldb.trim() : "";
-    return { ...p, id: String(i + 1), kldb, courses };
+    const { isTarget, ...rest } = p;
+    void isTarget;
+    return { ...rest, ...(target && i === 0 && firstTarget >= 0 ? { isTarget: true } : {}), id: String(i + 1), kldb, courses };
   });
 }
 
@@ -89,7 +99,10 @@ export function hintTerms(profile: CareerInput["profile"], skills: Array<{ name:
 
 export async function buildCareerInput(userId: string, locale: Locale): Promise<CareerInput> {
   const db = getDb();
-  const { profile, skills } = await getProfile(userId);
+  const { profile: fullProfile, skills } = await getProfile(userId);
+  // Die Zielrolle kommt nur in die Eingabe (und damit in den Fingerabdruck), wenn sie gesetzt ist: ohne Zielrolle bleibt alles wie bisher.
+  const { targetRole, ...profileRest } = fullProfile;
+  const profile = { ...profileRest, ...(targetRole ? { targetRole } : {}) };
   const passed = await db
     .selectDistinct({ id: exams.certificationId })
     .from(examAttempts)
@@ -125,7 +138,7 @@ export function inputHash(input: CareerInput): string {
 }
 
 export function hasEnoughProfile(input: CareerInput): boolean {
-  return Boolean(input.profile.jobTitle?.trim()) || input.skills.length >= 2;
+  return Boolean(input.profile.jobTitle?.trim()) || Boolean(input.profile.targetRole?.trim()) || input.skills.length >= 2;
 }
 
 export class CareerLimitError extends Error {}
@@ -146,7 +159,9 @@ export async function refreshCareerPaths(userId: string, locale: Locale, generat
 }
 
 export type CareerView = {
-  paths: Array<CareerPath & { courseItems: Array<{ id: string; name: string; slug: string; reason: string; completed: boolean }>; salary: SalaryInfo | null }>;
+  /** Aktuelle Rolle und Zielrolle aus dem Profil („Cloud Engineer → Site Reliability Engineer“). */
+  roles: { current: string | null; target: string | null };
+  paths: Array<CareerPath & { courseItems: Array<{ id: string; name: string; slug: string; reason: string; closesGap: string | null; completed: boolean }>; salary: SalaryInfo | null }>;
   generatedAt: string | null;
   stale: boolean;
   enoughProfile: boolean;
@@ -169,10 +184,11 @@ export async function getCareerView(userId: string, locale: Locale): Promise<Car
   const hasSalaryData = Boolean(await currentDataset());
   return {
     hasSalaryData,
+    roles: { current: input.profile.jobTitle, target: input.profile.targetRole ?? null },
     paths: await Promise.all(
       paths.map(async (p) => ({
         ...p,
-        courseItems: p.courses.filter((c) => byId.has(c.courseId)).map((c) => ({ id: c.courseId, name: byId.get(c.courseId)!.name, slug: byId.get(c.courseId)!.slug, reason: c.reason, completed: completed.has(c.courseId) })),
+        courseItems: p.courses.filter((c) => byId.has(c.courseId)).map((c) => ({ id: c.courseId, name: byId.get(c.courseId)!.name, slug: byId.get(c.courseId)!.slug, reason: c.reason, closesGap: c.closesGap ?? null, completed: completed.has(c.courseId) })),
         salary: p.kldb ? await salaryFor(p.kldb, p.level) : null,
       })),
     ),

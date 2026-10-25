@@ -15,7 +15,7 @@ const tag = randomUUID().slice(0, 8);
 
 describe("Eingaben", () => {
   it("leere Texte werden null, Bundesland nur aus der Liste", () => {
-    expect(profileSchema.parse({ jobTitle: "  ", jobDescription: "x", focusAreas: "", state: "BY" })).toEqual({ jobTitle: null, jobDescription: "x", focusAreas: null, state: "BY" });
+    expect(profileSchema.parse({ jobTitle: "  ", jobDescription: "x", focusAreas: "", state: "BY" })).toEqual({ jobTitle: null, jobDescription: "x", focusAreas: null, targetRole: null, state: "BY" });
     expect(profileSchema.safeParse({ jobTitle: null, jobDescription: null, focusAreas: null, state: "XX" }).success).toBe(false);
   });
   it("Skills haben keine Aktualität, Tools standardmäßig „aktuell“", () => {
@@ -46,7 +46,7 @@ run("Profil und Skills (echte DB)", () => {
     const u = await mkUser();
     await saveProfile(u, { jobTitle: "Admin", jobDescription: null, focusAreas: "Netzwerke", state: "NW" });
     await saveProfile(u, { jobTitle: "Cloud Engineer", jobDescription: null, focusAreas: null, state: null });
-    expect((await getProfile(u)).profile).toEqual({ jobTitle: "Cloud Engineer", jobDescription: null, focusAreas: null, state: null });
+    expect((await getProfile(u)).profile).toEqual({ jobTitle: "Cloud Engineer", jobDescription: null, focusAreas: null, targetRole: null, state: null });
   });
 
   it("Skills: doppelte Namen (Groß/Klein egal) abgelehnt, fremde Einträge nicht änderbar", async () => {

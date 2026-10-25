@@ -3221,6 +3221,8 @@ export const userProfiles = pgTable(
     jobTitle: text("job_title"),
     jobDescription: text("job_description"),
     focusAreas: text("focus_areas"),
+    /** Zielrolle (roadmap_bugs_features 5.3): die Stelle, auf die die Person hinarbeitet; die aktuelle Rolle steht in `jobTitle`. */
+    targetRole: text("target_role"),
     state: text("state").$type<GermanState>(),
     /** Skills aus bestandenen Abschlussprüfungen und Zertifikaten automatisch ergänzen (Einstellung, Standard aus). */
     autoSkills: boolean("auto_skills").notNull().default(false),

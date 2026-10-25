@@ -30,9 +30,11 @@ export const profileSchema = z.object({
   jobTitle: optText(120),
   jobDescription: optText(2000),
   focusAreas: optText(2000),
+  /** Zielrolle, auf die die Person hinarbeitet (optional). */
+  targetRole: optText(120).optional().transform((v) => v ?? null),
   state: z.enum(GERMAN_STATES).nullable(),
 });
-export type ProfileInput = z.infer<typeof profileSchema>;
+export type ProfileInput = z.input<typeof profileSchema>;
 
 export const skillSchema = z
   .object({
@@ -62,7 +64,7 @@ export async function getProfile(userId: string) {
     .where(eq(userSkills.userId, userId))
     .orderBy(asc(userSkills.kind), asc(sql`lower(${userSkills.name})`));
   return {
-    profile: { jobTitle: profile?.jobTitle ?? null, jobDescription: profile?.jobDescription ?? null, focusAreas: profile?.focusAreas ?? null, state: profile?.state ?? null },
+    profile: { jobTitle: profile?.jobTitle ?? null, jobDescription: profile?.jobDescription ?? null, focusAreas: profile?.focusAreas ?? null, targetRole: profile?.targetRole ?? null, state: profile?.state ?? null },
     autoSkills: profile?.autoSkills ?? false,
     skills,
   };
