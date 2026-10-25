@@ -15,14 +15,14 @@ const cand = (id: string, r: number, extra: Partial<DueCandidate> = {}): DueCand
 });
 
 describe("Tageslimit", () => {
-  it("floor(Budget·60 / Ø-Sekunden) mit Rückfall 60 s (eine volle Frage mit Feedback je Minute)", () => {
-    expect(dailyLimit({ timeBudgetMin: 10 })).toBe(10);
+  it("floor(Budget·60 / Ø-Sekunden) mit Rückfall 45 s (eine volle Frage mit Feedback)", () => {
+    expect(dailyLimit({ timeBudgetMin: 10 })).toBe(13);
     expect(dailyLimit({ timeBudgetMin: 2 })).toBe(2);
     expect(dailyLimit({ timeBudgetMin: 10, avgSecondsPerReview: 20 })).toBe(30);
   });
   it("Φ senkt, leichte Tage halbieren, „Mehr lernen“ erhöht", () => {
-    expect(dailyLimit({ timeBudgetMin: 20, phi: 1 })).toBe(14);
-    expect(dailyLimit({ timeBudgetMin: 20, lightDay: true })).toBe(10);
+    expect(dailyLimit({ timeBudgetMin: 20, phi: 1 })).toBe(18);
+    expect(dailyLimit({ timeBudgetMin: 20, lightDay: true })).toBe(13);
     const limit = dailyLimit({ timeBudgetMin: 10 });
     expect(dailyLimit({ timeBudgetMin: 10, extra: moreStudyExtra(limit) })).toBeGreaterThan(limit);
   });

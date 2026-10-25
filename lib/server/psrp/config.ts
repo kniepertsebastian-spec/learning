@@ -96,8 +96,8 @@ export const DEFAULT_PSRP_CONFIG: PsrpConfig = {
   fsrs: { rMin: 0.75, rMax: 0.9, minReviewsForFit: 400, refitIntervalDays: 7, ageRangeWeights: {} },
   planning: {
     // Eine Session-Frage ist eine volle Frage mit Sofort-Feedback, keine Karteikarte: ohne eigene Messwerte rechnen wir mit
-    // einer Minute je Frage (10 Minuten ≈ 10 Fragen).
-    fallbackSecondsPerReview: 60,
+    // 45 Sekunden je Frage (10 Minuten ≈ 13 Fragen): Auswahlfragen 30-45 s, Freitext/Formatfragen 60-90 s bei höchstens 20 % Formatfragen.
+    fallbackSecondsPerReview: 45,
     feedbackSecondsPerReview: 20,
     examRelevanceWeight: 0.15,
     loadBalanceFraction: 0.05,

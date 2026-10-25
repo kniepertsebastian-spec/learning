@@ -51,6 +51,7 @@ import {
   probeResults,
   sessionRecommendationFeedback,
   studyProfiles,
+  courseAbandonments,
   examPlans,
   userCertificates,
   examVouchers,
@@ -104,6 +105,7 @@ export const EXPORTED_USER_REFERENCES: readonly string[] = [
   "user_calibration.user_id",
   "probe_result.user_id",
   "study_profiles.user_id",
+  "course_abandonments.user_id",
   "exam_plans.user_id",
   "user_certificates.user_id",
   "exam_vouchers.assigned_user_id",
@@ -316,6 +318,7 @@ export async function exportAccountData(userId: string) {
       calibration: await db.select().from(userCalibration).where(eq(userCalibration.userId, userId)),
       probeResults: await db.select().from(probeResults).where(eq(probeResults.userId, userId)),
       studyProfiles: await db.select().from(studyProfiles).where(eq(studyProfiles.userId, userId)),
+      courseAbandonments: await db.select().from(courseAbandonments).where(eq(courseAbandonments.userId, userId)),
       examPlans: await db.select().from(examPlans).where(eq(examPlans.userId, userId)),
       userCertificates: await db.select().from(userCertificates).where(eq(userCertificates.userId, userId)),
       // Zugewiesene Gutscheine ohne Code (der Code bleibt verschlüsselt, ihn zeigt nur der Prüfungsplaner)

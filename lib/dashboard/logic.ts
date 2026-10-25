@@ -17,6 +17,11 @@ export function certState(input: { total: number; done: number; hasActivity: boo
   return "not_started";
 }
 
+/** „Kurs abbrechen“: ein abgebrochener Kurs verschwindet aus dem Dashboard, außer die Firma hat ihn zugewiesen (Pflicht). */
+export function hiddenByAbandonment(abandoned: boolean, assigned: boolean): boolean {
+  return abandoned && !assigned;
+}
+
 export function daysUntil(date: Date | null, now: Date): number | null {
   if (!date) return null;
   const day = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());

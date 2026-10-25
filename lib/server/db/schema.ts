@@ -687,6 +687,26 @@ export const studyProfiles = pgTable(
   ],
 );
 
+/**
+ * „Kurs abbrechen“: der Kurs verschwindet aus dem Dashboard der Person. Bewusst eine eigene Tabelle und kein Löschen:
+ * Fortschritt, Wiederholungen und Lernprofil bleiben unangetastet, damit man später weitermachen kann. Die Zeile
+ * verschwindet wieder, sobald die Person den Kurs erneut aufnimmt (z. B. eine Session startet).
+ */
+export const courseAbandonments = pgTable(
+  "course_abandonments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    abandonedAt: timestamp("abandoned_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("course_abandonments_user_certification_unique").on(table.userId, table.certificationId)],
+);
+
 /** R2.3 (roadmap.md): Lebenszyklus einer Lernsession. */
 export type StudySessionStatus = "planned" | "in_progress" | "completed" | "skipped" | "abandoned";
 

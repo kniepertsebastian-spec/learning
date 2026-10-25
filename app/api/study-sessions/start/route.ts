@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/server/auth";
+import { resumeCourse } from "@/lib/server/dashboard/abandon";
 import {
   peekActiveOrTodaySession,
   startStudySession,
@@ -57,6 +58,9 @@ export async function POST(request: NextRequest) {
   if (features && !features.includeSectionQuizzes) {
     return NextResponse.json({ error: "Übungssitzungen gibt es nur bei Lernpfaden mit Lektionstests." }, { status: 409 });
   }
+
+  // Wer wieder lernt, hat den Kurs wieder aufgenommen: er erscheint wieder im Dashboard.
+  await resumeCourse(session.user.id, certificationId);
 
   const existing = await peekActiveOrTodaySession(session.user.id, certificationId);
   if (existing) {

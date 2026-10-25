@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { accuracy, certState, daysUntil, domainLight, greetingPart, masteryPercent, pickContinueIndex, shortCodeOf, weekBars, weekStart } from "./logic";
+import { accuracy, certState, daysUntil, domainLight, greetingPart, hiddenByAbandonment, masteryPercent, pickContinueIndex, shortCodeOf, weekBars, weekStart } from "./logic";
 
 describe("Dashboard-Logik", () => {
   it("Begrüßung nach Tageszeit", () => {
     expect([5, 10, 11, 17, 18, 23].map(greetingPart)).toEqual(["morning", "morning", "day", "day", "evening", "evening"]);
+  });
+  it("Abgebrochene Kurse verschwinden, Firmenzuweisungen bleiben", () => {
+    expect(hiddenByAbandonment(true, false)).toBe(true);
+    expect(hiddenByAbandonment(true, true)).toBe(false);
+    expect(hiddenByAbandonment(false, false)).toBe(false);
   });
   it("Kartenzustände", () => {
     expect(certState({ total: 5, done: 5, hasActivity: true, examInDays: 3 })).toBe("completed");
