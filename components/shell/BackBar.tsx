@@ -21,7 +21,7 @@ export function BackBar({ pathname, ctx }: { pathname: string; ctx: ShellContext
     <nav aria-label={t.shell.back} className="flex flex-wrap items-center gap-2" data-testid="back-bar">
       <Link href={parent} className={btn} data-testid="back-link">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {toCourse ? t.shell.backToCourse : t.shell.back}
+        {toCourse ? t.shell.backToCourse : parent === home ? t.shell.backToDashboard : t.shell.back}
       </Link>
       {parent !== home && (
         <Link href={home} className={btn} data-testid="home-link">

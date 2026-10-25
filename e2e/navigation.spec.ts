@@ -11,7 +11,7 @@ test("Unterseite eines Kurses: Zurück zum Kurs und Dashboard sind sichtbar", as
   await page.waitForURL(new RegExp(`/cert/${COURSE_SLUG}$`));
 
   // Der Kurs selbst führt mit „Zurück“ zum Dashboard; ein zweiter Dashboard-Knopf wäre doppelt.
-  await expect(page.getByTestId("back-link")).toContainText(/^(Back|Zurück)$/);
+  await expect(page.getByTestId("back-link")).toContainText(/Back to the dashboard|Zurück zum Dashboard/);
   await expect(page.getByTestId("home-link")).toHaveCount(0);
   await page.getByTestId("back-link").click();
   await page.waitForURL(`${gateway.url}/`);
