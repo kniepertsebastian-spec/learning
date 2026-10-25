@@ -698,6 +698,37 @@ export const studyProfiles = pgTable(
 );
 
 /**
+ * „Problem melden / Feedback“ (roadmap_bugs_features 4.4): freie Rückmeldung zu einem Kurs, mit Kontext (Kurs, Kapitel, Lektion), für Bugs,
+ * Tippfehler und inhaltliche Unstimmigkeiten. Getrennt von `content_reports` (Fragen/Lektionen melden mit festen Gründen), weil hier Text
+ * und eine Kategorie dazugehören. Jede Meldung ist ein eigenes Signal.
+ */
+export type FeedbackCategory = "bug" | "typo" | "content" | "other";
+export type FeedbackStatus = "open" | "resolved" | "dismissed";
+export const feedbackReports = pgTable(
+  "feedback_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reporterUserId: uuid("reporter_user_id").references(() => users.id, { onDelete: "set null" }),
+    certificationId: uuid("certification_id")
+      .notNull()
+      .references(() => certifications.id, { onDelete: "cascade" }),
+    domainId: uuid("domain_id").references(() => domains.id, { onDelete: "set null" }),
+    sectionId: uuid("section_id").references(() => sections.id, { onDelete: "set null" }),
+    category: text("category").$type<FeedbackCategory>().notNull(),
+    message: text("message").notNull(),
+    status: text("status").$type<FeedbackStatus>().notNull().default("open"),
+    resolvedByUserId: uuid("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("feedback_reports_cert_status_idx").on(table.certificationId, table.status),
+    check("feedback_reports_category_check", sql`${table.category} in ('bug', 'typo', 'content', 'other')`),
+    check("feedback_reports_status_check", sql`${table.status} in ('open', 'resolved', 'dismissed')`),
+  ],
+);
+
+/**
  * Einstufungstest direkt nach der Kurswahl (roadmap_bugs_features 1.1): einmalig je Person und Kurs, 10 Auswahlfragen quer durch
  * die Kapitel. Ergebnis je Kapitel zur Orientierung; fließt weder in den Lernstand noch in die Wiederholungsplanung ein.
  * `skipped`: die Person hat ihn übersprungen (er wird dann nicht noch einmal angeboten).

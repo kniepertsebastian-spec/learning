@@ -63,7 +63,7 @@ export default async function SectionPage({
   // Funktionsumfang des Lernpfads: interne Lernpfade können ohne Lektionstests bestehen („reine Absolvierung“).
   const [certRow] = domainRows[0]
     ? await db
-        .select({ includeSectionQuizzes: certifications.includeSectionQuizzes, contentLocale: certifications.contentLocale, translationStatus: certifications.translationStatus })
+        .select({ kind: certifications.kind, includeSectionQuizzes: certifications.includeSectionQuizzes, contentLocale: certifications.contentLocale, translationStatus: certifications.translationStatus })
         .from(certifications)
         .where(eq(certifications.id, domainRows[0].certificationId))
         .limit(1)
@@ -124,6 +124,7 @@ export default async function SectionPage({
       domainName={domainName}
       courseName={certName}
       lessonId={lesson.id}
+      feedbackContext={domainRows[0] && certRow?.kind === "general" ? { certificationId: domainRows[0].certificationId, domainId: domainRows[0].id } : null}
       outline={outline}
       estimatedMinutes={section.estimatedMinutes}
       lesson={{

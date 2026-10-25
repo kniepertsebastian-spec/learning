@@ -13,6 +13,8 @@ import { ContentGenerationControl } from "@/components/ContentGenerationControl"
 import { ExamInfoForm } from "@/components/admin/ExamInfoForm";
 import { DeleteCertification } from "@/components/DeleteCertification";
 import { ContentReportQueue } from "@/components/ContentReportQueue";
+import { FeedbackQueue } from "@/components/FeedbackQueue";
+import { listOpenFeedback } from "@/lib/server/feedback/service";
 import { PrerequisiteReviewQueue } from "@/components/PrerequisiteReviewQueue";
 import { ExplanationReviewQueue } from "@/components/ExplanationReviewQueue";
 import {
@@ -406,6 +408,7 @@ export default async function AdminCertificationPage({
         </div>
 
         <ContentReportQueue certificationId={cert.id} locale={locale} />
+        {cert.kind === "general" && <FeedbackQueue items={(await listOpenFeedback(cert.id)).map((f) => ({ ...f, createdAt: f.createdAt.toISOString() }))} locale={locale} canResolve />}
         {cert.kind === "general" && <ExplanationReviewQueue certificationId={cert.id} locale={locale} />}
         {cert.kind === "general" && <PrerequisiteReviewQueue certificationId={cert.id} locale={locale} />}
         {cert.kind === "general" && <DeleteCertification certificationId={cert.id} slug={cert.slug} name={cert.name} locale={locale} />}

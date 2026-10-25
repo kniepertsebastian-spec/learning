@@ -36,7 +36,11 @@ import { getProgressView, type ProgressView } from "@/lib/server/progress/snapsh
 import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { StartSessionPicker } from "@/components/StartSessionPicker";
+import { CourseSources } from "@/components/CourseSources";
+import { ExamDateInline } from "@/components/ExamDateInline";
+import { FeedbackButton } from "@/components/FeedbackButton";
 import { getChapterOverview } from "@/lib/server/chapters/service";
+import { getCourseSources } from "@/lib/server/sources/course-sources";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { getPreAssessmentRecord, shouldOfferPreAssessment } from "@/lib/server/pre-assessment/service";
 import { completedSectionIds } from "@/lib/server/sections/completed";
@@ -290,6 +294,7 @@ export default async function CertDetailPage({
   const overviewScope = overview ? await getCourseScope(cert.id) : undefined;
   // Siegel „Fachlich geprüft von …“: nur allgemeine Kurse mit Freigabe; interne Lernpfade nie.
   const seal = cert.kind === "general" ? await getCourseSeal(cert.id).catch(() => null) : null;
+  const courseSources = await getCourseSources(cert.id).catch(() => []);
   const hasStarted = Object.keys(progressData).some((k) => allObjectives.some((o) => o.id === k));
 
   return (
@@ -396,6 +401,8 @@ export default async function CertDetailPage({
           </ul>
         </details>
       )}
+
+      {session && quizzes && <ExamDateInline certId={cert.id} locale={locale} goal={studyGoal} />}
 
       {session && quizzes && todayDashboard && (
         <TodayDashboard certSlug={slug} locale={locale} data={todayDashboard} />
@@ -589,6 +596,14 @@ export default async function CertDetailPage({
           );
         })}
       </div>
+
+      <CourseSources sources={courseSources} locale={locale} />
+
+      {session && cert.kind === "general" && (
+        <div className="mt-6">
+          <FeedbackButton certificationId={cert.id} />
+        </div>
+      )}
     </div>
   );
 }

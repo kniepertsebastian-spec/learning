@@ -13,7 +13,11 @@ import { requireReviewerPage } from "@/lib/server/reviewers/guard";
 import { canReviewCourse, listOwnComments } from "@/lib/server/reviewers/service";
 import { isQualified } from "@/lib/server/reviewers/probe-service";
 import { getReviewerCourseView } from "@/lib/server/reviewers/course-view";
+import { CourseSources } from "@/components/CourseSources";
 import { RichText } from "@/components/RichText";
+import { getCourseSources } from "@/lib/server/sources/course-sources";
+import { FeedbackQueue } from "@/components/FeedbackQueue";
+import { listOpenFeedback } from "@/lib/server/feedback/service";
 import { ReviewerApprovalPanel, type ReviewerApprovalData } from "@/components/reviewer/ReviewerApprovalPanel";
 import { ReviewerItemComment } from "@/components/reviewer/ReviewerItemComment";
 
@@ -27,11 +31,13 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
   // Nicht zugewiesene und interne Kurse sehen aus wie nicht vorhanden.
   if (!cert || !(await canReviewCourse(user.id, cert.id))) notFound();
 
-  const [tree, view, own, [me]] = await Promise.all([
+  const [tree, view, own, [me], courseSources, feedback] = await Promise.all([
     getReviewerCourseView(cert.id),
     getReviewerApprovalView(cert.id, user.id),
     listOwnComments(cert.id, user.id),
     getDb().select({ name: users.name }).from(users).where(eq(users.id, user.id)).limit(1),
+    getCourseSources(cert.id).catch(() => []),
+    listOpenFeedback(cert.id),
   ]);
   const described = view.diffSinceOwn && view.changesSinceOwn > 0 ? await describeChanges(view.diffSinceOwn) : null;
   const approval: ReviewerApprovalData = {
@@ -56,6 +62,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
           {de ? "Kurs bearbeiten" : "Edit course"}
         </Link>
       </div>
+      <FeedbackQueue items={feedback.map((f) => ({ ...f, createdAt: f.createdAt.toISOString() }))} locale={locale} canResolve={false} />
       <ReviewerApprovalPanel certId={cert.id} data={approval} locale={locale} canApprove={await isQualified(user.id)} />
       {tree.map((domain) => (
         <section key={domain.id} className="mb-8">
@@ -96,6 +103,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
           ))}
         </section>
       ))}
+      <CourseSources sources={courseSources} locale={locale} />
     </div>
   );
 }

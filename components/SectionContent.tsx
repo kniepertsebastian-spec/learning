@@ -14,6 +14,7 @@ import { LessonSimulationsProvider } from "@/components/lesson/LessonSimulations
 import { OutlineList } from "@/components/lesson/OutlineList";
 import { ReadingProgress } from "@/components/lesson/ReadingProgress";
 import { TocList } from "@/components/lesson/TocList";
+import { FeedbackButton } from "@/components/FeedbackButton";
 import { ReportProblem } from "@/components/quiz/ReportProblem";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ interface SectionContentProps {
   /** Kursname für den Breadcrumb. */
   courseName?: string;
   lessonId?: string;
+  /** Kontext für „Problem melden / Feedback“: Kurs und Kapitel dieser Lektion (fehlt im Offline-Reader, dort gibt es den Knopf nicht). */
+  feedbackContext?: { certificationId: string; domainId: string } | null;
   lesson: {
     content: Localized<string>;
     keyTakeaways: Localized<string[]> | null;
@@ -78,6 +81,7 @@ export function SectionContent({
   domainName,
   courseName,
   lessonId,
+  feedbackContext = null,
   lesson,
   questions,
   outline = null,
@@ -348,6 +352,12 @@ export function SectionContent({
                 />
               )}
             </div>
+
+            {feedbackContext && !offline && (
+              <div className="mt-6 border-t border-border pt-3">
+                <FeedbackButton certificationId={feedbackContext.certificationId} domainId={feedbackContext.domainId} sectionId={sectionId} />
+              </div>
+            )}
 
             {outline && (outline.prevId || outline.nextId) && (
               <nav className="mt-8 flex flex-wrap justify-between gap-3 border-t border-border pt-4" aria-label={lp.outline}>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarClock, CheckCircle2, Loader2, Target } from "lucide-react";
 import type { Locale } from "@/lib/types";
 import { computeTimeOutlook, dailyMinutes } from "@/lib/study/time-outlook";
+import { EXAM_DATE_HINT } from "@/lib/study/exam-date-hint";
 
 export interface StudyGoalState {
   examDate: string | null;
@@ -14,7 +15,7 @@ export interface StudyGoalState {
   lightWeekdays: number[];
 }
 
-const DEFAULT_GOAL: StudyGoalState = {
+export const DEFAULT_GOAL: StudyGoalState = {
   examDate: null,
   dailyGoalType: "minutes",
   dailyGoalValue: 15,
@@ -101,6 +102,7 @@ export function StudyGoalPanel({
             onChange={(e) => setGoal({ ...goal, examDate: e.target.value || null })}
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
           />
+          <span className="mt-1 block text-[11px] leading-snug text-foreground/60" data-testid="exam-date-hint-panel">{EXAM_DATE_HINT[locale]}</span>
         </label>
 
         <label className="block text-xs">
