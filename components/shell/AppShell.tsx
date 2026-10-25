@@ -4,6 +4,7 @@ import { CalendarCheck, Flame, Languages, Menu, Moon, ShieldAlert, Sun } from "l
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { BackBar } from "@/components/shell/BackBar";
 import { SidebarContent, type ShellData } from "@/components/shell/Sidebar";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
@@ -97,6 +98,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
 
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-3 px-4 pt-4 sm:px-6 lg:px-8">
+            <BackBar pathname={pathname} ctx={ctx} />
             {ctx === "personal" ? (
               <SearchField disabled aria-label={t.shell.searchLabel} placeholder={t.shell.search} className="max-w-[460px] flex-1 opacity-70" />
             ) : (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availableContexts, contextForPath, isNavActive, isPublicPath, navItems } from "./nav";
+import { availableContexts, contextForPath, homePathForContext, isNavActive, isPublicPath, navItems, parentPath } from "./nav";
 
 describe("contextForPath", () => {
   it("ordnet Pfade dem Kontext zu", () => {
@@ -58,5 +58,29 @@ describe("availableContexts", () => {
     expect(availableContexts({ hasCompanyAccess: true, isAdmin: false })).toEqual(["personal", "company"]);
     expect(availableContexts({ hasCompanyAccess: false, isAdmin: true })).toEqual(["personal", "admin"]);
     expect(availableContexts({ hasCompanyAccess: true, isAdmin: true })).toEqual(["personal", "company", "admin"]);
+  });
+});
+
+describe("parentPath und homePathForContext", () => {
+  it("führt Kurs-Unterseiten zum Kurs, den Kurs zum Dashboard", () => {
+    expect(parentPath("/cert/sec-plus/section/abc")).toBe("/cert/sec-plus");
+    expect(parentPath("/cert/sec-plus/session")).toBe("/cert/sec-plus");
+    expect(parentPath("/cert/sec-plus")).toBe("/");
+    expect(parentPath("/cert/sec-plus/")).toBe("/");
+  });
+  it("hält Firma und Admin in ihrem Kontext", () => {
+    expect(parentPath("/company/team/x")).toBe("/company");
+    expect(parentPath("/admin/requests/42")).toBe("/admin");
+    expect(parentPath("/company")).toBe("/");
+  });
+  it("sonst eine Ebene höher, höchstens bis zur Startseite", () => {
+    expect(parentPath("/profile")).toBe("/");
+    expect(parentPath("/exams/a/b")).toBe("/exams/a");
+    expect(parentPath("/")).toBe("/");
+  });
+  it("Startseite je Kontext", () => {
+    expect(homePathForContext("personal")).toBe("/");
+    expect(homePathForContext("company")).toBe("/company");
+    expect(homePathForContext("admin")).toBe("/admin");
   });
 });

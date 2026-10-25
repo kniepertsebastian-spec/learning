@@ -10,6 +10,25 @@ export function contextForPath(pathname: string): ShellContext {
   return "personal";
 }
 
+/** Startseite des Kontexts („Dashboard“): persönlich `/`, Firma `/company`, Admin `/admin`. */
+export function homePathForContext(ctx: ShellContext): string {
+  return ctx === "company" ? "/company" : ctx === "admin" ? "/admin" : "/";
+}
+
+/**
+ * Die Seite „darüber“ für den Zurück-Knopf: Unterseiten eines Kurses führen zum Kurs, der Kurs zum Dashboard, sonst eine
+ * Ebene höher, höchstens bis zur Startseite des Kontexts. Bewusst deterministisch statt `history.back()`, damit „Zurück“
+ * nach einem Reload oder einem Direktlink nicht ins Leere oder von der App weg führt.
+ */
+export function parentPath(pathname: string): string {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length === 0) return "/";
+  if (parts[0] === "cert") return parts.length > 2 ? `/cert/${parts[1]}` : "/";
+  if (parts[0] === "company" || parts[0] === "admin") return parts.length > 1 ? `/${parts[0]}` : "/";
+  return parts.length > 1 ? `/${parts.slice(0, -1).join("/")}` : "/";
+}
+
 /** Seiten ohne Shell: Anmeldung, Registrierung, Einladungen, Passwort-Wiederherstellung usw. */
 const PUBLIC_PREFIXES = [
   "/login",
