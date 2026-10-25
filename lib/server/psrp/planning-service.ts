@@ -69,7 +69,8 @@ export async function averageSecondsPerReview(userId: string, config = DEFAULT_P
     .limit(500);
   const times = withoutOutliers(rows.map((r) => r.ms as number), config.state);
   if (times.length < 10) return null;
-  return times.reduce((a, b) => a + b, 0) / times.length / 1000;
+  // Gemessen wird bis zur Antwort; Feedback und Erklärung kommen dazu.
+  return times.reduce((a, b) => a + b, 0) / times.length / 1000 + config.planning.feedbackSecondsPerReview;
 }
 
 async function userChronoProfile(userId: string, config: PsrpConfig) {

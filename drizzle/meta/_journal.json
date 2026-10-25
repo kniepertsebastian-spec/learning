@@ -722,6 +722,13 @@
       "when": 1792852936999,
       "tag": "0102_white_thanos",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1792920445805,
+      "tag": "0103_nifty_brother_voodoo",
+      "breakpoints": true
     }
   ]
 }

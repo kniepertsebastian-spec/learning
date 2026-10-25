@@ -703,6 +703,19 @@ export type StudySessionStatus = "planned" | "in_progress" | "completed" | "skip
  * content_generation_jobs (R0.3): ein Reload liest dieselbe Zeile erneut,
  * statt eine neue Session zu erzeugen.
  */
+/** Zwischenstand einer pausierten Session (Antworten wie bei `completeStudySession`, dazu die Position). */
+export interface StudySessionDraft {
+  answers: Array<{
+    itemId: string;
+    selectedOptionId: string;
+    answer?: unknown;
+    confidence?: "guessed" | "unsure" | "sure";
+    thinkFirst?: boolean;
+    answeredAt?: string;
+  }>;
+  currentIndex: number;
+}
+
 export const studySessions = pgTable(
   "study_sessions",
   {
@@ -734,6 +747,9 @@ export const studySessions = pgTable(
     deescalated: boolean("deescalated").notNull().default(false),
     /** Notausstieg „Heute reicht's“ (Flag exit_with_win): Zeitpunkt, an dem die Session vorzeitig beendet wurde (Signal für die Frühwarnung). */
     exitedAt: timestamp("exited_at", { withTimezone: true }),
+    /** „Pause für heute“: Zeitpunkt der Pause und die bis dahin gegebenen Antworten; die Session bleibt aktiv und wird später fortgesetzt. */
+    pausedAt: timestamp("paused_at", { withTimezone: true }),
+    draft: jsonb("draft").$type<StudySessionDraft | null>(),
     plannedAt: timestamp("planned_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),

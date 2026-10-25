@@ -12,8 +12,9 @@ import type { StudyGoalType } from "@/lib/server/db/schema";
  * Feedback - deutlich kürzer als der Exam-Pacing-Wert aus
  * lib/server/exam/blueprint.ts (dort geht es um Prüfungsbedingungen, hier um
  * schnelles Wiederholen mit sofortigem Feedback). Reine Schätzung für die
- * Minuten<->Fragen-Umrechnung, keine exakte Vorhersage. */
-export const MINUTES_PER_SESSION_QUESTION = 1.5;
+ * Minuten<->Fragen-Umrechnung, keine exakte Vorhersage. Entspricht dem Rückfall der Planungsschicht
+ * (60 s je Frage, siehe psrp/config.ts), damit beide Wege dieselbe Zahl Fragen ergeben. */
+export const MINUTES_PER_SESSION_QUESTION = 1;
 
 /**
  * "Session anhand des Zeitbudgets erstellen" (roadmap.md): übersetzt das

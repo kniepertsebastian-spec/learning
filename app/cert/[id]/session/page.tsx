@@ -6,7 +6,7 @@ import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import { certifications } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
-import { getOrCreateStudySession, getStudySessionWithContent } from "@/lib/server/study/session-service";
+import { getOrCreateStudySession, getStudySessionDraft, getStudySessionWithContent } from "@/lib/server/study/session-service";
 import { pickPracticeSimulation } from "@/lib/server/simulations/service";
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { getCompanyMembership } from "@/lib/server/company/access";
@@ -76,6 +76,7 @@ export default async function StudySessionPage({
   const mentorAsk = membership && (await findMentorUserId(membership.organizationId, membership.userId)) ? { certificationId: cert.id } : null;
 
   const learning = await getLearningContext(session.user.id);
+  const draft = await getStudySessionDraft(summary.id, session.user.id);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -83,6 +84,7 @@ export default async function StudySessionPage({
         key={summary.id}
         askConfidence={learning.intro.askConfidence}
         mentorAsk={mentorAsk}
+        resume={draft}
         exitEnabled={isFeatureEnabled("exit_with_win", session.user.id)}
         practice={practice}
         certSlug={slug}

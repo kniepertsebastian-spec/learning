@@ -19,6 +19,7 @@ import {
   studySessions,
   type ReviewOutcome,
   type StudyGoalType,
+  type StudySessionDraft,
   type StudySessionItemCategory,
   type StudySessionStatus,
 } from "@/lib/server/db/schema";
@@ -93,6 +94,8 @@ export interface StudySessionSummary {
   isComeback: boolean;
   /** Frühwarnung (Flag dropout_guard): diese Session wurde entlastet. */
   deescalated: boolean;
+  /** „Pause für heute“: so viele Fragen sind schon beantwortet und gespeichert; die Session wird später fortgesetzt. */
+  paused: { answered: number } | null;
 }
 
 function toSummary(
@@ -103,6 +106,8 @@ function toSummary(
     goalValue: number;
     isComeback: boolean;
     deescalated: boolean;
+    pausedAt?: Date | null;
+    draft?: StudySessionDraft | null;
   },
   itemCount: number,
 ): StudySessionSummary {
@@ -115,6 +120,7 @@ function toSummary(
     estimatedMinutes: estimateSessionMinutes(itemCount),
     isComeback: session.isComeback,
     deescalated: session.deescalated,
+    paused: session.pausedAt && session.draft ? { answered: session.draft.answers.length } : null,
   };
 }
 
@@ -982,7 +988,7 @@ export async function completeStudySession(
 
   await db
     .update(studySessions)
-    .set({ status: "completed", completedAt: timing?.completedAt ?? new Date(), updatedAt: new Date() })
+    .set({ status: "completed", completedAt: timing?.completedAt ?? new Date(), pausedAt: null, draft: null, updatedAt: new Date() })
     .where(eq(studySessions.id, sessionId));
 
   // Verstehens-Modus (Flag understanding_mode): Muster erkennen, best effort, blockiert die Auswertung nie.
@@ -1110,6 +1116,66 @@ export async function declineDeescalatedSession(sessionId: string, userId: strin
   await declineDeescalation(userId);
   await db.delete(studySessions).where(eq(studySessions.id, sessionId));
   return buildAndPersistSession(userId, session.certificationId, { goalType: session.goalType, goalValue: session.goalValue, energyLevel: session.energyLevel ?? undefined });
+}
+
+/**
+ * „Pause für heute“: speichert die bisher gegebenen Antworten und die Position, die Session bleibt aktiv (`in_progress`,
+ * gilt unabhängig vom Datum) und wird später genau dort fortgesetzt. Schreibt keine Reviews; die Wertung entsteht wie immer
+ * erst beim Abschluss (`completeStudySession`).
+ */
+export async function pauseStudySession(
+  sessionId: string,
+  userId: string,
+  input: { answers: StudySessionAnswerInput[]; currentIndex: number },
+): Promise<{ answered: number }> {
+  const db = getDb();
+  const [session] = await db
+    .select({ id: studySessions.id, status: studySessions.status })
+    .from(studySessions)
+    .where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId)))
+    .limit(1);
+  if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
+  if (session.status !== "planned" && session.status !== "in_progress") {
+    throw new StudySessionNotActiveError("Diese Session ist bereits abgeschlossen oder ausgesetzt.");
+  }
+  const items = await db
+    .select({ id: studySessionItems.id })
+    .from(studySessionItems)
+    .where(and(eq(studySessionItems.sessionId, sessionId), eq(studySessionItems.referenceType, "question")));
+  const known = new Set(items.map((i) => i.id));
+  // Je Item die letzte Antwort; nur Items dieser Session, Freitexte werden wie beim Abschluss bereinigt.
+  const byItem = new Map<string, StudySessionDraft["answers"][number]>();
+  for (const a of input.answers) {
+    if (!known.has(a.itemId)) continue;
+    byItem.set(a.itemId, {
+      itemId: a.itemId,
+      selectedOptionId: typeof a.selectedOptionId === "string" ? a.selectedOptionId.slice(0, 64) : "",
+      ...(sanitizeAnswer(a.answer) ? { answer: sanitizeAnswer(a.answer) } : {}),
+      ...(a.confidence ? { confidence: a.confidence } : {}),
+      ...(a.thinkFirst ? { thinkFirst: true } : {}),
+      ...(typeof a.answeredAt === "string" ? { answeredAt: a.answeredAt } : {}),
+    });
+  }
+  const draft: StudySessionDraft = {
+    answers: [...byItem.values()],
+    currentIndex: Math.max(0, Math.min(items.length - 1, Math.floor(Number(input.currentIndex) || 0))),
+  };
+  const now = new Date();
+  await db
+    .update(studySessions)
+    .set({ status: "in_progress", startedAt: sql`coalesce(${studySessions.startedAt}, ${now.toISOString()}::timestamptz)`, pausedAt: now, draft, updatedAt: now })
+    .where(eq(studySessions.id, sessionId));
+  return { answered: draft.answers.length };
+}
+
+/** Zwischenstand einer pausierten Session (oder null). */
+export async function getStudySessionDraft(sessionId: string, userId: string): Promise<StudySessionDraft | null> {
+  const [row] = await getDb()
+    .select({ draft: studySessions.draft, status: studySessions.status })
+    .from(studySessions)
+    .where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId)))
+    .limit(1);
+  return row && (row.status === "planned" || row.status === "in_progress") ? (row.draft ?? null) : null;
 }
 
 export async function skipStudySession(sessionId: string, userId: string): Promise<void> {

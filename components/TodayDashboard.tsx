@@ -41,6 +41,8 @@ export interface TodayDashboardData {
    * session-builder.ts), dann bewusst mit mehr Wiederholung statt neuem
    * Stoff zusammengesetzt. */
   isComeback: boolean;
+  /** „Pause für heute“: schon beantwortete Fragen der pausierten Session. */
+  paused?: { answered: number } | null;
 }
 
 /** R2 (roadmap.md, neue Fassung): "Empfehlungen mit Gründen anzeigen" - baut
@@ -298,9 +300,13 @@ export function TodayDashboard({
           href={`/cert/${certSlug}/session`}
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
         >
-          {locale === "de"
-            ? `Jetzt lernen (~${data.estimatedMinutes} Min.)`
-            : `Start learning (~${data.estimatedMinutes} min)`}
+          {data.paused
+            ? locale === "de"
+              ? `Weitermachen (${data.paused.answered} Fragen schon beantwortet)`
+              : `Continue (${data.paused.answered} questions already answered)`
+            : locale === "de"
+              ? `Jetzt lernen (~${data.estimatedMinutes} Min.)`
+              : `Start learning (~${data.estimatedMinutes} min)`}
         </Link>
         <button
           type="button"

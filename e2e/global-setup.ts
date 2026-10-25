@@ -16,6 +16,8 @@ export const USERS = {
   recallSkip: { email: "e2e-recall-skip@test.example", role: "learner" },
   formats: { email: "e2e-formats@test.example", role: "learner" },
   formatsSession: { email: "e2e-formats-session@test.example", role: "learner" },
+  /** Pausiert die Tages-Session und macht später weiter. */
+  pauser: { email: "e2e-pauser@test.example", role: "learner" },
 } as const;
 export const COURSE_SLUG = "e2e-demo";
 export const COURSE_NAME = "E2E Demo Course";
@@ -55,6 +57,7 @@ export default async function globalSetup() {
   await ensureVariants(objectiveId);
   await ensureFormatsCourse();
   await resetFormatsSessionUser(passwordHash);
+  await resetPauseUser(passwordHash);
 
   // Prüfer-Nutzer: genau dem E2E-Kurs zugewiesen.
   const [reviewer] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.reviewer.email)).limit(1);
@@ -85,6 +88,23 @@ async function resetFormatsSessionUser(passwordHash: string) {
   await db.delete(users).where(eq(users.email, email));
   const [user] = await db.insert(users).values({ email, passwordHash, role: "learner", emailVerifiedAt: new Date() }).returning({ id: users.id });
   const [cert] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, FORMATS_SLUG)).limit(1);
+  const [section] = await db
+    .select({ id: sections.id })
+    .from(sections)
+    .innerJoin(objectives, eq(objectives.id, sections.objectiveId))
+    .innerJoin(domains, eq(domains.id, objectives.domainId))
+    .where(eq(domains.certificationId, cert.id))
+    .limit(1);
+  await db.insert(lessonCompletions).values({ userId: user.id, sectionId: section.id, completedAt: new Date(Date.now() - 3_600_000) });
+}
+
+/** Frisch angelegt, Lektion des Demo-Kurses gelesen, keine Session: die Tages-Session wird im Test gebaut, pausiert und fortgesetzt. */
+async function resetPauseUser(passwordHash: string) {
+  const db = getDb();
+  const email = USERS.pauser.email;
+  await db.delete(users).where(eq(users.email, email));
+  const [user] = await db.insert(users).values({ email, passwordHash, role: "learner", emailVerifiedAt: new Date() }).returning({ id: users.id });
+  const [cert] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, COURSE_SLUG)).limit(1);
   const [section] = await db
     .select({ id: sections.id })
     .from(sections)
