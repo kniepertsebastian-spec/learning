@@ -5,7 +5,8 @@ import type { Seal } from "@/lib/reviewers/seal";
 import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 import { ArrowRight, Flame } from "lucide-react";
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useSyncExternalStore } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, Overline } from "@/components/ui/card";
@@ -21,7 +22,7 @@ import type { CourseCategoryColor } from "@/lib/server/db/schema";
 
 export interface DashboardData {
   name: string;
-  certs: Array<{ id: string; slug: string; name: string; version: string; shortCode: string; color: CourseCategoryColor; doneLessons: number; totalLessons: number; percent: number; state: CertState; examInDays: number | null; seal?: Seal | null }>;
+  certs: Array<{ id: string; slug: string; name: string; version: string; shortCode: string; color: CourseCategoryColor; doneLessons: number; totalLessons: number; percent: number; state: CertState; examInDays: number | null; assigned?: boolean; seal?: Seal | null }>;
   main: null | {
     certSlug: string;
     certName: string;
@@ -59,6 +60,35 @@ function ago(iso: string | null, t: ReturnType<typeof useLocale>["t"]): string |
   if (mins < 60) return fmt(t.home.minutesAgo, { n: mins });
   if (mins < 60 * 24) return fmt(t.home.hoursAgo, { n: Math.round(mins / 60) });
   return fmt(t.home.daysAgo, { n: Math.round(mins / 1440) });
+}
+
+/** „Kurs abbrechen“: nimmt den Kurs aus dem Dashboard, der Fortschritt bleibt. Von der Firma zugewiesene Kurse haben den Knopf nicht. */
+function AbandonCourseButton({ certId, name }: { certId: string; name: string }) {
+  const { t } = useLocale();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  async function abandon() {
+    if (busy || !window.confirm(fmt(t.home.abandonConfirm, { name }))) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      const response = await fetch(`/api/courses/${certId}/abandon`, { method: "POST" });
+      if (!response.ok) throw new Error(`Status ${response.status}`);
+      router.refresh();
+    } catch {
+      setFailed(true);
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="-mb-1 flex items-center justify-between gap-2">
+      <button type="button" onClick={() => void abandon()} disabled={busy} data-testid="abandon-course" className="text-xs text-subtle underline-offset-2 hover:text-foreground hover:underline disabled:cursor-not-allowed disabled:opacity-60">
+        {t.home.abandonCourse}
+      </button>
+      {failed && <span role="alert" className="text-xs text-danger-text">{t.home.abandonFailed}</span>}
+    </div>
+  );
 }
 
 export function Dashboard({ data }: { data: DashboardData }) {
@@ -201,6 +231,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
                       <Badge tone={stateTone(c.state)}>{stateText(c)}</Badge>
                       <Button asChild size="sm" variant={c.state === "not_started" ? "primary" : "secondary"}><Link href={`/cert/${c.slug}`}>{btnText(c.state)}</Link></Button>
                     </div>
+                    {!c.assigned && <AbandonCourseButton certId={c.id} name={c.name} />}
                   </Card>
                 </li>
               ))}

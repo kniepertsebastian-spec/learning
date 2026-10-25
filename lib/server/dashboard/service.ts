@@ -3,7 +3,7 @@ import { getSealSummaries } from "@/lib/server/approvals/seal";
 import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
-  certifications, companyAssignments, courseCategories, domains, examAnswers, examAttempts, lessonCompletions, lessons, objectiveProgress, objectives,
+  certifications, companyAssignments, courseAbandonments, courseCategories, domains, examAnswers, examAttempts, lessonCompletions, lessons, objectiveProgress, objectives,
   quizAnswers, quizAttempts, quizzes, sections, studyProfiles, studySessions, type CourseCategoryColor,
 } from "@/lib/server/db/schema";
 import { visibleCertificationsCondition, type Viewer } from "@/lib/server/catalog/visibility";
@@ -13,7 +13,7 @@ import { getTopWeakObjectives } from "@/lib/server/study/session-service";
 import { getProgressView, type ProgressView } from "@/lib/server/progress/snapshots";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import {
-  accuracy, certState, daysUntil, domainLight, masteryPercent, pickContinueIndex, shortCodeOf, weekBars, weekStart,
+  accuracy, certState, daysUntil, domainLight, hiddenByAbandonment, masteryPercent, pickContinueIndex, shortCodeOf, weekBars, weekStart,
   type CertState, type DomainLight,
 } from "@/lib/dashboard/logic";
 import type { Localized } from "@/lib/types";
@@ -30,6 +30,8 @@ export interface DashboardCert {
   percent: number;
   state: CertState;
   examInDays: number | null;
+  /** Von der Firma zugewiesen: lässt sich nicht abbrechen. */
+  assigned: boolean;
   /** Siegel „Fachlich geprüft“ (Stand der letzten Prüfung, ohne Änderungszähler); null ohne Freigabe. */
   seal?: Seal | null;
 }
@@ -81,14 +83,22 @@ const DAY = 86_400_000;
 export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date = new Date()): Promise<LearnerDashboard> {
   const db = getDb();
   const userId = viewer.id;
-  const visible = await db
-    .select({ id: certifications.id, slug: certifications.slug, name: certifications.name, examVersion: certifications.examVersion, shortCode: certifications.shortCode, categoryId: certifications.categoryId })
-    .from(certifications)
-    .where(await visibleCertificationsCondition(viewer))
-    .orderBy(certifications.name);
+  const [allVisible, assignmentRows, abandonedRows] = await Promise.all([
+    db
+      .select({ id: certifications.id, slug: certifications.slug, name: certifications.name, examVersion: certifications.examVersion, shortCode: certifications.shortCode, categoryId: certifications.categoryId })
+      .from(certifications)
+      .where(await visibleCertificationsCondition(viewer))
+      .orderBy(certifications.name),
+    db.select({ certId: companyAssignments.certificationId }).from(companyAssignments).where(eq(companyAssignments.userId, userId)),
+    db.select({ certId: courseAbandonments.certificationId }).from(courseAbandonments).where(eq(courseAbandonments.userId, userId)),
+  ]);
+  // „Kurs abbrechen“: abgebrochene Kurse (außer Firmenzuweisungen) zählen nirgends im Dashboard mit, auch nicht in Hero und Statistik.
+  const assigned = new Set(assignmentRows.map((a) => a.certId));
+  const abandoned = new Set(abandonedRows.map((a) => a.certId));
+  const visible = allVisible.filter((c) => !hiddenByAbandonment(abandoned.has(c.id), assigned.has(c.id)));
   const certIds = visible.map((c) => c.id);
 
-  const [categoryRows, sectionRows, profileRows, assignmentRows] = await Promise.all([
+  const [categoryRows, sectionRows, profileRows] = await Promise.all([
     db.select({ id: courseCategories.id, color: courseCategories.color }).from(courseCategories),
     certIds.length
       ? db
@@ -101,7 +111,6 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
           .orderBy(asc(domains.orderNum), asc(objectives.code), asc(sections.orderNum))
       : [],
     db.select({ certId: studyProfiles.certificationId, examDate: studyProfiles.examDate, activeDays: studyProfiles.activeDays }).from(studyProfiles).where(eq(studyProfiles.userId, userId)),
-    db.select({ certId: companyAssignments.certificationId }).from(companyAssignments).where(eq(companyAssignments.userId, userId)),
   ]);
   const colorOf = new Map(categoryRows.map((c) => [c.id, c.color]));
   const sectionIds = sectionRows.map((s) => s.id);
@@ -135,7 +144,6 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
   const accPrev = accuracy(prevWeek);
 
   const profileOf = new Map(profileRows.map((p) => [p.certId, p]));
-  const assigned = new Set(assignmentRows.map((a) => a.certId));
   const sessionCerts = new Set(sessionRows.map((s) => s.certId));
   const sectionsByCert = new Map<string, typeof sectionRows>();
   for (const s of sectionRows) sectionsByCert.set(s.certId, [...(sectionsByCert.get(s.certId) ?? []), s]);
@@ -160,6 +168,7 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
       percent: list.length ? Math.round((done / list.length) * 100) : 0,
       state: certState({ total: list.length, done, hasActivity, examInDays: examIn }),
       examInDays: examIn,
+      assigned: assigned.has(c.id),
     });
   }
 
