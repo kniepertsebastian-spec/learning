@@ -5,10 +5,14 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
+import "katex/dist/katex.min.css";
 import { CalloutBlock, PracticeBlock, StepsBlock, TabsBlock } from "@/components/richtext/Blocks";
 import { CodeBlock, TerminalBlock } from "@/components/richtext/CodeBlock";
 import { SimulationBlock } from "@/components/richtext/Simulation";
 import { parseLineRanges, remarkLearningBlocks } from "@/lib/markdown/blocks";
+import { normalizeMath } from "@/lib/markdown/math";
 import { nodeText } from "@/components/richtext/code-lines";
 import { slugify } from "@/lib/markdown/toc";
 import type { CalloutTone } from "@/components/ui/callout";
@@ -93,12 +97,20 @@ function withHeadingIds(base: Components): Components {
   };
 }
 
+/**
+ * Formeln und Brüche: `$$…$$` (inline oder abgesetzt) wird mit KaTeX gesetzt. Einzel-Dollar ist abgeschaltet, damit Währungen nie als Formel
+ * gelten; `normalizeMath` bringt andere Schreibweisen (`$…$`, `\(…\)`, `\[…\]`, nacktes `\frac`) vorher auf `$$…$$`. Fehlerhafte Formeln
+ * zeigen ihren Quelltext statt die Seite zu brechen.
+ */
+const remarkPlugins = [remarkGfm, remarkDirective, remarkLearningBlocks, [remarkMath, { singleDollarTextMath: false }]] as NonNullable<React.ComponentProps<typeof ReactMarkdown>["remarkPlugins"]>;
+const rehypePlugins = [rehypeHighlight, [rehypeKatex, { throwOnError: false, strict: "ignore", output: "htmlAndMathml" }]] as NonNullable<React.ComponentProps<typeof ReactMarkdown>["rehypePlugins"]>;
+
 export function RichText({ text, inline = false, headingIds = false }: { text: string; inline?: boolean; headingIds?: boolean }) {
   const components = inline ? inlineComponents : headingIds ? withHeadingIds(blockComponents) : blockComponents;
   return (
     <div className={inline ? "min-w-0" : ""} data-testid="rich-text">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkDirective, remarkLearningBlocks]} rehypePlugins={[rehypeHighlight]} components={components}>
-        {text}
+      <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
+        {normalizeMath(text)}
       </ReactMarkdown>
     </div>
   );
