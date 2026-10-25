@@ -2,23 +2,27 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { requireAdminApi } from "@/lib/server/auth-guards";
+import { requireCourseEditorApi } from "@/lib/server/reviewers/guard";
 import type { SessionUser } from "@/lib/server/auth-guards";
 import { EditConflictError, EditorNotFoundError, EditValidationError, editableCourse } from "./service";
 
 const uuid = z.string().uuid();
 
 /**
- * Gemeinsamer Rahmen der Werkstatt-Routen: nur Admins, nur allgemeine Kurse, IDs als UUID, und die Fehler des Service
+ * Gemeinsamer Rahmen der Werkstatt-Routen: nur Admins (mit `reviewers: true` auch der dem Kurs zugewiesene Prüfer), nur allgemeine Kurse, IDs als UUID, und die Fehler des Service
  * als HTTP-Antwort (404 nicht gefunden, 409 inzwischen geändert, 422 ungültiger Inhalt, 400 kaputte Anfrage).
  */
 export async function workshopRoute(
   params: Promise<Record<string, string>>,
   handler: (ctx: { certId: string; ids: Record<string, string>; user: SessionUser; audit: (action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) => Promise<void> }) => Promise<Response>,
+  options: { reviewers?: boolean } = {},
 ): Promise<Response> {
-  const guard = await requireAdminApi();
-  if (!guard.ok) return guard.response;
   const ids = await params;
-  if (Object.values(ids).some((v) => !uuid.safeParse(v).success)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const validIds = Object.values(ids).every((v) => uuid.safeParse(v).success);
+  // Prüfer dürfen nur die manuelle Bearbeitung ihres Kurses (kein KI-Zugriff, keine Kursverwaltung): nur Routen mit `reviewers: true`.
+  const guard = options.reviewers && validIds ? await requireCourseEditorApi(ids.certId) : await requireAdminApi();
+  if (!guard.ok) return guard.response;
+  if (!validIds) return NextResponse.json({ error: "Not found" }, { status: 404 });
   try {
     await editableCourse(ids.certId);
     const audit = (action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) =>

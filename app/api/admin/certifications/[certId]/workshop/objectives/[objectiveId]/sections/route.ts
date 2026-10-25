@@ -13,5 +13,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ cer
     const result = await createSection(certId, ids.objectiveId, body.snapshot, { userId: user.id, origin: "manual" });
     await audit("course.section_created", "section", result.sectionId);
     return NextResponse.json(result, { status: 201 });
-  });
+  }, { reviewers: true });
 }

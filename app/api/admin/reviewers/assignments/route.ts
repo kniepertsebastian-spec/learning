@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { requireAdminApi } from "@/lib/server/auth-guards";
-import { assignReviewer, NotAGeneralCourseError, NotAReviewerError, unassignReviewer } from "@/lib/server/reviewers/service";
+import { assignReviewer, NotAGeneralCourseError, NotAReviewerError, ReviewerAlreadyAssignedError, unassignReviewer } from "@/lib/server/reviewers/service";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
     if (error instanceof ZodError || error instanceof SyntaxError) return NextResponse.json({ error: "Ungültige Anfrage." }, { status: 400 });
     if (error instanceof NotAGeneralCourseError) return NextResponse.json({ error: "Prüfer lassen sich nur allgemeinen Kursen zuweisen, nie internen Lernpfaden einer Firma." }, { status: 400 });
     if (error instanceof NotAReviewerError) return NextResponse.json({ error: "Die Person hat keine Prüfer-Rolle." }, { status: 400 });
+    if (error instanceof ReviewerAlreadyAssignedError) return NextResponse.json({ error: "Dieser Prüfer ist schon einem Kurs zugewiesen. Ein Prüfer betreut genau einen Kurs: bitte zuerst die bestehende Zuweisung aufheben." }, { status: 409 });
     throw error;
   }
 }

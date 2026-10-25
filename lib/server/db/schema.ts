@@ -1036,7 +1036,7 @@ export const objectiveSnapshots = pgTable(
 );
 
 /**
- * Fachliche Prüfer (roadmap_pruefer Phase 1): Zuweisung je allgemeinem Kurs. Ein Prüfer sieht und prüft nur die ihm zugewiesenen Kurse
+ * Fachliche Prüfer (roadmap_pruefer Phase 1): Zuweisung je allgemeinem Kurs, jeder Prüfer genau einem Kurs. Ein Prüfer sieht und prüft nur den ihm zugewiesenen Kurs
  * (nie interne Lernpfade einer Firma, nie Lerndaten), kommentiert, markiert Fragen als fehlerhaft und kann freigeben.
  */
 export const courseReviewers = pgTable(
@@ -1052,7 +1052,8 @@ export const courseReviewers = pgTable(
     assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
     assignedByUserId: uuid("assigned_by_user_id").references(() => users.id, { onDelete: "set null" }),
   },
-  (table) => [unique("course_reviewers_cert_user_unique").on(table.certificationId, table.userId), index("course_reviewers_user_idx").on(table.userId)],
+  // Rollenmodell 1:1: ein Prüfer ist genau einem Kurs zugewiesen (roadmap_bugs_features 3.1); ein Kurs kann mehrere Prüfer haben.
+  (table) => [unique("course_reviewers_cert_user_unique").on(table.certificationId, table.userId), unique("course_reviewers_user_unique").on(table.userId)],
 );
 
 /** Einladung eines Prüfers durch einen Admin (7 Tage gültig, nur der Hash des Tokens wird gespeichert). Erlaubt die Registrierung mit genau dieser E-Mail. */

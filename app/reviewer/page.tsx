@@ -16,8 +16,8 @@ export default async function ReviewerHome() {
   const statuses = await Promise.all(courses.map((c) => getApprovalStatus(c.id)));
   return (
     <div className="flex flex-col gap-4" data-testid="reviewer-home">
-      <h1 className="text-2xl font-semibold">{de ? "Kurse prüfen" : "Review courses"}</h1>
-      <p className="text-sm text-subtle">{de ? "Du siehst nur die Kurse, die dir zugewiesen sind. Du kannst lesen, kommentieren, Fragen als fehlerhaft melden und freigeben." : "You only see the courses assigned to you. You can read, comment, report questions as faulty and approve."}</p>
+      <h1 className="text-2xl font-semibold">{de ? "Mein Kurs" : "My course"}</h1>
+      <p className="text-sm text-subtle">{de ? "Du betreust genau einen Kurs, den dir die Betreiber zugewiesen haben. Du kannst ihn lesen, kommentieren, Fragen als fehlerhaft melden, Lektionen, Simulationen und Fragen von Hand bearbeiten und freigeben." : "You look after exactly one course, assigned to you by the operators. You can read it, comment, report questions as faulty, edit lessons, simulations and questions by hand, and approve it."}</p>
       {!qualified && (
         <p className="rounded-xl border border-warning/40 bg-warning-soft p-3 text-sm text-warning-text" data-testid="reviewer-not-qualified">
           {de ? "Freigeben und dein Profil veröffentlichen kannst du erst nach dem Probe-Review. " : "You can approve courses and publish your profile only after the trial review. "}

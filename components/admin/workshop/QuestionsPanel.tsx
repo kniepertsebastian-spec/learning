@@ -80,6 +80,7 @@ export function QuestionsPanel({
   onChanged,
   onDirtyChange,
   initialAiAction = null,
+  noAi = false,
 }: {
   certId: string;
   objectiveId: string;
@@ -87,6 +88,8 @@ export function QuestionsPanel({
   onChanged: () => void;
   onDirtyChange: (dirty: boolean) => void;
   initialAiAction?: AiAction | null;
+  /** Prüfer arbeiten von Hand: ohne KI-Vorschläge. */
+  noAi?: boolean;
 }) {
   const tr = useTr(locale);
   const [items, setItems] = React.useState<Item[] | null>(null);
@@ -149,7 +152,7 @@ export function QuestionsPanel({
             }
           }}
         />
-      ) : (
+      ) : noAi ? null : (
         <AiAssist certId={certId} locale={locale} target={{ target: "objective", id: objectiveId }} actions={["add_questions", "add_format_questions"]} initialAction={initialAiAction === "add_questions" || initialAiAction === "add_format_questions" ? initialAiAction : null} onProposal={(p) => {
             if (p.kind !== "questions") return;
             setMessage(null);
@@ -159,6 +162,7 @@ export function QuestionsPanel({
       {open === "new" && (
         <div className="rounded-2xl border border-accent-border bg-surface p-4">
           <QuestionForm
+            noAi={noAi}
             active
             certId={certId}
             objectiveId={objectiveId}
@@ -197,6 +201,7 @@ export function QuestionsPanel({
           {/* Zugeklappte Formulare bleiben gemountet, damit ungespeicherte Eingaben beim Zuklappen nicht verloren gehen. */}
           <div className={cn("border-t border-border-subtle p-4", open !== q.id && "hidden")}>
             <QuestionForm
+              noAi={noAi}
               key={q.fingerprint}
               active={open === q.id}
               certId={certId}
@@ -219,7 +224,7 @@ export function QuestionsPanel({
   );
 }
 
-function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty, onSaved }: { active: boolean; certId: string; objectiveId: string; item: Item | null; lang: Lang; locale: Lang; onDirty: (dirty: boolean) => void; onSaved: (message?: string) => void }) {
+function QuestionForm({ noAi = false, active, certId, objectiveId, item, lang, locale, onDirty, onSaved }: { noAi?: boolean; active: boolean; certId: string; objectiveId: string; item: Item | null; lang: Lang; locale: Lang; onDirty: (dirty: boolean) => void; onSaved: (message?: string) => void }) {
   const tr = useTr(locale);
   const [newFormat, setNewFormat] = React.useState<FormatKind | "choice">("choice");
   const initial = React.useMemo(() => (item ? toDraft(item.snapshot) : NEW()), [item]);
@@ -258,7 +263,7 @@ function QuestionForm({ active, certId, objectiveId, item, lang, locale, onDirty
 
   return (
     <div className="flex flex-col gap-3" data-testid="question-form">
-      {item && active && !proposal && (
+      {item && active && !proposal && !noAi && (
         <AiAssist
           certId={certId}
           locale={locale}

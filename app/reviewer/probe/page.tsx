@@ -18,7 +18,7 @@ export default async function ReviewerProbePage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/reviewer" className="text-sm text-link hover:underline">← {de ? "Kurse prüfen" : "Review courses"}</Link>
+        <Link href="/reviewer" className="text-sm text-link hover:underline">← {de ? "Mein Kurs" : "My course"}</Link>
         <h1 className="mt-2 text-2xl font-semibold">{de ? "Probe-Review" : "Trial review"}</h1>
       </div>
       <ReviewerProbe overview={overviewJson} attempt={attempt} locale={locale} />

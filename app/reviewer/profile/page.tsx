@@ -21,7 +21,7 @@ export default async function ReviewerProfilePage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/reviewer" className="text-sm text-link hover:underline">← {de ? "Kurse prüfen" : "Review courses"}</Link>
+        <Link href="/reviewer" className="text-sm text-link hover:underline">← {de ? "Mein Kurs" : "My course"}</Link>
         <h1 className="mt-2 text-2xl font-semibold">{de ? "Mein Expertenprofil" : "My expert profile"}</h1>
       </div>
       <ReviewerProfileEditor initial={initial} courses={courses.map((c) => ({ slug: c.slug, name: c.name, versionLabel: c.versionLabel, approvedAt: c.approvedAt.toISOString() }))} locale={locale} />

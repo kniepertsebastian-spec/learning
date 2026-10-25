@@ -10,5 +10,5 @@ export async function POST(_request: Request, { params }: { params: Promise<{ ce
     const result = await restoreRevision(certId, ids.revisionId, user.id);
     await audit("course.revision_restored", "content_revision", ids.revisionId, { result });
     return NextResponse.json({ result });
-  });
+  }, { reviewers: true });
 }

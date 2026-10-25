@@ -23,6 +23,21 @@ export async function requireReviewerApi(certificationId: string): Promise<{ ok:
   return { ok: true, user };
 }
 
+/**
+ * Werkstatt-Route eines Kurses: Admins immer, Prüfer nur im ihnen zugewiesenen allgemeinen Kurs (Rollenmodell 1:1). 401 ohne Anmeldung,
+ * 403 für alle anderen Rollen, 404 für einen Prüfer, dem der Kurs nicht zugewiesen ist.
+ */
+export async function requireCourseEditorApi(certificationId: string): Promise<{ ok: true; user: SessionUser } | { ok: false; response: NextResponse }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  if (user.role === "admin") return { ok: true, user };
+  if (user.role !== "reviewer") return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  if (!(await canReviewCourse(user.id, certificationId))) return { ok: false, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  return { ok: true, user };
+}
+
 /** API-Route für das eigene Expertenprofil: 401 ohne Anmeldung, 403 ohne Prüfer-Rolle. */
 export async function requireReviewerUserApi(): Promise<{ ok: true; user: SessionUser } | { ok: false; response: NextResponse }> {
   const session = await auth();

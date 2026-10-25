@@ -29,6 +29,10 @@ export class NotAGeneralCourseError extends ReviewerError {}
 export class NotAReviewerError extends ReviewerError {}
 export class InvalidCommentError extends ReviewerError {}
 export class TargetNotInCourseError extends ReviewerError {}
+/** Ein Prüfer ist exklusiv genau einem Kurs zugewiesen: erst die bestehende Zuweisung aufheben. */
+export class ReviewerAlreadyAssignedError extends ReviewerError {}
+/** Eine Einladung gilt für genau einen Kurs. */
+export class InvalidInvitationError extends ReviewerError {}
 
 const logAuditFailure = (err: unknown) => console.error("Audit-Log fehlgeschlagen:", err);
 export const hashReviewerToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -68,11 +72,13 @@ async function requireGeneralCourses(ids: string[]) {
   if (rows.length !== new Set(ids).size || rows.some((r) => r.kind !== "general")) throw new NotAGeneralCourseError();
 }
 
-/** Weist einen Prüfer einem allgemeinen Kurs zu (nie einem internen Lernpfad). Idempotent. */
+/** Weist einen Prüfer einem allgemeinen Kurs zu (nie einem internen Lernpfad), exklusiv: hat er schon einen anderen Kurs, wird nichts geändert. Idempotent. */
 export async function assignReviewer(input: { certificationId: string; userId: string; assignedByUserId: string }): Promise<void> {
   await requireGeneralCourses([input.certificationId]);
   const [user] = await getDb().select({ role: users.role }).from(users).where(eq(users.id, input.userId)).limit(1);
   if (!user || user.role !== "reviewer") throw new NotAReviewerError();
+  const [existing] = await getDb().select({ certificationId: courseReviewers.certificationId }).from(courseReviewers).where(eq(courseReviewers.userId, input.userId)).limit(1);
+  if (existing && existing.certificationId !== input.certificationId) throw new ReviewerAlreadyAssignedError();
   await getDb().insert(courseReviewers).values({ certificationId: input.certificationId, userId: input.userId, assignedByUserId: input.assignedByUserId }).onConflictDoNothing();
   await recordAuditEvent({ actorUserId: input.assignedByUserId, action: "reviewer.assigned", targetType: "certification", targetId: input.certificationId, metadata: { reviewerUserId: input.userId } }).catch(logAuditFailure);
 }
@@ -91,6 +97,7 @@ export async function createReviewerInvitation(input: { email: string; certifica
   const now = input.now ?? new Date();
   const email = normalizeEmail(input.email);
   const certificationIds = [...new Set(input.certificationIds)];
+  if (certificationIds.length !== 1) throw new InvalidInvitationError();
   await requireGeneralCourses(certificationIds);
   const token = randomBytes(32).toString("base64url");
   const db = getDb();

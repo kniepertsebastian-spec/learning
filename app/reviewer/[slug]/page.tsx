@@ -17,7 +17,7 @@ import { RichText } from "@/components/RichText";
 import { ReviewerApprovalPanel, type ReviewerApprovalData } from "@/components/reviewer/ReviewerApprovalPanel";
 import { ReviewerItemComment } from "@/components/reviewer/ReviewerItemComment";
 
-/** Prüfer-Ansicht eines zugewiesenen Kurses: Inhalt lesen (ohne Bearbeiten, ohne KI, ohne Lerndaten), kommentieren, Fragen melden, freigeben. */
+/** Prüfer-Ansicht des zugewiesenen Kurses: Inhalt lesen (ohne Lerndaten, ohne KI), kommentieren, Fragen melden, von Hand bearbeiten und freigeben. */
 export default async function ReviewerCoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const user = await requireReviewerPage(`/reviewer/${slug}`);
@@ -50,7 +50,12 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {de ? "Zurück zu meinen Kursen" : "Back to my courses"}
       </Link>
-      <h1 className="mb-4 text-2xl font-semibold">{cert.name}</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{cert.name}</h1>
+        <Link href={`/reviewer/${slug}/workshop`} className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-link hover:bg-accent/10" data-testid="reviewer-edit-link">
+          {de ? "Kurs bearbeiten" : "Edit course"}
+        </Link>
+      </div>
       <ReviewerApprovalPanel certId={cert.id} data={approval} locale={locale} canApprove={await isQualified(user.id)} />
       {tree.map((domain) => (
         <section key={domain.id} className="mb-8">

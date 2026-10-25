@@ -308,6 +308,22 @@ export async function saveQuestion(certId: string, questionId: string, next: Que
   });
 }
 
+/**
+ * Lektion löschen (mit Lektionstext, Merkzettel, Simulationen und dem Lernstand dazu). Der letzte Stand bleibt als Version
+ * erhalten, damit sich der Inhalt notfalls aus der Versionsgeschichte holen lässt.
+ */
+export async function deleteSection(certId: string, sectionId: string, actor: Actor) {
+  return getDb().transaction(async (tx) => {
+    const owner = await sectionCert(tx, sectionId);
+    if (!owner || owner.certId !== certId) throw new EditorNotFoundError("Lektion nicht gefunden.");
+    await lockSection(tx, sectionId);
+    const current = await readSection(tx, sectionId);
+    if (current) await insertRevision(tx, certId, "section", sectionId, current, { ...actor, note: "Vor dem Löschen der Lektion" });
+    await tx.delete(sections).where(eq(sections.id, sectionId));
+    return { sectionId, objectiveId: owner.objectiveId };
+  });
+}
+
 /** Neue Lektion am Ende des Lernziels. Erst mit fertigem Inhalt angelegt: Lernende sehen nie eine leere Lektion. */
 export async function createSection(certId: string, objectiveId: string, s: SectionSnapshot, actor: Actor) {
   const normalized = normalizeSection(s);
