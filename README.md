@@ -1,4 +1,6 @@
-# learning
+# Knowvia
+
+**Capture Knowledge. Empower People. Strengthen Business.**
 
 Adaptive Lernplattform für Zertifikate und Weiterbildung (PWA). Next.js, Postgres (Drizzle ORM),
 Auth.js, Inhaltsgenerierung mit Google Gemini.

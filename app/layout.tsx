@@ -52,15 +52,15 @@ const IOS_STARTUP_IMAGES = [
 ];
 
 export const metadata: Metadata = {
-  title: "ProofPath",
+  title: "Knowvia",
   description:
-    "KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
+    "Capture Knowledge. Empower People. Strengthen Business. KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     // Die Leiste läuft unter der Statusleiste (viewportFit „cover“); die Abstände setzen die env(safe-area-inset-*)-Werte im Layout.
     statusBarStyle: "black-translucent",
-    title: "ProofPath",
+    title: "Knowvia",
     startupImage: IOS_STARTUP_IMAGES.map((d) => ({
       url: `/splash/${d.name}.png`,
       media: `(device-width: ${d.pw}px) and (device-height: ${d.ph}px) and (-webkit-device-pixel-ratio: ${d.ratio}) and (orientation: portrait)`,

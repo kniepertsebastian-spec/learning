@@ -30,7 +30,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
       <OfflineBanner />
       <header className="flex h-[calc(4rem+env(safe-area-inset-top))] items-center justify-between px-4 pt-[env(safe-area-inset-top)] sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 font-semibold">
-          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">P</span>
+          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">K</span>
           {t.appTitle}
         </Link>
         <div className="flex items-center gap-2">
@@ -77,7 +77,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
         {/* Mobil: obere Leiste mit Sheet */}
         <div className={cn("sticky top-0 z-30 flex items-center justify-between border-b border-sidebar-border bg-sidebar px-4 md:hidden", ctx === "admin" ? "h-14" : "h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)]")}>
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">P</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">K</span>
             {t.appTitle}
           </Link>
           <button type="button" onClick={() => setMenuOpen(true)} aria-label={t.shell.openMenu} data-testid="mobile-menu" className="flex h-10 w-10 items-center justify-center rounded-md border border-border-strong bg-control">

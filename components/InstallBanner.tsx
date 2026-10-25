@@ -27,7 +27,7 @@ export function InstallBanner() {
   return (
     <div role="region" aria-label={de ? "App installieren" : "Install the app"} data-testid="install-banner" className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-surface p-4">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">{de ? "ProofPath als App installieren" : "Install ProofPath as an app"}</p>
+        <p className="text-sm font-semibold">{de ? "Knowvia als App installieren" : "Install Knowvia as an app"}</p>
         {offer === "native" ? (
           <p className="mt-1 text-sm text-muted">{de ? "Schneller starten, offline lernen und Ergebnisse im Hintergrund übertragen." : "Start faster, study offline and upload results in the background."}</p>
         ) : (

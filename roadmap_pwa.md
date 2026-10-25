@@ -1,6 +1,6 @@
 # Entwicklungs-Roadmap: PWA-Härtung
 
-Technischer Umsetzungsplan, mit dem ProofPath zu einer belastbaren, gut installierbaren PWA wird. Das Dokument ist für die Umsetzung durch einen Coding-Agenten geschrieben und setzt kein Vorwissen aus anderen Dokumenten voraus. Grundlage ist ein Review des Stands vom 22.10.2026 (`main`, nach PR #115).
+Technischer Umsetzungsplan, mit dem Knowvia zu einer belastbaren, gut installierbaren PWA wird. Das Dokument ist für die Umsetzung durch einen Coding-Agenten geschrieben und setzt kein Vorwissen aus anderen Dokumenten voraus. Grundlage ist ein Review des Stands vom 22.10.2026 (`main`, nach PR #115).
 
 ---
 

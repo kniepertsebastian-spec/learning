@@ -1,6 +1,6 @@
 # Entwicklungs-Roadmap: Motivation und Schutz vor Abbruch
 
-Technischer Umsetzungsplan gegen plötzliche Demotivation und stille Lernabbrüche, dazu eine Vergleichsgrafik, die den Human Layer in Demos sichtbar macht. Das Dokument ist für die Umsetzung durch einen Coding-Agenten geschrieben und setzt kein Vorwissen aus anderen Dokumenten voraus. Grundlage ist das Papier „ProofPath: Leitfaden & Systemkonzept gegen plötzliche Demotivation“ in einer geprüften, an die Produktgrundsätze angepassten Fassung. Stand: 23.10.2026.
+Technischer Umsetzungsplan gegen plötzliche Demotivation und stille Lernabbrüche, dazu eine Vergleichsgrafik, die den Human Layer in Demos sichtbar macht. Das Dokument ist für die Umsetzung durch einen Coding-Agenten geschrieben und setzt kein Vorwissen aus anderen Dokumenten voraus. Grundlage ist das Papier „Knowvia: Leitfaden & Systemkonzept gegen plötzliche Demotivation“ in einer geprüften, an die Produktgrundsätze angepassten Fassung. Stand: 23.10.2026.
 
 ---
 

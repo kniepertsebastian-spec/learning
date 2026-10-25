@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "ProofPath",
-  "short_name": "ProofPath",
-  "description": "KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
+  "name": "Knowvia",
+  "short_name": "Knowvia",
+  "description": "Capture Knowledge. Empower People. Strengthen Business. KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
   "lang": "de",
   "dir": "ltr",
   "start_url": "/",
