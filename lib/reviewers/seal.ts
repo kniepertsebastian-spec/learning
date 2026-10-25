@@ -50,7 +50,17 @@ export function reviewersText(seal: Pick<Seal, "reviewers" | "anonymousCount">, 
   return `${parts.slice(0, -1).join(", ")} ${and} ${parts[parts.length - 1]}`;
 }
 
+/**
+ * Was „geprüft“ bedeutet. Aussagen zu Bestehensgarantien und zu den Prüfungsbedingungen der Anbieter stehen bewusst nicht mehr im Kurs,
+ * sondern in den Service Agreements / AGB (Seite /agb).
+ */
 export const SEAL_DISCLAIMER = {
-  de: "„Geprüft“ bezieht sich auf die fachliche Richtigkeit zum angegebenen Stand. Es ist keine Garantie für das Bestehen einer Prüfung.",
-  en: "“Reviewed” refers to the technical correctness at the stated date. It is not a guarantee of passing an exam.",
+  de: "„Geprüft“ bezieht sich auf die fachliche Richtigkeit der Inhalte zum angegebenen Stand.",
+  en: "“Reviewed” refers to the technical correctness of the content at the stated date.",
 } as const;
+
+/** Der Satz zur fachlichen Prüfung, verbindlich: „Dieser Kurs wurde fachlich von [Experten-Name] geprüft.“ (ohne Verlinkung, z. B. für Texte und Metadaten). */
+export function expertStatement(seal: Pick<Seal, "reviewers" | "anonymousCount">, locale: Locale): string {
+  const who = reviewersText(seal, locale);
+  return locale === "de" ? `Dieser Kurs wurde fachlich von ${who} geprüft.` : `This course was technically reviewed by ${who}.`;
+}

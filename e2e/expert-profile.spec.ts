@@ -107,7 +107,7 @@ test("Siegel am Kurs: Name mit Link nur bei veröffentlichtem Profil, sonst neut
     await login(page, gateway.url, USERS.learnerA.email);
     await page.goto(`${gateway.url}/cert/${FORMATS_SLUG}`);
     const seal = page.getByTestId("course-seal").first();
-    await expect(seal).toContainText(/Reviewed by|Fachlich geprüft von/);
+    await expect(seal).toContainText(/was technically reviewed by|wurde fachlich von/);
     await expect(seal.getByTestId("seal-reviewer")).toHaveText("Siegel Prüfer");
     await expect(seal.getByTestId("seal-reviewer")).toHaveAttribute("href", `/experts/${slug}`);
     await expect(seal).toHaveAttribute("data-changed", "false");

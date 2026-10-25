@@ -825,7 +825,7 @@ export const uiStrings = {
       passed: "Bestanden",
       failed: "Nicht bestanden",
       yourScore: "Deine Punktzahl",
-      passingScore: "Bestehensquote",
+      passingScore: "Bestehensgrenze",
       weakAreas: "Schwachstellenanalyse",
       generating: "Claude erstellt die Probeprüfung …",
       loadError: "Die Probeprüfung konnte nicht erstellt werden.",

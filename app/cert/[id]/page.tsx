@@ -300,7 +300,7 @@ export default async function CertDetailPage({
           <p className="text-sm text-foreground/70">
             {cert.examName} {cert.examVersion}
           </p>
-          {seal && <CourseSeal seal={seal} locale={locale} className="mt-3 max-w-xl" />}
+          {seal && <CourseSeal seal={seal} locale={locale} field={cert.name} className="mt-3 max-w-xl" />}
         </div>
         {session && (
           <div className="flex flex-wrap items-center gap-2 xl:max-w-[55%] xl:shrink-0 xl:justify-end">

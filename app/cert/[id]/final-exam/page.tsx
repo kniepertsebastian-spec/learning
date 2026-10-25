@@ -91,9 +91,7 @@ export default async function FinalExamStartPage({
                 : "Avoids questions you've already answered in quizzes"}
             </li>
             <li>
-              {locale === "de"
-                ? "Am Ende: Bereitschafts-Einschätzung, keine Bestehens-Garantie"
-                : "At the end: a practice readiness assessment, not a pass guarantee"}
+              {locale === "de" ? "Am Ende: eine Einschätzung, wie gut du vorbereitet bist" : "At the end: an assessment of how well prepared you are"}
             </li>
           </ul>
         </div>
