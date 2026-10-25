@@ -729,6 +729,40 @@ export const feedbackReports = pgTable(
 );
 
 /**
+ * Ausgestellte Lernprofil-PDFs (roadmap_bugs_features 5.2): was im PDF steht (`payload`) und die Signatur darüber. Die öffentliche Prüfseite
+ * /verify/[id] vergleicht das PDF mit diesem Eintrag und der Signatur; die Person kann ein PDF jederzeit widerrufen.
+ */
+export interface LearningProfileCourse {
+  course: string;
+  certificate: string;
+  vendor: string;
+  earnedAt: string;
+  expiresAt: string | null;
+  chaptersCompleted: number;
+  chaptersTotal: number;
+  lessonsDone: number;
+  lessonsTotal: number;
+}
+export interface LearningProfilePayload {
+  holder: string;
+  courses: LearningProfileCourse[];
+}
+export const learningProfileExports = pgTable(
+  "learning_profile_exports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    payload: jsonb("payload").$type<LearningProfilePayload>().notNull(),
+    signature: text("signature").notNull(),
+    issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [index("learning_profile_exports_user_idx").on(table.userId)],
+);
+
+/**
  * Einstufungstest direkt nach der Kurswahl (roadmap_bugs_features 1.1): einmalig je Person und Kurs, 10 Auswahlfragen quer durch
  * die Kapitel. Ergebnis je Kapitel zur Orientierung; fließt weder in den Lernstand noch in die Wiederholungsplanung ein.
  * `skipped`: die Person hat ihn übersprungen (er wird dann nicht noch einmal angeboten).
