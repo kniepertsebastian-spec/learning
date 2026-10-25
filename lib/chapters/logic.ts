@@ -76,6 +76,26 @@ export function raiseQuestionTargets(counts: readonly number[], target = CHAPTER
   return out;
 }
 
+export interface ChapterUnlockInput {
+  domainId: string;
+  orderNum: number;
+  completed: boolean;
+}
+
+/**
+ * Merkzettel des Gesamtkurses: wächst mit dem Lernfortschritt. Das erste Kapitel (Grundlagen) ist von Anfang an sichtbar, jedes
+ * weitere, sobald es abgeschlossen ist.
+ */
+export function unlockedForCheatSheets(chapters: readonly ChapterUnlockInput[]): Set<string> {
+  const first = [...chapters].sort((a, b) => a.orderNum - b.orderNum)[0];
+  return new Set(chapters.filter((c) => c.completed || c.domainId === first?.domainId).map((c) => c.domainId));
+}
+
+/** Simulations-Übersicht (Wiederholungs-Hub): nur Simulationen aus bereits abgeschlossenen Kapiteln sind anwählbar. */
+export function unlockedForSimulations(chapters: readonly ChapterUnlockInput[]): Set<string> {
+  return new Set(chapters.filter((c) => c.completed).map((c) => c.domainId));
+}
+
 export function chapterQuizPassed(bestScorePercent: number | null): boolean {
   return bestScorePercent !== null && bestScorePercent >= CHAPTER_PASS_PERCENT;
 }

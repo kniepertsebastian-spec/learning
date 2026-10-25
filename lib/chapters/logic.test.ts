@@ -86,3 +86,22 @@ describe("Kapitel: Fragenpool beim Erzeugen und im Bericht", () => {
     expect(raiseQuestionTargets([4, 4])).toEqual([10, 10]); // mehr als 10 je Lernziel gibt es nicht
   });
 });
+
+describe("Kapitel: Freischaltung von Merkzettel und Simulationen", () => {
+  const chapters = [
+    { domainId: "k3", orderNum: 3, completed: false },
+    { domainId: "k1", orderNum: 1, completed: false },
+    { domainId: "k2", orderNum: 2, completed: false },
+  ];
+  it("Merkzettel startet mit dem ersten Kapitel und wächst mit jedem abgeschlossenen", async () => {
+    const { unlockedForCheatSheets } = await import("./logic");
+    expect([...unlockedForCheatSheets(chapters)]).toEqual(["k1"]);
+    expect([...unlockedForCheatSheets(chapters.map((c) => (c.domainId === "k2" ? { ...c, completed: true } : c)))].sort()).toEqual(["k1", "k2"]);
+    expect(unlockedForCheatSheets([]).size).toBe(0);
+  });
+  it("Simulationen: nur aus abgeschlossenen Kapiteln, am Anfang keine", async () => {
+    const { unlockedForSimulations } = await import("./logic");
+    expect(unlockedForSimulations(chapters).size).toBe(0);
+    expect([...unlockedForSimulations(chapters.map((c) => (c.domainId === "k1" ? { ...c, completed: true } : c)))]).toEqual(["k1"]);
+  });
+});

@@ -129,6 +129,7 @@ export async function pickPracticeSimulation(userId: string, questionIds: string
 
 export type SimulationStatus = "open" | "struggled" | "solved";
 export type CourseSimulation = {
+  domainId: string;
   domain: string;
   objectiveCode: string;
   objectiveTitle: string;
@@ -151,6 +152,7 @@ export async function listCourseSimulations(certificationId: string, userId: str
   const db = getDb();
   const rows = await db
     .select({
+      domainId: domains.id,
       domain: domains.name,
       objectiveCode: objectives.code,
       objectiveTitle: objectives.title,
@@ -182,6 +184,7 @@ export async function listCourseSimulations(certificationId: string, userId: str
       const other = en[i]?.ok ? en[i] : null;
       const p = byKey.get(`${r.sectionId}:${i}`);
       out.push({
+        domainId: r.domainId,
         domain: r.domain,
         objectiveCode: r.objectiveCode,
         objectiveTitle: r.objectiveTitle,
