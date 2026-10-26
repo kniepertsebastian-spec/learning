@@ -9,7 +9,7 @@ import { EditConflictError, EditorNotFoundError, EditValidationError, editableCo
 const uuid = z.string().uuid();
 
 /**
- * Gemeinsamer Rahmen der Werkstatt-Routen: nur Admins (mit `reviewers: true` auch der dem Kurs zugewiesene Prüfer), nur allgemeine Kurse, IDs als UUID, und die Fehler des Service
+ * Gemeinsamer Rahmen der Werkstatt-Routen: nur Admins (mit `reviewers: true` auch der dem Kurs zugewiesene Prüfer sowie Firmen-Admin und Mentor für interne Kurse der eigenen Firma), sonst nur allgemeine Kurse, IDs als UUID, und die Fehler des Service
  * als HTTP-Antwort (404 nicht gefunden, 409 inzwischen geändert, 422 ungültiger Inhalt, 400 kaputte Anfrage).
  */
 export async function workshopRoute(
@@ -22,9 +22,10 @@ export async function workshopRoute(
   // Prüfer dürfen nur die manuelle Bearbeitung ihres Kurses (kein KI-Zugriff, keine Kursverwaltung): nur Routen mit `reviewers: true`.
   const guard = options.reviewers && validIds ? await requireCourseEditorApi(ids.certId) : await requireAdminApi();
   if (!guard.ok) return guard.response;
+  const organizationId = "organizationId" in guard ? (guard.organizationId as string | undefined) : undefined;
   if (!validIds) return NextResponse.json({ error: "Not found" }, { status: 404 });
   try {
-    await editableCourse(ids.certId);
+    await editableCourse(ids.certId, organizationId);
     const audit = (action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) =>
       recordAuditEvent({ actorUserId: guard.user.id, action, targetType, targetId, metadata: { certificationId: ids.certId, ...metadata } }).catch(() => {});
     return await handler({ certId: ids.certId, ids, user: guard.user, audit });
