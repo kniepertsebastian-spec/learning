@@ -114,7 +114,9 @@ test("Lernprofil-PDF: nur mit hinterlegter Zertifikatsprüfung, mit Prüfseite u
   await login(page, gateway.url, USERS.profileUser.email);
   await page.goto(`${gateway.url}/profile`);
   page.once("dialog", (d) => void d.accept());
+  const revoked = page.waitForResponse((r) => r.request().method() === "DELETE" && r.url().includes("/api/profile/export/"));
   await page.getByTestId("profile-export-revoke").first().click();
+  expect((await revoked).ok()).toBe(true);
   await page.goto(`${gateway.url}${verifyUrl}`);
   await expect(page.getByTestId("verify-status")).toHaveAttribute("data-valid", "false");
 
