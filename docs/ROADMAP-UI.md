@@ -1,8 +1,8 @@
-# UI-/UX-Roadmap – Learning-Plattform (ProofPath)
+# UI-/UX-Roadmap – Learning-Plattform (Knowvia)
 
 > **Geltungsbereich:** Oberfläche, Bedienung und die dafür nötigen Daten- und API-Erweiterungen. Infrastruktur, Sicherheit und Betrieb stehen in [`docs/ROADMAP-TECHNISCH.md`](ROADMAP-TECHNISCH.md); deren **Leitplanken gelten hier unverändert** und gehen bei jedem Konflikt vor.
 >
-> **Referenz:** Design-Entwurf „ProofPath – UI Redesign“ (damals noch unter dem Namen CertStudy AI) (claude.ai, Design-Canvas) mit 7 Screens. Jede Phase nennt den Screen, dem das Ergebnis entsprechen soll. Wo Entwurf und dieses Dokument abweichen, gilt dieses Dokument. Alle Zahlen und Namen in den Screens sind Beispieldaten.
+> **Referenz:** Design-Entwurf „Knowvia – UI Redesign“ (damals noch unter dem Namen CertStudy AI) (claude.ai, Design-Canvas) mit 7 Screens. Jede Phase nennt den Screen, dem das Ergebnis entsprechen soll. Wo Entwurf und dieses Dokument abweichen, gilt dieses Dokument. Alle Zahlen und Namen in den Screens sind Beispieldaten.
 >
 > | Nr. | Screen | Phase |
 > |---|---|---|
@@ -223,7 +223,7 @@ Basis: **shadcn/ui** (MIT, Code liegt im Repo, Radix-Primitives darunter) – nu
 
 ### Sidebar (oben nach unten)
 
-1. Logo-Kachel (30 px, Mint, „P“) + „ProofPath“ + „Beta“-Pill.
+1. Logo-Kachel (30 px, Mint, „K“) + „Knowvia“ + „Beta“-Pill.
 2. **Kontext-Switcher:** Kachel 32 px in Kontextfarbe (Persönlich: Mütze-Icon auf Mint-Soft; Firma: Firmenkürzel auf Bernstein; Admin: Zahnrad auf Koralle), darüber Overline „Kontext“ / „Firma · Admin“, darunter Kontextname, rechts Doppelpfeil. Öffnet `DropdownMenu` mit allen Kontexten, die die Person hat (Punkt in Kontextfarbe, Häkchen beim aktiven). Nur Kontexte anzeigen, für die die Person Rechte hat (serverseitig ermittelt, wie heute in `app/layout.tsx`).
 3. Navigation des Kontexts (Einträge siehe Phasen U3–U9), Höhe 40 px, aktiver Eintrag mit `--ctx-active`; Zähler als Pill in Kontextfarbe (z. B. „Wiederholen 12“, „Interne Learnings 1“).
 4. Nur Persönlich: Abschnitt „Bereiche“ mit Direktlinks zu Firma/Admin (farbiger Punkt).

@@ -81,6 +81,10 @@ function RegisterForm() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center">
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-8">
+        <div className="mb-6 text-center">
+          <p className="text-lg font-semibold">Knowvia</p>
+          <p className="text-xs text-foreground/60">Capture Knowledge. Empower People. Strengthen Business.</p>
+        </div>
         <h1 className="mb-6 text-xl font-semibold">Create account</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {error && (

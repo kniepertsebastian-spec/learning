@@ -1,7 +1,8 @@
 /** Texte der Oberfläche (de/en). Ohne "use client", damit auch Server-Komponenten sie lesen können. */
 export const uiStrings = {
   de: {
-    appTitle: "ProofPath",
+    appTitle: "Knowvia",
+    tagline: "Capture Knowledge. Empower People. Strengthen Business.",
     statusBadge: "Beta",
     nav: {
       dashboard: "Dashboard",
@@ -839,7 +840,8 @@ export const uiStrings = {
     },
   },
   en: {
-    appTitle: "ProofPath",
+    appTitle: "Knowvia",
+    tagline: "Capture Knowledge. Empower People. Strengthen Business.",
     statusBadge: "Beta",
     nav: {
       dashboard: "Dashboard",

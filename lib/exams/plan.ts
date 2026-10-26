@@ -136,7 +136,7 @@ function fold(line: string): string {
 
 /** Kalenderdatei (.ics): Prüfungstermin und optional wöchentliche Lernblöcke. Keine externe Kalender-API. */
 export function buildIcs(input: { uidBase: string; title: string; examAt: Date; durationMinutes?: number; now: Date; location?: string; studyWeeks?: Array<{ start: string; title: string; minutes: number }> }): string {
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ProofPath//Pruefungsplaner//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Knowvia//Pruefungsplaner//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
   const end = new Date(input.examAt.getTime() + (input.durationMinutes ?? 120) * 60_000);
   lines.push("BEGIN:VEVENT", `UID:exam-${input.uidBase}@proofpath`, `DTSTAMP:${icsStamp(input.now)}`, `DTSTART:${icsStamp(input.examAt)}`, `DTEND:${icsStamp(end)}`, `SUMMARY:${icsEscape(input.title)}`);
   if (input.location) lines.push(`LOCATION:${icsEscape(input.location)}`);

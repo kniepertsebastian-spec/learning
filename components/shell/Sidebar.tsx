@@ -85,7 +85,7 @@ export function SidebarContent({ ctx, data, onNavigate }: { ctx: ShellContext; d
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Link href="/" onClick={onNavigate} className="flex items-center gap-2.5 rounded-md px-1 py-1 font-semibold">
-        <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">P</span>
+        <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">K</span>
         <span>{t.appTitle}</span>
         <Badge tone="accent">{t.statusBadge}</Badge>
       </Link>
