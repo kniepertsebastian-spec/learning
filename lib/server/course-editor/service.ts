@@ -48,13 +48,15 @@ export type Actor = { userId: string | null; origin: ContentRevisionOrigin; note
 
 /* ------------------------------------------------------------------ Lesen */
 
-export async function editableCourse(certId: string) {
+/** Allgemeine Kurse sind für Admins und Prüfer bearbeitbar; mit `organizationId` stattdessen nur interne Kurse genau dieser Firma. */
+export async function editableCourse(certId: string, organizationId?: string) {
   const [cert] = await getDb()
-    .select({ id: certifications.id, slug: certifications.slug, name: certifications.name, kind: certifications.kind })
+    .select({ id: certifications.id, slug: certifications.slug, name: certifications.name, kind: certifications.kind, owner: certifications.ownerOrganizationId })
     .from(certifications)
     .where(eq(certifications.id, certId))
     .limit(1);
-  if (!cert || cert.kind !== "general") throw new EditorNotFoundError("Kurs nicht gefunden.");
+  const allowed = organizationId ? cert?.kind === "internal" && cert.owner === organizationId : cert?.kind === "general";
+  if (!cert || !allowed) throw new EditorNotFoundError("Kurs nicht gefunden.");
   return cert;
 }
 

@@ -251,6 +251,7 @@ export function InternalCoursesPanel({
                 </span>
                 <span className="flex gap-2">
                   <Link href={`/cert/${c.slug}`} className={btn}>{de ? "Ansehen" : "View"}</Link>
+                  <Link href={`/company/courses/${c.slug}/workshop`} className={btn} data-testid="internal-workshop">{de ? "Bearbeiten" : "Edit"}</Link>
                   {c.catalogStatus !== "approved" && (
                     <>
                       <button type="button" className={btn} disabled={busy} data-testid="internal-approve" onClick={() => call(`/api/internal-courses/${c.id}/approve`, "POST")}>
