@@ -1,15 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { FLUSH_AT_SECONDS, sendLearningTime, tick, TICK_SECONDS, type TimerState } from "@/lib/client/learning-time";
+import { FLUSH_AT_SECONDS, MAX_BATCH_SECONDS, sendLearningTime, tick, TICK_SECONDS, type TimerState } from "@/lib/client/learning-time";
 
 /** Unsichtbar auf allen Kursseiten (app/cert/[id]/layout.tsx): misst aktive Lernzeit, siehe lib/client/learning-time.ts. */
 export function LearningTimeTracker({ certificationId }: { certificationId: string }) {
   React.useEffect(() => {
     let state: TimerState = { pending: 0, lastInput: Date.now() };
     const flush = () => {
-      sendLearningTime(certificationId, state.pending);
-      state = { ...state, pending: 0 };
+      if (state.pending <= 0) return;
+      if (sendLearningTime(certificationId, state.pending)) {
+        state = { ...state, pending: Math.max(0, state.pending - MAX_BATCH_SECONDS) };
+      }
     };
     const onInput = () => {
       state = { ...state, lastInput: Date.now() };
@@ -26,11 +28,13 @@ export function LearningTimeTracker({ certificationId }: { certificationId: stri
     for (const e of events) window.addEventListener(e, onInput, { passive: true, capture: true });
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", flush);
+    window.addEventListener("online", flush);
     return () => {
       window.clearInterval(timer);
       for (const e of events) window.removeEventListener(e, onInput, { capture: true });
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", flush);
+      window.removeEventListener("online", flush);
       flush();
     };
   }, [certificationId]);

@@ -48,11 +48,27 @@ export function FocusFrame({
   // Im Browser nach document.body (außerhalb der App-Shell, die währenddessen inert ist); auf dem Server inline.
   const inBrowser = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
+/*  function navigateOut(target: string) {
+    if (typeof window !== "undefined" && typeof navigator !== "undefined" && !navigator.onLine) {
+      window.location.assign(target);
+      return;
+    }
+    router.push(target);
+  }*/
+
+  function navigateOut(target: string) {
+    if (typeof window !== "undefined" && window.navigator && !window.navigator.onLine) {
+      window.location.assign(target);
+      return;
+    }
+    router.push(target);
+  }
+
   function requestClose(target: string = exitHref) {
     if (confirmLeave) {
       setLeaveTo(target);
       setLeaveOpen(true);
-    } else router.push(target);
+    } else navigateOut(target);
   }
 
   useEffect(() => {
@@ -75,8 +91,8 @@ export function FocusFrame({
   }, []);
 
   const frame = (
-    <div ref={rootRef} tabIndex={-1} className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-background text-foreground outline-none" data-testid="focus-frame" data-mode={mode}>
-      <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-sidebar-border bg-sidebar px-4 py-2.5 sm:px-6">
+    <div ref={rootRef} tabIndex={-1} className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground outline-none" data-testid="focus-frame" data-mode={mode}>
+      <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-sidebar-border bg-sidebar px-4 pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5 sm:px-6">
         <div className="flex shrink-0 items-center gap-2">
           <button type="button" onClick={() => requestClose(exitHref)} data-testid="focus-close" className="flex h-11 items-center gap-1.5 rounded-md border border-border-strong bg-control px-3 text-sm font-medium hover:bg-surface-2">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -109,7 +125,7 @@ export function FocusFrame({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-10">
+        <div className="min-w-0 flex-1 overflow-y-auto px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10">
           <div className="mx-auto w-full max-w-[760px]">{children}</div>
         </div>
         {navigator && <aside className="hidden w-[300px] shrink-0 overflow-y-auto border-l border-border p-5 lg:block">{navigator}</aside>}
@@ -121,7 +137,7 @@ export function FocusFrame({
           <DialogDescription>{t.quiz.leaveBody}</DialogDescription>
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setLeaveOpen(false)}>{t.quiz.stay}</Button>
-            <Button variant="inverted" onClick={() => router.push(leaveTo)} data-testid="leave-confirm">{t.quiz.leave}</Button>
+            <Button variant="inverted" onClick={() => navigateOut(leaveTo)} data-testid="leave-confirm">{t.quiz.leave}</Button>
           </div>
         </DialogContent>
       </Dialog>

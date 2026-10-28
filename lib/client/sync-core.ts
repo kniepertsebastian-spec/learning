@@ -63,7 +63,27 @@ export function summarize(events: PendingSyncEvent[], lastSyncedAt: string | nul
  * unverändert („Anmeldung nötig“, kein Fehlversuch). `networkFailed` ist wahr, wenn der Server nicht erreichbar war
  * oder die Antwort unbrauchbar ist: der Service Worker lässt den Sync dann vom Browser wiederholen.
  */
+/**
+ * Verhindert parallele Sync-Läufe für dieselbe Person über Tab- und Service-Worker-Grenzen hinweg
+ * (Web Locks API, `navigator.locks`). Falls `navigator.locks` in der Umgebung fehlt, läuft `fn` direkt.
+ */
+export async function withUserSyncLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+  const nav = typeof navigator !== "undefined" ? (navigator as Navigator & { locks?: { request?: <R>(name: string, cb: () => Promise<R>) => Promise<R> } }) : undefined;
+  if (nav?.locks && typeof nav.locks.request === "function") {
+    return nav.locks.request(`certstudy-sync:${userId}`, fn);
+  }
+  return fn();
+}
+
 export async function transferPendingEvents(
+  userId: string,
+  io: SyncIo,
+  lastSyncedAt: () => string | null,
+): Promise<{ summary: SyncQueueSummary; networkFailed: boolean }> {
+  return withUserSyncLock(userId, () => transferPendingEventsUnlocked(userId, io, lastSyncedAt));
+}
+
+async function transferPendingEventsUnlocked(
   userId: string,
   io: SyncIo,
   lastSyncedAt: () => string | null,

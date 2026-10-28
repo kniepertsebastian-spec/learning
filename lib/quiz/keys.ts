@@ -1,15 +1,23 @@
 /**
  * Tastenkürzel im Quiz und in der Prüfung (docs/ROADMAP-UI.md U4): A–D bzw. 1–4 wählen, Enter weiter/bestätigen,
- * F markieren, Esc schließen. Aktiv nur, wenn kein Eingabefeld fokussiert ist und keine Strg-/Alt-/Meta-Taste gedrückt wird.
+ * F markieren, Esc schließen. Aktiv nur, wenn kein Eingabefeld fokussiert ist, keine IME-Komposition läuft und
+ * keine Strg-/Alt-/Meta-Taste gedrückt wird.
  */
 export type QuizKeyAction = { type: "pick"; index: number } | { type: "enter" } | { type: "flag" } | { type: "escape" };
 
-export type KeyLike = { key: string; ctrlKey?: boolean; altKey?: boolean; metaKey?: boolean; target?: { tagName?: string; isContentEditable?: boolean } | null };
+export type KeyLike = {
+  key: string;
+  ctrlKey?: boolean;
+  altKey?: boolean;
+  metaKey?: boolean;
+  isComposing?: boolean;
+  target?: { tagName?: string; isContentEditable?: boolean } | null;
+};
 
 const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
 export function quizKeyAction(e: KeyLike, optionCount: number): QuizKeyAction | null {
-  if (e.ctrlKey || e.altKey || e.metaKey) return null;
+  if (e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return null;
   const tag = e.target?.tagName?.toUpperCase();
   if ((tag && TYPING_TAGS.has(tag)) || e.target?.isContentEditable) return null;
   const k = e.key;

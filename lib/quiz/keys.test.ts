@@ -24,6 +24,7 @@ describe("quizKeyAction", () => {
     expect(quizKeyAction({ key: "a", target: { tagName: "DIV", isContentEditable: true } }, 4)).toBeNull();
     expect(quizKeyAction(key("a", { ctrlKey: true }), 4)).toBeNull();
     expect(quizKeyAction(key("f", { metaKey: true }), 4)).toBeNull();
+    expect(quizKeyAction(key("a", { isComposing: true }), 4)).toBeNull();
   });
 });
 

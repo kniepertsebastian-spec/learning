@@ -15,6 +15,7 @@ import {
   ASSETS_CACHE,
   ASSETS_CACHE_MAX_AGE_SECONDS,
   ASSETS_CACHE_MAX_ENTRIES,
+  isRscRequest,
   isUncachedPagePath,
   LEGACY_CACHE,
   PAGES_CACHE,
@@ -38,6 +39,11 @@ const runtimeCaching: RuntimeCaching[] = [
     // läuft über IndexedDB (lib/client/offline-db.ts), nicht über den
     // Service-Worker-Cache.
     matcher: ({ url }) => url.pathname.startsWith("/api/"),
+    handler: new NetworkOnly(),
+  },
+  {
+    // Next.js RSC-Payloads nie cachen, damit Soft-Navigationen keine veralteten oder nutzerfremden Fragmente liefern.
+    matcher: ({ request, sameOrigin, url }) => sameOrigin && isRscRequest(request, url),
     handler: new NetworkOnly(),
   },
   {

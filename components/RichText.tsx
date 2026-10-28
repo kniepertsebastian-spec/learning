@@ -105,13 +105,17 @@ function withHeadingIds(base: Components): Components {
 const remarkPlugins = [remarkGfm, remarkDirective, remarkLearningBlocks, [remarkMath, { singleDollarTextMath: false }]] as NonNullable<React.ComponentProps<typeof ReactMarkdown>["remarkPlugins"]>;
 const rehypePlugins = [rehypeHighlight, [rehypeKatex, { throwOnError: false, strict: "ignore", output: "htmlAndMathml" }]] as NonNullable<React.ComponentProps<typeof ReactMarkdown>["rehypePlugins"]>;
 
-export function RichText({ text, inline = false, headingIds = false }: { text: string; inline?: boolean; headingIds?: boolean }) {
-  const components = inline ? inlineComponents : headingIds ? withHeadingIds(blockComponents) : blockComponents;
+export const RichText = React.memo(function RichText({ text, inline = false, headingIds = false }: { text: string; inline?: boolean; headingIds?: boolean }) {
+  const components = React.useMemo(
+    () => (inline ? inlineComponents : headingIds ? withHeadingIds(blockComponents) : blockComponents),
+    [inline, headingIds],
+  );
+  const normalized = React.useMemo(() => normalizeMath(text), [text]);
   return (
     <div className={inline ? "min-w-0" : ""} data-testid="rich-text">
       <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
-        {normalizeMath(text)}
+        {normalized}
       </ReactMarkdown>
     </div>
   );
-}
+});

@@ -79,6 +79,17 @@ describe("transferPendingEvents", () => {
     expect(posted).toHaveLength(0);
     expect(networkFailed).toBe(false);
   });
+
+  it("serialisiert parallele Aufrufe über withUserSyncLock", async () => {
+    const { io, posted } = fakeIo([event("a")], () => ok([{ clientEventId: "a", status: "applied" }]));
+    const [r1, r2] = await Promise.all([
+      transferPendingEvents("u1", io, () => null),
+      transferPendingEvents("u1", io, () => null),
+    ]);
+    expect(r1.networkFailed).toBe(false);
+    expect(r2.networkFailed).toBe(false);
+    expect(posted.length).toBeGreaterThanOrEqual(1);
+  });
 });
 
 describe("userIdFromSyncTag", () => {

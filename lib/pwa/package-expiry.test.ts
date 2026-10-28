@@ -3,6 +3,7 @@ import { isPackageLocked } from "./package-expiry";
 
 const now = new Date("2026-10-24T12:00:00Z");
 const ago = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
+const ahead = (days: number) => new Date(now.getTime() + days * 86_400_000).toISOString();
 
 describe("isPackageLocked", () => {
   it("ist ohne Einstellung nie gesperrt (Standard aus)", () => {
@@ -16,5 +17,9 @@ describe("isPackageLocked", () => {
   it("zählt ohne Prüfzeitpunkt ab dem Download", () => {
     expect(isPackageLocked({ offlineMaxAgeDays: 30, downloadedAt: ago(31) }, now)).toBe(true);
     expect(isPackageLocked({ offlineMaxAgeDays: 30, downloadedAt: ago(5) }, now)).toBe(false);
+  });
+  it("sperrt bei zurückgestellter Geräteuhr (Clock-Rollback-Schutz)", () => {
+    expect(isPackageLocked({ offlineMaxAgeDays: 30, downloadedAt: ahead(2) }, now)).toBe(true);
+    expect(isPackageLocked({ offlineMaxAgeDays: 30, downloadedAt: ago(5), lastVerifiedAt: ahead(1) }, now)).toBe(true);
   });
 });

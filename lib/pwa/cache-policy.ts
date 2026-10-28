@@ -21,3 +21,11 @@ const UNCACHED_PREFIXES = ["/admin", "/company", "/confirm-company"];
 export function isUncachedPagePath(pathname: string): boolean {
   return UNCACHED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
+
+/**
+ * Erkennt Next.js App-Router RSC-Anfragen (`RSC: 1` Header oder `?_rsc=` Query-Parameter).
+ * Diese dürfen nie im Asset- oder Dokument-Cache landen und laufen immer direkt über das Netzwerk.
+ */
+export function isRscRequest(request: Pick<Request, "headers">, url: Pick<URL, "searchParams">): boolean {
+  return request.headers.get("RSC") === "1" || url.searchParams.has("_rsc");
+}

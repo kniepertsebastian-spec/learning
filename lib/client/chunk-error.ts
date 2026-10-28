@@ -1,3 +1,5 @@
+import { PAGES_CACHE } from "../pwa/cache-policy";
+
 const RELOAD_KEY = "proofpath-chunk-reload";
 
 /** Veraltete Skript-Chunks nach einem Deploy: Webpack-„ChunkLoadError“ bzw. fehlgeschlagener dynamischer Import. */
@@ -12,6 +14,27 @@ interface FlagStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
+}
+
+/**
+ * Vor dem Neuladen nach einem Chunk-Fehler den Seiten-Cache leeren und einen wartenden Service Worker aktivieren,
+ * damit das Neuladen nicht erneut das veraltete HTML-Dokument aus `pages-cache` bezieht.
+ */
+export async function prepareServiceWorkerForChunkReload(): Promise<void> {
+  try {
+    if (typeof caches !== "undefined") {
+      await caches.delete(PAGES_CACHE);
+    }
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      await reg?.update().catch(() => {});
+      if (reg?.waiting) {
+        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+      }
+    }
+  } catch {
+    // Offline oder ohne Service-Worker-Zugriff: normales Neuladen übernimmt.
+  }
 }
 
 /**
