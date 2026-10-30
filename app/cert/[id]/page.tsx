@@ -436,7 +436,7 @@ export default async function CertDetailPage({
                 const { mastery } = domainMastery[domain.id] || { mastery: 0 };
                 const chapter = chapterByDomain.get(domain.id);
                 return (
-                  <details key={domain.id} open={!allDone} className="group overflow-hidden rounded-2xl border border-border bg-surface">
+                  <details key={domain.id} open className="group overflow-hidden rounded-2xl border border-border bg-surface">
                     <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 [&::-webkit-details-marker]:hidden">
                       <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold", allDone ? "bg-success text-on-success" : domainDone > 0 ? "border-2 border-accent text-link" : "border-2 border-border-strong text-subtle")} aria-hidden="true">
                         {allDone ? <Check className="h-4 w-4" /> : di + 1}
