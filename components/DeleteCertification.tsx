@@ -1,5 +1,7 @@
 "use client";
 
+import { c_deleteCertification } from "@/lib/i18n/components/deleteCertification";
+import { fill } from "@/lib/i18n/fill";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -22,7 +24,7 @@ export function DeleteCertification({ certificationId, slug, name, locale }: { c
   async function open() {
     setError(null);
     const res = await fetch(`/api/admin/certifications/${certificationId}`, { cache: "no-store" });
-    if (!res.ok) return setError(de ? "Konnte nicht geladen werden." : "Could not load.");
+    if (!res.ok) return setError(c_deleteCertification(de).couldNotLoad);
     setImpact((await res.json()).impact);
   }
   async function remove() {
@@ -36,7 +38,7 @@ export function DeleteCertification({ certificationId, slug, name, locale }: { c
     setBusy(false);
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      return setError(data?.error ?? (de ? "Löschen fehlgeschlagen." : "Delete failed."));
+      return setError(data?.error ?? (c_deleteCertification(de).deleteFailed));
     }
     router.push("/admin");
     router.refresh();
@@ -44,32 +46,32 @@ export function DeleteCertification({ certificationId, slug, name, locale }: { c
 
   return (
     <section className="rounded-lg border border-danger/40 p-4" data-testid="delete-certification">
-      <h2 className="font-medium text-danger-text">{de ? "Kurs löschen" : "Delete course"}</h2>
+      <h2 className="font-medium text-danger-text">{c_deleteCertification(de).deleteCourse}</h2>
       {!impact ? (
         <>
           <p className="mt-1 text-sm text-muted">
-            {de ? "Entfernt den Kurs mit allen Lernzielen, Lektionen, Fragen und Quellen, z. B. ein doppelt angelegter Kurs." : "Removes the course with all objectives, lessons, questions and sources, e.g. a duplicate."}
+            {c_deleteCertification(de).removesTheCourseWithAll}
           </p>
           <button type="button" onClick={() => void open()} data-testid="delete-open" className="mt-3 rounded-md border border-danger/40 px-3 py-1.5 text-sm font-medium text-danger-text hover:bg-danger-soft">
-            {de ? "Löschen …" : "Delete …"}
+            {c_deleteCertification(de).delete}
           </button>
         </>
       ) : (
         <div className="mt-2 flex flex-col gap-3 text-sm">
           {withData ? (
             <ul className="list-disc pl-5 text-danger-text" data-testid="delete-impact">
-              {impact.learners > 0 && <li>{de ? `${impact.learners} Person(en) mit Lernstand (geht verloren)` : `${impact.learners} learner(s) with progress (lost)`}</li>}
-              {impact.companyAssignments > 0 && <li>{de ? `${impact.companyAssignments} Firmenzuweisung(en)` : `${impact.companyAssignments} company assignment(s)`}</li>}
-              {impact.companyEntitlements > 0 && <li>{de ? `${impact.companyEntitlements} Firmenfreischaltung(en)` : `${impact.companyEntitlements} company release(s)`}</li>}
-              {impact.mandatoryRules > 0 && <li>{de ? `${impact.mandatoryRules} Pflichtregel(n)` : `${impact.mandatoryRules} mandatory rule(s)`}</li>}
+              {impact.learners > 0 && <li>{fill(c_deleteCertification(de).n0LearnerSWithProgress, impact.learners)}</li>}
+              {impact.companyAssignments > 0 && <li>{fill(c_deleteCertification(de).n0CompanyAssignmentS, impact.companyAssignments)}</li>}
+              {impact.companyEntitlements > 0 && <li>{fill(c_deleteCertification(de).n0CompanyReleaseS, impact.companyEntitlements)}</li>}
+              {impact.mandatoryRules > 0 && <li>{fill(c_deleteCertification(de).n0MandatoryRuleS, impact.mandatoryRules)}</li>}
             </ul>
           ) : (
-            <p className="text-muted" data-testid="delete-impact">{de ? "Am Kurs hängen keine Lerndaten oder Zuweisungen." : "No learner data or assignments are attached."}</p>
+            <p className="text-muted" data-testid="delete-impact">{c_deleteCertification(de).noLearnerDataOrAssignments}</p>
           )}
           {withData && (
             <label className="flex items-start gap-2">
               <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} data-testid="delete-ack" />
-              {de ? "Ich weiß, dass diese Daten unwiderruflich gelöscht werden." : "I understand this data will be deleted permanently."}
+              {c_deleteCertification(de).iUnderstandThisDataWill}
             </label>
           )}
           <label className="flex flex-col gap-1">
@@ -79,9 +81,9 @@ export function DeleteCertification({ certificationId, slug, name, locale }: { c
           {error && <p role="alert" className="text-danger-text" data-testid="delete-error">{error}</p>}
           <div className="flex gap-2">
             <button type="button" disabled={busy || typed.trim() !== slug || (withData && !ack)} onClick={() => void remove()} data-testid="delete-submit" className="rounded-md bg-danger px-3 py-1.5 font-medium text-on-danger disabled:opacity-50">
-              {de ? "Endgültig löschen" : "Delete permanently"}
+              {c_deleteCertification(de).deletePermanently}
             </button>
-            <button type="button" onClick={() => { setImpact(null); setTyped(""); setAck(false); }} className="rounded-md border border-border px-3 py-1.5">{de ? "Abbrechen" : "Cancel"}</button>
+            <button type="button" onClick={() => { setImpact(null); setTyped(""); setAck(false); }} className="rounded-md border border-border px-3 py-1.5">{c_deleteCertification(de).cancel}</button>
           </div>
         </div>
       )}

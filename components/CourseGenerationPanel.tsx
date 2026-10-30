@@ -1,5 +1,7 @@
 "use client";
 
+import { c_courseGenerationPanel } from "@/lib/i18n/components/courseGenerationPanel";
+import { fill } from "@/lib/i18n/fill";
 import { cn } from "@/lib/cn";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -201,7 +203,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     const sourceUrls = sourceUrlList;
     if (sourceUrls.length === 0) {
       setLoading(false);
-      setRequestError(locale === "de" ? "Bitte mindestens eine Quelle einfügen." : "Please add at least one source.");
+      setRequestError(c_courseGenerationPanel(locale).pleaseAddAtLeastOne);
       return;
     }
     const payload = {
@@ -252,7 +254,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     if (rest.length === 0) {
       setBadSources(null);
       setPendingPayload(null);
-      setRequestError(locale === "de" ? "Es ist keine brauchbare Quelle übrig. Bitte andere Quellen einfügen." : "No usable source left. Please add other sources.");
+      setRequestError(c_courseGenerationPanel(locale).noUsableSourceLeftPlease);
       return;
     }
     setLoading(true);
@@ -301,20 +303,16 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       <div className="mb-1 flex items-center gap-1.5">
         <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
         <h2 className="text-lg font-semibold">
-          {locale === "de" ? "Kurs automatisch generieren" : "Generate course automatically"}
+          {c_courseGenerationPanel(locale).generateCourseAutomatically}
         </h2>
       </div>
       <p className="mb-4 text-sm text-subtle">
-        {locale === "de"
-          ? "Ein Klick erzeugt Blueprint, Lektionen und Fragen vollautomatisch aus offiziellen Quellen (course_generation.md)."
-          : "One click generates the blueprint, lessons, and questions fully automatically from official sources (course_generation.md)."}
+        {c_courseGenerationPanel(locale).oneClickGeneratesTheBlueprint}
       </p>
 
       {!online && (
         <p className="mb-3 text-xs text-warning-text dark:text-warning-text">
-          {locale === "de"
-            ? "Die Kursgenerierung benötigt eine Verbindung."
-            : "Course generation requires a connection."}
+          {c_courseGenerationPanel(locale).courseGenerationRequiresAConnection}
         </p>
       )}
 
@@ -463,8 +461,8 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                   : `${validCount}/${objectives.length} objective(s) done${failedCount > 0 ? `, ${failedCount} failed` : ""}`}
                 {" "}
                 {showObjectiveCosts
-                  ? locale === "de" ? "(Details ausblenden)" : "(hide details)"
-                  : locale === "de" ? "(Details/Kosten anzeigen)" : "(show details/cost)"}
+                  ? c_courseGenerationPanel(locale).hideDetails
+                  : c_courseGenerationPanel(locale).showDetailsCost}
               </button>
               {showObjectiveCosts && (
                 <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border">
@@ -472,10 +470,10 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                     <thead className="sticky top-0 bg-surface">
                       <tr className="text-faint">
                         <th className="px-2 py-1 font-medium">Code</th>
-                        <th className="px-2 py-1 font-medium">{locale === "de" ? "Status" : "Status"}</th>
+                        <th className="px-2 py-1 font-medium">{c_courseGenerationPanel(locale).status}</th>
                         <th className="px-2 py-1 text-right font-medium">Tokens</th>
                         <th className="px-2 py-1 text-right font-medium">
-                          {locale === "de" ? "Kosten" : "Cost"}
+                          {c_courseGenerationPanel(locale).cost}
                         </th>
                       </tr>
                     </thead>
@@ -504,9 +502,9 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
 
           {!active && job.status !== "published" && (
             <div className="rounded-md border border-border p-3 text-xs" data-testid="last-state">
-              <p className="font-medium">{locale === "de" ? "Letzter Stand" : "Last state"}{job.courseTitle ? `: ${job.courseTitle}` : ""}</p>
+              <p className="font-medium">{c_courseGenerationPanel(locale).lastState}{job.courseTitle ? `: ${job.courseTitle}` : ""}</p>
               <p className="mt-1 text-muted">
-                {locale === "de" ? "Zuletzt in Phase" : "Last in phase"} „{PHASE_LABEL[job.phase]?.[locale] ?? job.phase}“
+                {c_courseGenerationPanel(locale).lastInPhase} „{PHASE_LABEL[job.phase]?.[locale] ?? job.phase}“
                 {job.updatedAt ? ` · ${new Date(job.updatedAt).toLocaleString(locale === "de" ? "de-DE" : "en-GB")}` : ""}
               </p>
               {objectives.length > 0 && (
@@ -528,9 +526,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
               ))}
               {RETRYABLE_STATUSES.has(job.status) && job.status !== "package_ready" && (
                 <p className="mt-2 text-muted">
-                  {locale === "de"
-                    ? "Mit „Generierung neu starten“ geht es dort weiter: bereits fertige Lernziele bleiben erhalten, nur das Fehlende wird neu erzeugt."
-                    : "“Restart generation” continues from there: finished objectives are kept, only what is missing is generated again."}
+                  {c_courseGenerationPanel(locale).restartGenerationContinuesFromThere}
                 </p>
               )}
             </div>
@@ -538,30 +534,26 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
 
           {pricingConfigured ? (
             <p className="text-xs text-faint">
-              {locale === "de" ? "Kosten" : "Cost"}: ~${Number(job.actualCostUsd).toFixed(4)}
-              {job.estimatedCostUsd && ` (${locale === "de" ? "geschätzt" : "estimated"} ~$${Number(job.estimatedCostUsd).toFixed(4)})`}
+              {c_courseGenerationPanel(locale).cost}: ~${Number(job.actualCostUsd).toFixed(4)}
+              {job.estimatedCostUsd && ` (${c_courseGenerationPanel(locale).estimated} ~$${Number(job.estimatedCostUsd).toFixed(4)})`}
               {" · "}
-              {locale === "de" ? "Limit" : "limit"} ${job.initialCostLimitUsd}/${job.absoluteCostLimitUsd}
+              {c_courseGenerationPanel(locale).limit} ${job.initialCostLimitUsd}/${job.absoluteCostLimitUsd}
             </p>
           ) : (
             <p className="rounded-md bg-warning-soft p-2 text-xs text-warning-text" data-testid="pricing-missing">
-              {locale === "de"
-                ? "Kosten werden nicht berechnet: Für das KI-Modell sind keine Preise hinterlegt (GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD und GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD in der Server-.env). Solange greift auch das Kostenlimit nicht."
-                : "Costs are not calculated: no prices are set for the AI model (GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD and GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD in the server .env). The cost limit does not apply until then."}
+              {c_courseGenerationPanel(locale).costsAreNotCalculatedNo}
             </p>
           )}
 
           {job.status === "package_ready" && (
             <p className="rounded-md bg-accent-soft p-2 text-xs text-link">
-              {locale === "de"
-                ? "Kurs vollständig generiert und validiert - wartet auf manuelle Freigabe."
-                : "Course fully generated and validated - waiting for manual approval."}
+              {c_courseGenerationPanel(locale).courseFullyGeneratedAndValidated}
             </p>
           )}
           {job.status === "published" && (
             <p className="flex items-center gap-1.5 text-sm text-success-text">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              {locale === "de" ? "Kurs veröffentlicht." : "Course published."}
+              {c_courseGenerationPanel(locale).coursePublished}
             </p>
           )}
           {(job.status === "failed" ||
@@ -584,7 +576,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                 onClick={handleCancel}
                 className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-background"
               >
-                {locale === "de" ? "Abbrechen" : "Cancel"}
+                {c_courseGenerationPanel(locale).cancel}
               </button>
             )}
             {!active && RETRYABLE_STATUSES.has(job.status) && (
@@ -595,8 +587,8 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                 className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
               >
                 {job.status === "package_ready"
-                  ? locale === "de" ? "Jetzt veröffentlichen" : "Publish now"
-                  : locale === "de" ? "Generierung neu starten" : "Restart generation"}
+                  ? c_courseGenerationPanel(locale).publishNow
+                  : c_courseGenerationPanel(locale).restartGeneration}
               </button>
             )}
             {!active && (
@@ -605,7 +597,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                 onClick={handleNewJob}
                 className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-background"
               >
-                {locale === "de" ? "Neuer Auftrag" : "New job"}
+                {c_courseGenerationPanel(locale).newJob}
               </button>
             )}
           </div>
@@ -615,9 +607,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       {badSources && (
         <div role="alert" className="mt-3 rounded-md border border-danger/40 bg-danger-soft p-3 text-sm" data-testid="bad-sources">
           <p className="font-medium text-danger-text">
-            {locale === "de"
-              ? `${badSources.length} Quelle(n) lassen sich nicht verwenden:`
-              : `${badSources.length} source(s) cannot be used:`}
+            {fill(c_courseGenerationPanel(locale).n0SourceSCannotBe, badSources.length)}
           </p>
           <ul className="mt-2 flex flex-col gap-2">
             {badSources.map((b) => (
@@ -627,13 +617,13 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
               </li>
             ))}
           </ul>
-          <p className="mt-3">{locale === "de" ? "Diese Quellen entfernen und mit den übrigen fortfahren?" : "Remove these sources and continue with the rest?"}</p>
+          <p className="mt-3">{c_courseGenerationPanel(locale).removeTheseSourcesAndContinue}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" disabled={loading} onClick={() => void continueWithoutBad()} data-testid="bad-sources-continue" className="rounded-md bg-primary px-3 py-1.5 font-medium text-on-primary disabled:opacity-50">
-              {locale === "de" ? "Entfernen und fortfahren" : "Remove and continue"}
+              {c_courseGenerationPanel(locale).removeAndContinue}
             </button>
             <button type="button" disabled={loading} onClick={() => { setBadSources(null); setPendingPayload(null); }} data-testid="bad-sources-cancel" className="rounded-md border border-border px-3 py-1.5">
-              {locale === "de" ? "Abbrechen (selbst korrigieren)" : "Cancel (fix myself)"}
+              {c_courseGenerationPanel(locale).cancelFixMyself}
             </button>
           </div>
         </div>

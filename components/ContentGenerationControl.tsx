@@ -1,5 +1,7 @@
 "use client";
 
+import { c_contentGenerationControl } from "@/lib/i18n/components/contentGenerationControl";
+import { fill } from "@/lib/i18n/fill";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, Play } from "lucide-react";
@@ -101,7 +103,7 @@ export function ContentGenerationControl({
       if (data.job?.status === "succeeded") router.refresh();
     } catch {
       setRequestError(
-        locale === "de" ? "Jobstatus konnte nicht geladen werden." : "Could not load job status.",
+        c_contentGenerationControl(locale).couldNotLoadJobStatus,
       );
     } finally {
       setLoading(false);
@@ -131,7 +133,7 @@ export function ContentGenerationControl({
       setRequestError(
         error instanceof Error
           ? error.message
-          : locale === "de" ? "Job konnte nicht gestartet werden." : "Could not start job.",
+          : c_contentGenerationControl(locale).couldNotStartJob,
       );
     } finally {
       setLoading(false);
@@ -140,24 +142,22 @@ export function ContentGenerationControl({
 
   const phaseLabel =
     job?.phase === "curriculum"
-      ? locale === "de" ? "Curriculum" : "Curriculum"
+      ? c_contentGenerationControl(locale).curriculum
       : job?.phase === "lessons"
-        ? locale === "de" ? "Lektionen und Fragen" : "Lessons and questions"
+        ? c_contentGenerationControl(locale).lessonsAndQuestions
         : job?.phase === "complete"
-          ? locale === "de" ? "Abgeschlossen" : "Complete"
-          : locale === "de" ? "Vorbereitung" : "Preparing";
+          ? c_contentGenerationControl(locale).complete
+          : c_contentGenerationControl(locale).preparing;
 
   return (
     <section className="mb-6 rounded-2xl border border-border bg-surface p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-medium">
-            {locale === "de" ? "KI-Inhaltsgenerierung" : "AI content generation"}
+            {c_contentGenerationControl(locale).aiContentGeneration}
           </h2>
           <p className="mt-1 text-sm text-subtle">
-            {locale === "de"
-              ? "Erzeugt fehlendes Curriculum, Lektionen und Quizfragen. Vorhandene Inhalte werden übersprungen."
-              : "Generates missing curriculum, lessons, and quiz questions. Existing content is skipped."}
+            {c_contentGenerationControl(locale).generatesMissingCurriculumLessonsAnd}
           </p>
         </div>
         <button
@@ -172,10 +172,10 @@ export function ContentGenerationControl({
             <Play className="h-4 w-4" aria-hidden="true" />
           )}
           {active
-            ? locale === "de" ? "Generierung läuft" : "Generating"
+            ? c_contentGenerationControl(locale).generating
             : job?.status === "failed"
-              ? locale === "de" ? "Erneut versuchen" : "Try again"
-              : locale === "de" ? "Inhalte generieren" : "Generate content"}
+              ? c_contentGenerationControl(locale).tryAgain
+              : c_contentGenerationControl(locale).generateContent}
         </button>
       </div>
 
@@ -185,37 +185,27 @@ export function ContentGenerationControl({
         <p
           className={`mt-3 text-xs ${budget.exceeded ? "text-danger-text dark:text-danger-text" : "text-subtle"}`}
         >
-          {locale === "de"
-            ? `KI-Budget: $${budget.spentUsd.toFixed(2)} von $${budget.limitUsd.toFixed(2)} verbraucht.`
-            : `AI budget: $${budget.spentUsd.toFixed(2)} of $${budget.limitUsd.toFixed(2)} spent.`}
+          {fill(c_contentGenerationControl(locale).aiBudget0Of1, budget.spentUsd.toFixed(2), budget.limitUsd.toFixed(2))}
           {budget.exceeded &&
-            (locale === "de"
-              ? " Neue Generierungen sind gesperrt; vorhandene Inhalte bleiben verfügbar."
-              : " New generations are blocked; existing content remains available.")}
+            (c_contentGenerationControl(locale).newGenerationsAreBlockedExisting)}
         </p>
       )}
 
       {/* R4.4 (roadmap.md): "Generierung ... ausdrücklich nicht offline anbieten". */}
       {!online && (
         <p className="mt-3 text-xs text-warning-text dark:text-warning-text">
-          {locale === "de"
-            ? "Die KI-Inhaltsgenerierung benötigt eine Verbindung."
-            : "AI content generation requires a connection."}
+          {c_contentGenerationControl(locale).aiContentGenerationRequiresA}
         </p>
       )}
 
       {!active && estimate.estimatedAiCalls > 0 && (
         <p className="mt-3 text-xs text-subtle">
-          {locale === "de"
-            ? `${estimate.domainsPending} Domain(s) ohne Curriculum, ${estimate.objectivesPending} Objective(s) ohne vollständige Lektionen/Fragen – geschätzt ${estimate.estimatedAiCalls} KI-Aufrufe.`
-            : `${estimate.domainsPending} domain(s) without curriculum, ${estimate.objectivesPending} objective(s) without complete lessons/questions – estimated ${estimate.estimatedAiCalls} AI calls.`}
+          {fill(c_contentGenerationControl(locale).n0DomainSWithoutCurriculum, estimate.domainsPending, estimate.objectivesPending, estimate.estimatedAiCalls)}
         </p>
       )}
       {!active && estimate.estimatedAiCalls === 0 && job?.status !== "failed" && (
         <p className="mt-3 text-xs text-subtle">
-          {locale === "de"
-            ? "Alle Domains und Objectives haben bereits Inhalte."
-            : "All domains and objectives already have content."}
+          {c_contentGenerationControl(locale).allDomainsAndObjectivesAlready}
         </p>
       )}
 
@@ -243,7 +233,7 @@ export function ContentGenerationControl({
             <p className="mt-1 text-xs text-faint">
               {job.model && <span className="font-mono">{job.model}</span>}
               {job.model && " · "}
-              {job.totalTokens.toLocaleString(locale)} {locale === "de" ? "Tokens" : "tokens"}
+              {job.totalTokens.toLocaleString(locale)} {c_contentGenerationControl(locale).tokens}
               {job.estimatedCostUsd !== null &&
                 ` · ~$${Number(job.estimatedCostUsd).toFixed(4)}`}
             </p>
@@ -252,7 +242,7 @@ export function ContentGenerationControl({
           {job.status === "succeeded" && (
             <p className="mt-3 flex items-center gap-1.5 text-sm text-success-text">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              {locale === "de" ? "Die Lerninhalte sind bereit." : "Learning content is ready."}
+              {c_contentGenerationControl(locale).learningContentIsReady}
             </p>
           )}
           {job.status === "failed" && (() => {
@@ -260,7 +250,7 @@ export function ContentGenerationControl({
             const [title, hint] = info
               ? info[locale]
               : [
-                  locale === "de" ? "Generierung fehlgeschlagen" : "Generation failed",
+                  c_contentGenerationControl(locale).generationFailed,
                   undefined,
                 ];
             return (
@@ -273,15 +263,13 @@ export function ContentGenerationControl({
                 {job.error && (
                   <details className="mt-2">
                     <summary className="cursor-pointer text-xs text-danger-text/70">
-                      {locale === "de" ? "Technische Details" : "Technical details"}
+                      {c_contentGenerationControl(locale).technicalDetails}
                     </summary>
                     <p className="mt-1 whitespace-pre-wrap text-xs">{job.error}</p>
                   </details>
                 )}
                 <p className="mt-2 text-xs text-danger-text/70">
-                  {locale === "de"
-                    ? "\"Erneut versuchen\" oben wiederholt nur das Fehlende - bereits erzeugte Lektionen und Fragen werden nicht neu generiert."
-                    : "\"Try again\" above only redoes what's missing - lessons and questions already generated are not recreated."}
+                  {c_contentGenerationControl(locale).tryAgainAboveOnlyRedoes}
                 </p>
               </div>
             );

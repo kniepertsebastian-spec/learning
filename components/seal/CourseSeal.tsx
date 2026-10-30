@@ -1,3 +1,4 @@
+import { c_sealCourseSeal } from "@/lib/i18n/components/sealCourseSeal";
 import * as React from "react";
 import Link from "next/link";
 import { BadgeCheck, TriangleAlert } from "lucide-react";
@@ -21,7 +22,7 @@ export function CourseSeal({ seal, locale, variant = "full", className, field }:
       <p className={cn("flex items-center gap-1.5 text-xs text-mint-text", className)} data-testid="course-seal" data-variant="compact">
         <BadgeCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span>
-          {de ? "Fachlich geprüft" : "Expert reviewed"} · {de ? "Version" : "Version"} {seal.versionLabel} · {de ? "Stand" : "as of"} {date}
+          {c_sealCourseSeal(de).expertReviewed} · {c_sealCourseSeal(de).version} {seal.versionLabel} · {c_sealCourseSeal(de).asOf} {date}
         </span>
       </p>
     );
@@ -32,24 +33,24 @@ export function CourseSeal({ seal, locale, variant = "full", className, field }:
   ));
   // Namen und ggf. „einem externen Experten“ zu einer Aufzählung: „A, B und C“.
   const who: React.ReactNode[] = [...names, ...(seal.anonymousCount > 0 || names.length === 0 ? [<span key="anon">{anonymousLabel(Math.max(seal.anonymousCount, 1), locale)}</span>] : [])];
-  const list = who.flatMap((node, i) => (i === 0 ? [node] : [i === who.length - 1 ? (de ? " und " : " and ") : ", ", node]));
+  const list = who.flatMap((node, i) => (i === 0 ? [node] : [i === who.length - 1 ? (c_sealCourseSeal(de).and) : ", ", node]));
   return (
     <div className={cn("rounded-xl border border-mint-border bg-mint-soft p-3 text-sm", className)} data-testid="course-seal" data-variant="full" data-changed={changed}>
       <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-mint-text">
         <BadgeCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
         <span data-testid="seal-line">
-          {de ? "Dieser Kurs wurde fachlich von " : "This course was technically reviewed by "}
+          {c_sealCourseSeal(de).thisCourseWasTechnicallyReviewed}
           {list.map((node, i) => <React.Fragment key={i}>{node}</React.Fragment>)}
-          {de ? " geprüft." : "."}
+          {c_sealCourseSeal(de).text}
         </span>
       </p>
       <p className="mt-1 text-xs text-subtle" data-testid="seal-meta">
-        {field && names.length > 0 ? <>{de ? "Fachgebiet" : "Field"}: {field} · </> : null}
-        {de ? "Version" : "Version"} {seal.versionLabel} · {de ? "Stand" : "as of"} {date}
+        {field && names.length > 0 ? <>{c_sealCourseSeal(de).field}: {field} · </> : null}
+        {c_sealCourseSeal(de).version} {seal.versionLabel} · {c_sealCourseSeal(de).asOf} {date}
         {seal.reviewers[0] && (
           <>
             {" · "}
-            <Link href={`/experts/${seal.reviewers[0].slug}`} className="text-link hover:underline" data-testid="seal-profile-link">{de ? "Zum Expertenprofil" : "View expert profile"}</Link>
+            <Link href={`/experts/${seal.reviewers[0].slug}`} className="text-link hover:underline" data-testid="seal-profile-link">{c_sealCourseSeal(de).viewExpertProfile}</Link>
           </>
         )}
       </p>
@@ -61,15 +62,15 @@ export function CourseSeal({ seal, locale, variant = "full", className, field }:
           </summary>
           <p className="mt-1 text-xs text-subtle">
             {seal.changes ? `${changeDetail(seal.changes, locale)}. ` : ""}
-            {de ? "Die Prüfung gilt für den oben genannten Stand; die Änderungen sind noch nicht erneut geprüft." : "The review applies to the date above; the changes have not been reviewed again yet."}
+            {c_sealCourseSeal(de).theReviewAppliesToThe}
           </p>
         </details>
       )}
       <details className="mt-2 text-xs text-subtle">
-        <summary className="cursor-pointer">{de ? "Was bedeutet „geprüft“?" : "What does “reviewed” mean?"}</summary>
+        <summary className="cursor-pointer">{c_sealCourseSeal(de).whatDoesReviewedMean}</summary>
         <p className="mt-1">
           {SEAL_DISCLAIMER[locale]}{" "}
-          <Link href="/agb" className="text-link hover:underline" data-testid="seal-agb-link">{de ? "Weiteres steht in den AGB." : "More in the terms of service."}</Link>
+          <Link href="/agb" className="text-link hover:underline" data-testid="seal-agb-link">{c_sealCourseSeal(de).moreInTheTermsOf}</Link>
         </p>
       </details>
     </div>

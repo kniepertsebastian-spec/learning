@@ -1,5 +1,6 @@
 "use client";
 
+import { c_offlinePackageManager } from "@/lib/i18n/components/offlinePackageManager";
 import { InstallBanner } from "@/components/InstallBanner";
 import { useEffect, useState } from "react";
 import { BadgeCheck, CheckCircle2, CloudDownload, RefreshCw, Trash2 } from "lucide-react";
@@ -113,9 +114,7 @@ export function OfflinePackageManager({
     setShowInstallStep(false);
     if (!isOfflineStorageSupported()) {
       setError(
-        locale === "de"
-          ? "Offline-Speicherung wird von diesem Browser nicht unterstützt."
-          : "Offline storage is not supported in this browser.",
+        c_offlinePackageManager(locale).offlineStorageIsNotSupported,
       );
       return;
     }
@@ -130,9 +129,7 @@ export function OfflinePackageManager({
       setError(
         e instanceof Error
           ? e.message
-          : locale === "de"
-            ? "Download fehlgeschlagen."
-            : "Download failed.",
+          : c_offlinePackageManager(locale).downloadFailed,
       );
     } finally {
       setDownloading(false);
@@ -171,7 +168,7 @@ export function OfflinePackageManager({
           onClick={() => setSelectedSectionId(null)}
           className="mb-4 text-sm text-muted hover:text-foreground"
         >
-          {locale === "de" ? "← Zurück zur Offline-Übersicht" : "← Back to offline overview"}
+          {c_offlinePackageManager(locale).backToOfflineOverview}
         </button>
         <SectionContent
           certSlug={certSlug}
@@ -196,7 +193,7 @@ export function OfflinePackageManager({
           onClick={() => setShowSession(false)}
           className="mb-4 text-sm text-muted hover:text-foreground"
         >
-          {locale === "de" ? "← Zurück zur Offline-Übersicht" : "← Back to offline overview"}
+          {c_offlinePackageManager(locale).backToOfflineOverview}
         </button>
         <StudySession
           certSlug={certSlug}
@@ -215,9 +212,7 @@ export function OfflinePackageManager({
       <InstallBanner />
       {locked && (
         <div role="alert" data-testid="package-locked" className="rounded-lg border border-warning-text/40 bg-surface p-4 text-sm">
-          {locale === "de"
-            ? "Dieser Kurs ist gesperrt, weil er zu lange nicht online geprüft wurde. Verbinde das Gerät mit dem Internet und öffne die App, dann ist er wieder nutzbar."
-            : "This course is locked because it has not been checked online for too long. Connect to the internet and open the app to unlock it."}
+          {c_offlinePackageManager(locale).thisCourseIsLockedBecause}
         </div>
       )}
       <div className="rounded-2xl border border-border bg-surface p-5">
@@ -226,38 +221,34 @@ export function OfflinePackageManager({
           <p className="mb-2 flex items-center gap-1.5 text-xs text-mint-text" data-testid="offline-seal">
             <BadgeCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>
-              {locale === "de" ? "Fachlich geprüft von" : "Reviewed by"} {reviewersText(record.data.seal, locale)} · {locale === "de" ? "Version" : "Version"} {record.data.seal.versionLabel} · {locale === "de" ? "Stand" : "as of"} {new Date(record.data.seal.approvedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", { timeZone: "UTC" })}
+              {c_offlinePackageManager(locale).reviewedBy} {reviewersText(record.data.seal, locale)} · {c_offlinePackageManager(locale).version} {record.data.seal.versionLabel} · {c_offlinePackageManager(locale).asOf} {new Date(record.data.seal.approvedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", { timeZone: "UTC" })}
               {record.data.seal.changeCount ? ` · ${changeLabel(record.data.seal.changeCount, locale)}` : ""}
             </span>
           </p>
         )}
         {loadingRecord ? (
-          <p className="text-sm text-subtle">{locale === "de" ? "Lädt…" : "Loading…"}</p>
+          <p className="text-sm text-subtle">{c_offlinePackageManager(locale).loading}</p>
         ) : record ? (
           <div className="flex flex-col gap-1 text-sm text-muted">
             <p className="flex items-center gap-1.5 text-success-text dark:text-success-text">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              {locale === "de" ? "Für offline verfügbar" : "Available offline"}
+              {c_offlinePackageManager(locale).availableOffline}
             </p>
             <p>
-              {locale === "de" ? "Größe" : "Size"}: {formatBytes(record.sizeBytes)}
+              {c_offlinePackageManager(locale).size}: {formatBytes(record.sizeBytes)}
             </p>
             <p>
-              {locale === "de" ? "Heruntergeladen am" : "Downloaded"}: {formatDate(record.downloadedAt, locale)}
+              {c_offlinePackageManager(locale).downloaded}: {formatDate(record.downloadedAt, locale)}
             </p>
             {hasUpdate && (
               <p className="text-warning-text dark:text-warning-text">
-                {locale === "de"
-                  ? "Es gibt eine aktuellere Version dieses Kurses."
-                  : "A newer version of this course is available."}
+                {c_offlinePackageManager(locale).aNewerVersionOfThis}
               </p>
             )}
           </div>
         ) : (
           <p className="text-sm text-subtle">
-            {locale === "de"
-              ? "Dieser Kurs ist noch nicht für offline gespeichert."
-              : "This course is not yet saved for offline use."}
+            {c_offlinePackageManager(locale).thisCourseIsNotYet}
           </p>
         )}
 
@@ -265,18 +256,16 @@ export function OfflinePackageManager({
           <div className="mt-2 flex flex-col gap-1 text-xs text-subtle" data-testid="offline-storage-status">
             {storage.usageBytes !== null && storage.quotaBytes !== null && (
               <p>
-                {locale === "de" ? "Speicher belegt" : "Storage used"}: {formatBytes(storage.usageBytes)}{" "}
-                {locale === "de" ? "von" : "of"} {formatBytes(storage.quotaBytes)}
+                {c_offlinePackageManager(locale).storageUsed}: {formatBytes(storage.usageBytes)}{" "}
+                {c_offlinePackageManager(locale).of} {formatBytes(storage.quotaBytes)}
               </p>
             )}
             {storage.persisted === true && (
-              <p>{locale === "de" ? "Speicher dauerhaft gesichert." : "Storage is persistent."}</p>
+              <p>{c_offlinePackageManager(locale).storageIsPersistent}</p>
             )}
             {storage.persisted === false && (
               <p className="text-warning-text">
-                {locale === "de"
-                  ? "Der Browser kann Offline-Daten bei Speichermangel löschen. Tipp: App installieren, damit Offline-Daten erhalten bleiben."
-                  : "The browser may delete offline data when storage runs low. Tip: install the app to keep offline data."}
+                {c_offlinePackageManager(locale).theBrowserMayDeleteOffline}
               </p>
             )}
           </div>
@@ -300,23 +289,21 @@ export function OfflinePackageManager({
         {error && <p className="mt-2 text-sm text-danger-text dark:text-danger-text">{error}</p>}
 
         {showInstallStep && (
-          <div role="region" aria-label={locale === "de" ? "Zuerst installieren" : "Install first"} data-testid="download-install-step" className="mt-3 rounded-md border border-border bg-surface-inset p-3 text-sm">
-            <p className="font-medium">{locale === "de" ? "Installiere die App, bevor du Kurse speicherst" : "Install the app before saving courses"}</p>
+          <div role="region" aria-label={c_offlinePackageManager(locale).installFirst} data-testid="download-install-step" className="mt-3 rounded-md border border-border bg-surface-inset p-3 text-sm">
+            <p className="font-medium">{c_offlinePackageManager(locale).installTheAppBeforeSaving}</p>
             <p className="mt-1 text-subtle">
-              {locale === "de"
-                ? "Safari kann gespeicherte Kurse und noch nicht übertragene Ergebnisse einer nicht installierten Website nach etwa einer Woche ohne Nutzung löschen."
-                : "Safari can delete saved courses and results that are not uploaded yet from a website that is not installed after about a week without use."}
+              {c_offlinePackageManager(locale).safariCanDeleteSavedCourses}
             </p>
             <ol className="mt-2 flex list-decimal flex-col gap-0.5 pl-5">
-              <li>{locale === "de" ? "Tippe unten in Safari auf „Teilen“" : "Tap “Share” in Safari"}</li>
-              <li>{locale === "de" ? "Wähle „Zum Home-Bildschirm“ und öffne die App von dort" : "Choose “Add to Home Screen” and open the app from there"}</li>
+              <li>{c_offlinePackageManager(locale).tapShareInSafari}</li>
+              <li>{c_offlinePackageManager(locale).chooseAddToHomeScreen}</li>
             </ol>
             <div className="mt-3 flex flex-wrap gap-2">
               <button type="button" onClick={() => void handleDownload(true)} data-testid="download-install-skip" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background">
-                {locale === "de" ? "Trotzdem speichern" : "Save anyway"}
+                {c_offlinePackageManager(locale).saveAnyway}
               </button>
               <button type="button" onClick={() => setShowInstallStep(false)} className="rounded-md px-3 py-1.5 text-sm text-subtle hover:bg-background">
-                {locale === "de" ? "Später" : "Later"}
+                {c_offlinePackageManager(locale).later}
               </button>
             </div>
           </div>
@@ -332,15 +319,9 @@ export function OfflinePackageManager({
             {hasUpdate ? <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> : <CloudDownload className="h-3.5 w-3.5" aria-hidden="true" />}
             {record
               ? hasUpdate
-                ? locale === "de"
-                  ? "Aktualisieren"
-                  : "Update"
-                : locale === "de"
-                  ? "Erneut speichern"
-                  : "Re-download"
-              : locale === "de"
-                ? "Für offline speichern"
-                : "Save for offline"}
+                ? c_offlinePackageManager(locale).update
+                : c_offlinePackageManager(locale).reDownload
+              : c_offlinePackageManager(locale).saveForOffline}
           </button>
           {record && (
             <button
@@ -349,7 +330,7 @@ export function OfflinePackageManager({
               className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted hover:bg-background"
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-              {locale === "de" ? "Offline-Daten löschen" : "Delete offline data"}
+              {c_offlinePackageManager(locale).deleteOfflineData}
             </button>
           )}
         </div>
@@ -358,18 +339,18 @@ export function OfflinePackageManager({
       {record?.data.session && (
         <div className="rounded-lg border border-accent-border bg-accent-soft p-4">
           <p className="mb-1 text-sm font-medium">
-            {locale === "de" ? "Heutige Session verfügbar" : "Today's session available"}
+            {c_offlinePackageManager(locale).todaySSessionAvailable}
           </p>
           <p className="mb-3 text-xs text-subtle">
             {record.data.session.questionItems.length}{" "}
-            {locale === "de" ? "Fragen, offline beantwortbar" : "questions, answerable offline"}
+            {c_offlinePackageManager(locale).questionsAnswerableOffline}
           </p>
           <button
             type="button"
             onClick={() => setShowSession(true)}
             className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-on-primary hover:opacity-90"
           >
-            {locale === "de" ? "Session starten" : "Start session"}
+            {c_offlinePackageManager(locale).startSession}
           </button>
         </div>
       )}

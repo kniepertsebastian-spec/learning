@@ -1,3 +1,5 @@
+import { c_progressReviewCard } from "@/lib/i18n/components/progressReviewCard";
+import { fill } from "@/lib/i18n/fill";
 import Link from "next/link";
 import { TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -32,34 +34,32 @@ export function ProgressReviewCard({ review, outlook, series, locale, certSlug }
         <div className="min-w-0">
           <h2 className="flex items-center gap-1.5 text-sm font-semibold">
             <TrendingUp className="h-4 w-4 text-mint-text" aria-hidden="true" />
-            {de ? "Dein Fortschritt" : "Your progress"}
+            {c_progressReviewCard(de).yourProgress}
           </h2>
           {review && (
             <p className="mt-1 text-sm" data-testid="progress-review-text">
-              {de
-                ? `Vor ${review.weeks} Wochen: ${review.then.secure} von ${review.then.total} Lernzielen sicher. Heute: ${review.now.secure}.`
-                : `${review.weeks} weeks ago: ${review.then.secure} of ${review.then.total} objectives secure. Today: ${review.now.secure}.`}
+              {fill(c_progressReviewCard(de).n0WeeksAgo1Of, review.weeks, review.then.secure, review.then.total, review.now.secure)}
             </p>
           )}
         </div>
-        <Sparkline series={series} label={de ? "Sichere Lernziele über die Zeit" : "Secure objectives over time"} />
+        <Sparkline series={series} label={c_progressReviewCard(de).secureObjectivesOverTime} />
       </div>
       {outlook && (
         <p className="mt-3 text-sm" data-testid="exam-outlook">
           {outlook.status === "done"
-            ? de ? "Du hast dein Ziel an sicheren Lernzielen für den Prüfungstermin schon erreicht." : "You have already reached your goal of secure objectives for the exam date."
+            ? c_progressReviewCard(de).youHaveAlreadyReachedYour
             : outlook.status === "on_track"
-              ? de ? `Du bist auf Kurs: Bei deinem Tempo erwarten wir bis zum Prüfungstermin etwa ${outlook.projected} sichere Lernziele (Ziel: ${outlook.target}).` : `You are on track: at your pace we expect about ${outlook.projected} secure objectives by the exam date (goal: ${outlook.target}).`
-              : de ? `Bei deinem Tempo wird es bis zum Prüfungstermin knapp: etwa ${outlook.projected} sichere Lernziele erwartet, Ziel ${outlook.target}. Sollen wir den Plan anpassen?` : `At your pace it will be tight by the exam date: about ${outlook.projected} secure objectives expected, goal ${outlook.target}. Shall we adjust the plan?`}
+              ? fill(c_progressReviewCard(de).youAreOnTrackAt, outlook.projected, outlook.target)
+              : fill(c_progressReviewCard(de).atYourPaceItWill, outlook.projected, outlook.target)}
           {outlook.status === "tight" && (
             <span className="ml-1 inline-flex flex-wrap gap-3">
-              <Link href="/how-i-learn" className="text-link hover:underline">{de ? "Wochenziel erhöhen" : "Raise weekly goal"}</Link>
-              <Link href={`/cert/${certSlug}#study-goal`} className="text-link hover:underline">{de ? "Termin ändern" : "Change exam date"}</Link>
+              <Link href="/how-i-learn" className="text-link hover:underline">{c_progressReviewCard(de).raiseWeeklyGoal}</Link>
+              <Link href={`/cert/${certSlug}#study-goal`} className="text-link hover:underline">{c_progressReviewCard(de).changeExamDate}</Link>
             </span>
           )}
         </p>
       )}
-      <p className="mt-2 text-xs text-subtle">{de ? "Nur für dich sichtbar, ohne Vergleich mit anderen." : "Visible to you only, no comparison with others."}</p>
+      <p className="mt-2 text-xs text-subtle">{c_progressReviewCard(de).visibleToYouOnlyNo}</p>
     </Card>
   );
 }

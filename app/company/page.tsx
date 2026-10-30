@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_companyPage } from "@/lib/i18n/components/companyPage";
 import { type CompanyTab } from "@/components/CompanyTabs";
 import { CompanyPageHeading } from "@/components/company/CompanyPageHeading";
 import { uiStrings } from "@/lib/i18n-strings";
@@ -146,14 +147,14 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   const waitingForReview = internalCourses.filter((c) => c.catalogStatus !== "approved").length + internalJobs.filter((j) => j.active).length;
   const needsAttention = practice.pending.length + mentorRequestRows.length + modules.filter((m) => m.state === "expired").length;
   const tabs: CompanyTab[] = [
-    { id: "status", label: de ? "Ergebnisse" : "Results", badge: overdue, badgeTitle: de ? "überfällig" : "overdue" },
-    ...(canAssign ? [{ id: "mandatory", label: de ? "Pflichtschulung" : "Mandatory training", badge: mandatoryRules.reduce((n, r) => n + r.overdue, 0), badgeTitle: de ? "überfällig" : "overdue" }] : []),
-    { id: "paths", label: de ? "Interne Learnings" : "Internal learning", badge: waitingForReview, badgeTitle: de ? "Entwürfe oder Aufträge in Arbeit" : "drafts or jobs in progress" },
-    { id: "work", label: de ? "Aufgaben & Module" : "Tasks & modules", badge: needsAttention, badgeTitle: de ? "wartet auf Bestätigung oder abgelaufen" : "awaiting confirmation or expired" },
+    { id: "status", label: c_companyPage(de).results, badge: overdue, badgeTitle: c_companyPage(de).overdue },
+    ...(canAssign ? [{ id: "mandatory", label: c_companyPage(de).mandatoryTraining, badge: mandatoryRules.reduce((n, r) => n + r.overdue, 0), badgeTitle: c_companyPage(de).overdue }] : []),
+    { id: "paths", label: c_companyPage(de).internalLearning, badge: waitingForReview, badgeTitle: c_companyPage(de).draftsOrJobsInProgress },
+    { id: "work", label: c_companyPage(de).tasksModules, badge: needsAttention, badgeTitle: c_companyPage(de).awaitingConfirmationOrExpired },
     ...(canAssign ? [{ id: "onboarding", label: "Onboarding" }] : []),
-    { id: "documents", label: de ? "Dokumente" : "Documents" },
-    ...(isAdmin ? [{ id: "team", label: de ? "Team" : "Team" }] : []),
-    ...(isAdmin ? [{ id: "sso", label: de ? "Anmeldung" : "Sign-in" }] : []),
+    { id: "documents", label: c_companyPage(de).documents },
+    ...(isAdmin ? [{ id: "team", label: c_companyPage(de).team }] : []),
+    ...(isAdmin ? [{ id: "sso", label: c_companyPage(de).signIn }] : []),
   ];
   const requested = Array.isArray(tabParam) ? tabParam[0] : tabParam;
   const active = tabs.some((t) => t.id === requested) ? (requested as string) : "status";

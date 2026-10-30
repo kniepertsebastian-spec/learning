@@ -1,5 +1,6 @@
 "use client";
 
+import { c_preAssessment } from "@/lib/i18n/components/preAssessment";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -60,18 +61,16 @@ export function PreAssessment({ slug, test }: { slug: string; test: PreAssessmen
       <FocusFrame
         exitHref={courseHref}
         confirmLeave={false}
-        contextLabel={`${de ? "Einstufungstest" : "Entry assessment"} · ${test.courseName}`}
+        contextLabel={`${c_preAssessment(de).entryAssessment} · ${test.courseName}`}
         mode="practice"
         segments={result.questions.map((q): SegmentState => (q.isCorrect ? "correct" : "wrong"))}
         counterText={fmt(t.quiz.correctCount, { a: result.correct, b: result.total })}
       >
         <div className="flex flex-col gap-4" data-testid="pre-assessment-result">
           <Card variant="hero">
-            <h1 className="text-xl font-semibold">{fmt(de ? "{a} von {b} richtig" : "{a} of {b} correct", { a: result.correct, b: result.total })}</h1>
+            <h1 className="text-xl font-semibold">{fmt(c_preAssessment(de).aOfBCorrect, { a: result.correct, b: result.total })}</h1>
             <p className="mt-1 text-sm text-muted">
-              {de
-                ? "Das ist nur eine Standortbestimmung, sie zählt nicht für deinen Lernstand. Mit den Kapiteln unten kannst du anfangen, wo es am meisten bringt."
-                : "This is only a snapshot and does not count towards your progress. Start with the chapters below where it helps most."}
+              {c_preAssessment(de).thisIsOnlyASnapshot}
             </p>
           </Card>
           <ul className="flex flex-col gap-2" data-testid="pre-assessment-domains">
@@ -84,7 +83,7 @@ export function PreAssessment({ slug, test }: { slug: string; test: PreAssessmen
           </ul>
           {weakest.length > 0 && (
             <p className="text-sm text-muted" data-testid="pre-assessment-weak">
-              {de ? "Hier lohnt sich ein gründlicher Blick: " : "Worth a closer look: "}
+              {c_preAssessment(de).worthACloserLook}
               {weakest.map((d) => d.name).join(", ")}
             </p>
           )}
@@ -93,14 +92,14 @@ export function PreAssessment({ slug, test }: { slug: string; test: PreAssessmen
               <li key={q.questionId} className="rounded-lg border border-border bg-surface p-3 text-sm">
                 <p className="flex items-center gap-2 font-medium">
                   {q.isCorrect ? <Check className="h-4 w-4 text-mint-text" aria-hidden="true" /> : <X className="h-4 w-4 text-danger-text" aria-hidden="true" />}
-                  <span className="sr-only">{q.isCorrect ? (de ? "Richtig" : "Correct") : de ? "Falsch" : "Wrong"}: </span>
+                  <span className="sr-only">{q.isCorrect ? (c_preAssessment(de).correct) : c_preAssessment(de).wrong}: </span>
                   {test.questions.find((x) => x.questionId === q.questionId)?.question[locale] ?? `#${i + 1}`}
                 </p>
                 {!q.isCorrect && <div className="mt-2 text-muted"><RichText text={q.explanation[locale]} /></div>}
               </li>
             ))}
           </ul>
-          <Button asChild className="w-fit" data-testid="pre-assessment-continue"><Link href={courseHref}>{de ? "Weiter zum Kurs" : "On to the course"}</Link></Button>
+          <Button asChild className="w-fit" data-testid="pre-assessment-continue"><Link href={courseHref}>{c_preAssessment(de).onToTheCourse}</Link></Button>
         </div>
       </FocusFrame>
     );
@@ -113,7 +112,7 @@ export function PreAssessment({ slug, test }: { slug: string; test: PreAssessmen
     <FocusFrame
       exitHref={courseHref}
       confirmLeave={answered > 0}
-      contextLabel={`${de ? "Einstufungstest" : "Entry assessment"} · ${test.courseName}`}
+      contextLabel={`${c_preAssessment(de).entryAssessment} · ${test.courseName}`}
       mode="practice"
       segments={segments}
       counterText={fmt(t.quiz.questionXofY, { x: index + 1, y: test.questions.length })}
@@ -121,7 +120,7 @@ export function PreAssessment({ slug, test }: { slug: string; test: PreAssessmen
     >
       {index === 0 && answered === 0 && (
         <p className="mb-4 text-sm text-subtle" data-testid="pre-assessment-intro">
-          {fmt(de ? "{n} Fragen quer durch alle Kapitel zeigen dir, wo du stehst. Raten ist erlaubt, das Ergebnis zählt nicht für deinen Lernstand." : "{n} questions across all chapters show where you stand. Guessing is fine, the result does not count towards your progress.", { n: test.questions.length })}
+          {fmt(c_preAssessment(de).nQuestionsAcrossAllChapters, { n: test.questions.length })}
         </p>
       )}
       <QuestionBody
@@ -135,7 +134,7 @@ export function PreAssessment({ slug, test }: { slug: string; test: PreAssessmen
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setIndex(Math.max(0, index - 1))} disabled={index === 0}>{t.quiz.previous}</Button>
           <Button variant="ghost" onClick={() => void send({ skip: true }, "skip")} disabled={busy !== null} data-testid="pre-assessment-skip">
-            {de ? "Überspringen" : "Skip"}
+            {c_preAssessment(de).skip}
           </Button>
         </div>
         {last ? (
@@ -145,13 +144,13 @@ export function PreAssessment({ slug, test }: { slug: string; test: PreAssessmen
             iconLeft={busy === "submit" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : undefined}
             data-testid="pre-assessment-submit"
           >
-            {de ? "Auswerten" : "Evaluate"}
+            {c_preAssessment(de).evaluate}
           </Button>
         ) : (
           <Button onClick={() => setIndex(index + 1)} disabled={!picks[index]} data-testid="pre-assessment-next">{t.quiz.nextShort}</Button>
         )}
       </div>
-      {error && <p role="alert" className="mt-3 text-sm text-danger-text">{de ? "Das hat nicht geklappt. Bitte versuche es noch einmal." : "That did not work. Please try again."}</p>}
+      {error && <p role="alert" className="mt-3 text-sm text-danger-text">{c_preAssessment(de).thatDidNotWorkPlease}</p>}
     </FocusFrame>
   );
 }

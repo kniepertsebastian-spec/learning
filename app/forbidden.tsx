@@ -1,3 +1,4 @@
+import { c_forbidden } from "@/lib/i18n/components/forbidden";
 import Link from "next/link";
 import { getServerLocale } from "@/lib/server/locale";
 
@@ -9,12 +10,10 @@ export default async function Forbidden() {
     <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
       <p className="text-lg font-semibold">403</p>
       <p className="text-muted">
-        {locale === "de"
-          ? "Auf diesen Bereich hast du keinen Zugriff."
-          : "You don't have access to this area."}
+        {c_forbidden(locale).youDonTHaveAccess}
       </p>
       <Link href="/" className="mt-4 text-link hover:underline">
-        {locale === "de" ? "Zur Startseite" : "Back to home"}
+        {c_forbidden(locale).backToHome}
       </Link>
     </div>
   );

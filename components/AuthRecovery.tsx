@@ -1,5 +1,7 @@
 "use client";
 
+import { c_authRecovery } from "@/lib/i18n/components/authRecovery";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -62,7 +64,7 @@ export function EmailRequestForm({
       return;
     }
     const body = await res.json().catch(() => null);
-    setError(body?.error ?? (locale === "de" ? "Anfrage fehlgeschlagen." : "Request failed."));
+    setError(body?.error ?? (c_authRecovery(locale).requestFailed));
     setState("idle");
   }
 
@@ -77,7 +79,7 @@ export function EmailRequestForm({
           <p className="text-sm text-muted">{intro[locale]}</p>
           {error && <ErrorBox>{error}</ErrorBox>}
           <label className="text-sm font-medium">
-            {locale === "de" ? "E-Mail-Adresse" : "Email address"}
+            {c_authRecovery(locale).emailAddress}
             <input name="email" type="email" required autoComplete="email" className={`${inputClass} mt-1`} />
           </label>
           <button type="submit" disabled={state === "pending"} className={buttonClass}>
@@ -87,7 +89,7 @@ export function EmailRequestForm({
       )}
       <p className="mt-4 text-center text-sm text-subtle">
         <Link href="/login" className="text-link hover:underline">
-          {locale === "de" ? "Zurück zur Anmeldung" : "Back to sign in"}
+          {c_authRecovery(locale).backToSignIn}
         </Link>
       </p>
     </Card>
@@ -107,7 +109,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     setError(null);
     const fd = new FormData(e.currentTarget);
     if (fd.get("newPassword") !== fd.get("confirmPassword")) {
-      setError(de ? "Die Passwörter stimmen nicht überein." : "The passwords do not match.");
+      setError(c_authRecovery(de).thePasswordsDoNotMatch);
       return;
     }
     setPending(true);
@@ -121,24 +123,24 @@ export function ResetPasswordForm({ token }: { token: string }) {
       return;
     }
     const body = await res.json().catch(() => null);
-    setError(body?.error ?? (de ? "Zurücksetzen fehlgeschlagen." : "Reset failed."));
+    setError(body?.error ?? (c_authRecovery(de).resetFailed));
     setPending(false);
   }
 
   return (
-    <Card title={de ? "Neues Passwort festlegen" : "Set a new password"}>
+    <Card title={c_authRecovery(de).setANewPassword}>
       <form onSubmit={submit} className="flex flex-col gap-4" data-testid="reset-password-form">
         {error && <ErrorBox>{error}</ErrorBox>}
         <label className="text-sm font-medium">
-          {de ? "Neues Passwort (mindestens 8 Zeichen)" : "New password (at least 8 characters)"}
+          {c_authRecovery(de).newPasswordAtLeast8}
           <input name="newPassword" type="password" required minLength={8} autoComplete="new-password" className={`${inputClass} mt-1`} />
         </label>
         <label className="text-sm font-medium">
-          {de ? "Passwort wiederholen" : "Repeat password"}
+          {c_authRecovery(de).repeatPassword}
           <input name="confirmPassword" type="password" required minLength={8} autoComplete="new-password" className={`${inputClass} mt-1`} />
         </label>
         <button type="submit" disabled={pending} className={buttonClass}>
-          {de ? "Passwort speichern" : "Save password"}
+          {c_authRecovery(de).savePassword}
         </button>
       </form>
     </Card>
@@ -165,29 +167,29 @@ export function VerifyEmailButton({ token }: { token: string }) {
       return;
     }
     const body = await res.json().catch(() => null);
-    setError(body?.error ?? (de ? "Bestätigen fehlgeschlagen." : "Verification failed."));
+    setError(body?.error ?? (c_authRecovery(de).verificationFailed));
     setState("idle");
   }
 
   return (
-    <Card title={de ? "E-Mail-Adresse bestätigen" : "Confirm your email address"}>
+    <Card title={c_authRecovery(de).confirmYourEmailAddress}>
       {state === "done" ? (
         <div className="flex flex-col gap-4">
           <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-text" data-testid="verified">
-            {de ? "Deine E-Mail-Adresse ist bestätigt." : "Your email address is confirmed."}
+            {c_authRecovery(de).yourEmailAddressIsConfirmed}
           </p>
           <Link href="/login?verified=1" className={`${buttonClass} text-center`}>
-            {de ? "Zur Anmeldung" : "Go to sign in"}
+            {c_authRecovery(de).goToSignIn}
           </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           {error && <ErrorBox>{error}</ErrorBox>}
           <p className="text-sm text-muted">
-            {de ? "Klicke, um deine E-Mail-Adresse zu bestätigen." : "Click to confirm your email address."}
+            {c_authRecovery(de).clickToConfirmYourEmail}
           </p>
           <button type="button" onClick={verify} disabled={state === "pending"} className={buttonClass}>
-            {de ? "E-Mail bestätigen" : "Confirm email"}
+            {c_authRecovery(de).confirmEmail}
           </button>
         </div>
       )}
@@ -218,31 +220,29 @@ export function ConfirmCompanyButton({ token }: { token: string }) {
       return;
     }
     const body = await res.json().catch(() => null);
-    setError(body?.error ?? (de ? "Bestätigen fehlgeschlagen." : "Confirmation failed."));
+    setError(body?.error ?? (c_authRecovery(de).confirmationFailed));
     setState("idle");
   }
 
   return (
-    <Card title={de ? "Unternehmen bestätigen" : "Confirm your company"}>
+    <Card title={c_authRecovery(de).confirmYourCompany}>
       {state === "done" ? (
         <div className="flex flex-col gap-4">
           <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-text" data-testid="company-confirmed">
-            {de ? `„${company}“ ist angelegt, du bist Firmen-Admin.` : `"${company}" was created, you are its company admin.`}
+            {fill(c_authRecovery(de).n0WasCreatedYouAre, company)}
           </p>
           <Link href="/login?from=%2Fcompany" className={`${buttonClass} text-center`}>
-            {de ? "Zum Firmenbereich" : "Go to company area"}
+            {c_authRecovery(de).goToCompanyArea}
           </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           {error && <ErrorBox>{error}</ErrorBox>}
           <p className="text-sm text-muted">
-            {de
-              ? "Klicke, um zu bestätigen, dass diese Firmen-E-Mail-Adresse dir gehört. Danach wird das Unternehmen angelegt."
-              : "Click to confirm that this company email address is yours. The company is created afterwards."}
+            {c_authRecovery(de).clickToConfirmThatThis}
           </p>
           <button type="button" onClick={confirm} disabled={state === "pending"} className={buttonClass}>
-            {de ? "Unternehmen bestätigen" : "Confirm company"}
+            {c_authRecovery(de).confirmCompany}
           </button>
         </div>
       )}

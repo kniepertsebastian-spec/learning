@@ -1,5 +1,6 @@
 "use client";
 
+import { c_remediationSession } from "@/lib/i18n/components/remediationSession";
 import { useState } from "react";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
 import { FocusFrame } from "@/components/quiz/FocusFrame";
@@ -125,7 +126,7 @@ export function RemediationSession({
 
         {lesson.keyPoints[locale]?.length > 0 && (
           <div className="mb-4">
-            <p className="mb-1 text-sm font-semibold">{locale === "de" ? "Kernpunkte" : "Key points"}</p>
+            <p className="mb-1 text-sm font-semibold">{c_remediationSession(locale).keyPoints}</p>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
               {lesson.keyPoints[locale].map((point, i) => (
                 <li key={i}>{point}</li>
@@ -135,7 +136,7 @@ export function RemediationSession({
         )}
 
         {lesson.commonMisconceptions[locale]?.length > 0 && (
-          <Callout tone="mistake" title={locale === "de" ? "Häufige Missverständnisse" : "Common misconceptions"} className="mb-4">
+          <Callout tone="mistake" title={c_remediationSession(locale).commonMisconceptions} className="mb-4">
             <ul className="list-disc space-y-1 pl-5">
               {lesson.commonMisconceptions[locale].map((point, i) => (
                 <li key={i}>{point}</li>
@@ -144,7 +145,7 @@ export function RemediationSession({
           </Callout>
         )}
 
-        <Button onClick={() => setPhase("quiz")}>{locale === "de" ? "Übungsfragen starten" : "Start practice questions"}</Button>
+        <Button onClick={() => setPhase("quiz")}>{c_remediationSession(locale).startPracticeQuestions}</Button>
       </Card>
     );
   }
@@ -166,8 +167,8 @@ export function RemediationSession({
           headline={fmt(t.quiz.correctCount, { a: correctCount, b: questions.length })}
           subline={
             result.improved
-              ? locale === "de" ? "Verbesserung erkannt." : "Improvement detected."
-              : locale === "de" ? "Noch keine deutliche Verbesserung – eventuell nochmal wiederholen." : "No clear improvement yet – consider reviewing again."
+              ? c_remediationSession(locale).improvementDetected
+              : c_remediationSession(locale).noClearImprovementYetConsider
           }
           actions={[{ href: exitHref, label: t.quiz.backToCourse, primary: true }]}
         />

@@ -1,5 +1,6 @@
 "use client";
 
+import { c_myPracticeTasks } from "@/lib/i18n/components/myPracticeTasks";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MentorAskForm } from "@/components/MentorAskForm";
@@ -36,7 +37,7 @@ function Task({ t, locale, canAskMentor }: { t: MyTaskRow; locale: "de" | "en"; 
     setBusy(false);
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      setError(data?.error ?? (de ? "Das hat nicht geklappt." : "That did not work."));
+      setError(data?.error ?? (c_myPracticeTasks(de).thatDidNotWork));
       return;
     }
     setError(null);
@@ -62,12 +63,12 @@ function Task({ t, locale, canAskMentor }: { t: MyTaskRow; locale: "de" | "en"; 
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={1000}
-            placeholder={de ? "Notiz für die Bestätigung (optional)" : "Note for the reviewer (optional)"}
-            aria-label={de ? "Notiz" : "Note"}
+            placeholder={c_myPracticeTasks(de).noteForTheReviewerOptional}
+            aria-label={c_myPracticeTasks(de).note}
             className="flex-1 rounded-md border border-border bg-surface px-2 py-1 text-sm"
           />
           <button type="button" disabled={busy} onClick={() => void submit()} data-testid="my-practice-submit" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-surface disabled:opacity-50">
-            {t.status === "submitted" ? (de ? "Notiz aktualisieren" : "Update note") : de ? "Erledigt – zur Bestätigung" : "Done – send for confirmation"}
+            {t.status === "submitted" ? (c_myPracticeTasks(de).updateNote) : c_myPracticeTasks(de).doneSendForConfirmation}
           </button>
         </div>
       )}
@@ -82,11 +83,9 @@ export function MyPracticeTasks({ tasks, locale, canAskMentor = false }: { tasks
   const de = locale === "de";
   return (
     <section id="practice-tasks" className="scroll-mt-6 rounded-2xl border border-border bg-surface p-5" data-testid="my-practice-tasks">
-      <h2 className="font-semibold">{de ? "Praxisaufgaben" : "Practice tasks"}</h2>
+      <h2 className="font-semibold">{c_myPracticeTasks(de).practiceTasks}</h2>
       <p className="mt-1 text-xs text-subtle">
-        {de
-          ? "Eine andere Person aus deiner Firma bestätigt die Aufgabe. Deine Firma sieht nur, wie viele bestätigt sind, nicht deine Notizen."
-          : "Someone else at your company confirms the task. Your company only sees how many are confirmed, not your notes."}
+        {c_myPracticeTasks(de).someoneElseAtYourCompany}
       </p>
       <ul className="mt-3 flex flex-col gap-2">
         {tasks.map((t) => (

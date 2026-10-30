@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_adminCertificationsSlugSourcesSourceIdReviewPage } from "@/lib/i18n/components/adminCertificationsSlugSourcesSourceIdReviewPage";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { eq } from "drizzle-orm";
@@ -34,9 +35,9 @@ export default async function BlueprintReviewPage({
       <div className="flex flex-1 flex-col">
         <Link href="/admin" className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
+          {c_adminCertificationsSlugSourcesSourceIdReviewPage(locale).backToAdminDashboard}
         </Link>
-        <p className="text-muted">{locale === "de" ? "Zertifizierung nicht gefunden" : "Certification not found"}</p>
+        <p className="text-muted">{c_adminCertificationsSlugSourcesSourceIdReviewPage(locale).certificationNotFound}</p>
       </div>
     );
   }
@@ -47,9 +48,9 @@ export default async function BlueprintReviewPage({
       <div className="flex flex-1 flex-col">
         <Link href={backLink} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {locale === "de" ? "Zurück zu den Quellen" : "Back to sources"}
+          {c_adminCertificationsSlugSourcesSourceIdReviewPage(locale).backToSources}
         </Link>
-        <p className="text-muted">{locale === "de" ? "Quelle nicht gefunden" : "Source not found"}</p>
+        <p className="text-muted">{c_adminCertificationsSlugSourcesSourceIdReviewPage(locale).sourceNotFound}</p>
       </div>
     );
   }
@@ -64,12 +65,10 @@ export default async function BlueprintReviewPage({
       <div className="flex flex-1 flex-col">
         <Link href={backLink} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {locale === "de" ? "Zurück zu den Quellen" : "Back to sources"}
+          {c_adminCertificationsSlugSourcesSourceIdReviewPage(locale).backToSources}
         </Link>
         <p className="text-muted">
-          {locale === "de"
-            ? "Für diese Quelle liegt noch kein Blueprint-Vorschlag vor. Erst auf der Quellen-Seite extrahieren."
-            : "No blueprint proposal for this source yet. Extract one on the sources page first."}
+          {c_adminCertificationsSlugSourcesSourceIdReviewPage(locale).noBlueprintProposalForThis}
         </p>
       </div>
     );
@@ -83,7 +82,7 @@ export default async function BlueprintReviewPage({
       </Link>
 
       <h1 className="mb-1 text-2xl font-semibold">
-        {locale === "de" ? "Blueprint prüfen und freigeben" : "Review and approve blueprint"}
+        {c_adminCertificationsSlugSourcesSourceIdReviewPage(locale).reviewAndApproveBlueprint}
       </h1>
       <p className="mb-6 text-sm text-muted">{cert.name}</p>
 

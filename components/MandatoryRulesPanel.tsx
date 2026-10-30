@@ -1,5 +1,7 @@
 "use client";
 
+import { c_mandatoryRulesPanel } from "@/lib/i18n/components/mandatoryRulesPanel";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -83,8 +85,8 @@ export function MandatoryRulesPanel({
       const waiting = catalog.some((c) => c.id === pathId);
       setNotice(
         waiting
-          ? de ? "Pflicht angelegt. Der Kurs ist noch nicht für euch freigeschaltet; wir haben die Freischaltung angefragt. Sobald wir ihn freigeben, wird er automatisch zugewiesen." : "Rule created. The course is not yet released for you; we requested it. It will be assigned automatically once we release it."
-          : de ? `Pflicht angelegt, ${data?.assigned ?? 0} Person(en) zugewiesen.` : `Rule created, ${data?.assigned ?? 0} people assigned.`,
+          ? c_mandatoryRulesPanel(de).ruleCreatedTheCourseIs
+          : fill(c_mandatoryRulesPanel(de).ruleCreated0PeopleAssigned, data?.assigned ?? 0),
       );
       setPathId("");
       setRepeat(null);
@@ -102,11 +104,9 @@ export function MandatoryRulesPanel({
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="mandatory-panel">
-      <h2 className="text-lg font-medium">{de ? "Pflichtschulungen" : "Mandatory training"}</h2>
+      <h2 className="text-lg font-medium">{c_mandatoryRulesPanel(de).mandatoryTraining}</h2>
       <p className="mt-1 text-sm text-muted">
-        {de
-          ? "Ein Lernpfad wird für Rollen (und auf Wunsch Abteilungen) verpflichtend: vorhandene Mitglieder bekommen ihn sofort, neue beim Beitritt, jeweils mit Frist. Vor der Frist gibt es eine Erinnerung, danach eine Meldung an die Person und später eine Sammelmail an Mentoren und Firmen-Admins (nur mit eingerichtetem Mailversand)."
-          : "A learning path becomes mandatory for roles: existing members get it immediately, new members when they join, each with a deadline. A reminder goes out before the deadline, a notice to the person after it and later a digest to mentors and admins (only with mail set up)."}
+        {c_mandatoryRulesPanel(de).aLearningPathBecomesMandatory}
       </p>
 
       <ul className="mt-4 flex flex-col gap-2">
@@ -117,46 +117,46 @@ export function MandatoryRulesPanel({
                 <p className="font-medium break-words">{r.learningPath}</p>
                 {r.pendingRelease && (
                   <p className="mt-0.5 inline-block rounded bg-warning-soft px-2 py-0.5 text-xs" data-testid="mandatory-pending">
-                    {de ? "Wartet auf Freischaltung durch uns – wird danach automatisch zugewiesen" : "Waiting for our release – assigned automatically afterwards"}
+                    {c_mandatoryRulesPanel(de).waitingForOurReleaseAssigned}
                   </p>
                 )}
                 <p className="text-muted">
-                  {r.roles.map((x) => roleLabels[x]).join(", ")} · {r.departments.length > 0 ? r.departments.join(", ") : de ? "alle Abteilungen" : "all departments"} · {de ? `Frist ${r.dueInDays} Tage` : `${r.dueInDays} days`} ·{" "}
-                  {r.reminderDaysBefore > 0 ? (de ? `Erinnerung ${r.reminderDaysBefore} Tage vorher` : `reminder ${r.reminderDaysBefore} days before`) : de ? "keine Erinnerung" : "no reminder"} ·{" "}
-                  {de ? `Eskalation nach ${r.escalateAfterDays} Tagen` : `escalation after ${r.escalateAfterDays} days`}
+                  {r.roles.map((x) => roleLabels[x]).join(", ")} · {r.departments.length > 0 ? r.departments.join(", ") : c_mandatoryRulesPanel(de).allDepartments} · {fill(c_mandatoryRulesPanel(de).n0Days, r.dueInDays)} ·{" "}
+                  {r.reminderDaysBefore > 0 ? (fill(c_mandatoryRulesPanel(de).reminder0DaysBefore, r.reminderDaysBefore)) : c_mandatoryRulesPanel(de).noReminder} ·{" "}
+                  {fill(c_mandatoryRulesPanel(de).escalationAfter0Days, r.escalateAfterDays)}
                 </p>
                 {r.allowPlacementSkip && (
-                  <p className="text-muted" data-testid="mandatory-skip-allowed">{de ? "Überspringen per Einstiegstest erlaubt" : "Skipping via placement test allowed"}</p>
+                  <p className="text-muted" data-testid="mandatory-skip-allowed">{c_mandatoryRulesPanel(de).skippingViaPlacementTestAllowed}</p>
                 )}
                 {(r.repeatEveryMonths !== null || !r.applyOnChange) && (
                   <p className="text-muted" data-testid="mandatory-extras">
-                    {r.repeatEveryMonths !== null && (de ? `Wiederholung ${r.repeatEveryMonths} Monate nach dem Abschluss (Status wird dann zurückgesetzt)` : `Repeats ${r.repeatEveryMonths} months after completion (status is reset)`)}
+                    {r.repeatEveryMonths !== null && (fill(c_mandatoryRulesPanel(de).repeats0MonthsAfterCompletion, r.repeatEveryMonths))}
                     {r.repeatEveryMonths !== null && !r.applyOnChange ? " · " : ""}
-                    {!r.applyOnChange && (de ? "nicht bei Rollen-/Abteilungswechsel" : "not on role/department change")}
+                    {!r.applyOnChange && (c_mandatoryRulesPanel(de).notOnRoleDepartmentChange)}
                   </p>
                 )}
                 <p className="mt-1">
-                  {r.completed}/{r.assigned} {de ? "bestanden" : "passed"}
-                  {r.overdue > 0 && <span className="ml-2 text-danger-text">{r.overdue} {de ? "überfällig" : "overdue"}</span>}
+                  {r.completed}/{r.assigned} {c_mandatoryRulesPanel(de).passed}
+                  {r.overdue > 0 && <span className="ml-2 text-danger-text">{r.overdue} {c_mandatoryRulesPanel(de).overdue}</span>}
                 </p>
               </div>
               {canEdit && (
                 <button type="button" className={btn} disabled={busy} onClick={() => void remove(r.id)}>
-                  {de ? "Regel löschen" : "Delete rule"}
+                  {c_mandatoryRulesPanel(de).deleteRule}
                 </button>
               )}
             </div>
           </li>
         ))}
-        {rules.length === 0 && <li className="text-sm text-muted">{de ? "Noch keine Pflichtschulung." : "No mandatory training yet."}</li>}
+        {rules.length === 0 && <li className="text-sm text-muted">{c_mandatoryRulesPanel(de).noMandatoryTrainingYet}</li>}
       </ul>
 
       {canEdit && (
         <form onSubmit={(e) => void create(e)} className="mt-5 flex flex-col gap-3 border-t border-border pt-4">
-          <h3 className="font-medium">{de ? "Neue Pflicht" : "New rule"}</h3>
-          <select className={`${field} min-w-0`} value={pathId} onChange={(e) => setPathId(e.target.value)} required aria-label={de ? "Lernpfad" : "Learning path"}>
-            <option value="">{de ? "Lernpfad wählen …" : "Choose learning path …"}</option>
-            <optgroup label={de ? "Eure Kurse und freigeschaltete Kurse" : "Your courses and released courses"}>
+          <h3 className="font-medium">{c_mandatoryRulesPanel(de).newRule}</h3>
+          <select className={`${field} min-w-0`} value={pathId} onChange={(e) => setPathId(e.target.value)} required aria-label={c_mandatoryRulesPanel(de).learningPath}>
+            <option value="">{c_mandatoryRulesPanel(de).chooseLearningPath}</option>
+            <optgroup label={c_mandatoryRulesPanel(de).yourCoursesAndReleasedCourses}>
               {free.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -164,7 +164,7 @@ export function MandatoryRulesPanel({
               ))}
             </optgroup>
             {freeCatalog.length > 0 && (
-              <optgroup label={de ? "Aus unserem Katalog (noch nicht freigeschaltet)" : "From our catalog (not yet released)"}>
+              <optgroup label={c_mandatoryRulesPanel(de).fromOurCatalogNotYet}>
                 {freeCatalog.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -175,13 +175,11 @@ export function MandatoryRulesPanel({
           </select>
           {catalog.some((c) => c.id === pathId) && (
             <p className="text-xs text-muted" data-testid="mandatory-catalog-hint">
-              {de
-                ? "Dieser Kurs ist noch nicht für euch freigeschaltet. Wir fragen ihn damit bei uns an; die Pflicht wirkt, sobald wir ihn freigeben."
-                : "This course is not yet released for you. This requests it from us; the rule takes effect once we release it."}
+              {c_mandatoryRulesPanel(de).thisCourseIsNotYet}
             </p>
           )}
           <fieldset className="flex flex-wrap gap-4 text-sm">
-            <legend className="mb-1">{de ? "Gilt für" : "Applies to"}</legend>
+            <legend className="mb-1">{c_mandatoryRulesPanel(de).appliesTo}</legend>
             {(["learner", "mentor", "company_admin"] as const).map((role) => (
               <label key={role} className="flex items-center gap-2">
                 <input type="checkbox" checked={roles.includes(role)} onChange={(e) => setRoles((s) => (e.target.checked ? [...s, role] : s.filter((x) => x !== role)))} />
@@ -191,7 +189,7 @@ export function MandatoryRulesPanel({
           </fieldset>
           {departments.length > 0 && (
             <fieldset className="flex flex-wrap gap-4 text-sm">
-              <legend className="mb-1">{de ? "Abteilungen (keine Auswahl = alle)" : "Departments (none selected = all)"}</legend>
+              <legend className="mb-1">{c_mandatoryRulesPanel(de).departmentsNoneSelectedAll}</legend>
               {departments.map((d) => (
                 <label key={d.id} className="flex items-center gap-2">
                   <input type="checkbox" checked={depIds.includes(d.id)} onChange={(e) => setDepIds((x) => (e.target.checked ? [...x, d.id] : x.filter((y) => y !== d.id)))} />
@@ -202,9 +200,9 @@ export function MandatoryRulesPanel({
           )}
           <div className="grid gap-3 sm:grid-cols-3">
             {[
-              { label: de ? "Frist (Tage)" : "Deadline (days)", value: dueInDays, set: setDueInDays, min: 1, max: 365 },
-              { label: de ? "Erinnerung (Tage vorher, 0 = aus)" : "Reminder (days before, 0 = off)", value: reminder, set: setReminder, min: 0, max: 60 },
-              { label: de ? "Eskalation (Tage nach Frist)" : "Escalate (days after deadline)", value: escalate, set: setEscalate, min: 1, max: 60 },
+              { label: c_mandatoryRulesPanel(de).deadlineDays, value: dueInDays, set: setDueInDays, min: 1, max: 365 },
+              { label: c_mandatoryRulesPanel(de).reminderDaysBefore0Off, value: reminder, set: setReminder, min: 0, max: 60 },
+              { label: c_mandatoryRulesPanel(de).escalateDaysAfterDeadline, value: escalate, set: setEscalate, min: 1, max: 60 },
             ].map((f) => (
               <label key={f.label} className="flex flex-col gap-1 text-sm">
                 {f.label}
@@ -213,7 +211,7 @@ export function MandatoryRulesPanel({
             ))}
           </div>
           <label className="flex flex-col gap-1 text-sm sm:max-w-xs">
-            {de ? "Wiederholung" : "Repetition"}
+            {c_mandatoryRulesPanel(de).repetition}
             <select
               className={field}
               value={repeat === null ? "" : String(repeat)}
@@ -221,44 +219,38 @@ export function MandatoryRulesPanel({
                 setRepeat(e.target.value === "" ? null : Number(e.target.value));
                 setConfirmReset(false);
               }}
-              aria-label={de ? "Wiederholung" : "Repetition"}
+              aria-label={c_mandatoryRulesPanel(de).repetition}
             >
-              <option value="">{de ? "einmalig, keine Wiederholung" : "once, no repetition"}</option>
+              <option value="">{c_mandatoryRulesPanel(de).onceNoRepetition}</option>
               {[6, 12, 24, 36].map((m) => (
                 <option key={m} value={m}>
-                  {de ? `alle ${m} Monate (nach dem Abschluss)` : `every ${m} months (after completion)`}
+                  {fill(c_mandatoryRulesPanel(de).every0MonthsAfterCompletion, m)}
                 </option>
               ))}
             </select>
           </label>
           {repeat !== null && (
             <div role="note" className="rounded-md border border-warning/40 bg-warning-soft p-3 text-sm" data-testid="repeat-warning">
-              <p className="font-medium">{de ? "Achtung: Der Status wird zurückgesetzt" : "Warning: the status will be reset"}</p>
+              <p className="font-medium">{c_mandatoryRulesPanel(de).warningTheStatusWillBe}</p>
               <p className="mt-1">
-                {de
-                  ? `${repeat} Monate nach dem Abschluss beginnt für jede Person eine neue Runde: Der Status springt von „abgeschlossen“ zurück auf „zugewiesen“, es gibt eine neue Frist und neue Erinnerungen. Als abgeschlossen zählt dann nur, was in der neuen Runde erneut nachgewiesen wird (Lektionen erneut durcharbeiten bzw. Lernziele erneut üben). Der letzte Abschluss bleibt vermerkt. In der Statusübersicht wirkt die Person bis dahin wieder als „offen“, auch wenn sie den Lernpfad früher bestanden hat.`
-                  : `${repeat} months after completion a new round starts for each person: the status goes from “completed” back to “assigned”, with a new deadline and reminders. Only what is shown again in the new round counts as completed. The last completion is kept on record. Until then the status overview shows the person as open again.`}
+                {fill(c_mandatoryRulesPanel(de).n0MonthsAfterCompletionA, repeat)}
               </p>
               <label className="mt-2 flex items-start gap-2">
                 <input type="checkbox" checked={confirmReset} onChange={(e) => setConfirmReset(e.target.checked)} className="mt-0.5" />
-                <span>{de ? "Ich habe das gelesen und will die Wiederholung mit Statusrücksetzung." : "I have read this and want the repetition with status reset."}</span>
+                <span>{c_mandatoryRulesPanel(de).iHaveReadThisAnd}</span>
               </label>
             </div>
           )}
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={applyOnChange} onChange={(e) => setApplyOnChange(e.target.checked)} className="mt-0.5" />
             <span>
-              {de
-                ? "Auch zuweisen, wenn jemand Rolle oder Abteilung wechselt und dadurch unter diese Regel fällt (sonst nur beim Anlegen der Regel und beim Beitritt)."
-                : "Also assign when someone changes role or department and falls under this rule (otherwise only when the rule is created and on joining)."}
+              {c_mandatoryRulesPanel(de).alsoAssignWhenSomeoneChanges}
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={allowPlacementSkip} onChange={(e) => setAllowPlacementSkip(e.target.checked)} className="mt-0.5" data-testid="allow-placement-skip" />
             <span>
-              {de
-                ? "Kapitel per Einstiegstest überspringen erlauben. Übersprungene Lektionen zählen nicht als abgeschlossen; Sie sehen weiter nur den Status (abgeschlossen ja/nein)."
-                : "Allow skipping chapters via a placement test. Skipped lessons do not count as completed; you still only see the status (completed yes/no)."}
+              {c_mandatoryRulesPanel(de).allowSkippingChaptersViaA}
             </span>
           </label>
           {error && (
@@ -273,7 +265,7 @@ export function MandatoryRulesPanel({
           )}
           <div>
             <button type="submit" className={btn} disabled={busy || !pathId || roles.length === 0 || (repeat !== null && !confirmReset)}>
-              {de ? "Pflicht anlegen" : "Create rule"}
+              {c_mandatoryRulesPanel(de).createRule}
             </button>
           </div>
         </form>

@@ -1,5 +1,6 @@
 "use client";
 
+import { c_courseRequestsPanel } from "@/lib/i18n/components/courseRequestsPanel";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -52,22 +53,22 @@ export function CourseRequestsPanel({
     const data = await res.json().catch(() => null);
     setPending(false);
     if (!res.ok) {
-      setError(data?.error ?? (de ? "Anfrage fehlgeschlagen." : "Request failed."));
+      setError(data?.error ?? (c_courseRequestsPanel(de).requestFailed));
       return;
     }
-    setNotice(de ? "Anfrage ist eingegangen. Den Stand siehst du hier." : "Request received. You can follow its status here.");
+    setNotice(c_courseRequestsPanel(de).requestReceivedYouCanFollow);
     setTitle("");
     setDescription("");
     router.refresh();
   }
 
   async function withdraw(id: string) {
-    if (!(await confirm(de ? "Anfrage wirklich zurückziehen?" : "Really withdraw this request?"))) return;
+    if (!(await confirm(c_courseRequestsPanel(de).reallyWithdrawThisRequest))) return;
     setError(null);
     const res = await fetch(`/api/company/course-requests/${id}/withdraw`, { method: "POST" });
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      setError(data?.error ?? (de ? "Zurückziehen fehlgeschlagen." : "Could not withdraw."));
+      setError(data?.error ?? (c_courseRequestsPanel(de).couldNotWithdraw));
     }
     router.refresh();
   }
@@ -76,26 +77,24 @@ export function CourseRequestsPanel({
     <>
     {confirmDialog}
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="requests-panel">
-      <h2 className="text-lg font-medium">{de ? "Allgemeine Lernpfade anfragen" : "Request general learning paths"}</h2>
+      <h2 className="text-lg font-medium">{c_courseRequestsPanel(de).requestGeneralLearningPaths}</h2>
       <p className="mt-1 text-sm text-muted">
-        {de
-          ? "Allgemeine Lernpfade (z. B. Security oder Zertifikate) erstellen wir und geben sie für deine Firma frei. Gibt es den Kurs schon, geben wir ihn frei. Sonst erstellen wir ihn, lassen ihn fachlich prüfen und melden uns. Bis dahin steht hier der aktuelle Stand."
-          : "We create general learning paths (e.g. security or certifications) and release them for your company. If the course exists we release it. Otherwise we create it, have it reviewed by an expert and get back to you. The current status is shown here."}
+        {c_courseRequestsPanel(de).weCreateGeneralLearningPaths}
       </p>
 
       <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2">
             <input type="radio" name="mode" checked={mode === "catalog"} onChange={() => setMode("catalog")} disabled={catalog.length === 0} />
-            {de ? "Aus dem Katalog" : "From the catalog"}
+            {c_courseRequestsPanel(de).fromTheCatalog}
           </label>
           <label className="flex items-center gap-2">
             <input type="radio" name="mode" checked={mode === "wish"} onChange={() => setMode("wish")} />
-            {de ? "Freier Wunsch" : "Free wish"}
+            {c_courseRequestsPanel(de).freeWish}
           </label>
         </div>
         {mode === "catalog" ? (
-          <select value={certId} onChange={(e) => setCertId(e.target.value)} aria-label={de ? "Lernpfad" : "Learning path"} className="rounded-md border border-border bg-background px-3 py-2 text-sm">
+          <select value={certId} onChange={(e) => setCertId(e.target.value)} aria-label={c_courseRequestsPanel(de).learningPath} className="rounded-md border border-border bg-background px-3 py-2 text-sm">
             {catalog.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -110,8 +109,8 @@ export function CourseRequestsPanel({
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
               required
-              placeholder={de ? "Was soll der Kurs behandeln?" : "What should the course cover?"}
-              aria-label={de ? "Wunsch" : "Wish"}
+              placeholder={c_courseRequestsPanel(de).whatShouldTheCourseCover}
+              aria-label={c_courseRequestsPanel(de).wish}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
             />
             <textarea
@@ -119,8 +118,8 @@ export function CourseRequestsPanel({
               onChange={(e) => setDescription(e.target.value)}
               maxLength={2000}
               rows={3}
-              placeholder={de ? "Zielgruppe, Umfang, Besonderheiten (optional)" : "Audience, scope, specifics (optional)"}
-              aria-label={de ? "Beschreibung" : "Description"}
+              placeholder={c_courseRequestsPanel(de).audienceScopeSpecificsOptional}
+              aria-label={c_courseRequestsPanel(de).description}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </>
@@ -131,7 +130,7 @@ export function CourseRequestsPanel({
             disabled={pending || (mode === "catalog" ? !certId : title.trim().length < 3)}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
           >
-            {de ? "Anfragen" : "Request"}
+            {c_courseRequestsPanel(de).request}
           </button>
         </div>
       </form>
@@ -147,10 +146,10 @@ export function CourseRequestsPanel({
         </p>
       )}
 
-      <h3 className="mt-6 text-base font-medium">{de ? "Deine Anfragen" : "Your requests"}</h3>
+      <h3 className="mt-6 text-base font-medium">{c_courseRequestsPanel(de).yourRequests}</h3>
       {requests.length === 0 ? (
         <p className="mt-2 text-sm text-muted" data-testid="requests-empty">
-          {de ? "Noch keine Anfragen." : "No requests yet."}
+          {c_courseRequestsPanel(de).noRequestsYet}
         </p>
       ) : (
         <ul className="mt-2 flex flex-col gap-3" data-testid="requests-list">
@@ -164,7 +163,7 @@ export function CourseRequestsPanel({
               </div>
               {OPEN.includes(r.status) && (
                 <button type="button" onClick={() => void withdraw(r.id)} data-testid="request-withdraw" className="mt-2 rounded-md border border-border px-2 py-1 text-xs hover:bg-surface">
-                  {de ? "Anfrage zurückziehen" : "Withdraw request"}
+                  {c_courseRequestsPanel(de).withdrawRequest}
                 </button>
               )}
               {r.wishDescription && <p className="mt-1 text-xs text-muted">{r.wishDescription}</p>}

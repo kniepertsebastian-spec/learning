@@ -1,3 +1,4 @@
+import { c_selfAssessmentCard } from "@/lib/i18n/components/selfAssessmentCard";
 import { Compass } from "lucide-react";
 import type { Locale } from "@/lib/types";
 import { SELF_ASSESSMENT_TEXT, type SelfAssessmentTopic } from "@/lib/server/psrp/self-assessment";
@@ -9,7 +10,7 @@ export function SelfAssessmentCard({ locale, topics }: { locale: Locale; topics:
     <div className="rounded-2xl border border-border bg-surface p-5" data-testid="self-assessment">
       <h2 className="mb-2 flex items-center gap-1.5 text-sm font-medium">
         <Compass className="h-4 w-4" aria-hidden="true" />
-        {locale === "de" ? "Selbsteinschätzung" : "Self-assessment"}
+        {c_selfAssessmentCard(locale).selfAssessment}
       </h2>
       <ul className="space-y-1.5 text-sm">
         {topics.map((topic) => (

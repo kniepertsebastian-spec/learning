@@ -1,5 +1,7 @@
 "use client";
 
+import { c_accountForms } from "@/lib/i18n/components/accountForms";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearLocalUserData } from "@/lib/client/clear-local-data";
@@ -38,7 +40,7 @@ export function ChangePasswordForm({ userId, locale }: { userId: string; locale:
     const form = e.currentTarget;
     const fd = new FormData(form);
     if (fd.get("newPassword") !== fd.get("confirmPassword")) {
-      setError(de ? "Die neuen Passwörter stimmen nicht überein." : "The new passwords do not match.");
+      setError(c_accountForms(de).theNewPasswordsDoNot);
       setPending(false);
       return;
     }
@@ -57,28 +59,26 @@ export function ChangePasswordForm({ userId, locale }: { userId: string; locale:
       return;
     }
     const body = await res.json().catch(() => null);
-    setError(body?.error ?? (de ? "Passwort konnte nicht geändert werden." : "Could not change the password."));
+    setError(body?.error ?? (c_accountForms(de).couldNotChangeThePassword));
     setPending(false);
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" data-testid="change-password-form">
       <p className="text-sm text-muted">
-        {de
-          ? "Nach dem Ändern wirst du auf allen Geräten abgemeldet und meldest dich neu an."
-          : "After changing it you are signed out on all devices and sign in again."}
+        {c_accountForms(de).afterChangingItYouAre}
       </p>
       {error && <Message kind="error">{error}</Message>}
       <label className="text-sm font-medium">
-        {de ? "Aktuelles Passwort" : "Current password"}
+        {c_accountForms(de).currentPassword}
         <input name="currentPassword" type="password" required autoComplete="current-password" className={`${inputClass} mt-1`} />
       </label>
       <label className="text-sm font-medium">
-        {de ? "Neues Passwort (mindestens 8 Zeichen)" : "New password (at least 8 characters)"}
+        {c_accountForms(de).newPasswordAtLeast8}
         <input name="newPassword" type="password" required minLength={8} autoComplete="new-password" className={`${inputClass} mt-1`} />
       </label>
       <label className="text-sm font-medium">
-        {de ? "Neues Passwort wiederholen" : "Repeat new password"}
+        {c_accountForms(de).repeatNewPassword}
         <input name="confirmPassword" type="password" required minLength={8} autoComplete="new-password" className={`${inputClass} mt-1`} />
       </label>
       <button
@@ -86,7 +86,7 @@ export function ChangePasswordForm({ userId, locale }: { userId: string; locale:
         disabled={pending}
         className="self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
       >
-        {de ? "Passwort ändern" : "Change password"}
+        {c_accountForms(de).changePassword}
       </button>
     </form>
   );
@@ -116,28 +116,24 @@ export function DeleteAccountForm({ userId, locale }: { userId: string; locale: 
       return;
     }
     const body = await res.json().catch(() => null);
-    setError(body?.error ?? (de ? "Konto konnte nicht gelöscht werden." : "Could not delete the account."));
+    setError(body?.error ?? (c_accountForms(de).couldNotDeleteTheAccount));
     setPending(false);
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" data-testid="delete-account-form">
       <p className="text-sm text-muted">
-        {de
-          ? "Dein Konto und alle deine Lern- und Mitgliedsdaten werden unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen. Exportiere vorher deine Daten, wenn du sie behalten willst."
-          : "Your account and all your learning and membership data are deleted permanently. This cannot be undone. Export your data first if you want to keep it."}
+        {c_accountForms(de).yourAccountAndAllYour}
       </p>
       {error && <Message kind="error">{error}</Message>}
       <label className="text-sm font-medium">
-        {de ? "Passwort zur Bestätigung" : "Password to confirm"}
+        {c_accountForms(de).passwordToConfirm}
         <input name="password" type="password" required autoComplete="current-password" className={`${inputClass} mt-1`} />
       </label>
       <label className="flex items-start gap-2 text-sm">
         <input name="confirm" type="checkbox" required className="mt-0.5" />
         <span>
-          {de
-            ? "Ich weiß, dass mein Konto und meine Daten endgültig gelöscht werden."
-            : "I understand my account and data will be deleted for good."}
+          {c_accountForms(de).iUnderstandMyAccountAnd}
         </span>
       </label>
       <button
@@ -145,7 +141,7 @@ export function DeleteAccountForm({ userId, locale }: { userId: string; locale: 
         disabled={pending}
         className="self-start rounded-md bg-danger px-4 py-2 text-sm font-medium text-on-danger hover:opacity-90 disabled:opacity-50"
       >
-        {de ? "Konto endgültig löschen" : "Delete account permanently"}
+        {c_accountForms(de).deleteAccountPermanently}
       </button>
     </form>
   );
@@ -174,15 +170,13 @@ export function CompanyForm({ locale }: { locale: Locale }) {
       return;
     }
     const body = await res.json().catch(() => null);
-    setError(body?.error ?? (de ? "Anfrage fehlgeschlagen." : "Request failed."));
+    setError(body?.error ?? (c_accountForms(de).requestFailed));
   }
 
   if (sentTo) {
     return (
       <Message kind="ok">
-        {de
-          ? `Wir haben einen Bestätigungslink an ${sentTo} geschickt. Mit dem Klick wird das Unternehmen angelegt.`
-          : `We sent a confirmation link to ${sentTo}. Clicking it creates the company.`}
+        {fill(c_accountForms(de).weSentAConfirmationLink, sentTo)}
       </Message>
     );
   }
@@ -192,13 +186,13 @@ export function CompanyForm({ locale }: { locale: Locale }) {
       {error && <Message kind="error">{error}</Message>}
       <div>
         <label htmlFor="companyName" className="mb-1 block text-sm font-medium">
-          {de ? "Firmenname" : "Company name"}
+          {c_accountForms(de).companyName}
         </label>
         <input id="companyName" name="companyName" required maxLength={120} className={inputClass} />
       </div>
       <div>
         <label htmlFor="companyEmail" className="mb-1 block text-sm font-medium">
-          {de ? "Firmen-E-Mail" : "Company email"}
+          {c_accountForms(de).companyEmail}
         </label>
         <input id="companyEmail" name="companyEmail" type="email" required className={inputClass} />
       </div>
@@ -207,7 +201,7 @@ export function CompanyForm({ locale }: { locale: Locale }) {
         disabled={pending}
         className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
       >
-        {de ? "Bestätigungslink senden" : "Send confirmation link"}
+        {c_accountForms(de).sendConfirmationLink}
       </button>
     </form>
   );

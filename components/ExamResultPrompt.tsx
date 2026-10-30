@@ -1,5 +1,7 @@
 "use client";
 
+import { c_examResultPrompt } from "@/lib/i18n/components/examResultPrompt";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -26,15 +28,15 @@ export function ExamResultPrompt({ planId, certName, locale }: { planId: string;
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-5" data-testid="exam-result-prompt" aria-label={de ? "Prüfungsergebnis" : "Exam result"}>
-      <p className="font-semibold">{de ? `Wie lief deine Prüfung „${certName}“?` : `How did your “${certName}” exam go?`}</p>
-      <p className="mt-1 text-sm text-muted">{de ? "Dein Ergebnis hilft uns, die Lernplanung zu verbessern." : "Your result helps us improve the study planning."}</p>
+    <section className="rounded-2xl border border-border bg-surface p-5" data-testid="exam-result-prompt" aria-label={c_examResultPrompt(de).examResult}>
+      <p className="font-semibold">{fill(c_examResultPrompt(de).howDidYour0Exam, certName)}</p>
+      <p className="mt-1 text-sm text-muted">{c_examResultPrompt(de).yourResultHelpsUsImprove}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button size="sm" disabled={busy} onClick={() => void answer({ status: "passed" })}>{de ? "Bestanden" : "Passed"}</Button>
-        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void answer({ status: "failed" })}>{de ? "Nicht bestanden" : "Not passed"}</Button>
-        <Button size="sm" variant="ghost" disabled={busy} onClick={() => void answer({ resultSnooze: true })}>{de ? "Noch nicht" : "Not yet"}</Button>
+        <Button size="sm" disabled={busy} onClick={() => void answer({ status: "passed" })}>{c_examResultPrompt(de).passed}</Button>
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void answer({ status: "failed" })}>{c_examResultPrompt(de).notPassed}</Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => void answer({ resultSnooze: true })}>{c_examResultPrompt(de).notYet}</Button>
       </div>
-      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{de ? "Speichern fehlgeschlagen." : "Could not save."}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{c_examResultPrompt(de).couldNotSave}</p>}
     </section>
   );
 }

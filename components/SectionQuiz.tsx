@@ -1,5 +1,6 @@
 "use client";
 
+import { c_sectionQuiz } from "@/lib/i18n/components/sectionQuiz";
 import { useState } from "react";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
 import { FormatQuestionCard } from "@/components/quiz/FormatQuestionCard";
@@ -136,7 +137,7 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
           offline.userId,
           "section_quiz",
           { sectionId, answers: nextAnswers },
-          locale === "de" ? "Abschnittsquiz" : "Section quiz",
+          c_sectionQuiz(locale).sectionQuiz,
         ).catch(() => {});
       } else {
         fetch(attemptUrl ?? `/api/sections/${sectionId}/attempt`, {

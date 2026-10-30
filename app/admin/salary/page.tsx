@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_adminSalaryPage } from "@/lib/i18n/components/adminSalaryPage";
 import { SalaryImport } from "@/components/admin/SalaryImport";
 import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getServerLocale } from "@/lib/server/locale";
@@ -13,7 +14,7 @@ export default async function AdminSalaryPage() {
   return (
     <div className="flex flex-1 flex-col gap-6" data-testid="admin-salary">
       <div>
-        <h1 className="text-2xl font-semibold tracking-title sm:text-title">{locale === "de" ? "Gehaltsdaten" : "Salary data"}</h1>
+        <h1 className="text-2xl font-semibold tracking-title sm:text-title">{c_adminSalaryPage(locale).salaryData}</h1>
       </div>
       <SalaryImport locale={locale} datasets={datasets.map((d) => ({ ...d, importedAt: d.importedAt.toISOString() }))} />
     </div>

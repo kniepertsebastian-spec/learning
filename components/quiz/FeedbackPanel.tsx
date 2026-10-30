@@ -1,5 +1,6 @@
 "use client";
 
+import { c_quizFeedbackPanel } from "@/lib/i18n/components/quizFeedbackPanel";
 import { useEffect, useState } from "react";
 import { ArrowRight, CircleCheck, CircleX } from "lucide-react";
 import { RichText } from "@/components/RichText";
@@ -80,7 +81,7 @@ export function FeedbackPanel({
         <RichText text={explanation} />
       </div>
 
-      {!correct && selfExplain && <SelfExplanation storageKey={`q:${questionId}`} prompt={locale === "de" ? "Erkläre in einem Satz, warum die richtige Antwort passt." : "Explain in one sentence why the correct answer fits."} modelAnswer={explanation} locale={locale} />}
+      {!correct && selfExplain && <SelfExplanation storageKey={`q:${questionId}`} prompt={c_quizFeedbackPanel(locale).explainInOneSentenceWhy} modelAnswer={explanation} locale={locale} />}
 
       {wrongWithReason.length > 0 && (
         <div className="mt-4 border-t border-border pt-4" data-testid="option-rationales">

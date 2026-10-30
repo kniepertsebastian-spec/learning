@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdChapterDomainIdQuizPage } from "@/lib/i18n/components/certIdChapterDomainIdQuizPage";
+import { fill } from "@/lib/i18n/fill";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
@@ -39,9 +41,9 @@ export default async function ChapterQuizPage({ params }: { params: Promise<{ id
   if (draw.questions.length === 0) {
     return (
       <Card data-testid="chapter-quiz-empty">
-        <h1 className="text-xl font-semibold">{de ? "Sitzt das?" : "Does it stick?"} · {draw.domainName}</h1>
-        <p className="mt-2 text-sm text-muted">{de ? "Für dieses Kapitel gibt es noch keine Fragen." : "There are no questions for this chapter yet."}</p>
-        <Button asChild variant="secondary" className="mt-4"><Link href={`/cert/${slug}`}>{de ? "Zurück zum Kurs" : "Back to the course"}</Link></Button>
+        <h1 className="text-xl font-semibold">{c_certIdChapterDomainIdQuizPage(de).doesItStick} · {draw.domainName}</h1>
+        <p className="mt-2 text-sm text-muted">{c_certIdChapterDomainIdQuizPage(de).thereAreNoQuestionsFor}</p>
+        <Button asChild variant="secondary" className="mt-4"><Link href={`/cert/${slug}`}>{c_certIdChapterDomainIdQuizPage(de).backToTheCourse}</Link></Button>
       </Card>
     );
   }
@@ -51,9 +53,7 @@ export default async function ChapterQuizPage({ params }: { params: Promise<{ id
       {mine && !mine.lessonsDone && (
         <Card variant="inset" data-testid="chapter-quiz-hint">
           <p className="text-sm text-muted">
-            {de
-              ? `Du hast ${mine.sectionsDone} von ${mine.sectionTotal} Lektionen dieses Kapitels durchgearbeitet. Das Quiz geht trotzdem, abgeschlossen ist das Kapitel aber erst mit allen Lektionen und bestandenem Quiz.`
-              : `You have worked through ${mine.sectionsDone} of ${mine.sectionTotal} lessons in this chapter. You can take the quiz anyway, but the chapter only counts as completed with all lessons done and the quiz passed.`}
+            {fill(c_certIdChapterDomainIdQuizPage(de).youHaveWorkedThrough0, mine.sectionsDone, mine.sectionTotal)}
           </p>
         </Card>
       )}
@@ -64,13 +64,13 @@ export default async function ChapterQuizPage({ params }: { params: Promise<{ id
         questions={draw.questions}
         certSlug={slug}
         locale={locale}
-        contextLabel={`${de ? "Sitzt das?" : "Does it stick?"} · ${draw.domainName}`}
+        contextLabel={`${c_certIdChapterDomainIdQuizPage(de).doesItStick} · ${draw.domainName}`}
         askConfidence={askConfidence}
         passPercent={CHAPTER_PASS_PERCENT}
         resultActions={[
-          { href: `/cert/${slug}`, label: de ? "Zurück zum Kurs" : "Back to the course", primary: true },
+          { href: `/cert/${slug}`, label: c_certIdChapterDomainIdQuizPage(de).backToTheCourse, primary: true },
           // Neuer Aufruf = neue Ziehung aus dem Pool.
-          { href: here, label: de ? "Neue Fragen ziehen" : "Draw new questions" },
+          { href: here, label: c_certIdChapterDomainIdQuizPage(de).drawNewQuestions },
         ]}
       />
     </div>

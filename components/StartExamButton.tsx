@@ -1,5 +1,6 @@
 "use client";
 
+import { c_startExamButton } from "@/lib/i18n/components/startExamButton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -29,7 +30,7 @@ export function StartExamButton({ certId, certSlug, locale }: StartExamButtonPro
       }
       router.push(`/cert/${certSlug}/final-exam/${data.examId}`);
     } catch {
-      setError(locale === "de" ? "Fehler beim Starten der Prüfung." : "Failed to start exam.");
+      setError(c_startExamButton(locale).failedToStartExam);
       setLoading(false);
     }
   }
@@ -44,12 +45,8 @@ export function StartExamButton({ certId, certSlug, locale }: StartExamButtonPro
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         {loading
-          ? locale === "de"
-            ? "Prüfung wird erstellt..."
-            : "Creating exam..."
-          : locale === "de"
-            ? "Prüfung starten"
-            : "Start exam"}
+          ? c_startExamButton(locale).creatingExam
+          : c_startExamButton(locale).startExam}
       </button>
       {error && <p className="text-sm text-danger-text">{error}</p>}
     </div>

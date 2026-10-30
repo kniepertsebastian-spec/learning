@@ -1,5 +1,6 @@
 "use client";
 
+import { c_reviewerAcceptReviewerInvitation } from "@/lib/i18n/components/reviewerAcceptReviewerInvitation";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ export function AcceptReviewerInvitation({ token, locale }: { token: string; loc
   return (
     <div className="flex flex-col gap-2">
       <Button onClick={() => void accept()} disabled={busy} className="w-fit" data-testid="reviewer-accept">
-        {de ? "Einladung annehmen" : "Accept invitation"}
+        {c_reviewerAcceptReviewerInvitation(de).acceptInvitation}
       </Button>
       {error && <p role="alert" className="text-sm text-danger-text" data-testid="reviewer-accept-error">{error}</p>}
     </div>

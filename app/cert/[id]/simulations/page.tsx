@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdSimulationsPage } from "@/lib/i18n/components/certIdSimulationsPage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -42,12 +43,12 @@ export default async function SimulationsPage({ params }: { params: Promise<{ id
         {cert.name}
       </Link>
       <div className="mb-5">
-        <h1 className="text-2xl font-semibold">{de ? "Simulationen" : "Simulations"}</h1>
-        <p className="text-sm text-muted">{de ? "Hier wendest du das Gelernte selbst an. Jede Simulation steht in ihrer Lektion; ein Klick führt direkt dorthin." : "Apply what you've learned. Each simulation lives in its lesson; one click takes you straight there."}</p>
+        <h1 className="text-2xl font-semibold">{c_certIdSimulationsPage(de).simulations}</h1>
+        <p className="text-sm text-muted">{c_certIdSimulationsPage(de).applyWhatYouVeLearned}</p>
       </div>
       {all.length === 0 ? (
         <p className="text-sm text-muted" data-testid="simulations-empty">
-          {de ? "Dieser Kurs hat noch keine Simulationen." : "This course has no simulations yet."}
+          {c_certIdSimulationsPage(de).thisCourseHasNoSimulations}
         </p>
       ) : (
         <SimulationsOverview certSlug={slug} items={items} locked={locked} locale={locale} signedIn={Boolean(session?.user?.id)} />

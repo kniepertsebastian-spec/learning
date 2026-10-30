@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { c_inviteTokenPage } from "@/lib/i18n/components/inviteTokenPage";
+import { fill } from "@/lib/i18n/fill";
 import Link from "next/link";
 import { AcceptInvitationButton } from "@/components/AcceptInvitationButton";
 import { getCurrentUser } from "@/lib/server/auth-guards";
@@ -32,13 +34,13 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
         <p className="text-lg font-semibold" data-testid="invite-invalid">
-          {de ? "Einladung ungültig oder abgelaufen" : "Invitation invalid or expired"}
+          {c_inviteTokenPage(de).invitationInvalidOrExpired}
         </p>
         <p className="text-muted">
-          {de ? "Bitte lass dir einen neuen Link schicken." : "Please ask for a new link."}
+          {c_inviteTokenPage(de).pleaseAskForANew}
         </p>
         <Link href="/" className="mt-4 text-link hover:underline">
-          {de ? "Zur Startseite" : "Back to home"}
+          {c_inviteTokenPage(de).backToHome}
         </Link>
       </div>
     );
@@ -51,15 +53,15 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   return (
     <div className="flex flex-1 flex-col items-center justify-center">
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-8">
-        <h1 className="text-xl font-semibold">{de ? "Einladung" : "Invitation"}</h1>
+        <h1 className="text-xl font-semibold">{c_inviteTokenPage(de).invitation}</h1>
         <p className="mt-3 text-sm" data-testid="invite-summary">
-          {de ? "Du wurdest zu " : "You were invited to "}
+          {c_inviteTokenPage(de).youWereInvitedTo}
           <strong>{preview.organizationName}</strong>
-          {de ? " eingeladen, als " : " as "}
+          {c_inviteTokenPage(de).as}
           <strong>{ROLE_LABELS[preview.role][locale]}</strong>.
         </p>
         <p className="mt-1 text-sm text-muted">
-          {de ? "Gilt für: " : "For: "}
+          {c_inviteTokenPage(de).for}
           {preview.email}
         </p>
 
@@ -67,28 +69,24 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           {!user ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-muted">
-                {de
-                  ? "Melde dich mit dieser E-Mail-Adresse an oder registriere dich."
-                  : "Sign in with this email address or register."}
+                {c_inviteTokenPage(de).signInWithThisEmail}
               </p>
               <Link
                 href={`/register?${query}&email=${encodeURIComponent(preview.email)}`}
                 className="rounded-md bg-primary px-4 py-2.5 text-center text-sm font-medium text-on-primary hover:opacity-90"
               >
-                {de ? "Registrieren" : "Register"}
+                {c_inviteTokenPage(de).register}
               </Link>
               <Link
                 href={`/login?${query}`}
                 className="rounded-md border border-border px-4 py-2.5 text-center text-sm font-medium hover:bg-background"
               >
-                {de ? "Anmelden" : "Sign in"}
+                {c_inviteTokenPage(de).signIn}
               </Link>
             </div>
           ) : normalizeEmail(user.email) !== preview.email ? (
             <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text" data-testid="invite-mismatch">
-              {de
-                ? `Diese Einladung gilt für ${preview.email}. Du bist als ${user.email} angemeldet.`
-                : `This invitation is for ${preview.email}. You are signed in as ${user.email}.`}
+              {fill(c_inviteTokenPage(de).thisInvitationIsFor0, preview.email, user.email)}
             </p>
           ) : (
             <AcceptInvitationButton token={token} locale={locale} homePath={homePath} />

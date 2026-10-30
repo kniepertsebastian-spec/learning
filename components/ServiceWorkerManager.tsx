@@ -1,5 +1,6 @@
 "use client";
 
+import { c_serviceWorkerManager } from "@/lib/i18n/components/serviceWorkerManager";
 import { useEffect, useRef } from "react";
 import { reconcileCacheOwner, clearPagesCache } from "@/lib/client/cache-owner";
 import { getLastUserId, setLastUserId } from "@/lib/client/last-user";
@@ -44,7 +45,7 @@ export function ServiceWorkerManager({ userId }: { userId: string | null }) {
       }).catch(() => []);
       notifyPackagesChanged(); // gesperrte Pakete (Ablauf) können durch die Prüfung wieder frei sein
       if (removed.length === 0) return;
-      toast(de ? "Ein Kurs ist nicht mehr für dich freigegeben und wurde vom Gerät entfernt." : "A course is no longer shared with you and was removed from this device.", { id: "package-revoked", duration: 8000 });
+      toast(c_serviceWorkerManager(de).aCourseIsNoLonger, { id: "package-revoked", duration: 8000 });
     };
     void prune();
     window.addEventListener("online", prune);

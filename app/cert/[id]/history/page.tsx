@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdHistoryPage } from "@/lib/i18n/components/certIdHistoryPage";
+import { fill } from "@/lib/i18n/fill";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ClipboardList } from "lucide-react";
@@ -21,7 +23,7 @@ import { DomainActivityTrends } from "@/components/DomainActivityTrends";
 function formatDuration(seconds: number | null, locale: "de" | "en"): string {
   if (seconds === null) return "–";
   const minutes = Math.round(seconds / 60);
-  return locale === "de" ? `${minutes} Min.` : `${minutes} min`;
+  return fill(c_certIdHistoryPage(locale).n0Min, minutes);
 }
 
 const READINESS_LABEL: Record<string, { de: string; en: string }> = {
@@ -45,7 +47,7 @@ export default async function ExamHistoryPage({
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
         <p className="text-muted">
-          {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
+          {c_certIdHistoryPage(locale).pleaseSignIn}
         </p>
       </div>
     );
@@ -74,12 +76,12 @@ export default async function ExamHistoryPage({
         className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
+        {c_certIdHistoryPage(locale).backToCertification}
       </Link>
 
       <h1 className="mb-1 flex items-center gap-2 text-2xl font-semibold">
         <ClipboardList className="h-5 w-5" aria-hidden="true" />
-        {locale === "de" ? "Meine Prüfungen" : "My exams"}
+        {c_certIdHistoryPage(locale).myExams}
       </h1>
       <p className="mb-6 text-sm text-muted">{cert.name}</p>
 
@@ -88,18 +90,16 @@ export default async function ExamHistoryPage({
 
       {attempts.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-subtle">
-          {locale === "de"
-            ? "Noch keine Abschlussprüfung absolviert."
-            : "No practice exam completed yet."}
+          {c_certIdHistoryPage(locale).noPracticeExamCompletedYet}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-surface text-xs text-subtle">
               <tr>
-                <th className="px-4 py-2.5 font-medium">{locale === "de" ? "Datum" : "Date"}</th>
-                <th className="px-4 py-2.5 font-medium">{locale === "de" ? "Ergebnis" : "Result"}</th>
-                <th className="px-4 py-2.5 font-medium">{locale === "de" ? "Dauer" : "Duration"}</th>
+                <th className="px-4 py-2.5 font-medium">{c_certIdHistoryPage(locale).date}</th>
+                <th className="px-4 py-2.5 font-medium">{c_certIdHistoryPage(locale).result}</th>
+                <th className="px-4 py-2.5 font-medium">{c_certIdHistoryPage(locale).duration}</th>
                 <th className="px-4 py-2.5 font-medium">Readiness</th>
               </tr>
             </thead>
@@ -116,7 +116,7 @@ export default async function ExamHistoryPage({
                       </Link>
                     ) : (
                       <span className="text-faint">
-                        {locale === "de" ? "nicht abgeschlossen" : "not completed"}
+                        {c_certIdHistoryPage(locale).notCompleted}
                       </span>
                     )}
                   </td>

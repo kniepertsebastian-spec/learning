@@ -1,5 +1,6 @@
 "use client";
 
+import { c_onboardingsPanel } from "@/lib/i18n/components/onboardingsPanel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -58,17 +59,17 @@ function PlanCard({ plan, members, canSetStatus, de }: { plan: OnboardingPlanRow
         <div className="min-w-0">
           <h3 className="font-medium">{plan.name}</h3>
           <p className="text-sm text-muted">
-            {de ? "Mentor: " : "Mentor: "}
-            {plan.mentor ? label(plan.mentor) : de ? "niemand (bitte neu zuordnen)" : "nobody (please reassign)"}
+            {c_onboardingsPanel(de).mentor}
+            {plan.mentor ? label(plan.mentor) : c_onboardingsPanel(de).nobodyPleaseReassign}
           </p>
           {plan.description && <p className="mt-1 whitespace-pre-line text-sm text-text-2">{plan.description}</p>}
         </div>
         <button type="button" className={btn} disabled={busy} onClick={() => void run(() => call(`/api/company/onboardings/${plan.id}`, "DELETE"))}>
-          {de ? "Plan archivieren" : "Archive plan"}
+          {c_onboardingsPanel(de).archivePlan}
         </button>
       </div>
       <p className="mt-2 text-sm">
-        <span className="font-medium">{de ? "Benötigte Kurse: " : "Required courses: "}</span>
+        <span className="font-medium">{c_onboardingsPanel(de).requiredCourses}</span>
         {plan.courses.map((c) => c.name).join(", ")}
       </p>
 
@@ -78,7 +79,7 @@ function PlanCard({ plan, members, canSetStatus, de }: { plan: OnboardingPlanRow
             <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2" data-testid="onboarding-person">
               <span className="min-w-0 flex-1 break-words">{label(p)}</span>
               <span className="text-muted">
-                {p.coursesDone}/{p.coursesTotal} {de ? "Kurse" : "courses"}
+                {p.coursesDone}/{p.coursesTotal} {c_onboardingsPanel(de).courses}
               </span>
               <span className="rounded-full border border-border px-2 py-0.5 text-xs" data-testid="onboarding-status">
                 {(de ? STATUS_DE : STATUS_EN)[p.status]}
@@ -87,17 +88,17 @@ function PlanCard({ plan, members, canSetStatus, de }: { plan: OnboardingPlanRow
                 <span className="flex gap-2">
                   {p.status === "open" && (
                     <button type="button" className={btn} disabled={busy} onClick={() => void run(() => call(`/api/company/onboarding-status/${p.id}`, "PATCH", { status: "discussed" }))}>
-                      {de ? "Besprochen" : "Mark discussed"}
+                      {c_onboardingsPanel(de).markDiscussed}
                     </button>
                   )}
                   <button
                     type="button"
                     className={btn}
                     disabled={busy || p.coursesDone < p.coursesTotal}
-                    title={p.coursesDone < p.coursesTotal ? (de ? "Erst wenn alle Kurse abgeschlossen sind" : "Only once all courses are completed") : undefined}
+                    title={p.coursesDone < p.coursesTotal ? (c_onboardingsPanel(de).onlyOnceAllCoursesAre) : undefined}
                     onClick={() => void run(() => call(`/api/company/onboarding-status/${p.id}`, "PATCH", { status: "reviewed" }))}
                   >
-                    {de ? "Geprüft" : "Mark reviewed"}
+                    {c_onboardingsPanel(de).markReviewed}
                   </button>
                 </span>
               )}
@@ -107,8 +108,8 @@ function PlanCard({ plan, members, canSetStatus, de }: { plan: OnboardingPlanRow
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <select value={pick} onChange={(e) => setPick(e.target.value)} className={`${field} min-w-0 max-w-full`} aria-label={de ? "Person für dieses Onboarding" : "Person for this onboarding"}>
-          <option value="">{de ? "Person wählen …" : "Choose person …"}</option>
+        <select value={pick} onChange={(e) => setPick(e.target.value)} className={`${field} min-w-0 max-w-full`} aria-label={c_onboardingsPanel(de).personForThisOnboarding}>
+          <option value="">{c_onboardingsPanel(de).choosePerson}</option>
           {candidates.map((m) => (
             <option key={m.userId} value={m.userId}>
               {label(m)}
@@ -116,7 +117,7 @@ function PlanCard({ plan, members, canSetStatus, de }: { plan: OnboardingPlanRow
           ))}
         </select>
         <button type="button" className={btn} disabled={busy || !pick} onClick={() => void run(async () => { const err = await call(`/api/company/onboardings/${plan.id}`, "POST", { userIds: [pick] }); if (!err) setPick(""); return err; })}>
-          {de ? "Onboarding starten" : "Start onboarding"}
+          {c_onboardingsPanel(de).startOnboarding}
         </button>
       </div>
       {error && (
@@ -176,24 +177,22 @@ export function OnboardingsPanel({
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="onboardings-panel">
       <h2 className="text-lg font-medium">Onboarding</h2>
       <p className="mt-1 text-sm text-muted">
-        {de
-          ? "Lege fest, welche Kurse neue Personen absolvieren müssen und wer sie als Mentor begleitet. Beim Start werden alle Kurse zugewiesen; der Mentor setzt den Stand „besprochen“ und, sobald alle Kurse abgeschlossen sind, „geprüft“."
-          : "Define which courses new people must complete and who mentors them. Starting an onboarding assigns all courses; the mentor marks it “discussed” and, once every course is completed, “reviewed”."}
+        {c_onboardingsPanel(de).defineWhichCoursesNewPeople}
       </p>
 
       <ul className="mt-4 flex flex-col gap-3">
         {plans.map((plan) => (
           <PlanCard key={plan.id} plan={plan} members={members} canSetStatus={(p) => isAdmin || p.mentor?.userId === currentUserId} de={de} />
         ))}
-        {plans.length === 0 && <li className="text-sm text-muted">{de ? "Noch kein Onboarding-Plan." : "No onboarding plan yet."}</li>}
+        {plans.length === 0 && <li className="text-sm text-muted">{c_onboardingsPanel(de).noOnboardingPlanYet}</li>}
       </ul>
 
       <form onSubmit={(e) => void create(e)} className="mt-6 flex flex-col gap-3 border-t border-border pt-4">
-        <h3 className="font-medium">{de ? "Neuer Plan" : "New plan"}</h3>
-        <input className={field} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} required placeholder={de ? "Name, z. B. Operations Infrastruktur" : "Name, e.g. Operations Infrastructure"} aria-label="Name" />
-        <textarea className={field} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} rows={2} placeholder={de ? "Beschreibung (optional)" : "Description (optional)"} aria-label={de ? "Beschreibung" : "Description"} />
+        <h3 className="font-medium">{c_onboardingsPanel(de).newPlan}</h3>
+        <input className={field} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} required placeholder={c_onboardingsPanel(de).nameEGOperationsInfrastructure} aria-label="Name" />
+        <textarea className={field} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} rows={2} placeholder={c_onboardingsPanel(de).descriptionOptional} aria-label={c_onboardingsPanel(de).description} />
         <label className="flex flex-col gap-1 text-sm">
-          {de ? "Mentor" : "Mentor"}
+          {c_onboardingsPanel(de).mentor2}
           <select className={`${field} min-w-0`} value={mentor} onChange={(e) => setMentor(e.target.value)}>
             {mentors.map((m) => (
               <option key={m.userId} value={m.userId}>
@@ -203,8 +202,8 @@ export function OnboardingsPanel({
           </select>
         </label>
         <fieldset className="flex flex-col gap-1 text-sm">
-          <legend className="mb-1">{de ? "Benötigte Kurse" : "Required courses"}</legend>
-          {paths.length === 0 && <span className="text-muted">{de ? "Noch keine zuweisbaren Kurse." : "No assignable courses yet."}</span>}
+          <legend className="mb-1">{c_onboardingsPanel(de).requiredCourses2}</legend>
+          {paths.length === 0 && <span className="text-muted">{c_onboardingsPanel(de).noAssignableCoursesYet}</span>}
           {paths.map((p) => (
             <label key={p.id} className="flex items-center gap-2">
               <input type="checkbox" checked={selected.includes(p.id)} onChange={(e) => setSelected((s) => (e.target.checked ? [...s, p.id] : s.filter((x) => x !== p.id)))} />
@@ -219,7 +218,7 @@ export function OnboardingsPanel({
         )}
         <div>
           <button type="submit" className={btn} disabled={busy || selected.length === 0 || name.trim().length < 3}>
-            {de ? "Plan anlegen" : "Create plan"}
+            {c_onboardingsPanel(de).createPlan}
           </button>
         </div>
       </form>

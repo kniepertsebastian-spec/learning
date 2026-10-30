@@ -1,5 +1,7 @@
 "use client";
 
+import { c_aiSettingsPanel } from "@/lib/i18n/components/aiSettingsPanel";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -33,11 +35,11 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
     const body = await res.json().catch(() => null);
     setPending(false);
     if (!res.ok) {
-      setError(body?.error ?? (de ? "Speichern fehlgeschlagen." : "Could not save."));
+      setError(body?.error ?? (c_aiSettingsPanel(de).couldNotSave));
       return;
     }
     setApiKey("");
-    setNotice(de ? "Gespeichert." : "Saved.");
+    setNotice(c_aiSettingsPanel(de).saved);
     router.refresh();
   }
 
@@ -46,35 +48,33 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
     setNotice(null);
     const res = await fetch("/api/company/ai-settings/key", { method: "DELETE" });
     if (!res.ok) {
-      setError(de ? "Entfernen fehlgeschlagen." : "Could not remove.");
+      setError(c_aiSettingsPanel(de).couldNotRemove);
       return;
     }
-    setNotice(de ? "Schlüssel entfernt." : "Key removed.");
+    setNotice(c_aiSettingsPanel(de).keyRemoved);
     router.refresh();
   }
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="ai-settings-panel">
-      <h2 className="text-lg font-medium">{de ? "KI-Zugang für interne Lernpfade" : "AI access for internal learning paths"}</h2>
+      <h2 className="text-lg font-medium">{c_aiSettingsPanel(de).aiAccessForInternalLearning}</h2>
       <p className="mt-1 text-sm text-muted">
-        {de
-          ? "Interne Lernpfade erzeugst du aus deinen Dokumenten mit KI. Wähle, über welchen Zugang das läuft. Deine Dokumente gehen dabei an den jeweiligen KI-Anbieter (Google Gemini)."
-          : "You create internal learning paths from your documents with AI. Choose which access is used. Your documents are sent to the respective AI provider (Google Gemini)."}
+        {c_aiSettingsPanel(de).youCreateInternalLearningPaths}
       </p>
       <form onSubmit={save} className="mt-4 flex flex-col gap-3">
         <label className="flex items-start gap-2 text-sm">
           <input type="radio" name="ai-mode" checked={mode === "platform"} onChange={() => setMode("platform")} className="mt-1" />
           <span>
-            <span className="font-medium">{de ? "Über unseren Zugang" : "Through our access"}</span>
-            <span className="block text-xs text-muted">{de ? "Wir stellen den KI-Zugang bereit." : "We provide the AI access."}</span>
+            <span className="font-medium">{c_aiSettingsPanel(de).throughOurAccess}</span>
+            <span className="block text-xs text-muted">{c_aiSettingsPanel(de).weProvideTheAiAccess}</span>
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input type="radio" name="ai-mode" checked={mode === "byok"} onChange={() => setMode("byok")} className="mt-1" />
           <span>
-            <span className="font-medium">{de ? "Eigener Schlüssel (BYOK)" : "Own key (BYOK)"}</span>
+            <span className="font-medium">{c_aiSettingsPanel(de).ownKeyByok}</span>
             <span className="block text-xs text-muted">
-              {de ? "Die KI-Nutzung läuft über dein eigenes Google-Gemini-Konto und wird dort abgerechnet." : "AI usage runs through your own Google Gemini account and is billed there."}
+              {c_aiSettingsPanel(de).aiUsageRunsThroughYour}
             </span>
           </span>
         </label>
@@ -82,12 +82,12 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
           <div className="ml-6 flex flex-col gap-2">
             {!settings.encryptionConfigured && (
               <p className="text-xs text-danger-text" data-testid="ai-no-encryption">
-                {de ? "Eigene Schlüssel lassen sich auf diesem Server noch nicht speichern. Bitte den Betreiber informieren." : "Own keys cannot be stored on this server yet. Please contact the operator."}
+                {c_aiSettingsPanel(de).ownKeysCannotBeStored}
               </p>
             )}
             {settings.hasKey && (
               <p className="text-xs text-muted" data-testid="ai-key-status">
-                {de ? `Gespeicherter Schlüssel: …${settings.keyLast4}` : `Stored key: …${settings.keyLast4}`}
+                {fill(c_aiSettingsPanel(de).storedKey0, settings.keyLast4)}
               </p>
             )}
             <input
@@ -95,14 +95,14 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
               autoComplete="off"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={settings.hasKey ? (de ? "Neuen Schlüssel eingeben, um ihn zu ersetzen" : "Enter a new key to replace it") : de ? "Gemini-API-Schlüssel" : "Gemini API key"}
-              aria-label={de ? "API-Schlüssel" : "API key"}
+              placeholder={settings.hasKey ? (c_aiSettingsPanel(de).enterANewKeyTo) : c_aiSettingsPanel(de).geminiApiKey}
+              aria-label={c_aiSettingsPanel(de).apiKey}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
             />
             {settings.hasKey && (
               <div>
                 <button type="button" onClick={() => void removeKey()} className="text-xs text-danger-text hover:underline">
-                  {de ? "Gespeicherten Schlüssel entfernen" : "Remove stored key"}
+                  {c_aiSettingsPanel(de).removeStoredKey}
                 </button>
               </div>
             )}
@@ -110,11 +110,11 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
         )}
         <div>
           <button type="submit" disabled={pending} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50">
-            {pending ? (de ? "Wird geprüft …" : "Checking …") : de ? "Speichern" : "Save"}
+            {pending ? (c_aiSettingsPanel(de).checking) : c_aiSettingsPanel(de).save}
           </button>
           <span className="ml-3 text-xs text-muted" data-testid="ai-mode-status">
-            {de ? "Aktuell: " : "Current: "}
-            {settings.mode === "platform" ? (de ? "unser Zugang" : "our access") : settings.mode === "byok" ? (de ? "eigener Schlüssel" : "own key") : de ? "nicht eingerichtet" : "not set up"}
+            {c_aiSettingsPanel(de).current}
+            {settings.mode === "platform" ? (c_aiSettingsPanel(de).ourAccess) : settings.mode === "byok" ? (c_aiSettingsPanel(de).ownKey) : c_aiSettingsPanel(de).notSetUp}
           </span>
         </div>
       </form>

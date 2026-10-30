@@ -1,5 +1,7 @@
 "use client";
 
+import { c_quizFormatFeedbackPanel } from "@/lib/i18n/components/quizFormatFeedbackPanel";
+import { fill } from "@/lib/i18n/fill";
 import { ArrowRight, CircleCheck, CircleX } from "lucide-react";
 import { RichText } from "@/components/RichText";
 import { ReportProblem } from "@/components/quiz/ReportProblem";
@@ -52,8 +54,8 @@ export function FormatFeedbackPanel({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className={cn("flex items-center gap-2 text-base font-semibold", correct ? "text-mint-text" : "text-danger-text")}>
           {correct ? <CircleCheck className="h-5 w-5" aria-hidden="true" /> : <CircleX className="h-5 w-5" aria-hidden="true" />}
-          {correct ? t.quiz.correct : de ? "Noch nicht ganz" : "Not quite"}
-          {!correct && partial !== undefined && partial > 0 && <span className="text-sm font-normal text-subtle">{de ? `· ${Math.round(partial * 100)} % richtig` : `· ${Math.round(partial * 100)}% right`}</span>}
+          {correct ? t.quiz.correct : c_quizFormatFeedbackPanel(de).notQuite}
+          {!correct && partial !== undefined && partial > 0 && <span className="text-sm font-normal text-subtle">{fill(c_quizFormatFeedbackPanel(de).n0Right, Math.round(partial * 100))}</span>}
         </p>
         {confidenceLabel && <p className="text-xs text-subtle">{fmt(t.quiz.yourConfidence, { c: confidenceLabel })}</p>}
       </div>
@@ -62,7 +64,7 @@ export function FormatFeedbackPanel({
       <div className="mt-3 text-body leading-[1.65] text-foreground">
         <RichText text={explanation} />
       </div>
-      {!correct && selfExplain && <SelfExplanation storageKey={`q:${questionId}`} prompt={de ? "Erkläre in einem Satz, warum das die richtige Lösung ist." : "Explain in one sentence why this is the right solution."} modelAnswer={explanation} locale={locale} />}
+      {!correct && selfExplain && <SelfExplanation storageKey={`q:${questionId}`} prompt={c_quizFormatFeedbackPanel(de).explainInOneSentenceWhy} modelAnswer={explanation} locale={locale} />}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
         <div className="flex flex-wrap items-center gap-4">
           {sourceReference && <p className="text-xs text-faint">{t.quiz.source}: {sourceReference}</p>}

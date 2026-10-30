@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdFinalExamPage } from "@/lib/i18n/components/certIdFinalExamPage";
+import { fill } from "@/lib/i18n/fill";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -33,10 +35,10 @@ export default async function FinalExamStartPage({
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
         <p className="text-muted">
-          {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
+          {c_certIdFinalExamPage(locale).pleaseSignIn}
         </p>
         <Link href="/login" className="mt-4 text-link hover:underline">
-          {locale === "de" ? "Anmelden" : "Sign in"}
+          {c_certIdFinalExamPage(locale).signIn}
         </Link>
       </div>
     );
@@ -49,12 +51,12 @@ export default async function FinalExamStartPage({
         className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
+        {c_certIdFinalExamPage(locale).backToCertification}
       </Link>
 
       <div className="mx-auto flex max-w-lg flex-1 flex-col items-center justify-center text-center">
         <h1 className="mb-2 text-2xl font-semibold">
-          {locale === "de" ? "Abschlussprüfung" : "Final Practice Exam"}
+          {c_certIdFinalExamPage(locale).finalPracticeExam}
         </h1>
         <p className="mb-6 text-sm text-muted">
           {cert.name} ({cert.examName} {cert.examVersion})
@@ -64,18 +66,12 @@ export default async function FinalExamStartPage({
           <ul className="list-disc space-y-1.5 pl-5">
             <li>
               {cert.examQuestionCount
-                ? locale === "de"
-                  ? `${cert.examQuestionCount} Fragen, verteilt nach offizieller Domain-Gewichtung`
-                  : `${cert.examQuestionCount} questions distributed by official domain weighting`
-                : locale === "de"
-                  ? "Fragen verteilt nach offizieller Domain-Gewichtung (Fragenanzahl der echten Prüfung noch nicht hinterlegt)"
-                  : "Questions distributed by official domain weighting (real exam question count not on file yet)"}
+                ? fill(c_certIdFinalExamPage(locale).n0QuestionsDistributedByOfficial, cert.examQuestionCount)
+                : c_certIdFinalExamPage(locale).questionsDistributedByOfficialDomain}
             </li>
             {cert.examDurationMinutes && (
               <li>
-                {locale === "de"
-                  ? `Zeitlimit: ${cert.examDurationMinutes} Minuten, wie in der echten Prüfung`
-                  : `Time limit: ${cert.examDurationMinutes} minutes, matching the real exam`}
+                {fill(c_certIdFinalExamPage(locale).timeLimit0MinutesMatching, cert.examDurationMinutes)}
               </li>
             )}
             {cert.passingScore && (
@@ -86,12 +82,10 @@ export default async function FinalExamStartPage({
               </li>
             )}
             <li>
-              {locale === "de"
-                ? "Vermeidet Fragen, die du bereits in Quizzes beantwortet hast"
-                : "Avoids questions you've already answered in quizzes"}
+              {c_certIdFinalExamPage(locale).avoidsQuestionsYouVeAlready}
             </li>
             <li>
-              {locale === "de" ? "Am Ende: eine Einschätzung, wie gut du vorbereitet bist" : "At the end: an assessment of how well prepared you are"}
+              {c_certIdFinalExamPage(locale).atTheEndAnAssessment}
             </li>
           </ul>
         </div>

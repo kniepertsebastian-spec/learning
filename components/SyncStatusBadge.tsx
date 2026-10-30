@@ -1,5 +1,7 @@
 "use client";
 
+import { c_syncStatusBadge } from "@/lib/i18n/components/syncStatusBadge";
+import { fill } from "@/lib/i18n/fill";
 import { useEffect, useState } from "react";
 import { CloudOff, RefreshCw, WifiOff } from "lucide-react";
 import type { Locale } from "@/lib/types";
@@ -7,7 +9,7 @@ import type { PendingSyncEvent } from "@/lib/client/offline-db";
 import { discardPendingSyncEvent, getSyncQueueSummary, listRejectedSyncEvents, listenForBackgroundSync, onSyncQueueChanged, runSync, type SyncQueueSummary } from "@/lib/client/sync-queue";
 
 function formatTime(iso: string | null, locale: Locale): string {
-  if (!iso) return locale === "de" ? "nie" : "never";
+  if (!iso) return c_syncStatusBadge(locale).never;
   return new Date(iso).toLocaleString(locale === "de" ? "de-DE" : "en-US");
 }
 
@@ -120,44 +122,40 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
         <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-md border border-border bg-surface p-3 text-sm shadow-overlay">
           <p className="mb-1 font-medium">
             {online
-              ? locale === "de"
-                ? "Online"
-                : "Online"
-              : locale === "de"
-                ? "Offline"
-                : "Offline"}
+              ? c_syncStatusBadge(locale).online
+              : c_syncStatusBadge(locale).offline}
           </p>
           <p className="mb-1 text-muted">
-            {locale === "de" ? "Ausstehend" : "Pending"}: {summary?.pendingCount ?? 0}
+            {c_syncStatusBadge(locale).pending}: {summary?.pendingCount ?? 0}
           </p>
           {summary?.authRequired && (
             <p className="mb-1 text-warning-text" data-testid="sync-auth-required">
-              {locale === "de" ? "Anmeldung nötig: melde dich an, dann werden die Ergebnisse übertragen." : "Sign-in needed: sign in and your results will be uploaded."}
+              {c_syncStatusBadge(locale).signInNeededSignIn}
             </p>
           )}
           {summary && summary.failedCount > 0 && (
             <p className="mb-1 text-warning-text dark:text-warning-text">
-              {locale === "de" ? "Fehlgeschlagen (wird erneut versucht)" : "Failed (will retry)"}: {summary.failedCount}
+              {c_syncStatusBadge(locale).failedWillRetry}: {summary.failedCount}
             </p>
           )}
           {summary?.partialApplied ? (
             <p className="mb-1 text-muted" data-testid="sync-partial-note">
-              {locale === "de" ? "Session war schon abgeschlossen, deine Antworten wurden trotzdem gezählt." : "Session was already completed, your answers were counted anyway."}
+              {c_syncStatusBadge(locale).sessionWasAlreadyCompletedYour}
             </p>
           ) : null}
           {summary?.skippedAnswers ? (
             <p className="mb-1 text-muted" data-testid="sync-skipped-note">
-              {locale === "de" ? `${summary.skippedAnswers} Antwort(en) betrafen Fragen, die es nicht mehr gibt, und wurden übersprungen.` : `${summary.skippedAnswers} answer(s) were for questions that no longer exist and were skipped.`}
+              {fill(c_syncStatusBadge(locale).n0AnswerSWereFor, summary.skippedAnswers)}
             </p>
           ) : null}
           {summary && summary.rejectedCount > 0 && (
             <div className="mb-2" data-testid="sync-rejected">
               <p className="mb-1 text-danger-text">
-                {locale === "de" ? `${summary.rejectedCount} Ergebnisse konnten nicht zugeordnet werden` : `${summary.rejectedCount} results could not be matched`}
+                {fill(c_syncStatusBadge(locale).n0ResultsCouldNotBe, summary.rejectedCount)}
               </p>
               <div className="flex gap-2">
-                <button type="button" onClick={() => void showRejected()} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-background">{locale === "de" ? "Ansehen" : "View"}</button>
-                <button type="button" onClick={() => void discardRejected().then(() => getSyncQueueSummary(userId).then(setSummary))} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-background" data-testid="sync-rejected-discard">{locale === "de" ? "Verwerfen" : "Discard"}</button>
+                <button type="button" onClick={() => void showRejected()} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-background">{c_syncStatusBadge(locale).view}</button>
+                <button type="button" onClick={() => void discardRejected().then(() => getSyncQueueSummary(userId).then(setSummary))} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-background" data-testid="sync-rejected-discard">{c_syncStatusBadge(locale).discard}</button>
               </div>
               {rejected && (
                 <ul className="mt-2 flex flex-col gap-1 text-xs text-muted" data-testid="sync-rejected-list">
@@ -170,11 +168,11 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
           )}
           {summary && summary.conflictCount > 0 && (
             <p className="mb-1 text-danger-text dark:text-danger-text">
-              {locale === "de" ? "Konflikte" : "Conflicts"}: {summary.conflictCount}
+              {c_syncStatusBadge(locale).conflicts}: {summary.conflictCount}
             </p>
           )}
           <p className="mb-3 text-xs text-faint">
-            {locale === "de" ? "Zuletzt synchronisiert" : "Last synced"}:{" "}
+            {c_syncStatusBadge(locale).lastSynced}:{" "}
             {formatTime(summary?.lastSyncedAt ?? null, locale)}
           </p>
           <button
@@ -183,7 +181,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
             disabled={!online || syncing}
             className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {locale === "de" ? "Jetzt synchronisieren" : "Sync now"}
+            {c_syncStatusBadge(locale).syncNow}
           </button>
         </div>
       )}

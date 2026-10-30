@@ -1,3 +1,4 @@
+import { c_courseSources } from "@/lib/i18n/components/courseSources";
 import { BookMarked } from "lucide-react";
 import type { CourseSourceEntry } from "@/lib/server/sources/course-sources";
 import type { Locale } from "@/lib/types";
@@ -14,7 +15,7 @@ export function CourseSources({ sources, locale }: { sources: CourseSourceEntry[
     <details className="mt-10 rounded-2xl border border-border bg-surface p-4" data-testid="course-sources">
       <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
         <BookMarked className="h-4 w-4 text-link" aria-hidden="true" />
-        {de ? "Quellen & Fachliteratur" : "Sources & further reading"}
+        {c_courseSources(de).sourcesFurtherReading}
         <span className="font-normal text-subtle">({sources.length})</span>
       </summary>
       <ul className="mt-3 flex flex-col gap-2 text-sm">
@@ -26,7 +27,7 @@ export function CourseSources({ sources, locale }: { sources: CourseSourceEntry[
               <span className="font-medium break-words">{s.title}</span>
             )}
             <span className="text-subtle">
-              {[s.provider, s.version ? `${de ? "Version" : "Version"} ${s.version}` : null, s.publishedAt ? date(s.publishedAt) : null].filter(Boolean).map((part) => ` · ${part}`).join("")}
+              {[s.provider, s.version ? `${c_courseSources(de).version} ${s.version}` : null, s.publishedAt ? date(s.publishedAt) : null].filter(Boolean).map((part) => ` · ${part}`).join("")}
             </span>
           </li>
         ))}

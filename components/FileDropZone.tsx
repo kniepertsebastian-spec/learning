@@ -1,5 +1,7 @@
 "use client";
 
+import { c_fileDropZone } from "@/lib/i18n/components/fileDropZone";
+import { fill } from "@/lib/i18n/fill";
 import { useRef, useState } from "react";
 import { FileText, Upload, X } from "lucide-react";
 import { DOCUMENT_ACCEPT, isAcceptedDocumentName } from "@/lib/documents/file-types";
@@ -42,13 +44,13 @@ export function FileDropZone({
     const problems: string[] = [];
     const accepted: File[] = [];
     for (const file of incoming) {
-      if (!isAcceptedDocumentName(file.name)) problems.push(de ? `${file.name}: Dateityp nicht erlaubt` : `${file.name}: file type not allowed`);
-      else if (maxBytes && file.size > maxBytes) problems.push(de ? `${file.name}: größer als ${Math.round(maxBytes / (1024 * 1024))} MB` : `${file.name}: larger than ${Math.round(maxBytes / (1024 * 1024))} MB`);
+      if (!isAcceptedDocumentName(file.name)) problems.push(fill(c_fileDropZone(de).n0FileTypeNotAllowed, file.name));
+      else if (maxBytes && file.size > maxBytes) problems.push(fill(c_fileDropZone(de).n0LargerThan1Mb, file.name, Math.round(maxBytes / (1024 * 1024))));
       else accepted.push(file);
     }
     const merged = multiple ? [...files, ...accepted.filter((f) => !files.some((x) => x.name === f.name && x.size === f.size))] : accepted.slice(0, 1);
     if (merged.length > maxFiles) {
-      problems.push(de ? `Höchstens ${maxFiles} Dateien, die übrigen wurden nicht übernommen.` : `At most ${maxFiles} files, the rest were not added.`);
+      problems.push(fill(c_fileDropZone(de).atMost0FilesThe, maxFiles));
     }
     onChange(merged.slice(0, maxFiles));
     if (problems.length) setNotice(problems.join(" · "));
@@ -72,11 +74,11 @@ export function FileDropZone({
         <Upload className="h-6 w-6 text-subtle" aria-hidden="true" />
         <p>
           {multiple
-            ? de ? "Dateien hierher ziehen oder" : "Drag files here or"
-            : de ? "Datei hierher ziehen oder" : "Drag a file here or"}
+            ? c_fileDropZone(de).dragFilesHereOr
+            : c_fileDropZone(de).dragAFileHereOr}
         </p>
         <button type="button" disabled={disabled} onClick={() => inputRef.current?.click()} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50" data-testid={`${testId}-pick`}>
-          {multiple ? (de ? "Dateien auswählen" : "Choose files") : de ? "Datei auswählen" : "Choose file"}
+          {multiple ? (c_fileDropZone(de).chooseFiles) : c_fileDropZone(de).chooseFile}
         </button>
         <input
           ref={inputRef}
@@ -85,7 +87,7 @@ export function FileDropZone({
           accept={accept}
           className="sr-only"
           tabIndex={-1}
-          aria-label={de ? "Dateien" : "Files"}
+          aria-label={c_fileDropZone(de).files}
           data-testid={`${testId}-input`}
           onChange={(e) => {
             add([...(e.target.files ?? [])]);
@@ -107,7 +109,7 @@ export function FileDropZone({
                 <span className="min-w-0 break-all">{f.name}</span>
                 <span className="shrink-0 text-xs text-subtle">{formatSize(f.size)}</span>
               </span>
-              <button type="button" disabled={disabled} onClick={() => onChange(files.filter((x) => x !== f))} className="shrink-0 rounded p-1 hover:bg-background" aria-label={`${f.name} ${de ? "entfernen" : "remove"}`}>
+              <button type="button" disabled={disabled} onClick={() => onChange(files.filter((x) => x !== f))} className="shrink-0 rounded p-1 hover:bg-background" aria-label={`${f.name} ${c_fileDropZone(de).remove}`}>
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </li>

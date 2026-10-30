@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { c_expertsSlugPage } from "@/lib/i18n/components/expertsSlugPage";
+import { fill } from "@/lib/i18n/fill";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ExpertProfileView } from "@/components/experts/ExpertProfileView";
@@ -15,9 +17,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!data) return { title: "Profil nicht gefunden", robots: { index: false, follow: false } };
   const locale = await getServerLocale();
   const { profile } = data;
-  const description = (profile.bio?.[locale] || profile.bio?.de || profile.bio?.en || "").slice(0, 160) || (locale === "de" ? `Fachlicher Prüfer · ${profile.country}` : `Expert reviewer · ${profile.country}`);
+  const description = (profile.bio?.[locale] || profile.bio?.de || profile.bio?.en || "").slice(0, 160) || (fill(c_expertsSlugPage(locale).expertReviewer0, profile.country));
   return {
-    title: `${profile.name} · ${locale === "de" ? "Fachlicher Prüfer" : "Expert reviewer"}`,
+    title: `${profile.name} · ${c_expertsSlugPage(locale).expertReviewer}`,
     description,
     robots: profile.indexable ? { index: true, follow: true } : { index: false, follow: false },
   };

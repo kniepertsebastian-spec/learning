@@ -1,5 +1,6 @@
 "use client";
 
+import { c_learningPreferencesForm } from "@/lib/i18n/components/learningPreferencesForm";
 import { useState } from "react";
 import { useThinkFirst } from "@/lib/client/use-think-first";
 import { useFeedbackMode } from "@/lib/client/use-feedback-mode";
@@ -45,21 +46,21 @@ export function LearningPreferencesForm({ initial, locale }: { initial: Prefs; l
   return (
     <Card data-testid="learning-preferences">
       <div className="py-2">
-        <label htmlFor="weekly-goal" className="text-sm font-medium">{de ? "Wochenziel (Lerntage pro Woche)" : "Weekly goal (study days per week)"}</label>
-        <p className="text-xs text-subtle">{de ? "Leichte Tage aus deinem Lernplan zählen nicht gegen das Ziel." : "Light days from your study plan do not count against the goal."}</p>
+        <label htmlFor="weekly-goal" className="text-sm font-medium">{c_learningPreferencesForm(de).weeklyGoalStudyDaysPer}</label>
+        <p className="text-xs text-subtle">{c_learningPreferencesForm(de).lightDaysFromYourStudy}</p>
         <select id="weekly-goal" value={prefs.weeklyGoalDays} onChange={(e) => void update({ weeklyGoalDays: Number(e.target.value) })} className="mt-2 rounded-md border border-border bg-surface px-2 py-1 text-sm" data-testid="weekly-goal">
           {[1, 2, 3, 4, 5, 6, 7].map((n) => (
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
       </div>
-      {toggle("pref-streak", de ? "Serie anzeigen" : "Show streak", de ? "Aufeinanderfolgende Lerntage, mit einem freien Tag pro Woche und ohne leichte Tage. Aus, wenn dich Serien eher unter Druck setzen." : "Consecutive study days, with one free day per week and without light days. Off if streaks put you under pressure.", prefs.showStreak, (v) => void update({ showStreak: v }))}
-      {toggle("pref-confidence", de ? "Sicherheitsangabe bei Fragen" : "Confidence rating on questions", de ? "Ab der 3. Session: „Wie sicher bist du?“ Damit wir Geratenes öfter wiederholen." : "From the 3rd session: “How sure are you?” So we repeat guesses more often.", prefs.askConfidence, (v) => void update({ askConfidence: v }))}
-      {toggle("pref-checkin", de ? "Check-in zur Tagesform" : "Daily check-in", de ? "Ab der 5. Session: Energie und Arbeitstag vor dem Start. Die Planung passt sich damit an deinen Tag an." : "From the 5th session: energy and workday before you start. Planning adapts to your day.", prefs.offerCheckin, (v) => void update({ offerCheckin: v }))}
-      {toggle("pref-feedback", de ? "Sofort-Feedback nach jeder Frage" : "Instant feedback after each question", de ? "Aus: Richtig und Falsch erst am Ende, wie in der Prüfung (gilt für dieses Gerät)." : "Off: right and wrong only at the end, like in the exam (this device only).", feedbackMode === "instant", (v) => setFeedbackMode(v ? "instant" : "end"))}
-      {toggle("pref-think-first", de ? "Antwort zuerst überlegen" : "Think of the answer first", de ? "Bei Auswahlfragen bleiben die Optionen verdeckt, bis du „Optionen zeigen“ wählst. Eine Lernhilfe ohne Einfluss auf dein Rating (gilt für dieses Gerät)." : "On multiple-choice questions the options stay hidden until you choose “Show options”. A study aid with no effect on your rating (this device only).", thinkFirst, setThinkFirst)}
+      {toggle("pref-streak", c_learningPreferencesForm(de).showStreak, c_learningPreferencesForm(de).consecutiveStudyDaysWithOne, prefs.showStreak, (v) => void update({ showStreak: v }))}
+      {toggle("pref-confidence", c_learningPreferencesForm(de).confidenceRatingOnQuestions, c_learningPreferencesForm(de).fromThe3rdSessionHow, prefs.askConfidence, (v) => void update({ askConfidence: v }))}
+      {toggle("pref-checkin", c_learningPreferencesForm(de).dailyCheckIn, c_learningPreferencesForm(de).fromThe5thSessionEnergy, prefs.offerCheckin, (v) => void update({ offerCheckin: v }))}
+      {toggle("pref-feedback", c_learningPreferencesForm(de).instantFeedbackAfterEachQuestion, c_learningPreferencesForm(de).offRightAndWrongOnly, feedbackMode === "instant", (v) => setFeedbackMode(v ? "instant" : "end"))}
+      {toggle("pref-think-first", c_learningPreferencesForm(de).thinkOfTheAnswerFirst, c_learningPreferencesForm(de).onMultipleChoiceQuestionsThe, thinkFirst, setThinkFirst)}
       <p className="mt-2 text-xs text-subtle" role="status" data-testid="prefs-status">
-        {status === "saving" ? (de ? "Speichert …" : "Saving …") : status === "saved" ? (de ? "Gespeichert." : "Saved.") : status === "error" ? (de ? "Das hat nicht geklappt." : "That did not work.") : ""}
+        {status === "saving" ? (c_learningPreferencesForm(de).saving) : status === "saved" ? (c_learningPreferencesForm(de).saved) : status === "error" ? (c_learningPreferencesForm(de).thatDidNotWork) : ""}
       </p>
     </Card>
   );

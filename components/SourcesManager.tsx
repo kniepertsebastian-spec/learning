@@ -1,5 +1,7 @@
 "use client";
 
+import { c_sourcesManager } from "@/lib/i18n/components/sourcesManager";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Link as LinkIcon, Loader2, UploadCloud } from "lucide-react";
@@ -91,7 +93,7 @@ export function SourcesManager({
       setError(
         err instanceof Error
           ? err.message
-          : locale === "de" ? "Upload fehlgeschlagen." : "Upload failed.",
+          : c_sourcesManager(locale).uploadFailed,
       );
     } finally {
       setUploading(false);
@@ -110,7 +112,7 @@ export function SourcesManager({
       setError(
         err instanceof Error
           ? err.message
-          : locale === "de" ? "Extraktion fehlgeschlagen." : "Extraction failed.",
+          : c_sourcesManager(locale).extractionFailed,
       );
       await refresh();
     } finally {
@@ -130,7 +132,7 @@ export function SourcesManager({
       if (!response?.ok) failed++;
     }
     setParsingAll(null);
-    if (failed > 0) setError(locale === "de" ? `${failed} von ${todo.length} Quellen ließen sich nicht extrahieren (Details bei der jeweiligen Quelle).` : `${failed} of ${todo.length} sources could not be extracted (details on each source).`);
+    if (failed > 0) setError(fill(c_sourcesManager(locale).n0Of1SourcesCould, failed, todo.length));
     await refresh();
   }
 
@@ -140,8 +142,8 @@ export function SourcesManager({
     <div className="flex flex-col gap-6">
       <section className="rounded-2xl border border-border bg-surface p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-medium">{locale === "de" ? "Quelle hinzufügen" : "Add source"}</h2>
-          <div className="flex gap-1 rounded-md border border-border p-0.5" role="group" aria-label={locale === "de" ? "Art des Hinzufügens" : "How to add"}>
+          <h2 className="font-medium">{c_sourcesManager(locale).addSource}</h2>
+          <div className="flex gap-1 rounded-md border border-border p-0.5" role="group" aria-label={c_sourcesManager(locale).howToAdd}>
             {(["single", "bulk"] as const).map((m) => (
               <button
                 key={m}
@@ -151,7 +153,7 @@ export function SourcesManager({
                 data-testid={`add-mode-${m}`}
                 className={`rounded px-2.5 py-1 text-xs font-medium ${addMode === m ? "bg-primary text-on-primary" : "hover:bg-background"}`}
               >
-                {m === "single" ? (locale === "de" ? "Einzeln" : "Single") : locale === "de" ? "Mehrere auf einmal" : "Many at once"}
+                {m === "single" ? (c_sourcesManager(locale).single) : c_sourcesManager(locale).manyAtOnce}
               </button>
             ))}
           </div>
@@ -162,16 +164,16 @@ export function SourcesManager({
           className="grid gap-3 sm:grid-cols-2"
         >
           <label className="block text-sm sm:col-span-1">
-            <span className="mb-1 block font-medium">{locale === "de" ? "Titel" : "Title"}</span>
+            <span className="mb-1 block font-medium">{c_sourcesManager(locale).title}</span>
             <input
               name="title"
               required
-              placeholder={locale === "de" ? "z. B. SY0-701 Exam Objectives" : "e.g. SY0-701 Exam Objectives"}
+              placeholder={c_sourcesManager(locale).eGSy0701Exam}
               className="w-full rounded-md border border-border bg-background px-3 py-2"
             />
           </label>
           <label className="block text-sm sm:col-span-1">
-            <span className="mb-1 block font-medium">{locale === "de" ? "Anbieter" : "Provider"}</span>
+            <span className="mb-1 block font-medium">{c_sourcesManager(locale).provider}</span>
             <input
               name="provider"
               required
@@ -181,7 +183,7 @@ export function SourcesManager({
           </label>
           <label className="block text-sm sm:col-span-1">
             <span className="mb-1 block font-medium">
-              {locale === "de" ? "Veröffentlichungsdatum (optional)" : "Published date (optional)"}
+              {c_sourcesManager(locale).publishedDateOptional}
             </span>
             <input
               name="publishedAt"
@@ -191,7 +193,7 @@ export function SourcesManager({
           </label>
           <div className="block text-sm sm:col-span-1">
             <span className="mb-1 block font-medium">
-              {locale === "de" ? "Quelle" : "Source"}
+              {c_sourcesManager(locale).source}
             </span>
             <div className="mb-2 flex gap-1 rounded-md border border-border p-0.5">
               <button
@@ -234,14 +236,14 @@ export function SourcesManager({
           {approvedSources.length > 0 && (
             <label className="block text-sm sm:col-span-2">
               <span className="mb-1 block font-medium">
-                {locale === "de" ? "Ersetzt bereits freigegebene Quelle (optional)" : "Supersedes an approved source (optional)"}
+                {c_sourcesManager(locale).supersedesAnApprovedSourceOptional}
               </span>
               <select
                 name="supersedesSourceId"
                 defaultValue=""
                 className="w-full rounded-md border border-border bg-background px-3 py-2"
               >
-                <option value="">{locale === "de" ? "– Keine, neue Quelle –" : "– None, new source –"}</option>
+                <option value="">{c_sourcesManager(locale).noneNewSource}</option>
                 {approvedSources.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.title}
@@ -249,9 +251,7 @@ export function SourcesManager({
                 ))}
               </select>
               <span className="mt-1 block text-xs text-faint">
-                {locale === "de"
-                  ? "Markiert dies als neue Ausgabe - beim Freigeben werden betroffene Lessons/Fragen als veraltet markiert (R1.5)."
-                  : "Marks this as a new edition - approving it flags affected lessons/questions as stale (R1.5)."}
+                {c_sourcesManager(locale).marksThisAsANew}
               </span>
             </label>
           )}
@@ -265,15 +265,13 @@ export function SourcesManager({
             ) : (
               <UploadCloud className="h-4 w-4" aria-hidden="true" />
             )}
-            {locale === "de" ? "Hochladen" : "Upload"}
+            {c_sourcesManager(locale).upload}
           </button>
         </form>}
         {/* R4.4 (roadmap.md): "Quellenimport ausdrücklich nicht offline anbieten". */}
         {!online && (
           <p className="mt-3 text-xs text-warning-text dark:text-warning-text">
-            {locale === "de"
-              ? "Der Quellenimport benötigt eine Verbindung."
-              : "Source import requires a connection."}
+            {c_sourcesManager(locale).sourceImportRequiresAConnection}
           </p>
         )}
         {error && <p className="mt-3 text-sm text-danger-text">{error}</p>}
@@ -281,7 +279,7 @@ export function SourcesManager({
 
       <section>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-medium">{locale === "de" ? "Vorhandene Quellen" : "Existing sources"}</h2>
+          <h2 className="font-medium">{c_sourcesManager(locale).existingSources}</h2>
           {pendingExtraction > 0 && (
             <button
               type="button"
@@ -292,15 +290,15 @@ export function SourcesManager({
             >
               {parsingAll && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
               {parsingAll
-                ? locale === "de" ? `Extrahiere ${parsingAll.done + 1} von ${parsingAll.total} …` : `Extracting ${parsingAll.done + 1} of ${parsingAll.total} …`
-                : locale === "de" ? `Alle ${pendingExtraction} offenen extrahieren` : `Extract all ${pendingExtraction} pending`}
+                ? fill(c_sourcesManager(locale).extracting0Of1, parsingAll.done + 1, parsingAll.total)
+                : fill(c_sourcesManager(locale).extractAll0Pending, pendingExtraction)}
             </button>
           )}
         </div>
         {sources.length === 0 ? (
           <div className="rounded-lg border border-border bg-surface px-4 py-8 text-center">
             <p className="text-sm text-muted">
-              {locale === "de" ? "Noch keine Quellen hochgeladen." : "No sources uploaded yet."}
+              {c_sourcesManager(locale).noSourcesUploadedYet}
             </p>
           </div>
         ) : (
@@ -324,7 +322,7 @@ export function SourcesManager({
                         <p className="text-xs text-subtle">
                           {source.provider} · {formatBytes(source.fileSizeBytes)}
                           {textExtracted
-                            ? ` · ${source.chunkCount} ${locale === "de" ? "Seiten extrahiert" : "pages extracted"}`
+                            ? ` · ${source.chunkCount} ${c_sourcesManager(locale).pagesExtracted}`
                             : ""}
                         </p>
                         {source.sourceType === "url" && source.sourceUrl && (
@@ -358,8 +356,8 @@ export function SourcesManager({
                   >
                     {isParsing && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
                     {source.status === "uploaded" || source.status === "failed"
-                      ? locale === "de" ? "Text extrahieren" : "Extract text"
-                      : locale === "de" ? "Erneut extrahieren" : "Re-extract"}
+                      ? c_sourcesManager(locale).extractText
+                      : c_sourcesManager(locale).reExtract}
                   </button>
 
                   {textExtracted && (

@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdRemediationObjectiveIdPage } from "@/lib/i18n/components/certIdRemediationObjectiveIdPage";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -27,10 +28,10 @@ export default async function RemediationPage({
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
         <p className="text-muted">
-          {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
+          {c_certIdRemediationObjectiveIdPage(locale).pleaseSignIn}
         </p>
         <Link href="/login" className="mt-4 text-link hover:underline">
-          {locale === "de" ? "Anmelden" : "Sign in"}
+          {c_certIdRemediationObjectiveIdPage(locale).signIn}
         </Link>
       </div>
     );
@@ -57,7 +58,7 @@ export default async function RemediationPage({
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
         <p className="text-muted">
-          {locale === "de" ? "Remediation konnte nicht geladen werden." : "Could not load remediation."}
+          {c_certIdRemediationObjectiveIdPage(locale).couldNotLoadRemediation}
         </p>
       </div>
     );
@@ -70,12 +71,12 @@ export default async function RemediationPage({
         className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
+        {c_certIdRemediationObjectiveIdPage(locale).backToCertification}
       </Link>
 
       <div className="mb-6 rounded-lg border border-warning/40 bg-warning-soft px-4 py-3">
         <p className="text-sm font-medium text-warning-text">
-          {locale === "de" ? "Wiederholung: " : "Review: "}
+          {c_certIdRemediationObjectiveIdPage(locale).review}
           <span className="font-mono text-xs">{objective.code}</span> {objective.title}
         </p>
       </div>

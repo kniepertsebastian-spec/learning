@@ -1,5 +1,7 @@
 "use client";
 
+import { c_documentsPanel } from "@/lib/i18n/components/documentsPanel";
+import { fill } from "@/lib/i18n/fill";
 import { useRef, useState } from "react";
 import { FileDropZone } from "@/components/FileDropZone";
 import { useRouter } from "next/navigation";
@@ -52,7 +54,7 @@ function DocumentImages({ documentId, count, de }: { documentId: string; count: 
       form.set("attest", String(attest));
       const res = await fetch(`/api/company/documents/${documentId}/images`, { method: "POST", body: form });
       if (!res.ok) {
-        setError(`${file.name}: ${(await res.json().catch(() => null))?.error ?? (de ? "Upload fehlgeschlagen." : "Upload failed.")}`);
+        setError(`${file.name}: ${(await res.json().catch(() => null))?.error ?? (c_documentsPanel(de).uploadFailed)}`);
         break;
       }
     }
@@ -71,13 +73,11 @@ function DocumentImages({ documentId, count, de }: { documentId: string; count: 
   return (
     <details className="basis-full text-xs" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) void load(); }} data-testid="document-images">
       <summary className="cursor-pointer text-link">
-        {de ? `Screenshots (${count})` : `Screenshots (${count})`}
+        {fill(c_documentsPanel(de).screenshots0, count)}
       </summary>
       <div className="mt-2 flex flex-col gap-2 rounded-md border border-border p-3">
         <p className="text-muted">
-          {de
-            ? "PNG, JPEG oder WebP, bis 4 MB, höchstens 20 je Dokument. Die KI wandelt jeden Screenshot in Text um (Befehle, Konfigurationen, Aufbau) und nutzt ihn für den Kurs. Bilder lassen sich nicht auf Zugangsdaten prüfen."
-            : "PNG, JPEG or WebP, up to 4 MB, at most 20 per document. The AI turns each screenshot into text (commands, configuration, layout) and uses it for the course. Images cannot be checked for credentials."}
+          {c_documentsPanel(de).pngJpegOrWebpUp}
         </p>
         {images.length > 0 && (
           <ul className="divide-y divide-border">
@@ -85,25 +85,23 @@ function DocumentImages({ documentId, count, de }: { documentId: string; count: 
               <li key={img.id} className="flex items-center justify-between gap-2 py-1">
                 <span className="min-w-0 break-all">{img.filename} · {formatSize(img.sizeBytes)}</span>
                 <button type="button" onClick={() => void remove(img.id)} className="text-danger-text hover:underline">
-                  {de ? "Entfernen" : "Remove"}
+                  {c_documentsPanel(de).remove}
                 </button>
               </li>
             ))}
           </ul>
         )}
         <form onSubmit={(e) => void add(e)} className="flex flex-col gap-2">
-          <input ref={fileRef} type="file" multiple required accept=".png,.jpg,.jpeg,.webp" aria-label={de ? "Screenshots" : "Screenshots"} />
+          <input ref={fileRef} type="file" multiple required accept=".png,.jpg,.jpeg,.webp" aria-label={c_documentsPanel(de).screenshots} />
           <label className="flex items-start gap-2">
             <input type="checkbox" checked={attest} onChange={(e) => setAttest(e.target.checked)} className="mt-0.5" />
             <span>
-              {de
-                ? "Auf den Bildern sind keine Passwörter, Schlüssel, Tokens oder vertraulichen Kundendaten zu sehen."
-                : "The images show no passwords, keys, tokens or confidential customer data."}
+              {c_documentsPanel(de).theImagesShowNoPasswords}
             </span>
           </label>
           <div>
             <button type="submit" disabled={busy || !attest} className="rounded-md border border-border px-3 py-1.5 font-medium hover:bg-background disabled:opacity-50">
-              {busy ? (de ? "Wird hochgeladen …" : "Uploading …") : de ? "Screenshots anhängen" : "Attach screenshots"}
+              {busy ? (c_documentsPanel(de).uploading) : c_documentsPanel(de).attachScreenshots}
             </button>
           </div>
           {error && (
@@ -155,14 +153,14 @@ export function DocumentsPanel({
     const body = await res.json().catch(() => null);
     setPending(false);
     if (!res.ok) {
-      setError(body?.error ?? (de ? "Upload fehlgeschlagen." : "Upload failed."));
+      setError(body?.error ?? (c_documentsPanel(de).uploadFailed));
       if (body?.code === "secrets_found") setFindings(body.findings as Finding[]);
       return;
     }
     setNotice(
       body.alreadyExisted
-        ? de ? "Dieses Dokument gibt es schon." : "This document already exists."
-        : de ? "Dokument gespeichert." : "Document saved.",
+        ? c_documentsPanel(de).thisDocumentAlreadyExists
+        : c_documentsPanel(de).documentSaved,
     );
     setTitle("");
     setExcludeFromAi(false);
@@ -174,7 +172,7 @@ export function DocumentsPanel({
     setError(null);
     const res = await fetch(`/api/company/documents/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      setError(de ? "Löschen fehlgeschlagen." : "Could not delete.");
+      setError(c_documentsPanel(de).couldNotDelete);
       return;
     }
     router.refresh();
@@ -182,11 +180,9 @@ export function DocumentsPanel({
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="documents-panel">
-      <h2 className="text-lg font-medium">{de ? "Firmendokumente" : "Company documents"}</h2>
+      <h2 className="text-lg font-medium">{c_documentsPanel(de).companyDocuments}</h2>
       <p className="mt-1 text-sm text-muted">
-        {de
-          ? "PDF, Textdatei (.txt, .md), Konfiguration und Skripte (.yml, .yaml, .py, .sh, .sql …) oder Wiki-/Doku-Export (.json, .xml, .html, z. B. Wiki.js, MediaWiki), bis 10 MB. Listen, Tabellen, Befehle und Stichwörter sind in Ordnung. Jedes Dokument wird vor dem Speichern auf Passwörter, Schlüssel und Token geprüft. Wird etwas gefunden, wird das Dokument nicht gespeichert."
-          : "PDF, text file (.txt, .md), configuration and scripts (.yml, .yaml, .py, .sh, .sql …) or wiki/docs export (.json, .xml, .html, e.g. Wiki.js, MediaWiki), up to 10 MB. Lists, tables, commands and keywords are fine. Every document is checked for passwords, keys and tokens before it is stored. If something is found, the document is not stored."}
+        {c_documentsPanel(de).pdfTextFileTxtMd}
       </p>
 
       <form onSubmit={(e) => void upload(e)} className="mt-4 flex flex-col gap-3">
@@ -196,13 +192,13 @@ export function DocumentsPanel({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={200}
-          placeholder={de ? "Titel (optional, sonst der Dateiname)" : "Title (optional, defaults to the file name)"}
-          aria-label={de ? "Titel" : "Title"}
+          placeholder={c_documentsPanel(de).titleOptionalDefaultsToThe}
+          aria-label={c_documentsPanel(de).title}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
         />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={excludeFromAi} onChange={(e) => setExcludeFromAi(e.target.checked)} />
-          {de ? "Nicht von KI verarbeiten lassen" : "Do not let AI process this document"}
+          {c_documentsPanel(de).doNotLetAiProcess}
         </label>
         <div>
           <button
@@ -211,7 +207,7 @@ export function DocumentsPanel({
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
             data-testid="documents-upload"
           >
-            {pending ? (de ? "Wird geprüft …" : "Checking …") : de ? "Hochladen" : "Upload"}
+            {pending ? (c_documentsPanel(de).checking) : c_documentsPanel(de).upload}
           </button>
         </div>
       </form>
@@ -223,7 +219,7 @@ export function DocumentsPanel({
             <ul className="mt-2 list-disc pl-5" data-testid="upload-findings">
               {findings.map((f, i) => (
                 <li key={i}>
-                  {SECRET_KIND_LABELS[f.kind]?.[locale] ?? f.kind} – {de ? "Seite" : "page"} {f.pageNumber}, {de ? "Zeile" : "line"} {f.line}
+                  {SECRET_KIND_LABELS[f.kind]?.[locale] ?? f.kind} – {c_documentsPanel(de).page} {f.pageNumber}, {c_documentsPanel(de).line} {f.line}
                 </li>
               ))}
             </ul>
@@ -233,9 +229,7 @@ export function DocumentsPanel({
               {canSuppress ? (
                 <>
                   <p className="text-foreground">
-                    {de
-                      ? "Sind das Beispielwerte und keine echten Zugangsdaten? Dann kannst du diese Funde als unkritisch bestätigen. Das wird protokolliert, die Stellen werden gespeichert und bei einer KI-Verarbeitung geschwärzt."
-                      : "Are these example values rather than real credentials? Then you can confirm these findings as harmless. This is logged, the locations are stored and will be redacted from any AI processing."}
+                    {c_documentsPanel(de).areTheseExampleValuesRather}
                   </p>
                   <button
                     type="button"
@@ -243,17 +237,17 @@ export function DocumentsPanel({
                     disabled={pending}
                     className="mt-2 rounded-md border border-danger/40 px-3 py-1.5 text-sm font-medium text-danger-text hover:bg-danger-soft disabled:opacity-50"
                   >
-                    {de ? "Als unkritisch bestätigen und hochladen" : "Confirm as harmless and upload"}
+                    {c_documentsPanel(de).confirmAsHarmlessAndUpload}
                   </button>
                 </>
               ) : (
-                <p className="text-foreground">{de ? "Ein Firmen-Admin kann diese Funde als unkritisch bestätigen." : "A company admin can confirm these findings as harmless."}</p>
+                <p className="text-foreground">{c_documentsPanel(de).aCompanyAdminCanConfirm}</p>
               )}
             </div>
           )}
           {findings.some((f) => !f.suppressible) && (
             <p className="mt-2 text-foreground" data-testid="not-suppressible">
-              {de ? "Mindestens ein Fund lässt sich nicht bestätigen (z. B. privater Schlüssel oder Token). Bitte die Stelle entfernen." : "At least one finding cannot be confirmed (e.g. private key or token). Please remove that part."}
+              {c_documentsPanel(de).atLeastOneFindingCannot}
             </p>
           )}
         </div>
@@ -264,10 +258,10 @@ export function DocumentsPanel({
         </p>
       )}
 
-      <h3 className="mt-6 text-base font-medium">{de ? "Hochgeladen" : "Uploaded"}</h3>
+      <h3 className="mt-6 text-base font-medium">{c_documentsPanel(de).uploaded}</h3>
       {documents.length === 0 ? (
         <p className="mt-2 text-sm text-muted" data-testid="documents-empty">
-          {de ? "Noch keine Dokumente." : "No documents yet."}
+          {c_documentsPanel(de).noDocumentsYet}
         </p>
       ) : (
         <ul className="mt-2 divide-y divide-border" data-testid="documents-list">
@@ -277,16 +271,16 @@ export function DocumentsPanel({
                 <span className="font-medium">{d.title}</span>
                 <span className="ml-2 text-xs text-muted">
                   {d.originalFilename} · {formatSize(d.sizeBytes)} · {d.pageCount} {de ? (d.pageCount === 1 ? "Seite" : "Seiten") : d.pageCount === 1 ? "page" : "pages"}
-                  {d.excludeFromAi ? (de ? " · ohne KI" : " · no AI") : ""}
-                  {d.suppressedFindings > 0 ? (de ? ` · ${d.suppressedFindings} Scanner-Funde bestätigt` : ` · ${d.suppressedFindings} scanner findings confirmed`) : ""}
+                  {d.excludeFromAi ? (c_documentsPanel(de).noAi) : ""}
+                  {d.suppressedFindings > 0 ? (fill(c_documentsPanel(de).n0ScannerFindingsConfirmed, d.suppressedFindings)) : ""}
                 </span>
               </span>
               <span className="flex gap-3">
                 <a href={`/api/company/documents/${d.id}/download`} className="text-xs text-link hover:underline">
-                  {de ? "Herunterladen" : "Download"}
+                  {c_documentsPanel(de).download}
                 </a>
                 <button type="button" onClick={() => void remove(d.id)} className="text-xs text-danger-text hover:underline">
-                  {de ? "Löschen" : "Delete"}
+                  {c_documentsPanel(de).delete}
                 </button>
               </span>
               <DocumentImages documentId={d.id} count={d.imageCount} de={de} />

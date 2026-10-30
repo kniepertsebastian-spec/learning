@@ -1,5 +1,6 @@
 "use client";
 
+import { c_mentorRequestsPanel } from "@/lib/i18n/components/mentorRequestsPanel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -21,7 +22,7 @@ function Request({ r, locale }: { r: MentorRequestRow; locale: "de" | "en" }) {
     setBusy(false);
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      setError(data?.error ?? (de ? "Das hat nicht geklappt." : "That did not work."));
+      setError(data?.error ?? (c_mentorRequestsPanel(de).thatDidNotWork));
       return;
     }
     router.refresh();
@@ -40,12 +41,12 @@ function Request({ r, locale }: { r: MentorRequestRow; locale: "de" | "en" }) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           maxLength={1000}
-          placeholder={de ? "Kurze Antwort (optional)" : "Short reply (optional)"}
-          aria-label={de ? "Antwort" : "Reply"}
+          placeholder={c_mentorRequestsPanel(de).shortReplyOptional}
+          aria-label={c_mentorRequestsPanel(de).reply}
           className="flex-1 rounded-md border border-border bg-surface px-2 py-1 text-sm"
         />
         <button type="button" className={btn} disabled={busy} onClick={() => void answer()} data-testid="mentor-request-answer">
-          {de ? "Beantwortet" : "Mark answered"}
+          {c_mentorRequestsPanel(de).markAnswered}
         </button>
       </div>
       {error && <p role="alert" className="mt-2 text-xs text-danger-text">{error}</p>}
@@ -59,9 +60,9 @@ export function MentorRequestsPanel({ requests, stats, locale }: { requests: Men
   if (requests.length === 0 && !stats) return null;
   return (
     <section className="rounded-2xl border border-border bg-surface p-5" data-testid="mentor-requests-panel">
-      <h3 className="mb-3 font-medium">{de ? "Hilfe-Anfragen" : "Help requests"}</h3>
+      <h3 className="mb-3 font-medium">{c_mentorRequestsPanel(de).helpRequests}</h3>
       {requests.length === 0 ? (
-        <p className="text-sm text-subtle">{de ? "Keine offenen Anfragen." : "No open requests."}</p>
+        <p className="text-sm text-subtle">{c_mentorRequestsPanel(de).noOpenRequests}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {requests.map((r) => (
