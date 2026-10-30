@@ -25,7 +25,7 @@ export function InstallBanner() {
 
   if (!offer) return null;
   return (
-    <div role="region" aria-label={de ? "App installieren" : "Install the app"} data-testid="install-banner" className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-surface p-4">
+    <div role="region" aria-label={de ? "App installieren" : "Install the app"} data-testid="install-banner" className="flex flex-wrap items-start gap-3 rounded-2xl border border-border bg-surface p-5">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{de ? "Knowvia als App installieren" : "Install Knowvia as an app"}</p>
         {offer === "native" ? (

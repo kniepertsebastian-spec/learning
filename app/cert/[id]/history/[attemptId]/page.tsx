@@ -103,7 +103,7 @@ export default async function ExamAttemptDetailPage({
       </div>
 
       {scoring.domainPerformance.length > 0 && (
-        <div className="mb-6 rounded-lg border border-border bg-surface p-4">
+        <div className="mb-6 rounded-2xl border border-border bg-surface p-5">
           <h2 className="mb-3 font-medium">{locale === "de" ? "Nach Domain" : "By domain"}</h2>
           <div className="flex flex-col gap-2">
             {scoring.domainPerformance.map((d) => (
@@ -151,7 +151,7 @@ export default async function ExamAttemptDetailPage({
       )}
 
       {scoring.recommendations.length > 0 && (
-        <div className="mb-6 rounded-lg border border-border bg-surface p-4">
+        <div className="mb-6 rounded-2xl border border-border bg-surface p-5">
           <h2 className="mb-2 font-medium">{locale === "de" ? "Empfehlungen" : "Recommendations"}</h2>
           <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
             {scoring.recommendations.map((r, i) => (

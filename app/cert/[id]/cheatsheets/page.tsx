@@ -75,7 +75,7 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
       ) : (
         <div className="flex flex-col gap-6">
           {rows.map((r) => (
-            <section key={r.sectionId} className="break-inside-avoid rounded-lg border border-border bg-surface p-4" data-testid="cheatsheet-entry">
+            <section key={r.sectionId} className="break-inside-avoid rounded-2xl border border-border bg-surface p-5" data-testid="cheatsheet-entry">
               <p className="text-xs text-subtle">
                 {r.domain} · {r.objectiveCode} {r.objectiveTitle}
               </p>

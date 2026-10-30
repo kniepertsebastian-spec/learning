@@ -59,7 +59,7 @@ export function LearningProfileExport({ courses, issued, locale }: { courses: Ex
   return (
     <>
     {confirmDialog}
-    <section className="rounded-lg border border-border bg-surface p-4" data-testid="profile-export">
+    <section className="rounded-2xl border border-border bg-surface p-5" data-testid="profile-export">
       <h2 className="font-semibold">{de ? "Lernprofil als PDF-Nachweis" : "Learning profile as a PDF record"}</h2>
       <p className="mt-1 text-sm text-muted">
         {de

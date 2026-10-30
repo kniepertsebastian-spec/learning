@@ -34,7 +34,7 @@ export default async function ReviewerHome() {
           {courses.map((c, i) => {
             const s = statuses[i];
             return (
-              <li key={c.id} className="rounded-lg border border-border bg-surface p-4 text-sm" data-testid="reviewer-course">
+              <li key={c.id} className="rounded-2xl border border-border bg-surface p-5 text-sm" data-testid="reviewer-course">
                 <Link href={`/reviewer/${c.slug}`} className="font-medium text-link hover:underline">{c.name}</Link>
                 <p className="mt-1 text-subtle">
                   {s.state === "none" && (de ? "Noch nicht freigegeben" : "Not approved yet")}

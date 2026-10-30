@@ -58,7 +58,7 @@ export function MentorRequestsPanel({ requests, stats, locale }: { requests: Men
   const de = locale === "de";
   if (requests.length === 0 && !stats) return null;
   return (
-    <section className="rounded-lg border border-border bg-surface p-4" data-testid="mentor-requests-panel">
+    <section className="rounded-2xl border border-border bg-surface p-5" data-testid="mentor-requests-panel">
       <h3 className="mb-3 font-medium">{de ? "Hilfe-Anfragen" : "Help requests"}</h3>
       {requests.length === 0 ? (
         <p className="text-sm text-subtle">{de ? "Keine offenen Anfragen." : "No open requests."}</p>

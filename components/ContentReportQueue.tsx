@@ -64,7 +64,7 @@ export function ContentReportQueue({ certificationId, locale }: { certificationI
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="rounded-2xl border border-border bg-surface p-5">
       <h3 className="mb-3 font-medium">
         {locale === "de" ? "Gemeldete Fragen" : "Reported questions"}
       </h3>

@@ -42,7 +42,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ id: str
               <p className="text-lg font-semibold" data-testid="verify-holder">{result.payload.holder}</p>
               <ul className="mt-4 flex flex-col gap-3">
                 {result.payload.courses.map((c) => (
-                  <li key={`${c.course}-${c.earnedAt}`} className="rounded-xl border border-border bg-surface p-4 text-sm" data-testid="verify-course">
+                  <li key={`${c.course}-${c.earnedAt}`} className="rounded-2xl border border-border bg-surface p-5 text-sm" data-testid="verify-course">
                     <p className="font-semibold">{c.course}</p>
                     <p>{c.certificate}{c.vendor ? ` (${c.vendor})` : ""}</p>
                     <p className="text-subtle">

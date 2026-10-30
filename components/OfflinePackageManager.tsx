@@ -220,7 +220,7 @@ export function OfflinePackageManager({
             : "This course is locked because it has not been checked online for too long. Connect to the internet and open the app to unlock it."}
         </div>
       )}
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="rounded-2xl border border-border bg-surface p-5">
         <h2 className="mb-1 text-sm font-medium">{certName}</h2>
         {record?.data.seal && (
           <p className="mb-2 flex items-center gap-1.5 text-xs text-mint-text" data-testid="offline-seal">

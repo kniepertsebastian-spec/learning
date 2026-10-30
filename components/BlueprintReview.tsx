@@ -303,7 +303,7 @@ export function BlueprintReview({
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-lg border border-border bg-surface p-4">
+        <section className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="mb-3 font-medium">{locale === "de" ? "Originalquelle" : "Original source"}</h2>
           <div className="max-h-[70vh] overflow-y-auto rounded-md bg-background p-3 text-xs">
             {pages.length === 0 ? (
@@ -323,7 +323,7 @@ export function BlueprintReview({
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+        <section className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-medium">
             {locale === "de" ? "Extrahierte Struktur" : "Extracted structure"}
           </h2>

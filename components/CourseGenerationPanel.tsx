@@ -297,7 +297,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
   const failedCount = objectives.filter((o) => o.status === "failed").length;
 
   return (
-    <section className={bare ? "h-fit" : "h-fit rounded-xl border border-border bg-surface p-5"}>
+    <section className={bare ? "h-fit" : "h-fit rounded-2xl border border-border bg-surface p-5"}>
       <div className="mb-1 flex items-center gap-1.5">
         <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
         <h2 className="text-lg font-semibold">

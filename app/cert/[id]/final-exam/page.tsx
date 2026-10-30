@@ -60,7 +60,7 @@ export default async function FinalExamStartPage({
           {cert.name} ({cert.examName} {cert.examVersion})
         </p>
 
-        <div className="mb-8 w-full rounded-lg border border-border bg-surface p-5 text-left text-sm text-text-2">
+        <div className="mb-8 w-full rounded-2xl border border-border bg-surface p-5 text-left text-sm text-text-2">
           <ul className="list-disc space-y-1.5 pl-5">
             <li>
               {cert.examQuestionCount

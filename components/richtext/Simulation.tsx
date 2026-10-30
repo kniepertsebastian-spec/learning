@@ -74,7 +74,7 @@ function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () =>
           {t.lesson_blocks.simRestart}
         </Button>
       </header>
-      <div className="rounded-xl border border-border bg-surface p-4 text-body [&>*:first-child]:mt-0">
+      <div className="rounded-2xl border border-border bg-surface p-5 text-body [&>*:first-child]:mt-0">
         <RichText text={sim.scenario} />
       </div>
       <div className="mt-3">{children}</div>

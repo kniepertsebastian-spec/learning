@@ -105,7 +105,7 @@ export function OfflineHome() {
           <p className="text-sm text-subtle">{t.pwa.offlineIntro}</p>
           <ul className="flex flex-col gap-2">
             {state.packages.map((pkg) => (
-              <li key={pkg.key} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4">
+              <li key={pkg.key} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-5">
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{pkg.certName}</span>
                   <span className="block text-xs text-subtle">{formatBytes(pkg.sizeBytes)} · {t.pwa.offlineSaved} {new Date(pkg.downloadedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-US")}{isPackageLocked({ offlineMaxAgeDays: pkg.data.offlineMaxAgeDays, lastVerifiedAt: pkg.lastVerifiedAt, downloadedAt: pkg.downloadedAt }, new Date()) ? ` · ${locale === "de" ? "gesperrt, bitte online prüfen" : "locked, please check online"}` : ""}</span>

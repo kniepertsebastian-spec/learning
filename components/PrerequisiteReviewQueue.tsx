@@ -49,7 +49,7 @@ export function PrerequisiteReviewQueue({ certificationId, locale }: { certifica
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4" data-testid="prerequisite-review">
+    <div className="rounded-2xl border border-border bg-surface p-5" data-testid="prerequisite-review">
       <h3 className="mb-1 font-medium">{de ? "Voraussetzungen zwischen Konzepten" : "Concept prerequisites"}</h3>
       {counts && (
         <p className="mb-3 text-xs text-subtle">

@@ -40,7 +40,7 @@ export function ReviewerApprovalPanel({ certId, data, locale, canApprove = true 
   }
 
   return (
-    <section className="mb-6 rounded-lg border border-border bg-surface p-4 text-sm" data-testid="reviewer-approval" data-state={data.state}>
+    <section className="mb-6 rounded-2xl border border-border bg-surface p-5 text-sm" data-testid="reviewer-approval" data-state={data.state}>
       <h2 className="font-semibold">{de ? "Freigabe" : "Approval"}</h2>
       {data.approvedBy && data.approvedAtIso ? (
         <p className="mt-1" data-testid="reviewer-approval-line">

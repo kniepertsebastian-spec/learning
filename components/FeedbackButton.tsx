@@ -62,7 +62,7 @@ export function FeedbackButton({ certificationId, domainId = null, sectionId = n
     );
   }
   return (
-    <form onSubmit={send} className={`flex max-w-xl flex-col gap-3 rounded-xl border border-border bg-surface p-4 text-sm ${className ?? ""}`} data-testid="feedback-form">
+    <form onSubmit={send} className={`flex max-w-xl flex-col gap-3 rounded-2xl border border-border bg-surface p-5 text-sm ${className ?? ""}`} data-testid="feedback-form">
       <p className="font-medium">{de ? "Was ist dir aufgefallen?" : "What did you notice?"}</p>
       <fieldset className="flex flex-wrap gap-2" aria-label={de ? "Art des Problems" : "Kind of problem"}>
         {CATEGORIES.map((c) => (

@@ -27,7 +27,7 @@ export function WovenStep({ sectionId, question, locale }: { sectionId: string; 
 
   const stateOf = (id: string, isCorrect: boolean): OptionState => (!picked ? "neutral" : isCorrect ? "correct" : id === picked ? "wrong" : "dimmed");
   return (
-    <div className="mt-4 rounded-xl border border-border bg-surface p-4" data-testid="woven-step">
+    <div className="mt-4 rounded-2xl border border-border bg-surface p-5" data-testid="woven-step">
       <p className="text-xs font-semibold text-subtle">{de ? "Kurz aufgefrischt: noch eine Frage von früher (zählt nicht für diese Lektion)" : "A quick refresher from earlier (does not count for this lesson)"}</p>
       <div className="my-2 text-body font-medium">
         <RichText text={question.question[locale]} />

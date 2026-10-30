@@ -41,7 +41,7 @@ export function FeedbackQueue({ items, locale, canResolve }: { items: FeedbackQu
   }
 
   return (
-    <section className="mb-6 rounded-lg border border-border bg-surface p-4" data-testid="feedback-queue">
+    <section className="mb-6 rounded-2xl border border-border bg-surface p-5" data-testid="feedback-queue">
       <h2 className="font-medium">{de ? "Rückmeldungen von Lernenden" : "Feedback from learners"} ({list.length})</h2>
       {list.length === 0 && <p className="mt-2 text-sm text-subtle">{de ? "Keine offenen Rückmeldungen." : "No open feedback."}</p>}
       <ul className="mt-2 flex flex-col gap-2 text-sm">

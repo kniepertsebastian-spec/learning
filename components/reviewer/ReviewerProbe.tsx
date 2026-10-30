@@ -165,7 +165,7 @@ function ProbeItem({ index, item, report, attemptId, de, onChanged }: { index: n
   }
 
   return (
-    <li className="rounded-xl border border-border bg-surface p-4 text-sm" data-testid="probe-item" data-reported={Boolean(report)}>
+    <li className="rounded-2xl border border-border bg-surface p-5 text-sm" data-testid="probe-item" data-reported={Boolean(report)}>
       <p className="font-medium">{index}. {item.question}</p>
       <ul className="mt-2 flex flex-col gap-1">
         {item.options.map((o, k) => (

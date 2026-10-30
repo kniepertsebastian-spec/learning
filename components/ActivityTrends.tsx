@@ -42,7 +42,7 @@ export function ActivityTrends({
   const weeks = chunkIntoWeeks(calendar);
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-surface p-4">
+    <div className="mb-6 rounded-2xl border border-border bg-surface p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">
           {locale === "de" ? "Trend & Aktivität" : "Trend & activity"}

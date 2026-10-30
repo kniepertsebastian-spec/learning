@@ -138,7 +138,7 @@ export function SourcesManager({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-lg border border-border bg-surface p-4">
+      <section className="rounded-2xl border border-border bg-surface p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-medium">{locale === "de" ? "Quelle hinzufügen" : "Add source"}</h2>
           <div className="flex gap-1 rounded-md border border-border p-0.5" role="group" aria-label={locale === "de" ? "Art des Hinzufügens" : "How to add"}>
@@ -311,7 +311,7 @@ export function SourcesManager({
               const isParsing = parsingId === source.id;
               const textExtracted = ["parsed", "reviewed", "approved"].includes(source.status);
               return (
-                <div key={source.id} className="rounded-lg border border-border bg-surface p-4">
+                <div key={source.id} className="rounded-2xl border border-border bg-surface p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-start gap-2">
                       {source.sourceType === "url" ? (

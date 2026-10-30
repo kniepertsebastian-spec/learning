@@ -135,7 +135,7 @@ export function CareerProfile({ initial, courseNames }: { initial: ProfileData; 
   );
 
   return (
-    <section className="flex flex-col gap-5 rounded-xl border border-border bg-surface p-5" data-testid="career-profile">
+    <section className="flex flex-col gap-5 rounded-2xl border border-border bg-surface p-5" data-testid="career-profile">
       <div>
         <h2 className="font-semibold">{tr("Beruf und Skills", "Job and skills")}</h2>
         <p className="mt-1 text-xs text-muted">

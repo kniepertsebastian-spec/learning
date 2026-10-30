@@ -148,7 +148,7 @@ export function ContentGenerationControl({
           : locale === "de" ? "Vorbereitung" : "Preparing";
 
   return (
-    <section className="mb-6 rounded-lg border border-border bg-surface p-4">
+    <section className="mb-6 rounded-2xl border border-border bg-surface p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-medium">

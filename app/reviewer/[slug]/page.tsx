@@ -68,7 +68,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
         <section key={domain.id} className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">{domain.name}</h2>
           {domain.objectives.map((objective) => (
-            <div key={objective.id} className="mb-6 rounded-lg border border-border bg-surface p-4">
+            <div key={objective.id} className="mb-6 rounded-2xl border border-border bg-surface p-5">
               <h3 className="font-medium">{objective.code} {objective.title}</h3>
               {objective.sections.map((s) => (
                 <details key={s.id} className="mt-3 text-sm" data-testid="reviewer-section">

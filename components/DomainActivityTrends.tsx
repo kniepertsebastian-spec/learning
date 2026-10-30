@@ -17,7 +17,7 @@ export function DomainActivityTrends({
   if (domains.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-surface p-4">
+    <div className="mb-6 rounded-2xl border border-border bg-surface p-5">
       <h2 className="mb-3 text-sm font-medium">
         {locale === "de" ? "Trend je Domain (30 Tage)" : "Trend per domain (30 days)"}
       </h2>

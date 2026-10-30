@@ -104,7 +104,7 @@ export default async function ProfilePage() {
 
       <CareerProfile initial={career} courseNames={catalog.map((c) => c.name)} />
 
-      <section className="rounded-xl border border-border bg-surface p-5" data-testid="profile-courses">
+      <section className="rounded-2xl border border-border bg-surface p-5" data-testid="profile-courses">
         <h2 className="font-semibold">{de ? "Kurse deiner Firma" : "Your company's courses"}</h2>
         <p className="mt-1 text-xs text-muted">
           {de

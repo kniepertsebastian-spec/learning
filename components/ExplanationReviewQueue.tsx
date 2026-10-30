@@ -66,7 +66,7 @@ export function ExplanationReviewQueue({ certificationId, locale }: { certificat
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4" data-testid="explanation-review">
+    <div className="rounded-2xl border border-border bg-surface p-5" data-testid="explanation-review">
       <h3 className="mb-1 font-medium">{de ? "Alternativerklärungen (Verstehens-Modus)" : "Alternative explanations (understanding mode)"}</h3>
       {counts && (
         <p className="mb-3 text-xs text-subtle">

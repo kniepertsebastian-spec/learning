@@ -118,7 +118,7 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
         </ul>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5" data-testid="reviewer-comments">
+      <section className="rounded-2xl border border-border bg-surface p-5" data-testid="reviewer-comments">
         <h2 className="font-medium">{de ? "Offene Kommentare der Prüfer" : "Open reviewer comments"}</h2>
         {comments.length === 0 && <p className="mt-2 text-sm text-subtle">{de ? "Keine offenen Kommentare." : "No open comments."}</p>}
         <ul className="mt-2 flex flex-col gap-2 text-sm">
