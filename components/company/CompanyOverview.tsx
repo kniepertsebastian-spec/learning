@@ -9,7 +9,7 @@ import { GroupDialog, GROUP_DOT, type EditableGroup } from "@/components/company
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, Overline } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { ProgressBar } from "@/components/ui/progress";
@@ -48,6 +48,7 @@ export function CompanyOverview({
   groups,
   rules,
   invites,
+  heading,
   canAssign,
   isAdmin,
   totals,
@@ -59,6 +60,8 @@ export function CompanyOverview({
   rules: OverviewRule[];
   /** null für Rollen ohne Einladungsrechte */
   invites: OverviewInvite[] | null;
+  /** Kopf mit Firma, Rolle, Titel und Hinweisen (kommt von der Seite, gleich für alle Reiter) */
+  heading: React.ReactNode;
   canAssign: boolean;
   isAdmin: boolean;
   totals: { members: number; activePaths: number; certifications: number; overdue: number; completionRate: number | null };
@@ -113,21 +116,18 @@ export function CompanyOverview({
 
   return (
     <div className="flex flex-col gap-6" data-testid="company-overview">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Overline className="text-link">{o.overline}</Overline>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{o.title}</h1>
-        </div>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        {heading}
         <div className="flex flex-wrap gap-2">
           {isAdmin && <Button asChild variant="secondary"><Link href="/company?tab=team">{o.invite}</Link></Button>}
           {canAssign && <Button onClick={() => setAssignOpen({ groupId: null })} iconLeft={<Plus className="h-4 w-4" aria-hidden="true" />} data-testid="open-assign">{o.assign}</Button>}
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-mint-border bg-mint-soft px-4 py-3 text-sm" data-testid="privacy-line">
-        <ShieldCheck className="h-5 w-5 shrink-0 text-mint-text" aria-hidden="true" />
-        <p className="min-w-0 flex-1"><strong>{o.privacyStrong}</strong> {o.privacyText}</p>
-        <button type="button" onClick={() => setPrivacyOpen(true)} className="font-medium text-mint-text hover:underline">{o.learnMore}</button>
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 text-sm" data-testid="privacy-line">
+        <ShieldCheck className="h-5 w-5 shrink-0 text-link" aria-hidden="true" />
+        <p className="min-w-0 flex-1 text-muted"><strong className="text-foreground">{o.privacyStrong}</strong> {o.privacyText}</p>
+        <button type="button" onClick={() => setPrivacyOpen(true)} className="font-medium text-link hover:underline">{o.learnMore}</button>
       </div>
       <Dialog open={privacyOpen} onOpenChange={setPrivacyOpen}>
         <DialogContent closeLabel={o.close}>
@@ -179,8 +179,8 @@ export function CompanyOverview({
             </li>
           ))}
           {canAssign && (
-            <li>
-              <button type="button" onClick={() => setGroupEdit({ group: null })} data-testid="new-company-group" className="flex h-full min-h-[160px] w-full flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border-strong p-5 text-center hover:bg-surface-2">
+            <li className={cn(groups.length === 0 && "col-span-full")}>
+              <button type="button" onClick={() => setGroupEdit({ group: null })} data-testid="new-company-group" className={cn("flex h-full w-full items-center justify-center gap-1 rounded-2xl border border-dashed border-border-strong p-5 text-center hover:bg-surface-2", groups.length === 0 ? "flex-row flex-wrap gap-x-3" : "min-h-[160px] flex-col")}>
                 <Plus className="h-5 w-5 text-subtle" aria-hidden="true" />
                 <span className="font-semibold">{o.newGroup}</span>
                 <span className="text-xs text-faint">{o.newGroupHint}</span>
@@ -190,17 +190,17 @@ export function CompanyOverview({
         </ul>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_300px]">
         <section aria-label={o.assignments} className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">{o.assignments}</h2>
             <SegmentedControl value={filter} onChange={setFilter} label={o.assignments} options={[{ value: "all", label: o.filterAll }, { value: "overdue", label: o.filterOverdue }, { value: "done", label: o.filterDone }]} />
           </div>
           <SearchField shortcutHint={false} placeholder={o.searchPerson} aria-label={o.searchPerson} value={query} onChange={(e) => setQuery(e.target.value)} className="mb-3 max-w-sm" />
-          <DataTable columns={columns} rows={shown} rowKey={(r) => r.id} caption={o.assignments} empty={o.noAssignments} />
+          <DataTable columns={columns} rows={shown} rowKey={(r) => r.id} caption={o.assignments} empty={o.noAssignments} stackOnMobile />
         </section>
 
-        <aside className="flex flex-col gap-4">
+        <aside className="grid gap-4 sm:grid-cols-2 2xl:flex 2xl:flex-col">
           <Card>
             <h2 className="text-base font-semibold">{o.mandatory}</h2>
             {rules.length === 0 ? (

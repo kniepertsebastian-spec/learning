@@ -99,7 +99,7 @@ export function CertificateRegister({
           <h2 className="text-lg font-semibold">{r.table}</h2>
           <SegmentedControl value={filter} onChange={setFilter} label={r.table} options={[{ value: "all", label: r.filterAll }, { value: "soon", label: r.filterSoon }, { value: "expired", label: r.filterExpired }]} />
         </div>
-        <DataTable columns={columns} rows={shown} rowKey={(c) => c.id} caption={r.table} empty={r.none} />
+        <DataTable columns={columns} rows={shown} rowKey={(c) => c.id} caption={r.table} empty={r.none} stackOnMobile />
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">

@@ -1,6 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import { type CompanyTab } from "@/components/CompanyTabs";
+import { CompanyPageHeading } from "@/components/company/CompanyPageHeading";
+import { uiStrings } from "@/lib/i18n-strings";
+import { fmt } from "@/lib/quiz/keys";
 import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { CompanyOverview } from "@/components/company/CompanyOverview";
 import { daysSince, overviewTotals as computeOverviewTotals } from "@/lib/company/overview";
@@ -155,15 +158,40 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
   const requested = Array.isArray(tabParam) ? tabParam[0] : tabParam;
   const active = tabs.some((t) => t.id === requested) ? (requested as string) : "status";
 
+  // Kopf je Reiter: Titel, Beschreibung und was Aufmerksamkeit braucht (früher als Zahl am Reiter).
+  const cp = uiStrings[locale].company_page;
+  const tabHref = (id: string) => (id === "status" ? "/company" : `/company?tab=${id}`);
+  const attentionText: Record<string, string> = { status: cp.attOverdue, mandatory: cp.attMandatory, paths: cp.attPaths, work: cp.attWork };
+  const attention = tabs
+    .filter((t) => (t.badge ?? 0) > 0 && attentionText[t.id] && (active === "status" || t.id === active))
+    .map((t) => ({ label: fmt(attentionText[t.id], { n: t.badge ?? 0 }), href: tabHref(t.id) }));
+  const meta: Record<string, { title: string; description: string }> = {
+    status: { title: cp.tabStatus, description: cp.tabStatusDesc },
+    mandatory: { title: cp.tabMandatory, description: cp.tabMandatoryDesc },
+    paths: { title: cp.tabPaths, description: cp.tabPathsDesc },
+    work: { title: cp.tabWork, description: cp.tabWorkDesc },
+    onboarding: { title: cp.tabOnboarding, description: cp.tabOnboardingDesc },
+    documents: { title: cp.tabDocuments, description: cp.tabDocumentsDesc },
+    team: { title: cp.tabTeam, description: cp.tabTeamDesc },
+    sso: { title: cp.tabSso, description: cp.tabSsoDesc },
+  };
+  const heading = (
+    <CompanyPageHeading
+      overline={`${membership.organizationName} · ${fmt(cp.role, { role: ROLE_LABELS[membership.role][locale] })}`}
+      title={meta[active].title}
+      description={meta[active].description}
+      attention={attention}
+      attentionLabel={cp.attentionLabel}
+    />
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <p className="text-sm text-subtle">
-        {membership.organizationName} · {de ? "Deine Rolle: " : "Your role: "}
-        <span data-testid="company-role">{ROLE_LABELS[membership.role][locale]}</span>
-      </p>
+      {active !== "status" && heading}
 
       {active === "status" && (
         <CompanyOverview
+          heading={heading}
           rows={rows}
           members={members.map((m) => ({ userId: m.userId, name: m.name, email: m.email }))}
           paths={paths}
