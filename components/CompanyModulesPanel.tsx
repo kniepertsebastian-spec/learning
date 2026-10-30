@@ -109,7 +109,7 @@ function ModuleForm({
         </label>
       </div>
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={busy || !title.trim() || !body.trim()} data-testid="module-submit" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
+        <button type="submit" disabled={busy || !title.trim() || !body.trim()} data-testid="module-submit" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50">
           {submitLabel}
         </button>
         {error && <p role="alert" data-testid="module-error" className="text-sm text-danger-text">{error}</p>}

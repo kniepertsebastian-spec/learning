@@ -75,7 +75,7 @@ export function FileDropZone({
             ? de ? "Dateien hierher ziehen oder" : "Drag files here or"
             : de ? "Datei hierher ziehen oder" : "Drag a file here or"}
         </p>
-        <button type="button" disabled={disabled} onClick={() => inputRef.current?.click()} className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50" data-testid={`${testId}-pick`}>
+        <button type="button" disabled={disabled} onClick={() => inputRef.current?.click()} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50" data-testid={`${testId}-pick`}>
           {multiple ? (de ? "Dateien auswählen" : "Choose files") : de ? "Datei auswählen" : "Choose file"}
         </button>
         <input

@@ -327,7 +327,7 @@ export function OfflinePackageManager({
             type="button"
             onClick={() => void handleDownload()}
             disabled={downloading}
-            className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {hasUpdate ? <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> : <CloudDownload className="h-3.5 w-3.5" aria-hidden="true" />}
             {record
@@ -367,7 +367,7 @@ export function OfflinePackageManager({
           <button
             type="button"
             onClick={() => setShowSession(true)}
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90"
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-on-primary hover:opacity-90"
           >
             {locale === "de" ? "Session starten" : "Start session"}
           </button>

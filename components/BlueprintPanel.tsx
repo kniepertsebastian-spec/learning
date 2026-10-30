@@ -131,7 +131,7 @@ export function BlueprintPanel({
           </div>
           <Link
             href={`/admin/certifications/${certificationSlug}/sources/${sourceId}/review`}
-            className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:opacity-90"
+            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary hover:opacity-90"
           >
             <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
             {locale === "de" ? "Prüfen & freigeben" : "Review & approve"}

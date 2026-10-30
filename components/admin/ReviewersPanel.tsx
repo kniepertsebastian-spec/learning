@@ -48,21 +48,19 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
 
   return (
     <div className="flex flex-col gap-6" data-testid="reviewers-panel">
-      <section className="rounded-lg border border-border bg-surface p-5">
+      <section className="rounded-2xl border border-border bg-surface p-5">
         <h2 className="font-medium">{de ? "Prüfer einladen" : "Invite a reviewer"}</h2>
         <form onSubmit={invite} className="mt-3 flex flex-col gap-3 text-sm">
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={de ? "E-Mail-Adresse" : "Email address"} aria-label={de ? "E-Mail-Adresse" : "Email address"} data-testid="reviewer-invite-email" className="rounded-md border border-border bg-background px-3 py-2" />
-          <fieldset>
-            <legend className="mb-1 text-subtle">{de ? "Der eine Kurs, den er nach Annahme betreut (nur allgemeine Kurse)" : "The one course they will review after acceptance (general courses only)"}</legend>
-            <div className="flex flex-col gap-1">
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={de ? "E-Mail-Adresse" : "Email address"} aria-label={de ? "E-Mail-Adresse" : "Email address"} data-testid="reviewer-invite-email" className="h-11 max-w-xl rounded-md border border-border-strong bg-control px-3" />
+          <label className="flex flex-col gap-1">
+            <span className="text-subtle">{de ? "Der eine Kurs, den er nach Annahme betreut (nur allgemeine Kurse)" : "The one course they will review after acceptance (general courses only)"}</span>
+            <select required value={selected} onChange={(e) => setSelected(e.target.value)} data-testid="reviewer-invite-course" className="h-11 max-w-xl rounded-md border border-border-strong bg-control px-3">
+              <option value="">{de ? "Kurs wählen …" : "Choose a course …"}</option>
               {courses.map((c) => (
-                <label key={c.id} className="flex items-center gap-2">
-                  <input type="radio" name="reviewer-invite-course" required checked={selected === c.id} onChange={() => setSelected(c.id)} />
-                  {c.name}
-                </label>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
-            </div>
-          </fieldset>
+            </select>
+          </label>
           <Button type="submit" className="w-fit" disabled={!email || !selected} data-testid="reviewer-invite-send">{de ? "Einladen" : "Invite"}</Button>
         </form>
         {message && <p role="status" className="mt-2 text-sm">{message}</p>}
@@ -75,7 +73,7 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
       </section>
 
       {invitations.length > 0 && (
-        <section className="rounded-lg border border-border bg-surface p-5">
+        <section className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-medium">{de ? "Offene Einladungen" : "Open invitations"}</h2>
           <ul className="mt-2 flex flex-col gap-1 text-sm">
             {invitations.map((i) => (
@@ -88,7 +86,7 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
         </section>
       )}
 
-      <section className="rounded-lg border border-border bg-surface p-5">
+      <section className="rounded-2xl border border-border bg-surface p-5">
         <h2 className="font-medium">{de ? "Prüfer und ihre Kurse" : "Reviewers and their courses"}</h2>
         {reviewers.length === 0 && <p className="mt-2 text-sm text-subtle">{de ? "Noch keine Prüfer." : "No reviewers yet."}</p>}
         <ul className="mt-2 flex flex-col gap-3 text-sm">

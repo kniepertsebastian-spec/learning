@@ -168,7 +168,7 @@ function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: Ca
               type="button"
               onClick={() => void release()}
               disabled={!courseId && !r.certificationId}
-              className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
+              className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
             >
               {de ? "Für die Firma freigeben" : "Release for company"}
             </button>

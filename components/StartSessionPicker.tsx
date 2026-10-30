@@ -101,7 +101,7 @@ export function StartSessionPicker({
           onClick={() => void handleStart("first", "minutes", 10)}
           disabled={starting !== null}
           data-testid="start-first"
-          className="flex items-center gap-1.5 h-11 rounded-md bg-accent px-5 text-sm font-semibold text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center gap-1.5 h-11 rounded-md bg-primary px-5 text-sm font-semibold text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {starting === "first" && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
           {de ? "Starten (10 Minuten)" : "Start (10 minutes)"}
@@ -199,7 +199,7 @@ export function StartSessionPicker({
             type="submit"
             disabled={starting !== null || !customValid}
             data-testid="custom-start"
-            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {starting === "custom" && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
             {de ? "Starten" : "Start"}

@@ -136,6 +136,9 @@
   --ctx-link: var(--accent-text);
   --ctx-link-hover: var(--accent-hover);
   --ctx-on-accent: var(--on-accent);
+  /* Hauptbutton: Kontextakzent; im Admin invertiert (Koralle bleibt Warnfarbe) */
+  --ctx-primary: var(--ctx-accent);
+  --ctx-on-primary: var(--ctx-on-accent);
   --ctx-sidebar: #ffffff;
   --ctx-sidebar-border: #e8eef2;
   --ctx-switcher: #f4f7f9;
@@ -148,6 +151,8 @@
   --ctx-link: var(--accent-text);
   --ctx-link-hover: var(--accent-hover);
   --ctx-on-accent: var(--on-accent);
+  --ctx-primary: var(--ctx-accent);
+  --ctx-on-primary: var(--ctx-on-accent);
   --ctx-sidebar: #0c141c;
   --ctx-sidebar-border: #172430;
   --ctx-switcher: #111b25;
@@ -164,6 +169,8 @@
   --ctx-link: #83580a;
   --ctx-link-hover: #6b4704;
   --ctx-on-accent: #1a1204;
+  --ctx-primary: var(--ctx-accent);
+  --ctx-on-primary: var(--ctx-on-accent);
   --ctx-sidebar: #fffbf0;
   --ctx-sidebar-border: #f0e6cc;
   --ctx-switcher: #fbf4e0;
@@ -178,6 +185,8 @@
   --ctx-link: #f7c266;
   --ctx-link-hover: #f8cd7a;
   --ctx-on-accent: #1a1204;
+  --ctx-primary: var(--ctx-accent);
+  --ctx-on-primary: var(--ctx-on-accent);
   --ctx-sidebar: #100f0b;
   --ctx-sidebar-border: #2a2414;
   --ctx-switcher: #1a1710;
@@ -194,6 +203,8 @@
   --ctx-link: #ae3a2a;
   --ctx-link-hover: #8f2e1f;
   --ctx-on-accent: #1a0805;
+  --ctx-primary: var(--text);
+  --ctx-on-primary: var(--bg);
   --ctx-sidebar: #ffffff;
   --ctx-sidebar-border: #e8eef2;
   --ctx-switcher: #fdf1ef;
@@ -208,6 +219,8 @@
   --ctx-link: #ff9c8f;
   --ctx-link-hover: #ffb8ac;
   --ctx-on-accent: #1a0805;
+  --ctx-primary: var(--text);
+  --ctx-on-primary: var(--bg);
   --ctx-sidebar: #0c141c;
   --ctx-sidebar-border: #172430;
   --ctx-switcher: #1a1312;
@@ -244,6 +257,8 @@
   /* Kontextakzent: Flächen (bg-accent) und Text auf Flächen (text-on-accent), Links (text-link) */
   --color-accent: var(--ctx-accent);
   --color-on-accent: var(--ctx-on-accent);
+  --color-primary: var(--ctx-primary);
+  --color-on-primary: var(--ctx-on-primary);
   --color-link: var(--ctx-link);
   --color-link-hover: var(--ctx-link-hover);
   --color-accent-soft: color-mix(in srgb, var(--ctx-accent) 13%, transparent);
@@ -326,6 +341,19 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Native Formularelemente (Select-Liste, Datum, Checkbox, Radio) folgen dem Theme und dem Kontextakzent. */
+:root,
+.light {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--ctx-accent);
 }
 
 :focus-visible {

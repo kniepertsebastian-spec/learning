@@ -208,7 +208,7 @@ export function DocumentsPanel({
           <button
             type="submit"
             disabled={pending || files.length === 0}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
             data-testid="documents-upload"
           >
             {pending ? (de ? "Wird geprüft …" : "Checking …") : de ? "Hochladen" : "Upload"}

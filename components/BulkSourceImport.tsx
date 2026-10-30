@@ -143,7 +143,7 @@ export function BulkSourceImport({ certificationId, locale, online, onDone }: { 
         onClick={() => void start()}
         disabled={running || !online || total === 0 || tooMany || !provider.trim()}
         data-testid="bulk-start"
-        className="flex items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
+        className="flex items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
       >
         {running ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <UploadCloud className="h-4 w-4" aria-hidden="true" />}
         {de ? `${total || ""} Quelle(n) hinzufügen`.trim() : `Add ${total || ""} source(s)`.trim()}

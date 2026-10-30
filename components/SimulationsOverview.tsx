@@ -46,7 +46,7 @@ export function SimulationsOverview({ certSlug, items, locked = [], locale, sign
             {count("struggled") > 0 && <p className="mt-1.5 text-xs text-subtle">{de ? `${count("struggled")} nur mit Hilfe gelöst: am besten noch einmal ohne Tipp versuchen.` : `${count("struggled")} solved only with help: try them again without hints.`}</p>}
           </div>
           {next && (
-            <Link href={href(certSlug, next)} className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-on-accent hover:opacity-90" data-testid="simulations-next">
+            <Link href={href(certSlug, next)} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary hover:opacity-90" data-testid="simulations-next">
               {next.status === "open" ? (de ? "Nächste offene" : "Next open") : de ? "Noch einmal üben" : "Practise again"}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>

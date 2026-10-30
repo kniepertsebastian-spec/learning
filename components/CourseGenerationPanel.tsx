@@ -592,7 +592,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                 type="button"
                 onClick={handleRetry}
                 disabled={loading}
-                className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
               >
                 {job.status === "package_ready"
                   ? locale === "de" ? "Jetzt veröffentlichen" : "Publish now"
@@ -629,7 +629,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           </ul>
           <p className="mt-3">{locale === "de" ? "Diese Quellen entfernen und mit den übrigen fortfahren?" : "Remove these sources and continue with the rest?"}</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <button type="button" disabled={loading} onClick={() => void continueWithoutBad()} data-testid="bad-sources-continue" className="rounded-md bg-accent px-3 py-1.5 font-medium text-on-accent disabled:opacity-50">
+            <button type="button" disabled={loading} onClick={() => void continueWithoutBad()} data-testid="bad-sources-continue" className="rounded-md bg-primary px-3 py-1.5 font-medium text-on-primary disabled:opacity-50">
               {locale === "de" ? "Entfernen und fortfahren" : "Remove and continue"}
             </button>
             <button type="button" disabled={loading} onClick={() => { setBadSources(null); setPendingPayload(null); }} data-testid="bad-sources-cancel" className="rounded-md border border-border px-3 py-1.5">

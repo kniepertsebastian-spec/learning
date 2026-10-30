@@ -114,7 +114,7 @@ export function InvitationsPanel({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
         >
           {de ? "Link erzeugen" : "Create link"}
         </button>

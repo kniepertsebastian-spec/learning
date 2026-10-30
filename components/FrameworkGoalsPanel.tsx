@@ -78,7 +78,7 @@ export function FrameworkGoalsPanel({
             <input value={code} onChange={(e) => setCode(e.target.value)} maxLength={20} placeholder={de ? "Nr., z. B. 2.3" : "No., e.g. 2.3"} aria-label={de ? "Nummer im Plan" : "Number in the plan"} data-testid="framework-code" className={`${inputClass} sm:w-32`} />
             <input value={title} onChange={(e) => setTitle(e.target.value)} required minLength={3} maxLength={200} placeholder={de ? "Eintrag im Plan, z. B. „Betriebssysteme installieren“" : "Entry in the plan"} aria-label={de ? "Eintrag im Plan" : "Entry in the plan"} data-testid="framework-title" className={`${inputClass} flex-1`} />
           </div>
-          <button type="submit" disabled={busy || !objectiveId || title.trim().length < 3} data-testid="framework-create" className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
+          <button type="submit" disabled={busy || !objectiveId || title.trim().length < 3} data-testid="framework-create" className="self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50">
             {de ? "Zuordnen" : "Assign"}
           </button>
         </form>

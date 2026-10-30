@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { StatTile } from "@/components/ui/stat-tile";
 import { ArrowLeft, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { requireAdminPage } from "@/lib/server/auth-guards";
@@ -85,36 +87,43 @@ export default async function AdminCertificationPage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <Link
-        href="/admin"
-        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
-      </Link>
-
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
+          <h1 className="mb-1 text-2xl font-semibold tracking-title sm:text-title">{cert.name}</h1>
           <p className="text-sm text-muted">
             {cert.examName} {cert.examVersion}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
         {cert.kind === "general" && (
-          <Link href={`/admin/certifications/${slug}/workshop`} className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-on-accent hover:opacity-90" data-testid="open-workshop">
+          <Link href={`/admin/certifications/${slug}/workshop`} className={buttonVariants({ size: "md" })} data-testid="open-workshop">
             {locale === "de" ? "Kurs bearbeiten" : "Edit course"}
           </Link>
         )}
         <Link
           href={`/admin/certifications/${slug}/sources`}
-          className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-background"
+          className={buttonVariants({ variant: "secondary", size: "md" })}
         >
           {locale === "de" ? "Offizielle Quellen verwalten" : "Manage official sources"}
         </Link>
         </div>
       </div>
 
+      <nav aria-label={locale === "de" ? "Abschnitte" : "Sections"} className="sticky top-14 z-10 -mx-1 mb-6 flex gap-1 overflow-x-auto bg-background px-1 py-2 md:top-10">
+        {[
+          ["generation", locale === "de" ? "Inhalte generieren" : "Generate content"],
+          ["exam-info", locale === "de" ? "Prüfungsdaten" : "Exam data"],
+          ["quality", locale === "de" ? "Qualität" : "Quality"],
+          ["feedback", locale === "de" ? "Meldungen" : "Reports"],
+          ...(cert.kind === "general" ? [["reviews", locale === "de" ? "Prüfqueues" : "Review queues"], ["danger", locale === "de" ? "Kurs löschen" : "Delete course"]] : []),
+        ].map(([id, label]) => (
+          <a key={id} href={`#${id}`} className="shrink-0 rounded-full border border-border px-3 py-1.5 text-meta font-medium text-muted hover:border-border-strong hover:text-foreground">
+            {label}
+          </a>
+        ))}
+      </nav>
+
+      <div id="generation" className="scroll-mt-28">
       <ContentGenerationControl
         certificationId={cert.id}
         locale={locale}
@@ -137,8 +146,9 @@ export default async function AdminCertificationPage({
         initialEstimate={initialEstimate}
         initialBudget={initialBudget}
       />
+      </div>
 
-      <div className="mb-6">
+      <div id="exam-info" className="mb-6 scroll-mt-28">
         <ExamInfoForm
           certId={cert.id}
           locale={locale}
@@ -147,24 +157,13 @@ export default async function AdminCertificationPage({
       </div>
 
       <div className="grid gap-6">
+        <h2 id="quality" className="scroll-mt-28 text-lg font-semibold">{locale === "de" ? "Inhaltsqualität" : "Content quality"}</h2>
         {/* Validation Summary */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-lg border border-border bg-surface p-4">
-            <p className="text-xs text-subtle">{locale === "de" ? "Gesamt" : "Total"}</p>
-            <p className="mt-1 text-xl font-semibold">{validation.totalContent}</p>
-          </div>
-          <div className="rounded-lg border border-success-border bg-success-soft p-4">
-            <p className="text-xs text-success-text">{locale === "de" ? "Gültig" : "Valid"}</p>
-            <p className="mt-1 text-xl font-semibold text-success-text">{validation.validContent}</p>
-          </div>
-          <div className="rounded-lg border border-danger/40 bg-danger-soft p-4">
-            <p className="text-xs text-danger-text">{locale === "de" ? "Fehler" : "Errors"}</p>
-            <p className="mt-1 text-xl font-semibold text-danger-text">{validation.invalidContent}</p>
-          </div>
-          <div className="rounded-lg border border-warning/40 bg-warning-soft p-4">
-            <p className="text-xs text-warning-text">{locale === "de" ? "Warnungen" : "Warnings"}</p>
-            <p className="mt-1 text-xl font-semibold text-warning-text">{validation.warnings}</p>
-          </div>
+          <StatTile label={locale === "de" ? "Gesamt" : "Total"} value={validation.totalContent} />
+          <StatTile label={locale === "de" ? "Gültig" : "Valid"} value={<span className="text-success-text">{validation.validContent}</span>} />
+          <StatTile label={locale === "de" ? "Fehler" : "Errors"} value={<span className={validation.invalidContent > 0 ? "text-danger-text" : undefined}>{validation.invalidContent}</span>} />
+          <StatTile label={locale === "de" ? "Warnungen" : "Warnings"} value={<span className={validation.warnings > 0 ? "text-warning-text" : undefined}>{validation.warnings}</span>} />
         </div>
 
         {/* Issues by severity */}
@@ -274,7 +273,7 @@ export default async function AdminCertificationPage({
         )}
 
         {/* Analytics */}
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="rounded-2xl border border-border bg-surface p-5">
           <h3 className="mb-3 font-medium">{locale === "de" ? "Domain-Mastery" : "Domain mastery"}</h3>
           {domainAnalytics.domains.length === 0 ? (
             <p className="text-sm text-subtle">
@@ -314,7 +313,7 @@ export default async function AdminCertificationPage({
           </div>
         )}
 
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="rounded-2xl border border-border bg-surface p-5">
           <h3 className="mb-3 font-medium">
             {locale === "de" ? "Problematische Fragen" : "Problem questions"}
           </h3>
@@ -339,7 +338,7 @@ export default async function AdminCertificationPage({
         {/* R6 (roadmap.md): "Kosten je veröffentlichter Lesson, Mission und
             akzeptierter Frage" - Snapshot je Objective, siehe
             lib/server/admin/objective-costs.ts. */}
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="rounded-2xl border border-border bg-surface p-5">
           <h3 className="mb-3 font-medium">
             {locale === "de" ? "Kosten je Objective" : "Cost per objective"}
           </h3>
@@ -407,10 +406,13 @@ export default async function AdminCertificationPage({
           )}
         </div>
 
+        <h2 id="feedback" className="mt-4 scroll-mt-28 text-lg font-semibold">{locale === "de" ? "Meldungen und Rückmeldungen" : "Reports and feedback"}</h2>
         <ContentReportQueue certificationId={cert.id} locale={locale} />
         {cert.kind === "general" && <FeedbackQueue items={(await listOpenFeedback(cert.id)).map((f) => ({ ...f, createdAt: f.createdAt.toISOString() }))} locale={locale} canResolve />}
+        {cert.kind === "general" && <h2 id="reviews" className="mt-4 scroll-mt-28 text-lg font-semibold">{locale === "de" ? "Prüfqueues" : "Review queues"}</h2>}
         {cert.kind === "general" && <ExplanationReviewQueue certificationId={cert.id} locale={locale} />}
         {cert.kind === "general" && <PrerequisiteReviewQueue certificationId={cert.id} locale={locale} />}
+        {cert.kind === "general" && <div id="danger" className="mt-4 scroll-mt-28" />}
         {cert.kind === "general" && <DeleteCertification certificationId={cert.id} slug={cert.slug} name={cert.name} locale={locale} />}
       </div>
     </div>

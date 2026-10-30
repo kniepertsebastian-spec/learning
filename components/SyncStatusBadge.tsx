@@ -181,7 +181,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
             type="button"
             onClick={handleManualSync}
             disabled={!online || syncing}
-            className="w-full rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {locale === "de" ? "Jetzt synchronisieren" : "Sync now"}
           </button>

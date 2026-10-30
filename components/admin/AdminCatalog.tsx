@@ -1,18 +1,20 @@
 "use client";
 
-import { ArrowRight, ChevronDown, ChevronUp, Languages, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Languages, MoreHorizontal, Plus, Sparkles, Tags } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createCertificationAction } from "@/app/admin/actions";
 import { JobBar } from "@/components/admin/JobBar";
 import { TranslationProgress } from "@/components/admin/TranslationProgress";
 import { CourseGenerationPanel } from "@/components/CourseGenerationPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SearchField } from "@/components/ui/search-field";
+import { SegmentedControl } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "@/components/ui/toaster";
 import { cn } from "@/lib/cn";
@@ -52,6 +54,16 @@ const DOT: Record<CourseCategoryColor, string> = { info: "bg-info", mint: "bg-mi
 const TILE: Record<CourseCategoryColor, string> = { info: "bg-info-soft text-info-text", mint: "bg-mint-soft text-mint-text", warning: "bg-warning-soft text-warning-text", danger: "bg-danger-soft text-danger-text", violet: "bg-surface-2 text-violet" };
 const COLORS: CourseCategoryColor[] = ["info", "mint", "warning", "danger", "violet"];
 const fieldClass = "w-full rounded-md border border-border-strong bg-control px-3 py-2 text-sm";
+/** So viele Kurse je Gruppe zeigt die Liste zuerst; der Rest kommt per „weitere anzeigen“. */
+const PAGE = 25;
+type StatusFilter = "all" | "ready" | "missing" | "translation";
+
+function matchesStatus(c: CatalogCert, status: StatusFilter): boolean {
+  if (status === "ready") return c.stats.lessons > 0;
+  if (status === "missing") return c.stats.lessons === 0;
+  if (status === "translation") return c.stats.lessons > 0 && c.translation.status !== "done";
+  return true;
+}
 
 async function api(url: string, method: string, body?: unknown): Promise<Response> {
   return fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -76,13 +88,24 @@ export function AdminCatalog({
   const ac = t.admin_catalog;
   const router = useRouter();
   const [filter, setFilter] = useState<string>("all");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [showEmptyGroups, setShowEmptyGroups] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [pick, setPick] = useState<CatalogCert | null>(null);
   const [dialog, setDialog] = useState<null | { kind: "new" } | { kind: "rename"; group: CatalogGroup } | { kind: "order" }>(null);
 
   const colorLabel: Record<CourseCategoryColor, string> = { info: ac.colorInfo, mint: ac.colorMint, warning: ac.colorWarning, danger: ac.colorDanger, violet: ac.colorViolet };
-  const byGroup = (id: string | null) => certs.filter((c) => (id === null ? c.categoryIds.length === 0 : c.categoryIds.includes(id)));
+  const q = query.trim().toLowerCase();
+  // Suche und Status gelten überall; die Gruppenzahlen an den Chips zählen den ganzen Katalog.
+  const shown = useMemo(
+    () => certs.filter((c) => matchesStatus(c, status) && (!q || [c.name, c.slug, c.provider, c.examVersion].some((v) => v.toLowerCase().includes(q)))),
+    [certs, status, q],
+  );
+  const inGroup = (list: CatalogCert[], id: string | null) => list.filter((c) => (id === null ? c.categoryIds.length === 0 : c.categoryIds.includes(id)));
+  const byGroup = (id: string | null) => inGroup(certs, id);
+  const emptyGroups = groups.filter((g) => byGroup(g.id).length === 0);
   const unassigned = byGroup(null);
   const visibleGroups = filter === "all" ? groups : groups.filter((g) => g.id === filter);
   const showUnassigned = unassigned.length > 0 && (filter === "all" || filter === "none");
@@ -127,7 +150,7 @@ export function AdminCatalog({
 
       <div className="mb-5 flex flex-wrap items-center gap-2" role="group" aria-label={ac.group} data-testid="group-chips">
         <Chip active={filter === "all"} onClick={() => setFilter("all")}>{ac.all} <span className="text-faint">{certs.length}</span></Chip>
-        {groups.map((g) => (
+        {groups.filter((g) => showEmptyGroups || filter === g.id || byGroup(g.id).length > 0).map((g) => (
           <Chip key={g.id} active={filter === g.id} onClick={() => setFilter(g.id)}>
             <span className={cn("h-2 w-2 rounded-full", DOT[g.color])} aria-hidden="true" />
             {g.name[locale]} <span className="text-faint">{byGroup(g.id).length}</span>
@@ -136,19 +159,44 @@ export function AdminCatalog({
         {unassigned.length > 0 && (
           <Chip active={filter === "none"} onClick={() => setFilter("none")}>{ac.unassigned} <span className="text-faint">{unassigned.length}</span></Chip>
         )}
+        {emptyGroups.length > 0 && (
+          <button type="button" onClick={() => setShowEmptyGroups((v) => !v)} aria-expanded={showEmptyGroups} className="flex min-h-9 items-center px-2 text-meta text-subtle underline-offset-2 hover:text-foreground hover:underline">
+            {showEmptyGroups ? ac.emptyGroupsHide : fmt(ac.emptyGroupsShow, { n: emptyGroups.length })}
+          </button>
+        )}
         <button type="button" onClick={() => setDialog({ kind: "new" })} data-testid="new-group" className="flex min-h-9 items-center gap-1.5 rounded-full border border-dashed border-border-strong px-3 text-meta text-subtle hover:text-foreground">
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />{ac.newGroup}
         </button>
       </div>
 
+      {certs.length > 0 && (
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <SearchField value={query} onChange={(e) => setQuery(e.target.value)} placeholder={ac.searchPlaceholder} aria-label={ac.searchLabel} shortcutHint={false} className="sm:max-w-sm" data-testid="catalog-search" />
+          <SegmentedControl<StatusFilter>
+            value={status}
+            onChange={setStatus}
+            label={ac.filterLabel}
+            options={[
+              { value: "all", label: ac.filterAll },
+              { value: "ready", label: ac.filterReady },
+              { value: "missing", label: ac.filterMissing },
+              { value: "translation", label: ac.filterTranslation },
+            ]}
+          />
+          {(q || status !== "all") && <p className="text-meta text-subtle sm:ml-auto" aria-live="polite">{fmt(ac.matchCount, { n: shown.length, total: certs.length })}</p>}
+        </div>
+      )}
+
       {certs.length === 0 ? (
         <EmptyState title={ac.emptyTitle} description={ac.emptyBody} />
+      ) : shown.length === 0 ? (
+        <EmptyState title={ac.noMatch} />
       ) : (
         <div className="flex flex-col gap-6">
           {visibleGroups.map((g) => {
-            const list = byGroup(g.id);
-            // In „Alle“ erscheinen nur Gruppen mit Kursen; leere sind über ihren Filter erreichbar.
-            if (filter === "all" && list.length === 0) return null;
+            const list = inGroup(shown, g.id);
+            // In „Alle“ (und bei Suche/Status) erscheinen nur Gruppen mit Treffern; leere sind über ihren Filter erreichbar.
+            if ((filter === "all" || q || status !== "all") && list.length === 0) return null;
             return (
               <section key={g.id} aria-label={g.name[locale]} data-testid={`group-${g.id}`}>
                 <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -164,10 +212,10 @@ export function AdminCatalog({
               </section>
             );
           })}
-          {showUnassigned && (
+          {showUnassigned && inGroup(shown, null).length > 0 && (
             <section aria-label={ac.unassigned} data-testid="group-none">
               <h2 className="mb-2 text-base font-semibold">{ac.unassigned}</h2>
-              <CertRows list={unassigned} groups={groups} onEdit={setPick} />
+              <CertRows list={inGroup(shown, null)} groups={groups} onEdit={setPick} />
             </section>
           )}
         </div>
@@ -238,6 +286,7 @@ function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: Catal
   const ac = t.admin_catalog;
   const router = useRouter();
   const [starting, setStarting] = useState<string | null>(null);
+  const [limit, setLimit] = useState(PAGE);
 
   async function translate(c: CatalogCert) {
     setStarting(c.id);
@@ -254,12 +303,13 @@ function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: Catal
   }
   if (list.length === 0) return <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-faint">—</p>;
   return (
-    <ul className="flex flex-col gap-2">
-      {list.map((c) => {
+    <>
+    <ul className="overflow-hidden rounded-2xl border border-border bg-surface">
+      {list.slice(0, limit).map((c) => {
         const ready = c.stats.lessons > 0;
         return (
           <li key={c.id}>
-            <Card className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4" data-testid={`cert-row-${c.slug}`}>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle px-4 py-3 last:border-0" data-testid={`cert-row-${c.slug}`}>
               <div className="min-w-0 flex-1 basis-56">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold">{c.name}</p>
@@ -267,8 +317,7 @@ function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: Catal
                   {c.courseType === "custom" && <Badge tone="info">{ac.typeCustom}</Badge>}
                   <TranslationBadge cert={c} />
                 </div>
-                <p className="mt-0.5 font-mono text-[11.5px] text-subtle">{c.provider} · {c.examVersion}</p>
-                <p className="mt-1 text-xs text-faint">{fmt(ac.stats, { d: c.stats.domains, l: c.stats.lessons, q: c.stats.questions })}</p>
+                <p className="mt-0.5 text-xs text-faint"><span className="font-mono text-subtle">{c.provider} · {c.examVersion}</span> · {fmt(ac.stats, { d: c.stats.domains, l: c.stats.lessons, q: c.stats.questions })}</p>
                 {c.translation.status === "running" && <TranslationProgress cert={c} />}
               </div>
               <div className="flex flex-wrap items-center gap-1.5 text-xs text-subtle" data-testid={`groups-${c.slug}`}>
@@ -277,30 +326,36 @@ function CertRows({ list, groups, onEdit }: { list: CatalogCert[]; groups: Catal
                   return g ? <span key={id} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5", TILE[g.color])} title={i === 0 ? ac.mainGroup : undefined}>{g.name[locale]}{i === 0 && c.categoryIds.length > 1 ? " ★" : ""}</span> : null;
                 })}
               </div>
-              {ready && c.translation.status !== "done" && c.translation.status !== "running" && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void translate(c)}
-                  disabled={starting === c.id}
-                  iconLeft={<Languages className="h-4 w-4" aria-hidden="true" />}
-                  title={c.translation.message ?? undefined}
-                  data-testid={`translate-${c.slug}`}
-                >
-                  {c.translation.status === "none"
-                    ? fmt(ac.translateTo, { lang: c.translation.contentLocale === "en" ? ac.langDe : ac.langEn })
-                    : ac.translateRetry}
-                </Button>
-              )}
-              <Button variant="secondary" size="sm" onClick={() => onEdit(c)} aria-label={fmt(ac.editGroupsFor, { name: c.name })} data-testid={`group-edit-${c.slug}`}>{ac.editGroups}</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger aria-label={fmt(ac.moreActions, { name: c.name })} data-testid={`cert-actions-${c.slug}`} className="flex h-9 w-9 items-center justify-center rounded-md border border-border-strong bg-control hover:bg-surface-2">
+                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => onEdit(c)} data-testid={`group-edit-${c.slug}`}>
+                    <Tags className="h-4 w-4" aria-hidden="true" />{ac.editGroups}
+                  </DropdownMenuItem>
+                  {ready && c.translation.status !== "done" && c.translation.status !== "running" && (
+                    <DropdownMenuItem onSelect={() => void translate(c)} disabled={starting === c.id} title={c.translation.message ?? undefined} data-testid={`translate-${c.slug}`}>
+                      <Languages className="h-4 w-4" aria-hidden="true" />
+                      {c.translation.status === "none" ? fmt(ac.translateTo, { lang: c.translation.contentLocale === "en" ? ac.langDe : ac.langEn }) : ac.translateRetry}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button asChild variant="secondary" size="sm">
                 <Link href={`/admin/certifications/${c.slug}`}>{ac.open}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
               </Button>
-            </Card>
+            </div>
           </li>
         );
       })}
     </ul>
+    {list.length > limit && (
+      <Button variant="ghost" size="sm" className="mt-2 self-start" onClick={() => setLimit((n) => n + PAGE)}>
+        {fmt(ac.showMore, { n: Math.min(PAGE, list.length - limit) })}
+      </Button>
+    )}
+    </>
   );
 }
 

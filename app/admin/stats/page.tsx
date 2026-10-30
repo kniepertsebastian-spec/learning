@@ -41,10 +41,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
   return (
     <div className="flex flex-1 flex-col gap-6" data-testid="admin-stats">
       <div>
-        <Link href="/admin" className="text-sm text-link hover:underline">
-          ← Admin
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{de ? "Abschluss-Statistik" : "Completion statistics"}</h1>
+        <h1 className="text-2xl font-semibold tracking-title sm:text-title">{de ? "Abschluss-Statistik" : "Completion statistics"}</h1>
         <p className="mt-1 max-w-3xl text-sm text-subtle">
           {de
             ? `Anonym: je Abschluss nur Kurs, Tag, Dauer und aktive Lernzeit, ohne Bezug zur Person. Gezählt wird das erste Bestehen der Abschlussprüfung und gesondert das erste Zertifikat je Person und Kurs. Dauerwerte erscheinen ab ${MIN_GROUP} Abschlüssen.`

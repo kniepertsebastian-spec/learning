@@ -24,8 +24,7 @@ export default async function AdminReviewersPage() {
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div>
-        <Link href="/admin" className="text-sm text-link hover:underline">← Admin</Link>
-        <h1 className="mt-2 text-2xl font-semibold">{locale === "de" ? "Fachliche Prüfer" : "Expert reviewers"}</h1>
+        <h1 className="text-2xl font-semibold tracking-title sm:text-title">{locale === "de" ? "Fachliche Prüfer" : "Expert reviewers"}</h1>
         <p className="mt-1 text-sm"><Link href="/admin/reviewers/probe" className="text-link hover:underline" data-testid="admin-probe-link">{locale === "de" ? "Probe-Review und Freischaltung" : "Trial review and clearance"}</Link></p>
       </div>
       <ReviewersPanel
