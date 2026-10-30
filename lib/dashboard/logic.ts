@@ -82,3 +82,28 @@ export function shortCodeOf(name: string, shortCode: string | null): string {
   const letters = name.split(/[^\p{L}\p{N}]+/u).filter(Boolean).map((w) => w[0].toUpperCase()).join("");
   return letters.slice(0, 4) || "?";
 }
+
+/** Kalendertag (UTC) als „YYYY-MM-DD“, passend zu `learning_time.day` und den Wochenbalken. */
+export function dayKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export type MonthCell = { key: string; day: number; inMonth: boolean };
+
+/** Monatsraster Mo–So (UTC) des Monats von `now`, aufgefüllt mit Tagen aus Vor- und Folgemonat zu vollen Wochen. */
+export function monthGrid(now: Date): { year: number; month: number; cells: MonthCell[] } {
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const first = new Date(Date.UTC(year, month, 1));
+  const start = new Date(first);
+  start.setUTCDate(1 - ((first.getUTCDay() + 6) % 7));
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const leading = (first.getUTCDay() + 6) % 7;
+  const total = Math.ceil((leading + daysInMonth) / 7) * 7;
+  const cells: MonthCell[] = [];
+  for (let i = 0; i < total; i++) {
+    const d = new Date(start.getTime() + i * 86_400_000);
+    cells.push({ key: dayKey(d), day: d.getUTCDate(), inMonth: d.getUTCMonth() === month });
+  }
+  return { year, month, cells };
+}

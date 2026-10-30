@@ -16,7 +16,7 @@ export function Select({ value, onValueChange, options, placeholder, label, disa
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Content position="popper" sideOffset={6} className="anim-pop-in z-50 max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-sheet">
+        <SelectPrimitive.Content position="popper" sideOffset={6} className="anim-pop-in z-50 max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-overlay">
           <SelectPrimitive.Viewport>
             {options.map((o) => (
               <SelectPrimitive.Item key={o.value} value={o.value} className="flex min-h-10 cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 text-sm text-foreground outline-none data-[highlighted]:bg-surface-2">

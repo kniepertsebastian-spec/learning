@@ -27,7 +27,7 @@ export function CatalogView({
   const [filter, setFilter] = useState("all");
   const visible = certs.filter((c) => filter === "all" || c.categoryIds.includes(filter) || (filter === "none" && c.categoryIds.length === 0));
   const ungrouped = certs.filter((c) => c.categoryIds.length === 0).length;
-  const chip = (active: boolean) => cn("flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium", active ? "border-foreground bg-surface-2 text-foreground" : "border-border-strong text-muted hover:text-foreground");
+  const chip = (active: boolean) => cn("flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-meta font-medium", active ? "border-foreground bg-surface-2 text-foreground" : "border-border-strong text-muted hover:text-foreground");
   return (
     <div className="flex flex-col gap-5" data-testid="catalog">
       <div>
@@ -57,14 +57,14 @@ export function CatalogView({
               <li key={c.id}>
                 <Card className="flex h-full flex-col gap-3" data-testid={`catalog-card-${c.slug}`}>
                   <div className="flex items-start gap-3">
-                    <span className={cn("flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl font-mono text-[13px] font-semibold", g ? TILE[g.color] : "bg-surface-2 text-muted")} aria-hidden="true">{c.shortCode}</span>
+                    <span className={cn("flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl font-mono text-meta font-semibold", g ? TILE[g.color] : "bg-surface-2 text-muted")} aria-hidden="true">{c.shortCode}</span>
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{c.name}</p>
                       <p className="font-mono text-[11.5px] text-subtle">{c.custom ? h.customTraining : `${c.provider} · ${c.version}`}</p>
                     </div>
                   </div>
                   {c.seal && <CourseSeal seal={c.seal} locale={locale} variant="compact" />}
-                  {c.summary && <p className="line-clamp-3 text-[13px] text-muted" data-testid="catalog-summary">{c.summary[locale]}</p>}
+                  {c.summary && <p className="line-clamp-3 text-meta text-muted" data-testid="catalog-summary">{c.summary[locale]}</p>}
                   <Button asChild size="sm" variant="secondary" className="mt-auto self-end"><Link href={`/cert/${c.slug}`}>{h.startLearning}</Link></Button>
                 </Card>
               </li>

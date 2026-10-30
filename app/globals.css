@@ -4,107 +4,126 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Designsprache (docs/ROADMAP-UI.md): alle Farben, Radien und Schriften als Tokens. Im JSX keine Hex-Werte und keine
- * Tailwind-Standardpaletten (scripts/check-ui-tokens.mjs hält den Bestand nach unten).
- * Hell: `:root` und `.light`; Dunkel (Standard): `.dark`. Die Klasse `.light` erlaubt helle Inseln in dunkler Umgebung
- * (z. B. die Komponentenübersicht).
+ * Designsprache „Calm Intelligence“ (docs/ROADMAP-UI.md): alle Farben, Radien, Schriftgrößen und Schatten als Tokens. Im JSX
+ * keine Hex-Werte und keine Tailwind-Standardpaletten (scripts/ui-token-scan.mjs hält den Bestand nach unten).
+ * Basis: Navy (dunkel) und Slate (hell). Markenfarbe Indigo (--accent: Hauptaktion, Fortschritt, Links). Grün (--success)
+ * bedeutet nur „richtig“, „bestanden“, „gemeistert“. Himmelblau (--info) für Auswahl und „in Arbeit“.
+ * Hell: `:root` und `.light`; Dunkel: `.dark`. Die Klasse `.light` erlaubt helle Inseln in dunkler Umgebung.
  */
 :root,
 .light {
-  --bg: #f6f7f9;
+  --bg: #f4f7f9;
   --bg-sidebar: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f1f3f6;
-  --surface-inset: #eceff3;
-  --control: #f1f3f6;
-  --track: #e3e7ee;
-  --border: #e3e7ee;
-  --border-strong: #d3d9e2;
-  --border-subtle: #eceff3;
-  --text: #0e1218;
-  --text-2: #2a3140;
-  --text-muted: #4a5466;
-  --text-subtle: #5b6577;
-  --text-faint: #626c7e;
+  --surface-2: #eef3f6;
+  --surface-inset: #e8eef2;
+  --control: #eef3f6;
+  --track: #e0e7ec;
+  --border: #dce4ea;
+  --border-strong: #c8d3dc;
+  --border-subtle: #e8eef2;
+  --text: #0b1620;
+  --text-2: #26323f;
+  --text-muted: #44525f;
+  --text-subtle: #53616f;
+  --text-faint: #5d6b79;
 
-  --accent: #1fcb8f;
-  --accent-text: #0a7a55;
-  --accent-hover: #0a6a49;
-  --on-accent: #04140d;
-  --accent-soft: rgba(31, 203, 143, 0.14);
-  --accent-border: #9fe3c8;
+  --accent: #4f5bd5;
+  --accent-text: #3f49b8;
+  --accent-hover: #323a99;
+  --on-accent: #ffffff;
+  --accent-soft: rgba(79, 91, 213, 0.09);
+  --accent-border: #c3c8f3;
 
-  --info: #3b82f6;
-  --info-text: #1d5fd1;
-  /* Diagramme (kategorisch, validiert mit dataviz/validate_palette.js gegen --surface): 1 = Abschlussprüfung, 2 = Zertifikat */
+  --success: #0e9f73;
+  --success-text: #067552;
+  --on-success: #03140d;
+  --success-soft: rgba(14, 159, 115, 0.12);
+  --success-border: #9fdcc5;
+
+  --info: #1f7fb8;
+  --info-text: #17648f;
+  /* Diagramme (kategorisch): 1 = Abschlussprüfung, 2 = Zertifikat */
   --chart-1: #0e9f6e;
-  --chart-2: #3b82f6;
-  --info-soft: rgba(59, 130, 246, 0.12);
-  --warning: #e3a21a;
-  --warning-text: #8a5d06;
-  --warning-soft: rgba(227, 162, 26, 0.16);
-  --danger: #e85a45;
-  --danger-text: #b83e2b;
-  --danger-soft: rgba(232, 90, 69, 0.12);
-  --violet: #8b5cf6;
+  --chart-2: #4f5bd5;
+  /* Datenreihen ohne Wertung (Aktivität, Verteilung): ruhiges Slate-Blau statt Markenfarbe */
+  --chart-data: #5e7fa8;
+  --info-soft: rgba(31, 127, 184, 0.1);
+  --warning: #d99a1e;
+  --warning-text: #83580a;
+  --warning-soft: rgba(217, 154, 30, 0.14);
+  --danger: #d9503f;
+  --danger-text: #ae3a2a;
+  --on-danger: #1a0805;
+  --danger-soft: rgba(217, 80, 63, 0.1);
+  --violet: #7c5ce0;
 
-  --hero-from: #e6f7ef;
-  --hero-to: #ffffff;
-  --hero-border: #bfe8d6;
+  /* Hero-Fläche: ruhige, getönte Fläche statt Verlauf */
+  --hero: #f0f1fc;
+  --hero-border: #d9dcf6;
 
-  --code-key: #1d5fd1;
-  --code-value: #8a5d06;
-  --code-muted: #6b7588;
+  --code-key: #3f49b8;
+  --code-value: #83580a;
+  --code-muted: #66737f;
 
-  --sheet-shadow: -24px 0 48px rgba(14, 18, 24, 0.12);
+  --sheet-shadow: -24px 0 48px rgba(11, 22, 32, 0.12);
+  --overlay-shadow: 0 12px 32px rgba(11, 22, 32, 0.14);
 }
 
 .dark {
-  --bg: #0a0c10;
-  --bg-sidebar: #0e1117;
-  --surface: #12161e;
-  --surface-2: #171d28;
-  --surface-inset: #0f1219;
-  --control: #1a212d;
-  --track: #1e2633;
-  --border: #222938;
-  --border-strong: #2a3242;
-  --border-subtle: #1c2230;
-  --text: #e8ecf3;
-  --text-2: #c9d0dc;
-  --text-muted: #aeb7c6;
-  --text-subtle: #9aa4b5;
-  --text-faint: #8c96a8;
+  --bg: #0a1118;
+  --bg-sidebar: #0c141c;
+  --surface: #101a24;
+  --surface-2: #15212d;
+  --surface-inset: #0b131b;
+  --control: #182532;
+  --track: #1c2a37;
+  --border: #1e2c3a;
+  --border-strong: #2a3b4c;
+  --border-subtle: #172430;
+  --text: #e8eef4;
+  --text-2: #c7d2dd;
+  --text-muted: #a9b6c4;
+  --text-subtle: #93a1b1;
+  --text-faint: #8493a4;
 
-  --accent: #34e3a4;
-  --accent-text: #34e3a4;
-  --accent-hover: #7bf0c6;
-  --on-accent: #04140d;
-  --accent-soft: rgba(52, 227, 164, 0.12);
-  --accent-border: #1f4a3b;
+  --accent: #8b93f8;
+  --accent-text: #a9afff;
+  --accent-hover: #c7cbff;
+  --on-accent: #0b0f2a;
+  --accent-soft: rgba(139, 147, 248, 0.12);
+  --accent-border: #343b6e;
 
-  --info: #6ea8ff;
-  --info-text: #8dbbff;
-  --chart-1: #17a473;
-  --chart-2: #4f8cf0;
-  --info-soft: rgba(110, 168, 255, 0.12);
-  --warning: #f4b740;
-  --warning-text: #f4b740;
-  --warning-soft: rgba(244, 183, 64, 0.12);
-  --danger: #ff7a66;
-  --danger-text: #ff9a8a;
-  --danger-soft: rgba(255, 122, 102, 0.12);
+  --success: #3cc79a;
+  --success-text: #62d3ae;
+  --on-success: #03140d;
+  --success-soft: rgba(60, 199, 154, 0.1);
+  --success-border: #24483f;
+
+  --info: #5eb8e8;
+  --info-text: #85cbf0;
+  --chart-1: #2fa57e;
+  --chart-2: #8b93f8;
+  --chart-data: #6f8db5;
+  --info-soft: rgba(94, 184, 232, 0.12);
+  --warning: #f5b544;
+  --warning-text: #f7c266;
+  --warning-soft: rgba(245, 181, 68, 0.12);
+  --danger: #ff7b6b;
+  --danger-text: #ff9c8f;
+  --on-danger: #1a0805;
+  --danger-soft: rgba(255, 123, 107, 0.12);
   --violet: #c9a2ff;
 
-  --hero-from: #12201b;
-  --hero-to: #12161e;
-  --hero-border: #1f3a30;
+  --hero: #13172c;
+  --hero-border: #262c4c;
 
-  --code-key: #8dbbff;
-  --code-value: #f4b740;
-  --code-muted: #7c8699;
+  --code-key: #a9afff;
+  --code-value: #f7c266;
+  --code-muted: #7f8c9c;
 
-  --sheet-shadow: -24px 0 48px rgba(0, 0, 0, 0.35);
+  --sheet-shadow: -24px 0 48px rgba(0, 0, 0, 0.4);
+  --overlay-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
 /*
@@ -118,23 +137,23 @@
   --ctx-link-hover: var(--accent-hover);
   --ctx-on-accent: var(--on-accent);
   --ctx-sidebar: #ffffff;
-  --ctx-sidebar-border: #e3e7ee;
-  --ctx-switcher: #f6f7f9;
-  --ctx-switcher-border: #e3e7ee;
-  --ctx-active: #f1f3f6;
-  --ctx-label: #6b7588;
+  --ctx-sidebar-border: #e8eef2;
+  --ctx-switcher: #f4f7f9;
+  --ctx-switcher-border: #dce4ea;
+  --ctx-active: #eef0fb;
+  --ctx-label: #5d6b79;
 }
 .dark {
   --ctx-accent: var(--accent);
   --ctx-link: var(--accent-text);
   --ctx-link-hover: var(--accent-hover);
   --ctx-on-accent: var(--on-accent);
-  --ctx-sidebar: #0e1117;
-  --ctx-sidebar-border: #1c2230;
-  --ctx-switcher: #151a23;
-  --ctx-switcher-border: #252c3b;
-  --ctx-active: #171d28;
-  --ctx-label: #8c96a8;
+  --ctx-sidebar: #0c141c;
+  --ctx-sidebar-border: #172430;
+  --ctx-switcher: #111b25;
+  --ctx-switcher-border: #22313f;
+  --ctx-active: #171e33;
+  --ctx-label: #8493a4;
 }
 
 :root[data-context="company"],
@@ -142,7 +161,7 @@
 .light[data-context="company"],
 [data-context="company"] .light {
   --ctx-accent: #e3a21a;
-  --ctx-link: #8a5d06;
+  --ctx-link: #83580a;
   --ctx-link-hover: #6b4704;
   --ctx-on-accent: #1a1204;
   --ctx-sidebar: #fffbf0;
@@ -155,8 +174,8 @@
 .dark[data-context="company"],
 .dark [data-context="company"],
 [data-context="company"] .dark {
-  --ctx-accent: #f4b740;
-  --ctx-link: #f4b740;
+  --ctx-accent: #f5b544;
+  --ctx-link: #f7c266;
   --ctx-link-hover: #f8cd7a;
   --ctx-on-accent: #1a1204;
   --ctx-sidebar: #100f0b;
@@ -172,11 +191,11 @@
 .light[data-context="admin"],
 [data-context="admin"] .light {
   --ctx-accent: #e85a45;
-  --ctx-link: #b83e2b;
+  --ctx-link: #ae3a2a;
   --ctx-link-hover: #8f2e1f;
   --ctx-on-accent: #1a0805;
   --ctx-sidebar: #ffffff;
-  --ctx-sidebar-border: #e3e7ee;
+  --ctx-sidebar-border: #e8eef2;
   --ctx-switcher: #fdf1ef;
   --ctx-switcher-border: #f3cfc8;
   --ctx-active: #fbeae7;
@@ -185,15 +204,15 @@
 .dark[data-context="admin"],
 .dark [data-context="admin"],
 [data-context="admin"] .dark {
-  --ctx-accent: #ff7a66;
-  --ctx-link: #ff9a8a;
+  --ctx-accent: #ff7b6b;
+  --ctx-link: #ff9c8f;
   --ctx-link-hover: #ffb8ac;
   --ctx-on-accent: #1a0805;
-  --ctx-sidebar: #0e1117;
-  --ctx-sidebar-border: #1c2230;
+  --ctx-sidebar: #0c141c;
+  --ctx-sidebar-border: #172430;
   --ctx-switcher: #1a1312;
   --ctx-switcher-border: #3a2420;
-  --ctx-active: #1a1d26;
+  --ctx-active: #1c1a22;
   --ctx-label: #c0928a;
 }
 
@@ -229,10 +248,26 @@
   --color-link-hover: var(--ctx-link-hover);
   --color-accent-soft: color-mix(in srgb, var(--ctx-accent) 13%, transparent);
   --color-accent-border: color-mix(in srgb, var(--ctx-accent) 35%, var(--border));
-  --color-mint: var(--accent);
-  --color-mint-text: var(--accent-text);
-  --color-mint-soft: var(--accent-soft);
-  --color-mint-border: var(--accent-border);
+  /* Erfolg/„richtig“ (grün). `mint` bleibt als Alias, damit bestehende Klassen dieselbe Bedeutung behalten. */
+  --color-success: var(--success);
+  --color-success-text: var(--success-text);
+  --color-on-success: var(--on-success);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-mint: var(--success);
+  --color-mint-text: var(--success-text);
+  --color-mint-soft: var(--success-soft);
+  --color-mint-border: var(--success-border);
+  /* Markenfarbe unabhängig vom Kontext (Logo, persönliche Fortschrittsanzeigen) */
+  --color-brand: var(--accent);
+  --color-brand-text: var(--accent-text);
+  --color-brand-soft: var(--accent-soft);
+  --color-chart-data: var(--chart-data);
+  --color-on-danger: var(--on-danger);
+  --color-hero: var(--hero);
+  /* Markenzeichen (Logo-Kachel), in beiden Themes gleich */
+  --color-logo-tile: #161b3a;
+  --color-logo-mark: #a9afff;
   --color-info: var(--info);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -248,6 +283,30 @@
   --color-hero-border: var(--hero-border);
 
   --shadow-sheet: var(--sheet-shadow);
+  --shadow-overlay: var(--overlay-shadow);
+
+  /* Schriftskala (ersetzt feste Größen wie text-meta) */
+  --text-2xs: 11px;
+  --text-2xs--line-height: 1.4;
+  --text-meta: 13px;
+  --text-meta--line-height: 1.45;
+  --text-body: 15px;
+  --text-body--line-height: 1.55;
+  --text-lead: 17px;
+  --text-lead--line-height: 1.65;
+  --text-question: 22px;
+  --text-question--line-height: 1.4;
+  --text-stat: 28px;
+  --text-stat--line-height: 1.15;
+  --text-title: 30px;
+  --text-title--line-height: 1.15;
+  --text-display: 36px;
+  --text-display--line-height: 1.15;
+  --tracking-overline: 0.08em;
+  --tracking-title: -0.025em;
+
+  /* Bewegung: kurz, ohne Dauerschleife */
+  --ease-calm: cubic-bezier(0.2, 0.7, 0.2, 1);
   --radius-xs: 6px;
   --radius-sm: 8px;
   --radius-md: 10px;
@@ -283,9 +342,9 @@ body {
   }
 }
 
-/* Hero-Fläche (Weitermachen, Nächste Prüfung, Kurz-Check): der einzige Verlauf der Oberfläche */
+/* Hero-Fläche (Weitermachen, Nächste Prüfung, Kurz-Check): ruhige, getönte Fläche, keine Verläufe */
 .hero-surface {
-  background: linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 55%);
+  background: var(--hero);
   border-color: var(--hero-border);
 }
 
@@ -307,13 +366,13 @@ body {
   }
 }
 .anim-fade-in {
-  animation: ui-fade-in 200ms ease-out;
+  animation: ui-fade-in 200ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .anim-sheet-in {
-  animation: ui-sheet-in 250ms ease-out;
+  animation: ui-sheet-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .anim-pop-in {
-  animation: ui-pop-in 150ms ease-out;
+  animation: ui-pop-in 150ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 /* Syntax-Farben (highlight.js) aus den Tokens: Schlüssel/Schlüsselwörter, Werte/Strings, Kommentare/Ausgabe. */

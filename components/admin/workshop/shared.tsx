@@ -32,7 +32,7 @@ export async function api<T>(url: string, init?: { method?: string; body?: unkno
 }
 
 export const inputCls = "w-full rounded-md border border-border-strong bg-control px-3 py-2 text-sm";
-export const textareaCls = "w-full rounded-md border border-border-strong bg-control px-3 py-2 font-mono text-[13px] leading-relaxed";
+export const textareaCls = "w-full rounded-md border border-border-strong bg-control px-3 py-2 font-mono text-meta leading-relaxed";
 
 export function Field({ label, hint, children, className }: { label: string; hint?: string; children: React.ReactNode; className?: string }) {
   return (

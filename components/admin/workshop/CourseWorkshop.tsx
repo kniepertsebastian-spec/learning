@@ -101,7 +101,7 @@ export function CourseWorkshop({ certId, courseName, locale, reviewer = false }:
       {tree?.length === 0 && <p className="text-sm text-subtle">{tr("Der Kurs hat noch keine Inhalte.", "This course has no content yet.")}</p>}
       {tree?.map((d) => (
         <div key={d.id}>
-          <p className="mb-1 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">{d.name}</p>
+          <p className="mb-1 text-2xs font-semibold tracking-overline text-faint uppercase">{d.name}</p>
           <ul className="flex flex-col gap-2">
             {d.objectives.map((o) => {
               const ids = o.sections.map((s) => s.id);

@@ -234,7 +234,7 @@ export function SectionEditor({
           <DiffView before={sectionText(saved.snapshot, proposal.locale)} after={sectionText(proposal.snapshot, proposal.locale)} locale={locale} testId="ai-diff" />
           <details className="rounded-xl border border-border">
             <summary className="cursor-pointer px-3 py-2 text-sm font-medium">{tr("Vorschau des Vorschlags (so sähen es Lernende)", "Preview of the proposal (as learners would see it)")}</summary>
-            <div className="max-h-[60vh] overflow-y-auto border-t border-border bg-background p-4 text-[15px] leading-relaxed" data-testid="ai-preview">
+            <div className="max-h-[60vh] overflow-y-auto border-t border-border bg-background p-4 text-body leading-relaxed" data-testid="ai-preview">
               <RichText text={proposal.snapshot.content[proposal.locale]} headingIds />
             </div>
           </details>
@@ -273,7 +273,7 @@ export function SectionEditor({
         {view !== "edit" && (
           <div className="min-w-0">
             <p className="mb-1 text-sm font-medium">{tr("Vorschau (so sehen es Lernende)", "Preview (as learners see it)")}</p>
-            <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-background p-4 text-[15px] leading-relaxed" data-testid="section-preview">
+            <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-background p-4 text-body leading-relaxed" data-testid="section-preview">
               <RichText text={content} headingIds />
             </div>
           </div>

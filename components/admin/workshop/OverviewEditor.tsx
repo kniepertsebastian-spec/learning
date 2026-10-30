@@ -172,7 +172,7 @@ export function OverviewEditor({ certId, locale, onDirtyChange }: { certId: stri
 
       {courseOverviewSchema.safeParse(cleaned()).success && (
         <div className="rounded-2xl border border-border-subtle p-4">
-          <p className="mb-3 text-xs font-semibold tracking-[0.07em] text-faint uppercase">{tr("Vorschau für Lernende", "Learner preview")}</p>
+          <p className="mb-3 text-xs font-semibold tracking-overline text-faint uppercase">{tr("Vorschau für Lernende", "Learner preview")}</p>
           <CourseOverviewView overview={cleaned()} scope={scope} locale={L} />
         </div>
       )}

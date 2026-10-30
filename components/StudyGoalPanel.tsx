@@ -102,7 +102,7 @@ export function StudyGoalPanel({
             onChange={(e) => setGoal({ ...goal, examDate: e.target.value || null })}
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
           />
-          <span className="mt-1 block text-[11px] leading-snug text-foreground/60" data-testid="exam-date-hint-panel">{EXAM_DATE_HINT[locale]}</span>
+          <span className="mt-1 block text-2xs leading-snug text-foreground/60" data-testid="exam-date-hint-panel">{EXAM_DATE_HINT[locale]}</span>
         </label>
 
         <label className="block text-xs">

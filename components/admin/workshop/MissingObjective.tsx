@@ -99,7 +99,7 @@ export function MissingObjective({
                 <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
                   {tr("Lektion", "Lesson")} {i + 1}: {s.title[proposal.locale]}
                 </summary>
-                <div className="max-h-[50vh] overflow-y-auto border-t border-border bg-background p-4 text-[15px] leading-relaxed">
+                <div className="max-h-[50vh] overflow-y-auto border-t border-border bg-background p-4 text-body leading-relaxed">
                   <RichText text={s.content[proposal.locale]} headingIds />
                 </div>
               </details>

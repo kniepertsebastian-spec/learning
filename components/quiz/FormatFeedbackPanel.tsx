@@ -59,7 +59,7 @@ export function FormatFeedbackPanel({
       </div>
       {!correct && note && <p className="mt-2 text-xs text-subtle" data-testid="platform-note">{note}</p>}
       {!correct && solution && <SolutionView solution={solution} locale={locale} />}
-      <div className="mt-3 text-[15px] leading-[1.65] text-foreground">
+      <div className="mt-3 text-body leading-[1.65] text-foreground">
         <RichText text={explanation} />
       </div>
       {!correct && selfExplain && <SelfExplanation storageKey={`q:${questionId}`} prompt={de ? "Erkläre in einem Satz, warum das die richtige Lösung ist." : "Explain in one sentence why this is the right solution."} modelAnswer={explanation} locale={locale} />}

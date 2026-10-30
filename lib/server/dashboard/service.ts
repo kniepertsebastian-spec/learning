@@ -1,19 +1,20 @@
 import type { Seal } from "@/lib/reviewers/seal";
 import { getSealSummaries } from "@/lib/server/approvals/seal";
-import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
-  certifications, companyAssignments, courseAbandonments, courseCategories, domains, examAnswers, examAttempts, lessonCompletions, lessons, objectiveProgress, objectives,
+  certifications, companyAssignments, courseAbandonments, courseCategories, domains, examAnswers, examAttempts, exams, learningTime, lessonCompletions, lessons, objectiveProgress, objectives,
   quizAnswers, quizAttempts, quizzes, sections, studyProfiles, studySessions, type CourseCategoryColor,
 } from "@/lib/server/db/schema";
 import { visibleCertificationsCondition, type Viewer } from "@/lib/server/catalog/visibility";
 import { getDueReviewCount } from "@/lib/server/review/service";
 import { getReadiness } from "@/lib/server/readiness/service";
+import type { ReadinessLevel } from "@/lib/server/readiness/engine";
 import { getTopWeakObjectives } from "@/lib/server/study/session-service";
 import { getProgressView, type ProgressView } from "@/lib/server/progress/snapshots";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import {
-  accuracy, certState, daysUntil, domainLight, hiddenByAbandonment, masteryPercent, pickContinueIndex, shortCodeOf, weekBars, weekStart,
+  accuracy, certState, dayKey, daysUntil, domainLight, hiddenByAbandonment, masteryPercent, pickContinueIndex, shortCodeOf, weekBars, weekStart,
   type CertState, type DomainLight,
 } from "@/lib/dashboard/logic";
 import type { Localized } from "@/lib/types";
@@ -43,7 +44,7 @@ export interface LearnerDashboard {
     /** Rückblick und Einschätzung mit echten Zahlen (nur für die Person selbst). */
     progress: ProgressView | null;
     cert: DashboardCert;
-    readiness: { score: number | null; confidence: number };
+    readiness: { score: number | null; confidence: number; level: ReadinessLevel; coverage: number };
     domains: Array<{ name: string; light: DomainLight; percent: number }>;
     recommendation: null | { objectiveId: string; objectiveTitle: string; domainName: string };
     dueCount: number;
@@ -72,15 +73,24 @@ export interface LearnerDashboard {
     lessonsDoneWeek: number;
   };
   week: { counts: number[]; todayIndex: number; activeDays: number; plannedDays: number };
+  /** Aktive Lernzeit (Minuten) seit Montag aus `learning_time`; null, solange nie Lernzeit erfasst wurde. */
+  learningMinutesWeek: number | null;
+  /** Tage (UTC, „YYYY-MM-DD“) der letzten 6 Wochen mit Antworten, Lektionsabschlüssen oder erfasster Lernzeit. */
+  activeDays: string[];
+  /** Letzte abgeschlossene Lektionen und Prüfungssimulationen, neueste zuerst (höchstens 5). */
+  recent: Array<
+    | { kind: "lesson"; at: Date; certName: string; title: Localized<string> }
+    | { kind: "exam"; at: Date; certName: string; score: number | null; passed: boolean | null }
+  >;
 }
 
 const DAY = 86_400_000;
 
 /**
  * Alles für das Lern-Dashboard (UI U3) aus bestehenden Daten: Antworten aus Quiz und Prüfungen, Lektionsabschlüsse,
- * Wiederholungen, Readiness. Keine erfundenen Kennzahlen: Lernzeit wird nicht erfasst und deshalb nicht gezeigt.
+ * Wiederholungen, Readiness. Keine erfundenen Kennzahlen: Lernzeit nur aus `learning_time` (aktive Zeit), sonst nicht gezeigt.
  */
-export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date = new Date()): Promise<LearnerDashboard> {
+export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date = new Date(), opts: { mainSlug?: string | null } = {}): Promise<LearnerDashboard> {
   const db = getDb();
   const userId = viewer.id;
   const [allVisible, assignmentRows, abandonedRows] = await Promise.all([
@@ -178,10 +188,13 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
 
   // Hero
   let hero: LearnerDashboard["hero"] = null;
-  const mainCertId = lastTouched ? sectionRows.find((s) => s.id === lastTouched[0])?.certId ?? certs[0]?.id : certs[0]?.id;
+  // Gewählter Kurs (Kursauswahl im Dashboard) geht vor dem zuletzt bearbeiteten.
+  const chosen = opts.mainSlug ? certs.find((c) => c.slug === opts.mainSlug)?.id : undefined;
+  const mainCertId = chosen ?? (lastTouched ? sectionRows.find((s) => s.id === lastTouched[0])?.certId ?? certs[0]?.id : certs[0]?.id);
   if (mainCertId) {
     const list = sectionsByCert.get(mainCertId) ?? [];
-    const idx = pickContinueIndex(list.map((s) => ({ id: s.id, done: doneAt.has(s.id) })), lastTouched && list.some((s) => s.id === lastTouched[0]) ? lastTouched[0] : null);
+    const lastInCert = [...doneAt.entries()].filter(([id]) => list.some((s) => s.id === id)).sort((a, b) => b[1].getTime() - a[1].getTime())[0] ?? null;
+    const idx = pickContinueIndex(list.map((s) => ({ id: s.id, done: doneAt.has(s.id) })), lastInCert ? lastInCert[0] : null);
     const target = list[idx];
     const cert = visible.find((c) => c.id === mainCertId);
     if (target && cert) {
@@ -195,7 +208,7 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
         position: idx + 1,
         total: list.length,
         percent: list.length ? Math.round((done / list.length) * 100) : 0,
-        lastAt: lastTouched ? lastTouched[1] : null,
+        lastAt: lastInCert ? lastInCert[1] : null,
       };
     }
   }
@@ -232,11 +245,10 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
         const percent = masteryPercent(strong, ok, totalOf.get(d.id) ?? 0);
         return { name: d.name, percent, light: domainLight(percent) };
       })
-      .sort((a, b) => a.percent - b.percent)
-      .slice(0, 3);
+      .sort((a, b) => a.percent - b.percent);
     main = {
       cert: mainCert,
-      readiness: { score: readiness.score, confidence: readiness.confidence },
+      readiness: { score: readiness.score, confidence: readiness.confidence, level: readiness.level, coverage: Math.round(readiness.breakdown.objectiveCoverage * 100) },
       domains: domainStats,
       recommendation: weak[0] ? { objectiveId: weak[0].objectiveId, objectiveTitle: weak[0].objectiveTitle, domainName: weak[0].domainName } : null,
       dueCount: due,
@@ -250,6 +262,40 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
 
   const weekStartDate = weekStart(now);
   const lessonsDoneWeek = [...doneAt.values()].filter((d) => d >= weekStartDate).length;
+
+  // Kalender und Lernzeit: nur echte Ereignisse, keine Schätzung.
+  const since = new Date(weekStartDate.getTime() - 42 * DAY);
+  const [timeRows, examRows] = await Promise.all([
+    db.select({ day: learningTime.day, seconds: learningTime.seconds }).from(learningTime).where(and(eq(learningTime.userId, userId), gte(learningTime.day, dayKey(since)))),
+    certIds.length
+      ? db
+          .select({ at: examAttempts.completedAt, score: examAttempts.score, passed: examAttempts.passed, certName: certifications.name })
+          .from(examAttempts)
+          .innerJoin(exams, eq(exams.id, examAttempts.examId))
+          .innerJoin(certifications, eq(certifications.id, exams.certificationId))
+          .where(and(eq(examAttempts.userId, userId), isNotNull(examAttempts.completedAt), inArray(exams.certificationId, certIds)))
+          .orderBy(desc(examAttempts.completedAt))
+          .limit(5)
+      : [],
+  ]);
+  const weekKey = dayKey(weekStartDate);
+  const learningMinutesWeek = timeRows.length ? Math.round(timeRows.filter((r) => r.day >= weekKey).reduce((n, r) => n + r.seconds, 0) / 60) : null;
+  const days = new Set<string>();
+  for (const a of answers) if (a.at >= since) days.add(dayKey(a.at));
+  for (const at of doneAt.values()) if (at >= since) days.add(dayKey(at));
+  for (const r of timeRows) if (r.seconds > 0) days.add(r.day);
+
+  const certNameOf = new Map(visible.map((c) => [c.id, c.name]));
+  const sectionById = new Map(sectionRows.map((r) => [r.id, r]));
+  const recent: LearnerDashboard["recent"] = [
+    ...[...doneAt.entries()].flatMap(([id, at]) => {
+      const sec = sectionById.get(id);
+      return sec ? [{ kind: "lesson" as const, at, certName: certNameOf.get(sec.certId) ?? "", title: sec.title }] : [];
+    }),
+    ...examRows.flatMap((r) => (r.at ? [{ kind: "exam" as const, at: r.at, certName: r.certName, score: r.score === null ? null : Math.round(Number(r.score)), passed: r.passed }] : [])),
+  ]
+    .sort((a, b) => b.at.getTime() - a.at.getTime())
+    .slice(0, 5);
 
   return {
     certs,
@@ -267,5 +313,8 @@ export async function getLearnerDashboard(viewer: NonNullable<Viewer>, now: Date
       lessonsDoneWeek,
     },
     week: { counts: bars.counts, todayIndex: bars.todayIndex, activeDays: learning.weekly.daysLearned, plannedDays: learning.weekly.goal },
+    learningMinutesWeek,
+    activeDays: [...days].sort(),
+    recent,
   };
 }

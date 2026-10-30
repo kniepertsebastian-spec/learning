@@ -42,7 +42,7 @@ export function StepsBlock({ children }: { children: React.ReactNode }) {
       {steps.map((s, i) => (
         <React.Fragment key={i}>
           <li className="min-w-[120px] flex-1 basis-[140px] rounded-xl border border-border bg-surface p-3">
-            <p className="text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">{i + 1}</p>
+            <p className="text-2xs font-semibold tracking-overline text-faint uppercase">{i + 1}</p>
             <p className="mt-0.5 text-sm font-semibold">{s.label}</p>
             {s.body ? <div className="mt-1 font-mono text-xs break-words text-code-key">{s.body}</div> : null}
           </li>
@@ -62,14 +62,14 @@ export function PracticeBlock({ children, minutes }: { children: React.ReactNode
     if (p && (PRACTICE_PARTS as readonly string[]).includes(p)) parts.set(p, el.props.children);
   }
   const tile = "min-w-0 rounded-xl border border-border bg-surface p-4 [&>*:first-child]:mt-0";
-  const label = "mb-1.5 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase";
+  const label = "mb-1.5 text-2xs font-semibold tracking-overline text-faint uppercase";
   return (
     <section className="my-4 rounded-2xl border border-info/40 bg-surface-inset p-4 sm:p-5" data-testid="practice-block" aria-label={t.lesson_blocks.practice}>
       <header className="mb-3 flex flex-wrap items-center gap-2.5">
         <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-info-soft text-info-text" aria-hidden="true">
           <Wrench className="h-[18px] w-[18px]" />
         </span>
-        <p className="text-[13px] font-semibold tracking-wide text-info-text uppercase">{t.lesson_blocks.practice}</p>
+        <p className="text-meta font-semibold tracking-wide text-info-text uppercase">{t.lesson_blocks.practice}</p>
         {minutes && <span className="ml-auto text-xs text-faint">ca. {minutes} {t.lesson_blocks.minutes}</span>}
       </header>
       <div className="grid gap-3 md:grid-cols-2">

@@ -117,7 +117,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-md border border-border bg-surface p-3 text-sm shadow-lg">
+        <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-md border border-border bg-surface p-3 text-sm shadow-overlay">
           <p className="mb-1 font-medium">
             {online
               ? locale === "de"

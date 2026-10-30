@@ -17,7 +17,7 @@ export const buttonVariants = cva(
         ghost: "border border-border bg-transparent text-muted hover:bg-surface-2 hover:text-foreground",
         inverted: "bg-foreground text-background hover:opacity-90",
       },
-      size: { sm: "h-9 px-3 text-[13px]", md: "h-11 px-4 text-sm", lg: "h-[46px] px-5 text-[15px]" },
+      size: { sm: "h-9 px-3 text-meta", md: "h-11 px-4 text-sm", lg: "h-[46px] px-5 text-body" },
     },
     defaultVariants: { variant: "primary", size: "md" },
   },

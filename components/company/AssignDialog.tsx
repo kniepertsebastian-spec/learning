@@ -137,7 +137,7 @@ export function AssignDialog({
                 {paths.length === 0 && groups.length === 0 && <p className="text-sm text-subtle">{o.noPaths}</p>}
                 {groups.length > 0 && (
                   <fieldset>
-                    <legend className="mb-1.5 text-xs font-semibold tracking-[0.07em] text-faint uppercase">{o.wizGroup}</legend>
+                    <legend className="mb-1.5 text-xs font-semibold tracking-overline text-faint uppercase">{o.wizGroup}</legend>
                     <div className="flex flex-col gap-1.5">
                       {groups.map((g) => (
                         <label key={g.id} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 text-sm", target?.type === "group" && target.id === g.id ? "border-accent bg-accent-soft" : "border-border-strong hover:bg-surface-2")}>
@@ -151,7 +151,7 @@ export function AssignDialog({
                 )}
                 {paths.length > 0 && (
                   <fieldset>
-                    <legend className="mb-1.5 text-xs font-semibold tracking-[0.07em] text-faint uppercase">{o.wizPath}</legend>
+                    <legend className="mb-1.5 text-xs font-semibold tracking-overline text-faint uppercase">{o.wizPath}</legend>
                     <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto">
                       {paths.map((p) => (
                         <label key={p.id} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 text-sm", target?.type === "path" && target.id === p.id ? "border-accent bg-accent-soft" : "border-border-strong hover:bg-surface-2")}>

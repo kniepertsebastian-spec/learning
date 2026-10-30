@@ -84,7 +84,9 @@ export type NavIcon =
   | "file"
   | "key"
   | "inbox"
-  | "layers";
+  | "layers"
+  | "award"
+  | "settings";
 
 export type NavItem = { href: string; label: NavLabelKey; icon: NavIcon; exact?: boolean };
 
@@ -97,11 +99,11 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
         { href: "/", label: "learn", icon: "home", exact: true },
         { href: "/catalog", label: "catalog", icon: "book" },
         { href: "/exams", label: "examPlanner", icon: "calendar" },
-        { href: "/certificates", label: "certificates", icon: "shield" },
+        { href: "/certificates", label: "certificates", icon: "award" },
         { href: "/career", label: "career", icon: "chart" },
         { href: "/profile", label: "profile", icon: "user" },
         ...(opts.isReviewer ? [{ href: "/reviewer", label: "reviewerCourses" as const, icon: "tasks" as const }] : []),
-        { href: "/account", label: "account", icon: "shield" },
+        { href: "/account", label: "account", icon: "settings" },
       ];
     case "company":
       return [
@@ -110,7 +112,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
         { href: "/company?tab=paths", label: "companyPaths", icon: "book" },
         { href: "/company?tab=work", label: "companyWork", icon: "tasks" },
         ...(opts.canAssign ? [{ href: "/company?tab=onboarding", label: "companyOnboarding" as const, icon: "users" as const }] : []),
-        { href: "/company/certificates", label: "certificates", icon: "shield" },
+        { href: "/company/certificates", label: "certificates", icon: "award" },
         { href: "/company?tab=documents", label: "companyDocuments", icon: "file" },
         ...(opts.isCompanyAdmin ? [{ href: "/company?tab=team", label: "companyTeam" as const, icon: "users" as const }] : []),
         ...(opts.isCompanyAdmin ? [{ href: "/company?tab=sso", label: "companySignIn" as const, icon: "key" as const }] : []),

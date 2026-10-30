@@ -32,7 +32,7 @@ export function QuestionHead({
           onClick={onToggleFlag}
           aria-pressed={flagged}
           data-testid="flag-question"
-          className={cn("ml-auto flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium", flagged ? "bg-warning-soft text-warning-text" : "text-subtle hover:bg-surface-2 hover:text-foreground")}
+          className={cn("ml-auto flex min-h-9 items-center gap-1.5 rounded-full px-3 text-meta font-medium", flagged ? "bg-warning-soft text-warning-text" : "text-subtle hover:bg-surface-2 hover:text-foreground")}
         >
           <Flag className={cn("h-4 w-4", flagged && "fill-current")} aria-hidden="true" />
           {flagged ? t.quiz.flagged : t.quiz.flag}

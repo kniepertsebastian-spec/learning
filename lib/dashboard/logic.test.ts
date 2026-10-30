@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accuracy, certState, daysUntil, domainLight, greetingPart, hiddenByAbandonment, masteryPercent, pickContinueIndex, shortCodeOf, weekBars, weekStart } from "./logic";
+import { accuracy, certState, dayKey, daysUntil, domainLight, greetingPart, hiddenByAbandonment, masteryPercent, pickContinueIndex, monthGrid, shortCodeOf, weekBars, weekStart } from "./logic";
 
 describe("Dashboard-Logik", () => {
   it("Begrüßung nach Tageszeit", () => {
@@ -47,5 +47,15 @@ describe("Dashboard-Logik", () => {
     expect(accuracy([])).toBeNull();
     expect(shortCodeOf("CompTIA Security+", "SEC+")).toBe("SEC+");
     expect(shortCodeOf("Certified Kubernetes Administrator", null)).toBe("CKA");
+  });
+  it("Monatsraster beginnt am Montag und füllt volle Wochen", () => {
+    const grid = monthGrid(new Date("2026-10-29T10:00:00Z"));
+    expect(grid.month).toBe(9);
+    expect(grid.cells).toHaveLength(35);
+    expect(grid.cells[0]).toEqual({ key: "2026-09-28", day: 28, inMonth: false });
+    expect(grid.cells[3]).toEqual({ key: "2026-10-01", day: 1, inMonth: true });
+    expect(grid.cells.filter((c) => c.inMonth)).toHaveLength(31);
+    expect(grid.cells.at(-1)).toEqual({ key: "2026-11-01", day: 1, inMonth: false });
+    expect(dayKey(new Date("2026-10-29T23:30:00Z"))).toBe("2026-10-29");
   });
 });

@@ -414,7 +414,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
 
           {step === 3 && summary && (
             <dl className="space-y-2 rounded-xl border border-border bg-surface-inset p-4 text-sm" data-testid="wizard-summary">
-              <p className="text-xs font-semibold tracking-[0.07em] text-faint uppercase">{ac.reviewTitle}</p>
+              <p className="text-xs font-semibold tracking-overline text-faint uppercase">{ac.reviewTitle}</p>
               <div><dt className="text-xs text-subtle">{ac.fieldTitle}</dt><dd className="font-medium">{summary.title}</dd></div>
               <div><dt className="text-xs text-subtle">{ac.fieldProvider}</dt><dd>{summary.provider}{summary.version ? ` · ${summary.version}` : ""}</dd></div>
               <div><dt className="text-xs text-subtle">{ac.fieldGroup}</dt><dd>{summary.group}</dd></div>

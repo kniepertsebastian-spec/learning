@@ -21,7 +21,7 @@ export function WeaknessRadar({ radar, slug, locale }: { radar: Radar_; slug: st
         {de ? "Schwächen-Radar" : "Weakness radar"}
         <span className={`rounded-full px-1.5 text-xs ${count > 0 ? "bg-warning-soft" : "bg-mint-soft text-mint-text"}`} data-testid="weakness-radar-count">{count}</span>
       </summary>
-      <div className="absolute right-0 z-20 mt-1 w-[min(22rem,90vw)] rounded-xl border border-border bg-surface p-3 text-sm shadow-lg" data-testid="weakness-radar-panel">
+      <div className="absolute right-0 z-20 mt-1 w-[min(22rem,90vw)] rounded-xl border border-border bg-surface p-3 text-sm shadow-overlay" data-testid="weakness-radar-panel">
         {count === 0 ? (
           <p className="text-foreground/70" data-testid="weakness-radar-none">{de ? "Keine Schwachstellen erkannt: Deine letzten Antworten aus den Quizzes waren richtig." : "No weak spots found: your latest quiz answers were correct."}</p>
         ) : (

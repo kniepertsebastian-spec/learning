@@ -20,7 +20,7 @@ export function ReadingProgress() {
   }, []);
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-30 h-0.5 bg-transparent" role="progressbar" aria-hidden="true" data-testid="reading-progress">
-      <div className="h-full bg-mint transition-[width] duration-100" style={{ width: `${pct}%` }} />
+      <div className="h-full bg-accent transition-[width] duration-100" style={{ width: `${pct}%` }} />
     </div>
   );
 }

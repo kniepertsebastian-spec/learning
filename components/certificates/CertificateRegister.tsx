@@ -59,7 +59,7 @@ export function CertificateRegister({
     <div className="flex flex-col gap-6" data-testid="certificate-register">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold tracking-[0.07em] text-link uppercase">{r.overline}</p>
+          <p className="text-2xs font-semibold tracking-overline text-link uppercase">{r.overline}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{r.title}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -86,7 +86,7 @@ export function CertificateRegister({
         <ul className="flex h-28 items-end gap-2" role="img" aria-label={months.map((m) => `${m.key}: ${m.count}`).join(", ")}>
           {months.map((m) => (
             <li key={m.key} className="flex flex-1 flex-col items-center gap-1.5">
-              <span className="text-[11px] tabular-nums text-subtle">{m.count > 0 ? m.count : ""}</span>
+              <span className="text-2xs tabular-nums text-subtle">{m.count > 0 ? m.count : ""}</span>
               <span className="flex h-16 w-full items-end rounded-md bg-track"><span className={cn("w-full rounded-md", m.soon ? "bg-warning" : "bg-subtle")} style={{ height: `${m.count === 0 ? 0 : Math.max(10, Math.round((m.count / maxMonth) * 100))}%` }} /></span>
               <span className="text-[10px] text-faint">{new Date(m.label).toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", { month: "short", timeZone: "UTC" })}</span>
             </li>

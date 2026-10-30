@@ -5,12 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { BackBar } from "@/components/shell/BackBar";
+import { LogoMark } from "@/components/shell/Logo";
 import { SidebarContent, type ShellData } from "@/components/shell/Sidebar";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { UnsyncedNotice } from "@/components/UnsyncedNotice";
 import { Badge } from "@/components/ui/badge";
-import { SearchField } from "@/components/ui/search-field";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/cn";
 import { useLocale } from "@/lib/i18n";
@@ -30,7 +30,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
       <OfflineBanner />
       <header className="flex h-[calc(4rem+env(safe-area-inset-top))] items-center justify-between px-4 pt-[env(safe-area-inset-top)] sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 font-semibold">
-          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">K</span>
+          <LogoMark />
           {t.appTitle}
         </Link>
         <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
       {ctx === "admin" && (
         <div role="note" className="z-40 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning/40 bg-warning-soft px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-sm text-warning-text md:sticky md:top-0 md:h-10 md:py-0 md:pt-0" data-testid="admin-strip">
           <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <strong className="font-semibold tracking-[0.06em]">{t.shell.adminStrip}</strong>
+          <strong className="font-semibold tracking-overline">{t.shell.adminStrip}</strong>
           <span>{t.shell.adminStripText}</span>
           <Link href="/" className="ml-auto font-medium underline underline-offset-2">{t.shell.adminStripLink}</Link>
         </div>
@@ -77,7 +77,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
         {/* Mobil: obere Leiste mit Sheet */}
         <div className={cn("sticky top-0 z-30 flex items-center justify-between border-b border-sidebar-border bg-sidebar px-4 md:hidden", ctx === "admin" ? "h-14" : "h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)]")}>
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">K</span>
+            <LogoMark className="h-7 w-7" />
             {t.appTitle}
           </Link>
           <button type="button" onClick={() => setMenuOpen(true)} aria-label={t.shell.openMenu} data-testid="mobile-menu" className="flex h-10 w-10 items-center justify-center rounded-md border border-border-strong bg-control">
@@ -99,11 +99,8 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-3 px-4 pt-4 sm:px-6 lg:px-8">
             <BackBar pathname={pathname} ctx={ctx} />
-            {ctx === "personal" ? (
-              <SearchField disabled aria-label={t.shell.searchLabel} placeholder={t.shell.search} className="max-w-[460px] flex-1 opacity-70" />
-            ) : (
-              <div className="flex-1" />
-            )}
+            {/* Suchfeld erst, wenn es eine echte Suche gibt (docs/ROADMAP-UI.md, Später: Command-Palette) */}
+            <div className="flex-1" />
             <div className="ml-auto flex items-center gap-2">
               {ctx === "personal" && weekly && (
                 <Badge tone={weekly.days >= weekly.goal ? "mint" : "neutral"} className="h-8 gap-1.5 px-3 text-sm" data-testid="weekly-goal-pill">

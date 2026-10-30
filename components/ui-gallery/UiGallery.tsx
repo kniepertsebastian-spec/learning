@@ -41,7 +41,7 @@ function Showcase() {
       <section className="grid gap-4 md:grid-cols-2">
         <Card variant="hero">
           <Overline>Weitermachen</Overline>
-          <h2 className="mt-2 text-[26px] leading-tight font-semibold tracking-tight">Troubleshooting von Netzwerkfehlern</h2>
+          <h2 className="mt-2 text-stat leading-tight font-semibold tracking-tight">Troubleshooting von Netzwerkfehlern</h2>
           <ProgressBar value={62} size="lg" className="mt-4 max-w-[520px]" label="Fortschritt" />
           <div className="mt-4 flex gap-2"><Button iconRight={<ArrowRight className="h-4 w-4" />}>Weiterlernen</Button><Button variant="secondary">12 Wiederholungen</Button></div>
         </Card>

@@ -525,7 +525,7 @@ export function BlueprintReview({
                         className="mt-1.5 w-full rounded border border-border bg-surface px-1.5 py-1 text-xs disabled:opacity-60"
                       />
                       {objective.confidence < 0.5 && (
-                        <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-red-600">
+                        <label className="mt-1.5 flex items-center gap-1.5 text-2xs text-red-600">
                           <input
                             type="checkbox"
                             disabled={locked}

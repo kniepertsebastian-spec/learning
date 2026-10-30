@@ -73,7 +73,7 @@ export function ActivityTrends({
             <p className="text-lg font-semibold">
               {t.avgAccuracy !== null ? `${t.avgAccuracy}%` : "–"}
             </p>
-            <p className="text-[11px] text-foreground/50">
+            <p className="text-2xs text-foreground/50">
               {t.activeDays} {locale === "de" ? "aktive Tage" : "active days"}
             </p>
           </div>

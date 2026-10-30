@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/cn";
 
 const PALETTE = ["bg-mint-soft text-mint-text", "bg-info-soft text-info-text", "bg-warning-soft text-warning-text", "bg-danger-soft text-danger-text", "bg-surface-2 text-violet"] as const;
-const SIZE = { sm: "h-[26px] w-[26px] text-[11px]", md: "h-8 w-8 text-xs", lg: "h-[34px] w-[34px] text-[13px]" } as const;
+const SIZE = { sm: "h-[26px] w-[26px] text-2xs", md: "h-8 w-8 text-xs", lg: "h-[34px] w-[34px] text-meta" } as const;
 
 export function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -34,7 +34,7 @@ export function AvatarStack({ names, max = 4, size = "sm", className }: { names:
       {shown.map((n, i) => (
         <Avatar key={`${n}-${i}`} name={n} size={size} className={cn("ring-2 ring-surface", i > 0 && "-ml-1.5")} />
       ))}
-      {rest > 0 && <span className={cn("-ml-1.5 inline-flex items-center justify-center rounded-full bg-surface-2 text-[11px] font-semibold text-muted ring-2 ring-surface", SIZE[size])}>+{rest}</span>}
+      {rest > 0 && <span className={cn("-ml-1.5 inline-flex items-center justify-center rounded-full bg-surface-2 text-2xs font-semibold text-muted ring-2 ring-surface", SIZE[size])}>+{rest}</span>}
     </span>
   );
 }

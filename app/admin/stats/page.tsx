@@ -66,7 +66,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
         </form>
         <div className="inline-flex gap-1 rounded-lg border border-border-subtle bg-surface-inset p-1" role="group" aria-label={de ? "Zeitraster" : "Interval"}>
           {GRANULARITIES.map((x) => (
-            <Link key={x} href={href({ g: x })} aria-current={x === g ? "true" : undefined} className={cn("flex h-8 items-center rounded-md px-3 text-[13px] font-medium", x === g ? "bg-surface-2 text-foreground" : "text-subtle hover:text-foreground")}>
+            <Link key={x} href={href({ g: x })} aria-current={x === g ? "true" : undefined} className={cn("flex h-8 items-center rounded-md px-3 text-meta font-medium", x === g ? "bg-surface-2 text-foreground" : "text-subtle hover:text-foreground")}>
               {gLabel[x]}
             </Link>
           ))}

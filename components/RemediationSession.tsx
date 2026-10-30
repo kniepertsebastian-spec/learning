@@ -121,7 +121,7 @@ export function RemediationSession({
     return (
       <Card className="max-w-[760px]">
         <h2 className="mb-3 text-lg font-semibold">{lesson.title[locale]}</h2>
-        <p className="mb-4 text-[15px] leading-[1.65] whitespace-pre-wrap text-muted">{lesson.explanation[locale]}</p>
+        <p className="mb-4 text-body leading-[1.65] whitespace-pre-wrap text-muted">{lesson.explanation[locale]}</p>
 
         {lesson.keyPoints[locale]?.length > 0 && (
           <div className="mb-4">

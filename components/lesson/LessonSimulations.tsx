@@ -112,7 +112,7 @@ export function LessonSimulationsProvider({
         <SheetContent className="w-[min(640px,100vw)]" data-testid="lesson-text-sheet">
           <SheetTitle>{t.lesson_blocks.simTextTitle}</SheetTitle>
           <SheetDescription>{t.lesson_blocks.simTextHint}</SheetDescription>
-          <div ref={bodyRef} className="mt-4 text-[15px] leading-[1.7] text-text-2 [&_p]:my-3 [&_h1]:mt-2 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mt-4 [&_h3]:font-semibold">
+          <div ref={bodyRef} className="mt-4 text-body leading-[1.7] text-text-2 [&_p]:my-3 [&_h1]:mt-2 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mt-4 [&_h3]:font-semibold">
             <RichText text={reading} />
           </div>
         </SheetContent>

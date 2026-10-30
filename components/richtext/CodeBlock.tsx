@@ -25,7 +25,7 @@ export function CodeBlock({ code, title, lines }: { code: React.ReactElement<{ c
           <CopyButton text={text} title={undefined} />
         </figcaption>
       )}
-      <pre className="overflow-x-auto p-3.5 font-mono text-[13px] leading-relaxed text-foreground">
+      <pre className="overflow-x-auto p-3.5 font-mono text-meta leading-relaxed text-foreground">
         <code className={cn("hljs block", code.props.className)}>
           {split.map((line, i) => (
             <span key={i} data-line={i + 1} data-highlighted={marked.has(i + 1) || undefined} className={cn("block min-h-[1.4em] px-1", marked.has(i + 1) && "-mx-3.5 border-l-2 border-accent bg-accent-soft px-3.5")}>
@@ -58,7 +58,7 @@ export function TerminalBlock({ code, lines }: { code: React.ReactElement<{ clas
         </span>
         {commands && <CopyButton text={commands} />}
       </figcaption>
-      <pre className="overflow-x-auto p-3.5 font-mono text-[13px] leading-relaxed">
+      <pre className="overflow-x-auto p-3.5 font-mono text-meta leading-relaxed">
         <code>
           {rows.map((row, i) => {
             const isCommand = row.startsWith("$ ");

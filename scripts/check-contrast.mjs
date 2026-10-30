@@ -56,7 +56,10 @@ const PAIRS = [
   ["--text-subtle", "--bg", 4.5], ["--text-subtle", "--surface", 4.5], ["--text-subtle", "--surface-2", 4.5],
   ["--text-faint", "--bg", 4.5], ["--text-faint", "--surface", 4.5], ["--text-faint", "--surface-2", 4.5],
   ["--accent-text", "--bg", 4.5], ["--accent-text", "--surface", 4.5],
-  ["--on-accent", "--accent", 4.5],
+  ["--on-accent", "--accent", 4.5], ["--accent-text", "--surface-2", 4.5], ["--accent-text", "--hero", 4.5], ["--text", "--hero", 4.5], ["--text-muted", "--hero", 4.5],
+  ["--success-text", "--surface", 4.5], ["--success-text", "--bg", 4.5], ["--on-success", "--success", 4.5], ["--on-danger", "--danger", 4.5],
+  ["--info-text", "--bg", 4.5], ["--warning-text", "--bg", 4.5], ["--danger-text", "--bg", 4.5],
+  ["--text-faint", "--surface-inset", 4.5], ["--chart-data", "--surface", 3], ["--accent", "--surface", 3], ["--success", "--surface", 3] ,
   ["--info-text", "--surface", 4.5], ["--warning-text", "--surface", 4.5], ["--danger-text", "--surface", 4.5], ["--violet", "--surface", 3],
 ];
 const CTX_PAIRS = [["--ctx-link", "--bg", 4.5], ["--ctx-link", "--surface", 4.5], ["--ctx-on-accent", "--ctx-accent", 4.5], ["--ctx-label", "--ctx-sidebar", 4.5]];

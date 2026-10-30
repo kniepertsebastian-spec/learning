@@ -3,34 +3,67 @@
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
+/** Gewählte Darstellung: „system“ folgt der Geräteeinstellung (Standard für neue Nutzer). */
+export type ThemePreference = "system" | Theme;
 
 const STORAGE_KEY = "certstudy-theme";
+const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 let listeners: Array<() => void> = [];
-let currentTheme: Theme | null = null;
+let currentPreference: ThemePreference | null = null;
+let mediaBound = false;
 
-function computeInitialTheme(): Theme {
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === "dark" || stored === "light") return stored;
-  // Dunkel ist der Standard der Oberfläche (docs/ROADMAP-UI.md); wer Hell gewählt hat, behält es.
-  return "dark";
+function readPreference(): ThemePreference {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored === "dark" || stored === "light" || stored === "system") return stored;
+  } catch {
+    /* Speicher gesperrt: Systemeinstellung */
+  }
+  return "system";
+}
+
+function resolve(preference: ThemePreference): Theme {
+  if (preference !== "system") return preference;
+  return window.matchMedia?.(DARK_QUERY).matches ? "dark" : "light";
 }
 
 function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0A0C10" : "#F6F7F9");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0A1118" : "#F4F7F9");
 }
 
-function getSnapshot(): Theme {
-  if (currentTheme === null) {
-    currentTheme = computeInitialTheme();
-    applyTheme(currentTheme);
+function notify() {
+  for (const listener of listeners) listener();
+}
+
+function bindMedia() {
+  if (mediaBound || !window.matchMedia) return;
+  mediaBound = true;
+  window.matchMedia(DARK_QUERY).addEventListener("change", () => {
+    if (getPreference() !== "system") return;
+    applyTheme(resolve("system"));
+    notify();
+  });
+}
+
+function getPreference(): ThemePreference {
+  if (currentPreference === null) {
+    currentPreference = readPreference();
+    applyTheme(resolve(currentPreference));
+    bindMedia();
   }
-  return currentTheme;
+  return currentPreference;
 }
 
-function getServerSnapshot(): Theme {
-  return "dark";
+/** Snapshot als String „Wahl:aufgelöst“, damit ein Systemwechsel bei „system“ ebenfalls neu rendert. */
+function getSnapshot(): string {
+  const preference = getPreference();
+  return `${preference}:${resolve(preference)}`;
+}
+
+function getServerSnapshot(): string {
+  return "system:dark";
 }
 
 function subscribe(callback: () => void): () => void {
@@ -40,28 +73,36 @@ function subscribe(callback: () => void): () => void {
   };
 }
 
-function setTheme(next: Theme) {
-  currentTheme = next;
-  window.localStorage.setItem(STORAGE_KEY, next);
-  applyTheme(next);
-  for (const listener of listeners) listener();
+function setPreference(next: ThemePreference) {
+  currentPreference = next;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    /* nur für diese Sitzung */
+  }
+  applyTheme(resolve(next));
+  notify();
 }
 
 interface ThemeContextValue {
+  /** Tatsächlich angezeigte Darstellung */
   theme: Theme;
+  preference: ThemePreference;
+  setPreference: (next: ThemePreference) => void;
   toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [preference, theme] = snapshot.split(":") as [ThemePreference, Theme];
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setPreference(theme === "dark" ? "light" : "dark");
   }, [theme]);
 
-  const value = useMemo<ThemeContextValue>(() => ({ theme, toggleTheme }), [theme, toggleTheme]);
+  const value = useMemo<ThemeContextValue>(() => ({ theme, preference, setPreference, toggleTheme }), [theme, preference, toggleTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

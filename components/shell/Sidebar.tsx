@@ -4,6 +4,7 @@ import { ChevronsUpDown, Check, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ContextIcon, NAV_ICONS } from "@/components/shell/nav-icons";
+import { LogoMark } from "@/components/shell/Logo";
 import { UserMenu } from "@/components/shell/UserMenu";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -44,7 +45,7 @@ function ContextSwitcher({ ctx, data, onNavigate }: { ctx: ShellContext; data: S
     <>
       <ContextTile ctx={ctx} name={name} />
       <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-[11px] font-medium tracking-[0.07em] text-ctx-label uppercase">{t.shell.context}</span>
+        <span className="block truncate text-2xs font-medium tracking-overline text-ctx-label uppercase">{t.shell.context}</span>
         <span className="block truncate text-sm font-semibold text-foreground">{name}</span>
       </span>
       {multi && <ChevronsUpDown className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />}
@@ -63,7 +64,7 @@ function ContextSwitcher({ ctx, data, onNavigate }: { ctx: ShellContext; data: S
           <DropdownMenuItem key={c} asChild>
             <Link href={contextHref(c)} onClick={onNavigate} data-testid={`context-option-${c}`} className="justify-between">
               <span className="flex items-center gap-2.5">
-                <span className={cn("h-2 w-2 rounded-full", c === "company" ? "bg-warning" : c === "admin" ? "bg-danger" : "bg-mint")} aria-hidden="true" />
+                <span className={cn("h-2 w-2 rounded-full", c === "company" ? "bg-warning" : c === "admin" ? "bg-danger" : "bg-brand")} aria-hidden="true" />
                 {contextName(c, data, t)}
               </span>
               {c === ctx && <Check className="h-4 w-4 text-link" aria-hidden="true" />}
@@ -85,7 +86,7 @@ export function SidebarContent({ ctx, data, onNavigate }: { ctx: ShellContext; d
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Link href="/" onClick={onNavigate} className="flex items-center gap-2.5 rounded-md px-1 py-1 font-semibold">
-        <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-mint text-sm font-bold text-on-accent" aria-hidden="true">K</span>
+        <LogoMark />
         <span>{t.appTitle}</span>
         <Badge tone="accent">{t.statusBadge}</Badge>
       </Link>
@@ -113,7 +114,7 @@ export function SidebarContent({ ctx, data, onNavigate }: { ctx: ShellContext; d
 
         {otherContexts.length > 0 && (
           <div className="mt-4">
-            <p className="px-2.5 pb-1 text-[11px] font-semibold tracking-[0.07em] text-ctx-label uppercase">{t.shell.areas}</p>
+            <p className="px-2.5 pb-1 text-2xs font-semibold tracking-overline text-ctx-label uppercase">{t.shell.areas}</p>
             {otherContexts.map((c) => (
               <Link key={c} href={contextHref(c)} onClick={onNavigate} data-testid={`area-${c}`} className="flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium text-muted hover:bg-nav-active/60 hover:text-foreground">
                 <span className={cn("h-2 w-2 rounded-full", c === "company" ? "bg-warning" : "bg-danger")} aria-hidden="true" />

@@ -202,7 +202,7 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
           <h3 className="font-semibold">{tr("Verbesserungspotenzial", "Room for improvement")}</h3>
           <div className="ml-auto inline-flex gap-1 rounded-lg border border-border-subtle bg-surface-inset p-1" role="group" aria-label={tr("Filter", "Filter")}>
             {(["all", "high", "medium", "low"] as const).map((f) => (
-              <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={cn("h-8 rounded-md px-2.5 text-[13px] font-medium", filter === f ? "bg-surface-2 text-foreground" : "text-subtle hover:text-foreground")}>
+              <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={cn("h-8 rounded-md px-2.5 text-meta font-medium", filter === f ? "bg-surface-2 text-foreground" : "text-subtle hover:text-foreground")}>
                 {f === "all" ? `${tr("Alle", "All")} (${report.improvements.length})` : `${sev[f]} (${counts[f]})`}
               </button>
             ))}

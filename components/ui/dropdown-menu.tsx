@@ -12,7 +12,7 @@ export const DropdownMenuSeparator = ({ className, ...props }: React.ComponentPr
 export function DropdownMenuContent({ className, sideOffset = 6, ...props }: React.ComponentProps<typeof MenuPrimitive.Content>) {
   return (
     <MenuPrimitive.Portal>
-      <MenuPrimitive.Content sideOffset={sideOffset} className={cn("anim-pop-in z-50 min-w-56 rounded-xl border border-border bg-surface p-1.5 shadow-sheet", className)} {...props} />
+      <MenuPrimitive.Content sideOffset={sideOffset} className={cn("anim-pop-in z-50 min-w-56 rounded-xl border border-border bg-surface p-1.5 shadow-overlay", className)} {...props} />
     </MenuPrimitive.Portal>
   );
 }
@@ -36,5 +36,5 @@ export function DropdownMenuCheckItem({ className, checked, children, ...props }
 }
 
 export function DropdownMenuLabel({ className, ...props }: React.ComponentProps<typeof MenuPrimitive.Label>) {
-  return <MenuPrimitive.Label className={cn("px-2.5 py-1.5 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase", className)} {...props} />;
+  return <MenuPrimitive.Label className={cn("px-2.5 py-1.5 text-2xs font-semibold tracking-overline text-faint uppercase", className)} {...props} />;
 }

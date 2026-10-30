@@ -54,7 +54,7 @@ function Task({ t, locale, canAskMentor }: { t: MyTaskRow; locale: "de" | "en"; 
       </div>
       {t.description && <p className="mt-1 whitespace-pre-wrap text-foreground/70">{t.description}</p>}
       {t.status === "rework" && t.reviewerNote && <p className="mt-2 rounded bg-amber-500/10 px-2 py-1" data-testid="my-practice-reviewer-note">{t.reviewerNote}</p>}
-      {t.status === "confirmed" && t.reviewerNote && <p className="mt-1 text-xs text-foreground/70">{t.reviewerNote}</p>}
+      {t.status === "confirmed" && t.reviewerNote && <p className="mt-1 text-xs text-subtle">{t.reviewerNote}</p>}
       {canSubmit && (
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           <input
@@ -81,9 +81,9 @@ function Task({ t, locale, canAskMentor }: { t: MyTaskRow; locale: "de" | "en"; 
 export function MyPracticeTasks({ tasks, locale, canAskMentor = false }: { tasks: MyTaskRow[]; locale: "de" | "en"; canAskMentor?: boolean }) {
   const de = locale === "de";
   return (
-    <section className="mb-6 rounded-xl border border-border bg-surface p-5" data-testid="my-practice-tasks">
+    <section id="practice-tasks" className="scroll-mt-6 rounded-2xl border border-border bg-surface p-5" data-testid="my-practice-tasks">
       <h2 className="font-semibold">{de ? "Praxisaufgaben" : "Practice tasks"}</h2>
-      <p className="mt-1 text-xs text-foreground/70">
+      <p className="mt-1 text-xs text-subtle">
         {de
           ? "Eine andere Person aus deiner Firma bestätigt die Aufgabe. Deine Firma sieht nur, wie viele bestätigt sind, nicht deine Notizen."
           : "Someone else at your company confirms the task. Your company only sees how many are confirmed, not your notes."}
