@@ -112,6 +112,7 @@ Schrift: **Geist** (Text), **Geist Mono** (Befehle, Codes, Timer, Tastenkürzel,
 ### Sprache und Begriffe
 
 - Alle UI-Texte über `lib/i18n.tsx`, **Deutsch und Englisch vollständig**. Kein englischer Text in der deutschen Oberfläche und umgekehrt.
+- Texte einzelner Komponenten stehen in `lib/i18n/components/<komponente>.ts` (`c_name(lang).schluessel`, Werte mit `fill()` und `{0}`), gemeinsame Texte in `lib/i18n-strings.ts`. Kein `de ? "…" : "…"` mehr im JSX: `npm run lint:ui` zählt verbliebene Inline-Texte und lässt den Bestand nur sinken.
 - Feste Begriffe: „Merkzettel“ (nicht „Spickzettel“), „Kurz-Check“, „Prüfungssimulation“, „Wiederholen“, „Kursgruppe“, „Lernpfad“, „Pflichtschulung“, „Internes Learning“, „Prüfungsplaner“, „Zertifikats-Register“, „Voucher“.
 
 ---

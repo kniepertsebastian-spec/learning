@@ -1,6 +1,62 @@
 {
+  "app/admin/certifications/[slug]/page.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 1
+  },
+  "app/admin/stats/page.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 1
+  },
+  "app/cert/[id]/final-exam/page.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 1
+  },
   "app/layout.tsx": {
     "hex": 2,
-    "palette": 0
+    "palette": 0,
+    "text": 0
+  },
+  "components/BulkSourceImport.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 1
+  },
+  "components/ContentReportQueue.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 1
+  },
+  "components/CourseGenerationPanel.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 2
+  },
+  "components/MentorRequestsPanel.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 1
+  },
+  "components/SectionContent.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 1
+  },
+  "components/StudyGoalPanel.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 1
+  },
+  "components/TodayDashboard.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 4
+  },
+  "components/UnsyncedNotice.tsx": {
+    "hex": 0,
+    "palette": 0,
+    "text": 1
   }
 }
