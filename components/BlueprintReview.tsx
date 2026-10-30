@@ -1,5 +1,7 @@
 "use client";
 
+import { c_blueprintReview } from "@/lib/i18n/components/blueprintReview";
+import { fill } from "@/lib/i18n/fill";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, GitCompareArrows, Loader2, Lock, Save, ShieldCheck } from "lucide-react";
@@ -150,11 +152,11 @@ export function BlueprintReview({
       setErrors(data.draft.validationErrors);
       setWarnings(data.draft.warnings);
       setConfirmedLowConfidence(new Set(data.draft.confirmedLowConfidenceObjectives));
-      setSavedNote(locale === "de" ? "Entwurf gespeichert." : "Draft saved.");
+      setSavedNote(c_blueprintReview(locale).draftSaved);
       return true;
     } catch (err) {
       setRequestError(
-        err instanceof Error ? err.message : locale === "de" ? "Speichern fehlgeschlagen." : "Save failed.",
+        err instanceof Error ? err.message : c_blueprintReview(locale).saveFailed,
       );
       return false;
     } finally {
@@ -183,7 +185,7 @@ export function BlueprintReview({
       setRequestError(
         err instanceof Error
           ? err.message
-          : locale === "de" ? "Freigabe fehlgeschlagen." : "Approval failed.",
+          : c_blueprintReview(locale).approvalFailed,
       );
     } finally {
       setApproving(false);
@@ -196,21 +198,15 @@ export function BlueprintReview({
         <div className="flex items-center gap-2 rounded-md bg-success-soft p-3 text-sm text-success-text">
           <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
           {status === "approved"
-            ? locale === "de"
-              ? "Freigegeben - Domains und Objectives wurden übernommen. Weitere Korrekturen sind gesperrt."
-              : "Approved - domains and objectives have been applied. Further edits are locked."
-            : locale === "de"
-              ? "Diese Quelle wurde ersetzt und ist gesperrt."
-              : "This source has been superseded and is locked."}
+            ? c_blueprintReview(locale).approvedDomainsAndObjectivesHave
+            : c_blueprintReview(locale).thisSourceHasBeenSuperseded}
         </div>
       )}
 
       {truncated && (
         <p className="flex items-center gap-1.5 rounded-md bg-warning-soft p-2 text-xs text-warning-text">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          {locale === "de"
-            ? "Das Dokument war zu lang und wurde für die Extraktion gekürzt."
-            : "The document was too long and was truncated for extraction."}
+          {c_blueprintReview(locale).theDocumentWasTooLong}
         </p>
       )}
 
@@ -218,7 +214,7 @@ export function BlueprintReview({
         <div className="rounded-md border border-border bg-surface p-3 text-sm">
           <p className="mb-2 flex items-center gap-1.5 font-medium">
             <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
-            {locale === "de" ? "Änderungen gegenüber der ersetzten Quelle" : "Changes vs. the superseded source"}
+            {c_blueprintReview(locale).changesVsTheSupersededSource}
           </p>
           {diff.addedDomains.length === 0 &&
           diff.removedDomains.length === 0 &&
@@ -226,18 +222,18 @@ export function BlueprintReview({
           diff.removedObjectives.length === 0 &&
           diff.changedObjectives.length === 0 ? (
             <p className="text-xs text-subtle">
-              {locale === "de" ? "Keine Unterschiede zum aktuellen Stand." : "No differences from the current state."}
+              {c_blueprintReview(locale).noDifferencesFromTheCurrent}
             </p>
           ) : (
             <ul className="space-y-1 text-xs">
               {diff.addedDomains.map((name) => (
                 <li key={`ad-${name}`} className="text-success-text">
-                  + {locale === "de" ? "Neue Domain" : "New domain"}: {name}
+                  + {c_blueprintReview(locale).newDomain}: {name}
                 </li>
               ))}
               {diff.removedDomains.map((name) => (
                 <li key={`rd-${name}`} className="text-danger-text">
-                  − {locale === "de" ? "Domain entfernt" : "Domain removed"}: {name}
+                  − {c_blueprintReview(locale).domainRemoved}: {name}
                 </li>
               ))}
               {diff.addedObjectives.map((o) => (
@@ -252,16 +248,14 @@ export function BlueprintReview({
               ))}
               {diff.changedObjectives.map((o, i) => (
                 <li key={`co-${o.id}-${o.field}-${i}`} className="text-warning-text">
-                  ~ {o.code} ({o.domainName}): {o.field} {locale === "de" ? "geändert" : "changed"}
+                  ~ {o.code} ({o.domainName}): {o.field} {c_blueprintReview(locale).changed}
                 </li>
               ))}
             </ul>
           )}
           {(diff.changedObjectives.length > 0 || diff.removedObjectives.length > 0) && (
             <p className="mt-2 text-xs text-faint">
-              {locale === "de"
-                ? "Bei Freigabe werden Lessons/Fragen der geänderten oder entfernten Objectives als veraltet markiert."
-                : "Approving this will mark lessons/questions of changed or removed objectives as stale."}
+              {c_blueprintReview(locale).approvingThisWillMarkLessons}
             </p>
           )}
         </div>
@@ -269,9 +263,7 @@ export function BlueprintReview({
 
       {staleResult && (staleResult.lessonsMarkedStale > 0 || staleResult.questionsMarkedStale > 0) && (
         <p className="rounded-md bg-warning-soft p-2 text-xs text-warning-text">
-          {locale === "de"
-            ? `${staleResult.lessonsMarkedStale} Lesson(s) und ${staleResult.questionsMarkedStale} Frage(n) als veraltet markiert - Neugenerierung erzeugt sie gezielt neu.`
-            : `${staleResult.lessonsMarkedStale} lesson(s) and ${staleResult.questionsMarkedStale} question(s) marked stale - regeneration will target just those.`}
+          {fill(c_blueprintReview(locale).n0LessonSAnd1, staleResult.lessonsMarkedStale, staleResult.questionsMarkedStale)}
         </p>
       )}
 
@@ -279,7 +271,7 @@ export function BlueprintReview({
         <div className="rounded-md border border-danger/40 bg-danger-soft p-3 text-sm text-danger-text">
           <p className="flex items-center gap-1.5 font-medium">
             <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-            {locale === "de" ? "Fehler (blockieren die Freigabe)" : "Errors (block approval)"} ({errors.length})
+            {c_blueprintReview(locale).errorsBlockApproval} ({errors.length})
           </p>
           <ul className="mt-1 list-disc space-y-0.5 pl-5">
             {errors.map((error, i) => (
@@ -292,7 +284,7 @@ export function BlueprintReview({
       {warnings.length > 0 && (
         <div className="rounded-md bg-warning-soft p-3 text-sm text-warning-text">
           <p className="font-medium">
-            {locale === "de" ? "Hinweise" : "Warnings"} ({warnings.length})
+            {c_blueprintReview(locale).warnings} ({warnings.length})
           </p>
           <ul className="mt-1 list-disc space-y-0.5 pl-5">
             {warnings.map((warning, i) => (
@@ -303,18 +295,18 @@ export function BlueprintReview({
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <h2 className="mb-3 font-medium">{locale === "de" ? "Originalquelle" : "Original source"}</h2>
+        <section className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="mb-3 font-medium">{c_blueprintReview(locale).originalSource}</h2>
           <div className="max-h-[70vh] overflow-y-auto rounded-md bg-background p-3 text-xs">
             {pages.length === 0 ? (
               <p className="text-subtle">
-                {locale === "de" ? "Kein extrahierter Seitentext vorhanden." : "No extracted page text available."}
+                {c_blueprintReview(locale).noExtractedPageTextAvailable}
               </p>
             ) : (
               pages.map((page) => (
                 <div key={page.pageNumber} className="mb-4">
                   <p className="mb-1 font-mono font-medium text-faint">
-                    {locale === "de" ? "Seite" : "Page"} {page.pageNumber}
+                    {c_blueprintReview(locale).page} {page.pageNumber}
                   </p>
                   <p className="whitespace-pre-wrap text-text-2">{page.content}</p>
                 </div>
@@ -323,15 +315,15 @@ export function BlueprintReview({
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
+        <section className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5">
           <h2 className="font-medium">
-            {locale === "de" ? "Extrahierte Struktur" : "Extracted structure"}
+            {c_blueprintReview(locale).extractedStructure}
           </h2>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-muted">
-                {locale === "de" ? "Zertifizierung" : "Certification"}
+                {c_blueprintReview(locale).certification}
               </span>
               <input
                 value={content.certificationName}
@@ -342,7 +334,7 @@ export function BlueprintReview({
             </label>
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-muted">
-                {locale === "de" ? "Anbieter" : "Provider"}
+                {c_blueprintReview(locale).provider}
               </span>
               <input
                 value={content.provider}
@@ -353,7 +345,7 @@ export function BlueprintReview({
             </label>
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-muted">
-                {locale === "de" ? "Exam-Code" : "Exam code"}
+                {c_blueprintReview(locale).examCode}
               </span>
               <input
                 value={content.examCode}
@@ -367,14 +359,14 @@ export function BlueprintReview({
           <div className="grid gap-3 sm:grid-cols-4">
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-muted">
-                {locale === "de" ? "Fragenanzahl" : "Question count"}
+                {c_blueprintReview(locale).questionCount}
               </span>
               <input
                 type="number"
                 min={1}
                 value={content.examQuestionCount ?? ""}
                 disabled={locked}
-                placeholder={locale === "de" ? "unbekannt" : "unknown"}
+                placeholder={c_blueprintReview(locale).unknown}
                 onChange={(e) =>
                   setContent({
                     ...content,
@@ -386,14 +378,14 @@ export function BlueprintReview({
             </label>
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-muted">
-                {locale === "de" ? "Zeitlimit (Min.)" : "Time limit (min)"}
+                {c_blueprintReview(locale).timeLimitMin}
               </span>
               <input
                 type="number"
                 min={1}
                 value={content.examDurationMinutes ?? ""}
                 disabled={locked}
-                placeholder={locale === "de" ? "unbekannt" : "unknown"}
+                placeholder={c_blueprintReview(locale).unknown}
                 onChange={(e) =>
                   setContent({
                     ...content,
@@ -405,14 +397,14 @@ export function BlueprintReview({
             </label>
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-muted">
-                {locale === "de" ? "Bestehensgrenze" : "Passing score"}
+                {c_blueprintReview(locale).passingScore}
               </span>
               <input
                 type="number"
                 min={0}
                 value={content.passingScore ?? ""}
                 disabled={locked}
-                placeholder={locale === "de" ? "unbekannt" : "unknown"}
+                placeholder={c_blueprintReview(locale).unknown}
                 onChange={(e) =>
                   setContent({
                     ...content,
@@ -424,12 +416,12 @@ export function BlueprintReview({
             </label>
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-muted">
-                {locale === "de" ? "Skala" : "Scale"}
+                {c_blueprintReview(locale).scale}
               </span>
               <input
                 value={content.scoreScale ?? ""}
                 disabled={locked}
-                placeholder={locale === "de" ? "z. B. 100-900" : "e.g. 100-900"}
+                placeholder={c_blueprintReview(locale).eG100900}
                 onChange={(e) =>
                   setContent({ ...content, scoreScale: e.target.value === "" ? null : e.target.value })
                 }
@@ -440,7 +432,7 @@ export function BlueprintReview({
 
           <label className="block text-xs">
             <span className="mb-1 block font-medium text-muted">
-              {locale === "de" ? "Vorgeschlagener Slug" : "Suggested slug"}
+              {c_blueprintReview(locale).suggestedSlug}
             </span>
             <input
               value={slug}
@@ -505,7 +497,7 @@ export function BlueprintReview({
                         />
                         <span
                           className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${confidenceColor(objective.confidence)}`}
-                          title={locale === "de" ? "Extraktionssicherheit" : "Extraction confidence"}
+                          title={c_blueprintReview(locale).extractionConfidence}
                         >
                           {Math.round(objective.confidence * 100)}%
                         </span>
@@ -540,9 +532,7 @@ export function BlueprintReview({
                               })
                             }
                           />
-                          {locale === "de"
-                            ? "Niedrige Extraktionssicherheit - manuell geprüft und bestätigt (Pflicht für Freigabe)"
-                            : "Low extraction confidence - manually reviewed and confirmed (required for approval)"}
+                          {c_blueprintReview(locale).lowExtractionConfidenceManuallyReviewed}
                         </label>
                       )}
                     </li>
@@ -563,16 +553,16 @@ export function BlueprintReview({
             className="flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
-            {locale === "de" ? "Entwurf speichern" : "Save draft"}
+            {c_blueprintReview(locale).saveDraft}
           </button>
           <button
             type="button"
             onClick={() => void handleApprove()}
             disabled={saving || approving || errors.length > 0}
-            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             title={
               errors.length > 0
-                ? locale === "de" ? "Erst Fehler beheben" : "Fix errors first"
+                ? c_blueprintReview(locale).fixErrorsFirst
                 : undefined
             }
           >
@@ -581,7 +571,7 @@ export function BlueprintReview({
             ) : (
               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
             )}
-            {locale === "de" ? "Blueprint freigeben" : "Approve blueprint"}
+            {c_blueprintReview(locale).approveBlueprint}
           </button>
           {savedNote && (
             <span className="flex items-center gap-1 text-xs text-success-text">

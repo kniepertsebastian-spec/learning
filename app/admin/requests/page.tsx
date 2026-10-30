@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
+import { c_adminRequestsPage } from "@/lib/i18n/components/adminRequestsPage";
 import { AdminRequestsPanel } from "@/components/AdminRequestsPanel";
 import { listAllCourseRequests, listCatalog, listEntitlements } from "@/lib/server/admin/course-requests";
 import { requireAdminPage } from "@/lib/server/auth-guards";
@@ -15,10 +15,7 @@ export default async function AdminRequestsPage() {
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div>
-        <Link href="/admin" className="text-sm text-link hover:underline">
-          ← Admin
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{locale === "de" ? "Kundenanfragen und Lernpfad-Freigaben" : "Customer requests and course releases"}</h1>
+        <h1 className="text-2xl font-semibold tracking-title sm:text-title">{c_adminRequestsPage(locale).customerRequestsAndCourseReleases}</h1>
       </div>
       <AdminRequestsPanel
         locale={locale}

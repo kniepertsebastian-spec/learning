@@ -1,5 +1,6 @@
 "use client";
 
+import { c_adminStatsCompletionChart } from "@/lib/i18n/components/adminStatsCompletionChart";
 import * as React from "react";
 import type { Granularity, Period } from "@/lib/server/stats/report";
 
@@ -31,8 +32,8 @@ export function periodLabel(start: string, g: Granularity, locale: "de" | "en"):
 export function CompletionChart({ periods, granularity, locale, title }: { periods: Period[]; granularity: Granularity; locale: "de" | "en"; title: string }) {
   const de = locale === "de";
   const series: Series[] = [
-    { key: "final_exam_passed", label: de ? "Abschlussprüfung bestanden" : "Final exam passed", color: "var(--chart-1)" },
-    { key: "certified", label: de ? "Zertifikat ausgestellt" : "Certificate issued", color: "var(--chart-2)" },
+    { key: "final_exam_passed", label: c_adminStatsCompletionChart(de).finalExamPassed, color: "var(--chart-1)" },
+    { key: "certified", label: c_adminStatsCompletionChart(de).certificateIssued, color: "var(--chart-2)" },
   ];
   const ref = React.useRef<HTMLDivElement>(null);
   // Erst rendern, wenn die Breite des Containers gemessen ist: ein Diagramm mit fester Startbreite (früher 720 px) ist beim
@@ -83,10 +84,10 @@ export function CompletionChart({ periods, granularity, locale, title }: { perio
         ))}
       </figcaption>
       <div ref={ref} className="relative w-full min-w-0 overflow-hidden">
-        {total === 0 && <p className="absolute inset-0 flex items-center justify-center text-sm text-subtle">{de ? "Noch keine Abschlüsse in diesem Zeitraum." : "No completions in this period yet."}</p>}
+        {total === 0 && <p className="absolute inset-0 flex items-center justify-center text-sm text-subtle">{c_adminStatsCompletionChart(de).noCompletionsInThisPeriod}</p>}
         {width === null && <div style={{ height }} aria-hidden="true" />}
         {width !== null && (
-        <svg width={width} height={height} role="img" aria-label={`${title}: ${total} ${de ? "Abschlüsse" : "completions"}`} onMouseLeave={() => setHover(null)}>
+        <svg width={width} height={height} role="img" aria-label={`${title}: ${total} ${c_adminStatsCompletionChart(de).completions}`} onMouseLeave={() => setHover(null)}>
           {ticks.map((t) => (
             <g key={t}>
               <line x1={pad.left} x2={w - pad.right} y1={y(t)} y2={y(t)} stroke="var(--border-subtle)" strokeWidth={1} />
@@ -136,12 +137,12 @@ export function CompletionChart({ periods, granularity, locale, title }: { perio
         )}
       </div>
       <details className="text-sm">
-        <summary className="cursor-pointer text-subtle">{de ? "Als Tabelle" : "As table"}</summary>
+        <summary className="cursor-pointer text-subtle">{c_adminStatsCompletionChart(de).asTable}</summary>
         <div className="mt-2 max-h-72 overflow-auto rounded-xl border border-border">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-surface text-xs text-subtle">
-                <th className="px-3 py-1.5">{de ? "Zeitraum ab" : "Period from"}</th>
+                <th className="px-3 py-1.5">{c_adminStatsCompletionChart(de).periodFrom}</th>
                 {series.map((s) => (
                   <th key={s.key} className="px-3 py-1.5 text-right">{s.label}</th>
                 ))}

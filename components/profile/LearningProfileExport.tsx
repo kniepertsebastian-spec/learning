@@ -1,5 +1,6 @@
 "use client";
 
+import { c_profileLearningProfileExport } from "@/lib/i18n/components/profileLearningProfileExport";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -44,14 +45,14 @@ export function LearningProfileExport({ courses, issued, locale }: { courses: Ex
       URL.revokeObjectURL(url);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : de ? "Das PDF konnte nicht erstellt werden." : "The PDF could not be created.");
+      setError(err instanceof Error ? err.message : c_profileLearningProfileExport(de).thePdfCouldNotBe);
     } finally {
       setBusy(false);
     }
   }
 
   async function revoke(id: string) {
-    if (!(await confirm(de ? "Dieses PDF widerrufen? Die Prüfseite zeigt es danach als widerrufen." : "Revoke this PDF? The verification page will then show it as revoked."))) return;
+    if (!(await confirm(c_profileLearningProfileExport(de).revokeThisPdfTheVerification))) return;
     const response = await fetch(`/api/profile/export/${id}`, { method: "DELETE" });
     if (response.ok) router.refresh();
   }
@@ -59,16 +60,14 @@ export function LearningProfileExport({ courses, issued, locale }: { courses: Ex
   return (
     <>
     {confirmDialog}
-    <section className="rounded-lg border border-border bg-surface p-4" data-testid="profile-export">
-      <h2 className="font-semibold">{de ? "Lernprofil als PDF-Nachweis" : "Learning profile as a PDF record"}</h2>
+    <section className="rounded-2xl border border-border bg-surface p-5" data-testid="profile-export">
+      <h2 className="font-semibold">{c_profileLearningProfileExport(de).learningProfileAsAPdf}</h2>
       <p className="mt-1 text-sm text-muted">
-        {de
-          ? "Ein standardisierter, fälschungssicherer Nachweis über deinen Kenntnisstand, z. B. für Arbeitgeber. Aufgeführt werden nur Kurse, zu denen eine erfolgreiche Zertifikatsprüfung hinterlegt ist. Jedes PDF trägt einen Prüfcode und lässt sich online prüfen."
-          : "A standardised, tamper-proof record of your knowledge, e.g. for employers. Only courses with a recorded, passed certification exam are listed. Every PDF carries a verification code and can be checked online."}
+        {c_profileLearningProfileExport(de).aStandardisedTamperProofRecord}
       </p>
       {courses.length === 0 ? (
         <p className="mt-3 text-sm text-subtle" data-testid="profile-export-empty">
-          {de ? "Noch keiner deiner Kurse hat eine hinterlegte, bestandene Zertifikatsprüfung. Trage sie unter „Meine Zertifikate“ ein und verknüpfe sie mit dem Kurs." : "None of your courses has a recorded, passed certification exam yet. Add it under “My certificates” and link it to the course."}
+          {c_profileLearningProfileExport(de).noneOfYourCoursesHas}
         </p>
       ) : (
         <ul className="mt-3 flex flex-col gap-1 text-sm" data-testid="profile-export-courses">
@@ -81,7 +80,7 @@ export function LearningProfileExport({ courses, issued, locale }: { courses: Ex
       )}
       <div className="mt-3">
         <Button onClick={() => void create()} disabled={busy || courses.length === 0} iconLeft={busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileDown className="h-4 w-4" aria-hidden="true" />} data-testid="profile-export-create">
-          {de ? "PDF erstellen" : "Create PDF"}
+          {c_profileLearningProfileExport(de).createPdf}
         </Button>
       </div>
       {error && <p role="alert" className="mt-2 text-sm text-danger-text">{error}</p>}
@@ -89,13 +88,13 @@ export function LearningProfileExport({ courses, issued, locale }: { courses: Ex
         <ul className="mt-4 flex flex-col gap-1.5 border-t border-border pt-3 text-sm" data-testid="profile-export-issued">
           {issued.map((i) => (
             <li key={i.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span>{de ? "Ausgestellt am" : "Issued on"} {date(i.issuedAt)}</span>
+              <span>{c_profileLearningProfileExport(de).issuedOn} {date(i.issuedAt)}</span>
               {i.revokedAt ? (
-                <span className="text-subtle">{de ? "widerrufen" : "revoked"}</span>
+                <span className="text-subtle">{c_profileLearningProfileExport(de).revoked}</span>
               ) : (
                 <>
-                  <a href={`/verify/${i.id}`} target="_blank" rel="noopener noreferrer" className="text-link hover:underline">{de ? "Prüfseite" : "Verification page"}</a>
-                  <button type="button" onClick={() => void revoke(i.id)} className="text-link hover:underline" data-testid="profile-export-revoke">{de ? "Widerrufen" : "Revoke"}</button>
+                  <a href={`/verify/${i.id}`} target="_blank" rel="noopener noreferrer" className="text-link hover:underline">{c_profileLearningProfileExport(de).verificationPage}</a>
+                  <button type="button" onClick={() => void revoke(i.id)} className="text-link hover:underline" data-testid="profile-export-revoke">{c_profileLearningProfileExport(de).revoke}</button>
                 </>
               )}
             </li>

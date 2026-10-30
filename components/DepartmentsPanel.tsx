@@ -1,5 +1,7 @@
 "use client";
 
+import { c_departmentsPanel } from "@/lib/i18n/components/departmentsPanel";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -32,18 +34,16 @@ export function DepartmentsPanel({ departments, members, locale }: { departments
     setError(res.error);
     if (!res.error) {
       const assigned = Number(res.data?.assigned ?? 0);
-      if (assigned > 0) setNotice(de ? `Pflichtschulungen: ${assigned} Lernpfad/Lernpfade zugewiesen.` : `Mandatory training: ${assigned} learning path(s) assigned.`);
+      if (assigned > 0) setNotice(fill(c_departmentsPanel(de).mandatoryTraining0LearningPath, assigned));
       router.refresh();
     }
   }
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="departments-panel">
-      <h2 className="text-lg font-medium">{de ? "Abteilungen" : "Departments"}</h2>
+      <h2 className="text-lg font-medium">{c_departmentsPanel(de).departments}</h2>
       <p className="mt-1 text-sm text-muted">
-        {de
-          ? "Ordne Mitglieder Abteilungen zu. Pflichtschulungen lassen sich dann auf bestimmte Abteilungen einschränken. Wechselt jemand die Abteilung, greifen Regeln, die das vorsehen, sofort."
-          : "Assign members to departments. Mandatory training can then be limited to certain departments. When someone changes department, rules that allow it apply immediately."}
+        {c_departmentsPanel(de).assignMembersToDepartmentsMandatory}
       </p>
 
       <form
@@ -57,9 +57,9 @@ export function DepartmentsPanel({ departments, members, locale }: { departments
           });
         }}
       >
-        <input className={`${field} min-w-0 flex-1`} value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder={de ? "Neue Abteilung, z. B. Operations" : "New department, e.g. Operations"} aria-label={de ? "Name der Abteilung" : "Department name"} />
+        <input className={`${field} min-w-0 flex-1`} value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder={c_departmentsPanel(de).newDepartmentEGOperations} aria-label={c_departmentsPanel(de).departmentName} />
         <button type="submit" className={btn} disabled={busy || name.trim().length < 2}>
-          {de ? "Anlegen" : "Create"}
+          {c_departmentsPanel(de).create}
         </button>
       </form>
 
@@ -70,7 +70,7 @@ export function DepartmentsPanel({ departments, members, locale }: { departments
               <span>
                 {d.name} ({d.members})
               </span>
-              <button type="button" className="text-danger-text hover:underline" disabled={busy} onClick={() => void run(() => call(`/api/company/departments/${d.id}`, "DELETE"))} aria-label={`${d.name} ${de ? "löschen" : "delete"}`}>
+              <button type="button" className="text-danger-text hover:underline" disabled={busy} onClick={() => void run(() => call(`/api/company/departments/${d.id}`, "DELETE"))} aria-label={`${d.name} ${c_departmentsPanel(de).delete}`}>
                 ×
               </button>
             </li>
@@ -87,9 +87,9 @@ export function DepartmentsPanel({ departments, members, locale }: { departments
               value={m.departmentId ?? ""}
               disabled={busy}
               onChange={(e) => void run(() => call(`/api/company/department-members/${m.userId}`, "PUT", { departmentId: e.target.value || null }))}
-              aria-label={`${de ? "Abteilung von" : "Department of"} ${m.email}`}
+              aria-label={`${c_departmentsPanel(de).departmentOf} ${m.email}`}
             >
-              <option value="">{de ? "keine Abteilung" : "no department"}</option>
+              <option value="">{c_departmentsPanel(de).noDepartment}</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}

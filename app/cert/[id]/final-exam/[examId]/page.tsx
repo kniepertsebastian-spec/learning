@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdFinalExamExamIdPage } from "@/lib/i18n/components/certIdFinalExamExamIdPage";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/server/auth";
 import { getServerLocale } from "@/lib/server/locale";
@@ -19,7 +20,7 @@ export default async function FinalExamTakePage({
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
         <p className="text-muted">
-          {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
+          {c_certIdFinalExamExamIdPage(locale).pleaseSignIn}
         </p>
       </div>
     );

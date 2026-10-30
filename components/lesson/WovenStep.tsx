@@ -1,5 +1,6 @@
 "use client";
 
+import { c_lessonWovenStep } from "@/lib/i18n/components/lessonWovenStep";
 import { useState } from "react";
 import { OptionTile, type OptionState } from "@/components/quiz/OptionTile";
 import { RichText } from "@/components/RichText";
@@ -27,21 +28,21 @@ export function WovenStep({ sectionId, question, locale }: { sectionId: string; 
 
   const stateOf = (id: string, isCorrect: boolean): OptionState => (!picked ? "neutral" : isCorrect ? "correct" : id === picked ? "wrong" : "dimmed");
   return (
-    <div className="mt-4 rounded-xl border border-border bg-surface p-4" data-testid="woven-step">
-      <p className="text-xs font-semibold text-subtle">{de ? "Kurz aufgefrischt: noch eine Frage von früher (zählt nicht für diese Lektion)" : "A quick refresher from earlier (does not count for this lesson)"}</p>
+    <div className="mt-4 rounded-2xl border border-border bg-surface p-5" data-testid="woven-step">
+      <p className="text-xs font-semibold text-subtle">{c_lessonWovenStep(de).aQuickRefresherFromEarlier}</p>
       <div className="my-2 text-body font-medium">
         <RichText text={question.question[locale]} />
       </div>
       <div className="flex flex-col gap-2">
         {question.options.map((o, i) => (
-          <OptionTile key={o.id} index={i} state={stateOf(o.id, o.isCorrect)} disabled={picked !== null} onClick={() => pick(o.id)} stateLabel={picked && (o.isCorrect ? (de ? "richtig" : "correct") : o.id === picked ? (de ? "falsch" : "wrong") : undefined) || undefined}>
+          <OptionTile key={o.id} index={i} state={stateOf(o.id, o.isCorrect)} disabled={picked !== null} onClick={() => pick(o.id)} stateLabel={picked && (o.isCorrect ? (c_lessonWovenStep(de).correct) : o.id === picked ? (c_lessonWovenStep(de).wrong) : undefined) || undefined}>
             <RichText text={o.text[locale]} />
           </OptionTile>
         ))}
       </div>
       {picked && (
         <div className="mt-2 text-sm text-text-2" data-testid="woven-step-result">
-          <p className="font-semibold">{correct && picked === correct.id ? (de ? "Genau." : "Exactly.") : de ? "Hier fehlt noch ein Zwischenschritt." : "A step is still missing here."}</p>
+          <p className="font-semibold">{correct && picked === correct.id ? (c_lessonWovenStep(de).exactly) : c_lessonWovenStep(de).aStepIsStillMissing}</p>
           <RichText text={question.explanation[locale]} />
         </div>
       )}

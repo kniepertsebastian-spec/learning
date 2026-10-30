@@ -1,3 +1,4 @@
+import { c_domainActivityTrends } from "@/lib/i18n/components/domainActivityTrends";
 import type { Locale } from "@/lib/types";
 import type { DomainActivityTrend } from "@/lib/server/analytics/learner-activity";
 
@@ -17,9 +18,9 @@ export function DomainActivityTrends({
   if (domains.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-surface p-4">
+    <div className="mb-6 rounded-2xl border border-border bg-surface p-5">
       <h2 className="mb-3 text-sm font-medium">
-        {locale === "de" ? "Trend je Domain (30 Tage)" : "Trend per domain (30 days)"}
+        {c_domainActivityTrends(locale).trendPerDomain30Days}
       </h2>
       <div className="flex flex-col gap-2">
         {domains.map((d) => (
@@ -27,7 +28,7 @@ export function DomainActivityTrends({
             <span>{d.domainName}</span>
             <span className="text-muted">
               {d.avgAccuracy !== null ? `${d.avgAccuracy}%` : "–"} ·{" "}
-              {d.activeDays} {locale === "de" ? "aktive Tage" : "active days"}
+              {d.activeDays} {c_domainActivityTrends(locale).activeDays}
             </span>
           </div>
         ))}

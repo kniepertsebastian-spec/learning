@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdSessionPage } from "@/lib/i18n/components/certIdSessionPage";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
@@ -26,7 +27,7 @@ export default async function StudySessionPage({
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
         <p className="text-muted">
-          {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
+          {c_certIdSessionPage(locale).pleaseSignIn}
         </p>
       </div>
     );

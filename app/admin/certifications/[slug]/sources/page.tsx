@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_adminCertificationsSlugSourcesPage } from "@/lib/i18n/components/adminCertificationsSlugSourcesPage";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { eq } from "drizzle-orm";
@@ -33,10 +34,10 @@ export default async function AdminCertificationSourcesPage({
           className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
+          {c_adminCertificationsSlugSourcesPage(locale).backToAdminDashboard}
         </Link>
         <p className="text-muted">
-          {locale === "de" ? "Zertifizierung nicht gefunden" : "Certification not found"}
+          {c_adminCertificationsSlugSourcesPage(locale).certificationNotFound}
         </p>
       </div>
     );
@@ -55,12 +56,10 @@ export default async function AdminCertificationSourcesPage({
       </Link>
 
       <h1 className="mb-1 text-2xl font-semibold">
-        {locale === "de" ? "Offizielle Quellen" : "Official sources"}
+        {c_adminCertificationsSlugSourcesPage(locale).officialSources}
       </h1>
       <p className="mb-6 text-sm text-muted">
-        {locale === "de"
-          ? "Offizielle Prüfungsunterlagen als PDF hochladen und ihren Text extrahieren. Quelle der Wahrheit für Domains, Objectives und Lernmaterial (R1)."
-          : "Upload official exam documentation as PDF and extract its text. Source of truth for domains, objectives, and learning material (R1)."}
+        {c_adminCertificationsSlugSourcesPage(locale).uploadOfficialExamDocumentationAs}
       </p>
 
       <SourcesManager

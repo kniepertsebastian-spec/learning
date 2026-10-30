@@ -1,5 +1,6 @@
 "use client";
 
+import { c_examSession } from "@/lib/i18n/components/examSession";
 import { useState } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { ExamTimer } from "@/components/ExamTimer";
@@ -127,7 +128,7 @@ export function ExamSession({
       }
       setResult(data);
     } catch {
-      setError(locale === "de" ? "Fehler beim Einreichen der Prüfung." : "Failed to submit exam.");
+      setError(c_examSession(locale).failedToSubmitExam);
     } finally {
       setSubmitting(false);
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { c_feedbackQueue } from "@/lib/i18n/components/feedbackQueue";
 import { useState } from "react";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
@@ -41,9 +42,9 @@ export function FeedbackQueue({ items, locale, canResolve }: { items: FeedbackQu
   }
 
   return (
-    <section className="mb-6 rounded-lg border border-border bg-surface p-4" data-testid="feedback-queue">
-      <h2 className="font-medium">{de ? "Rückmeldungen von Lernenden" : "Feedback from learners"} ({list.length})</h2>
-      {list.length === 0 && <p className="mt-2 text-sm text-subtle">{de ? "Keine offenen Rückmeldungen." : "No open feedback."}</p>}
+    <section className="mb-6 rounded-2xl border border-border bg-surface p-5" data-testid="feedback-queue">
+      <h2 className="font-medium">{c_feedbackQueue(de).feedbackFromLearners} ({list.length})</h2>
+      {list.length === 0 && <p className="mt-2 text-sm text-subtle">{c_feedbackQueue(de).noOpenFeedback}</p>}
       <ul className="mt-2 flex flex-col gap-2 text-sm">
         {list.map((i) => (
           <li key={i.id} className="rounded-md border border-border bg-background p-3" data-testid="feedback-item">
@@ -63,10 +64,10 @@ export function FeedbackQueue({ items, locale, canResolve }: { items: FeedbackQu
             {canResolve && (
               <div className="mt-2 flex gap-2">
                 <button type="button" disabled={busy === i.id} onClick={() => void resolve(i.id, "resolved")} className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-surface-2" data-testid="feedback-resolve">
-                  <Check className="h-3 w-3" aria-hidden="true" />{de ? "Erledigt" : "Resolved"}
+                  <Check className="h-3 w-3" aria-hidden="true" />{c_feedbackQueue(de).resolved}
                 </button>
                 <button type="button" disabled={busy === i.id} onClick={() => void resolve(i.id, "dismissed")} className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-surface-2">
-                  <X className="h-3 w-3" aria-hidden="true" />{de ? "Verwerfen" : "Dismiss"}
+                  <X className="h-3 w-3" aria-hidden="true" />{c_feedbackQueue(de).dismiss}
                 </button>
               </div>
             )}

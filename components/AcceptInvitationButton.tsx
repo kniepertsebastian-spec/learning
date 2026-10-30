@@ -1,5 +1,6 @@
 "use client";
 
+import { c_acceptInvitationButton } from "@/lib/i18n/components/acceptInvitationButton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -32,7 +33,7 @@ export function AcceptInvitationButton({
       return;
     }
     const body = await res.json().catch(() => null);
-    setError(body?.error ?? (de ? "Annehmen fehlgeschlagen." : "Could not accept the invitation."));
+    setError(body?.error ?? (c_acceptInvitationButton(de).couldNotAcceptTheInvitation));
     setPending(false);
   }
 
@@ -47,9 +48,9 @@ export function AcceptInvitationButton({
         type="button"
         onClick={accept}
         disabled={pending}
-        className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
+        className="rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? (de ? "Wird angenommen…" : "Accepting…") : de ? "Einladung annehmen" : "Accept invitation"}
+        {pending ? (c_acceptInvitationButton(de).accepting) : c_acceptInvitationButton(de).acceptInvitation}
       </button>
     </div>
   );

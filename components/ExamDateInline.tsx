@@ -1,5 +1,6 @@
 "use client";
 
+import { c_examDateInline } from "@/lib/i18n/components/examDateInline";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock, Check, Loader2, Pencil } from "lucide-react";
@@ -34,7 +35,7 @@ export function ExamDateInline({ certId, locale, goal }: { certId: string; local
       setEditing(false);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : de ? "Speichern fehlgeschlagen." : "Save failed.");
+      setError(err instanceof Error ? err.message : c_examDateInline(de).saveFailed);
     } finally {
       setSaving(false);
     }
@@ -45,20 +46,20 @@ export function ExamDateInline({ certId, locale, goal }: { certId: string; local
     <div className="rounded-2xl border border-border bg-surface px-5 py-4" data-testid="exam-date-inline">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <CalendarClock className="h-4 w-4 text-link" aria-hidden="true" />
-        <span className="font-medium">{de ? "Prüfungstermin" : "Exam date"}:</span>
+        <span className="font-medium">{c_examDateInline(de).examDate}:</span>
         {editing ? (
           <>
-            <input type="date" value={value} onChange={(e) => setValue(e.target.value)} aria-label={de ? "Prüfungstermin" : "Exam date"} className="rounded-md border border-border bg-background px-2 py-1 text-sm" data-testid="exam-date-input" />
+            <input type="date" value={value} onChange={(e) => setValue(e.target.value)} aria-label={c_examDateInline(de).examDate} className="rounded-md border border-border bg-background px-2 py-1 text-sm" data-testid="exam-date-input" />
             <Button size="sm" onClick={() => void save(value || null)} disabled={saving} iconLeft={saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />} data-testid="exam-date-save">
-              {de ? "Speichern" : "Save"}
+              {c_examDateInline(de).save}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setValue(current ?? ""); }} disabled={saving}>{de ? "Abbrechen" : "Cancel"}</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setValue(current ?? ""); }} disabled={saving}>{c_examDateInline(de).cancel}</Button>
           </>
         ) : (
           <>
-            <span data-testid="exam-date-current">{shown ?? (de ? "noch keiner gesetzt" : "not set yet")}</span>
+            <span data-testid="exam-date-current">{shown ?? (c_examDateInline(de).notSetYet)}</span>
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)} iconLeft={<Pencil className="h-3.5 w-3.5" aria-hidden="true" />} data-testid="exam-date-edit">
-              {shown ? (de ? "Ändern" : "Change") : de ? "Termin setzen" : "Set a date"}
+              {shown ? (c_examDateInline(de).change) : c_examDateInline(de).setADate}
             </Button>
           </>
         )}

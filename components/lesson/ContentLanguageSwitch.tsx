@@ -1,5 +1,6 @@
 "use client";
 
+import { c_lessonContentLanguageSwitch } from "@/lib/i18n/components/lessonContentLanguageSwitch";
 import { Languages } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
 import { useSwitchLocale } from "@/lib/client/use-switch-locale";
@@ -37,7 +38,7 @@ export function ContentLanguageSwitch({ available, translationPending = false }:
               l === locale ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground",
             )}
           >
-            {l === "de" ? "Deutsch" : "English"}
+            {c_lessonContentLanguageSwitch(l).english}
           </button>
         ))}
       </div>

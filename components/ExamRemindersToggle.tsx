@@ -1,5 +1,6 @@
 "use client";
 
+import { c_examRemindersToggle } from "@/lib/i18n/components/examRemindersToggle";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useLocale } from "@/lib/i18n";
@@ -21,11 +22,11 @@ export function ExamRemindersToggle({ initialOptOut }: { initialOptOut: boolean 
       <label className="flex items-start gap-3 text-sm">
         <input type="checkbox" className="mt-0.5 h-4 w-4" checked={!optOut} onChange={(e) => void change(!e.target.checked)} />
         <span>
-          <span className="block font-medium">{de ? "E-Mail-Erinnerungen des Prüfungsplaners" : "Exam planner email reminders"}</span>
-          <span className="text-subtle">{de ? "Voucher läuft ab, Prüfung steht bevor, Wiederholungsversuch enthalten." : "Voucher expiring, exam coming up, retake included."}</span>
+          <span className="block font-medium">{c_examRemindersToggle(de).examPlannerEmailReminders}</span>
+          <span className="text-subtle">{c_examRemindersToggle(de).voucherExpiringExamComingUp}</span>
         </span>
       </label>
-      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{de ? "Das hat nicht geklappt." : "That did not work."}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{c_examRemindersToggle(de).thatDidNotWork}</p>}
     </Card>
   );
 }

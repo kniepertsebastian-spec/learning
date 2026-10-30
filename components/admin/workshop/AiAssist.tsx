@@ -1,5 +1,6 @@
 "use client";
 
+import { c_adminWorkshopAiAssist } from "@/lib/i18n/components/adminWorkshopAiAssist";
 import { Check, PencilLine, Sparkles, X } from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +14,8 @@ export type AiTarget = { target: "section" | "question" | "objective"; id: strin
 export type AcceptResult = { checkpoint?: string | null; translation?: "started" | "running" | "not_needed" | "off" };
 
 export function formatUsd(usd: number | null, locale: Lang): string {
-  if (usd === null) return locale === "de" ? "Preis nicht hinterlegt" : "price not configured";
-  if (usd > 0 && usd < 0.01) return "< 0,01 $".replace(",", locale === "de" ? "," : ".");
+  if (usd === null) return c_adminWorkshopAiAssist(locale).priceNotConfigured;
+  if (usd > 0 && usd < 0.01) return "< 0,01 $".replace(",", c_adminWorkshopAiAssist(locale).text);
   return usd.toLocaleString(locale === "de" ? "de-DE" : "en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 

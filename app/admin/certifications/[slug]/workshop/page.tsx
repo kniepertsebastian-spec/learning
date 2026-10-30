@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_adminCertificationsSlugWorkshopPage } from "@/lib/i18n/components/adminCertificationsSlugWorkshopPage";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { eq } from "drizzle-orm";
@@ -21,14 +22,14 @@ export default async function CourseWorkshopPage({ params }: { params: Promise<{
     <div className="flex flex-1 flex-col">
       <Link href={`/admin/certifications/${slug}`} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {de ? "Zurück zur Kursverwaltung" : "Back to course admin"}
+        {c_adminCertificationsSlugWorkshopPage(de).backToCourseAdmin}
       </Link>
       {!cert || cert.kind !== "general" ? (
-        <p className="text-muted">{de ? "Kurs nicht gefunden (interne Kurse einer Firma werden hier nicht bearbeitet)." : "Course not found (company-internal courses aren't edited here)."}</p>
+        <p className="text-muted">{c_adminCertificationsSlugWorkshopPage(de).courseNotFoundCompanyInternal}</p>
       ) : (
         <>
-          <h1 className="mb-1 text-2xl font-semibold">{de ? "Kurs bearbeiten" : "Edit course"}: {cert.name}</h1>
-          <p className="mb-6 text-sm text-subtle">{de ? "Änderungen sind sofort für Lernende sichtbar. Jeder frühere Stand bleibt in den Versionen erhalten." : "Changes are visible to learners immediately. Every earlier version stays in the history."}</p>
+          <h1 className="mb-1 text-2xl font-semibold">{c_adminCertificationsSlugWorkshopPage(de).editCourse}: {cert.name}</h1>
+          <p className="mb-6 text-sm text-subtle">{c_adminCertificationsSlugWorkshopPage(de).changesAreVisibleToLearners}</p>
           <CourseApprovalPanel certId={cert.id} locale={locale} />
           <CourseWorkshop certId={cert.id} courseName={cert.name} locale={locale} />
         </>

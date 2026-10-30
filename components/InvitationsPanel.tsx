@@ -1,5 +1,7 @@
 "use client";
 
+import { c_invitationsPanel } from "@/lib/i18n/components/invitationsPanel";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -46,7 +48,7 @@ export function InvitationsPanel({
     const body = await res.json().catch(() => null);
     setPending(false);
     if (!res.ok) {
-      setError(body?.error ?? (de ? "Einladung fehlgeschlagen." : "Could not create invitation."));
+      setError(body?.error ?? (c_invitationsPanel(de).couldNotCreateInvitation));
       return;
     }
     setLink({
@@ -62,7 +64,7 @@ export function InvitationsPanel({
     setError(null);
     const res = await fetch(`/api/company/invitations/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      setError(de ? "Widerrufen fehlgeschlagen." : "Could not revoke.");
+      setError(c_invitationsPanel(de).couldNotRevoke);
       return;
     }
     // Der Link der gerade widerrufenen Einladung ist wertlos: nicht weiter anzeigen.
@@ -78,15 +80,11 @@ export function InvitationsPanel({
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="invitations-panel">
-      <h2 className="text-lg font-medium">{de ? "Mitarbeiter einladen" : "Invite people"}</h2>
+      <h2 className="text-lg font-medium">{c_invitationsPanel(de).invitePeople}</h2>
       <p className="mt-1 text-sm text-muted">
         {mailEnabled
-          ? de
-            ? "Die eingeladene Person bekommt eine E-Mail mit dem Link. Du siehst ihn zusätzlich hier und kannst ihn selbst weitergeben. Er gilt 7 Tage, einmal und nur für die eingegebene E-Mail-Adresse."
-            : "The invited person receives an email with the link. You also see it here and can pass it on yourself. It is valid for 7 days, once, and only for the entered email address."
-          : de
-            ? "Es wird keine E-Mail verschickt. Du bekommst einen Link, den du selbst weitergibst. Er gilt 7 Tage, einmal und nur für die eingegebene E-Mail-Adresse."
-            : "No email is sent. You get a link to pass on yourself. It is valid for 7 days, once, and only for the entered email address."}
+          ? c_invitationsPanel(de).theInvitedPersonReceivesAn
+          : c_invitationsPanel(de).noEmailIsSentYou}
       </p>
 
       <form onSubmit={create} className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -95,14 +93,14 @@ export function InvitationsPanel({
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder={de ? "E-Mail-Adresse" : "Email address"}
-          aria-label={de ? "E-Mail-Adresse" : "Email address"}
+          placeholder={c_invitationsPanel(de).emailAddress}
+          aria-label={c_invitationsPanel(de).emailAddress}
           className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
         />
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as Role)}
-          aria-label={de ? "Rolle" : "Role"}
+          aria-label={c_invitationsPanel(de).role}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         >
           {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
@@ -114,9 +112,9 @@ export function InvitationsPanel({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
         >
-          {de ? "Link erzeugen" : "Create link"}
+          {c_invitationsPanel(de).createLink}
         </button>
       </form>
 
@@ -129,42 +127,36 @@ export function InvitationsPanel({
       {link && (
         <div className="mt-4 rounded-md border border-border bg-background p-3" data-testid="invite-link-box">
           <p className="text-sm font-medium">
-            {de ? `Link für ${link.email}` : `Link for ${link.email}`}
+            {fill(c_invitationsPanel(de).linkFor0, link.email)}
           </p>
           {mailEnabled && (
             <p className="mt-1 text-xs" data-testid="invite-mail-status">
               {link.emailSent
-                ? de
-                  ? `E-Mail an ${link.email} wurde verschickt.`
-                  : `Email sent to ${link.email}.`
-                : de
-                  ? "Die E-Mail konnte nicht verschickt werden. Gib den Link selbst weiter."
-                  : "The email could not be sent. Pass the link on yourself."}
+                ? fill(c_invitationsPanel(de).emailSentTo0, link.email)
+                : c_invitationsPanel(de).theEmailCouldNotBe}
             </p>
           )}
           <p className="mt-1 text-xs text-muted">
-            {de
-              ? "Dieser Link wird nur jetzt angezeigt. Danach ist er nicht mehr abrufbar."
-              : "This link is shown only now. It cannot be retrieved later."}
+            {c_invitationsPanel(de).thisLinkIsShownOnly}
           </p>
           <input
             readOnly
             value={link.url}
             onFocus={(e) => e.currentTarget.select()}
-            aria-label={de ? "Einladungslink" : "Invitation link"}
+            aria-label={c_invitationsPanel(de).invitationLink}
             data-testid="invite-link"
             className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 font-mono text-xs"
           />
           <button type="button" onClick={copy} className="mt-2 text-sm text-link hover:underline">
-            {copied ? (de ? "Kopiert" : "Copied") : de ? "Link kopieren" : "Copy link"}
+            {copied ? (c_invitationsPanel(de).copied) : c_invitationsPanel(de).copyLink}
           </button>
         </div>
       )}
 
-      <h3 className="mt-6 text-sm font-medium">{de ? "Offene Einladungen" : "Open invitations"}</h3>
+      <h3 className="mt-6 text-sm font-medium">{c_invitationsPanel(de).openInvitations}</h3>
       {invitations.length === 0 ? (
         <p className="mt-2 text-sm text-muted" data-testid="no-invitations">
-          {de ? "Keine offenen Einladungen." : "No open invitations."}
+          {c_invitationsPanel(de).noOpenInvitations}
         </p>
       ) : (
         <ul className="mt-2 divide-y divide-border text-sm" data-testid="invitation-list">
@@ -173,7 +165,7 @@ export function InvitationsPanel({
               <span>
                 {inv.email} · {ROLE_LABELS[inv.role][locale]} ·{" "}
                 <span className="text-subtle">
-                  {de ? "gültig bis " : "valid until "}
+                  {c_invitationsPanel(de).validUntil}
                   {new Date(inv.expiresAt).toLocaleDateString(locale)}
                 </span>
               </span>
@@ -181,9 +173,9 @@ export function InvitationsPanel({
                 type="button"
                 onClick={() => revoke(inv.id, inv.email)}
                 className="text-danger-text hover:underline"
-                aria-label={de ? `Einladung für ${inv.email} widerrufen` : `Revoke invitation for ${inv.email}`}
+                aria-label={fill(c_invitationsPanel(de).revokeInvitationFor0, inv.email)}
               >
-                {de ? "Widerrufen" : "Revoke"}
+                {c_invitationsPanel(de).revoke}
               </button>
             </li>
           ))}

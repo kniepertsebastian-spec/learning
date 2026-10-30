@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_adminReviewersProbePage } from "@/lib/i18n/components/adminReviewersProbePage";
 import Link from "next/link";
 import { ProbeAdmin } from "@/components/admin/ProbeAdmin";
 import { requireAdminPage } from "@/lib/server/auth-guards";
@@ -14,8 +15,8 @@ export default async function AdminProbePage() {
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div>
-        <Link href="/admin/reviewers" className="text-sm text-link hover:underline">← {locale === "de" ? "Fachliche Prüfer" : "Expert reviewers"}</Link>
-        <h1 className="mt-2 text-2xl font-semibold">{locale === "de" ? "Probe-Review" : "Trial review"}</h1>
+        <Link href="/admin/reviewers" className="text-sm text-link hover:underline">← {c_adminReviewersProbePage(locale).expertReviewers}</Link>
+        <h1 className="mt-2 text-2xl font-semibold">{c_adminReviewersProbePage(locale).trialReview}</h1>
       </div>
       <ProbeAdmin
         locale={locale}

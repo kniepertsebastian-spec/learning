@@ -1,3 +1,4 @@
+import { c_activityTrends } from "@/lib/i18n/components/activityTrends";
 import { Download, Flame } from "lucide-react";
 import type { Locale } from "@/lib/types";
 import type { ActivityCalendarDay, ActivityTrendWindow } from "@/lib/server/analytics/trends";
@@ -42,16 +43,16 @@ export function ActivityTrends({
   const weeks = chunkIntoWeeks(calendar);
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-surface p-4">
+    <div className="mb-6 rounded-2xl border border-border bg-surface p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">
-          {locale === "de" ? "Trend & Aktivität" : "Trend & activity"}
+          {c_activityTrends(locale).trendActivity}
         </h2>
         <div className="flex items-center gap-3">
           {streak > 0 && (
             <span className="flex items-center gap-1 text-xs font-medium text-warning-text">
               <Flame className="h-3.5 w-3.5" aria-hidden="true" />
-              {streak} {locale === "de" ? "Tage in Folge" : "day streak"}
+              {streak} {c_activityTrends(locale).dayStreak}
             </span>
           )}
           <a
@@ -59,7 +60,7 @@ export function ActivityTrends({
             className="flex items-center gap-1 text-xs text-link hover:underline"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            {locale === "de" ? "Export (JSON)" : "Export (JSON)"}
+            {c_activityTrends(locale).exportJson}
           </a>
         </div>
       </div>
@@ -68,13 +69,13 @@ export function ActivityTrends({
         {trends.map((t) => (
           <div key={t.windowDays} className="rounded-md border border-border p-3 text-center">
             <p className="text-xs text-subtle">
-              {t.windowDays} {locale === "de" ? "Tage" : "days"}
+              {t.windowDays} {c_activityTrends(locale).days}
             </p>
             <p className="text-lg font-semibold">
               {t.avgAccuracy !== null ? `${t.avgAccuracy}%` : "–"}
             </p>
             <p className="text-2xs text-faint">
-              {t.activeDays} {locale === "de" ? "aktive Tage" : "active days"}
+              {t.activeDays} {c_activityTrends(locale).activeDays}
             </p>
           </div>
         ))}
@@ -86,7 +87,7 @@ export function ActivityTrends({
             {week.map((day) => (
               <div
                 key={day.date}
-                title={`${day.date}: ${day.count} ${locale === "de" ? "Aktivität(en)" : "activit(y/ies)"}`}
+                title={`${day.date}: ${day.count} ${c_activityTrends(locale).activitYIes}`}
                 className={`h-2.5 w-2.5 rounded-sm ${intensityClass(day.count)}`}
               />
             ))}

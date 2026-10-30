@@ -1,5 +1,6 @@
 "use client";
 
+import { c_cheatSheetDone } from "@/lib/i18n/components/cheatSheetDone";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLocaleOptional } from "@/lib/i18n";
@@ -23,14 +24,14 @@ export function CheatSheetDone({ certificationId }: { certificationId: string })
   return (
     <div className="mt-6 flex flex-wrap items-center gap-3 print:hidden" data-testid="cheatsheet-done">
       <Button variant="secondary" onClick={() => void mark()} disabled={state === "saving" || state === "done"}>
-        {de ? "Durchgesehen" : "Done reading"}
+        {c_cheatSheetDone(de).doneReading}
       </Button>
       <p className="text-xs text-subtle" role="status">
         {state === "done"
-          ? de ? "Gespeichert: zählt als Lerntag für dein Wochenziel." : "Saved: counts as a study day for your weekly goal."
+          ? c_cheatSheetDone(de).savedCountsAsAStudy
           : state === "error"
-            ? de ? "Das hat nicht geklappt." : "That did not work."
-            : de ? "Zählt als Aktivität für dein Wochenziel, nicht als Wiederholung." : "Counts as activity for your weekly goal, not as a review."}
+            ? c_cheatSheetDone(de).thatDidNotWork
+            : c_cheatSheetDone(de).countsAsActivityForYour}
       </p>
     </div>
   );

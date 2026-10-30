@@ -1,5 +1,7 @@
 "use client";
 
+import { c_adminRequestsPanel } from "@/lib/i18n/components/adminRequestsPanel";
+import { fill } from "@/lib/i18n/fill";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -46,9 +48,7 @@ function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   async function revoke() {
-    const hint = de
-      ? `Freigabe „${e.courseName}“ für ${e.organizationName} entziehen? Bestehende Zuweisungen (${e.openAssignments} offen) bleiben bestehen, neue sind nicht mehr möglich.`
-      : `Revoke release of "${e.courseName}" for ${e.organizationName}? Existing assignments (${e.openAssignments} open) stay, new ones are no longer possible.`;
+    const hint = fill(c_adminRequestsPanel(de).revokeReleaseOf0For, e.courseName, e.organizationName, e.openAssignments);
     if (!(await confirm(hint))) return;
     const err = await call("/api/admin/entitlements", "DELETE", { organizationId: e.organizationId, certificationId: e.certificationId, note: note || null });
     setError(err);
@@ -62,7 +62,7 @@ function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en
         <span>
           <span className="font-medium">{e.courseName}</span>
           <span className="ml-2 text-xs text-muted">
-            {e.organizationName} · {new Date(e.releasedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })} · {de ? "offene Zuweisungen" : "open assignments"}: {e.openAssignments}
+            {e.organizationName} · {new Date(e.releasedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })} · {c_adminRequestsPanel(de).openAssignments}: {e.openAssignments}
           </span>
         </span>
         <span className="flex gap-2">
@@ -71,12 +71,12 @@ function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en
             value={note}
             onChange={(ev) => setNote(ev.target.value)}
             maxLength={500}
-            placeholder={de ? "Hinweis an die Firma (optional)" : "Note to the company (optional)"}
-            aria-label={de ? "Hinweis" : "Note"}
+            placeholder={c_adminRequestsPanel(de).noteToTheCompanyOptional}
+            aria-label={c_adminRequestsPanel(de).note}
             className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
           />
           <button type="button" onClick={() => void revoke()} data-testid="admin-entitlement-revoke" className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface">
-            {de ? "Freigabe entziehen" : "Revoke release"}
+            {c_adminRequestsPanel(de).revokeRelease}
           </button>
         </span>
       </div>
@@ -147,17 +147,17 @@ function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: Ca
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={500}
-              placeholder={de ? "Hinweis an die Firma (bei Ablehnung Pflicht)" : "Note to the company (required when declining)"}
-              aria-label={de ? "Hinweis" : "Note"}
+              placeholder={c_adminRequestsPanel(de).noteToTheCompanyRequired}
+              aria-label={c_adminRequestsPanel(de).note}
               className="flex-1 rounded-md border border-border bg-surface px-2 py-1 text-xs"
             />
             <button type="button" onClick={() => void save()} className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface">
-              {de ? "Stand setzen" : "Set status"}
+              {c_adminRequestsPanel(de).setStatus}
             </button>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <select value={courseId} onChange={(e) => setCourseId(e.target.value)} aria-label={de ? "Lernpfad für die Freigabe" : "Course to release"} className="rounded-md border border-border bg-surface px-2 py-1 text-xs">
-              <option value="">{r.certificationId ? (de ? "Angefragter Lernpfad" : "Requested course") : de ? "Lernpfad wählen …" : "Choose a course …"}</option>
+            <select value={courseId} onChange={(e) => setCourseId(e.target.value)} aria-label={c_adminRequestsPanel(de).courseToRelease} className="rounded-md border border-border bg-surface px-2 py-1 text-xs">
+              <option value="">{r.certificationId ? (c_adminRequestsPanel(de).requestedCourse) : c_adminRequestsPanel(de).chooseACourse}</option>
               {releasable.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -168,13 +168,13 @@ function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: Ca
               type="button"
               onClick={() => void release()}
               disabled={!courseId && !r.certificationId}
-              className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-on-accent hover:opacity-90 disabled:opacity-50"
+              className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
             >
-              {de ? "Für die Firma freigeben" : "Release for company"}
+              {c_adminRequestsPanel(de).releaseForCompany}
             </button>
           </div>
           {r.certificationId && r.courseCatalogStatus !== "approved" && (
-            <p className="text-xs text-danger-text">{de ? "Der angefragte Lernpfad ist noch nicht fachlich freigegeben." : "The requested course has not been approved by an expert yet."}</p>
+            <p className="text-xs text-danger-text">{c_adminRequestsPanel(de).theRequestedCourseHasNot}</p>
           )}
         </div>
       )}
@@ -205,8 +205,8 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
         <span className="font-medium">{c.name}</span>
         {c.approvedAt && (
           <span className="ml-2 text-xs text-muted">
-            {de ? "geprüft von" : "reviewed by"} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}
-            {c.versionLabel ? ` · ${de ? "Version" : "Version"} ${c.versionLabel}` : ""}
+            {c_adminRequestsPanel(de).reviewedBy} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}
+            {c.versionLabel ? ` · ${c_adminRequestsPanel(de).version} ${c.versionLabel}` : ""}
           </span>
         )}
         {c.changesSinceApproval !== null && c.changesSinceApproval > 0 && (
@@ -228,19 +228,19 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={120}
-          placeholder={de ? "Name der prüfenden Person" : "Reviewer name"}
-          aria-label={de ? "Name der prüfenden Person" : "Reviewer name"}
+          placeholder={c_adminRequestsPanel(de).reviewerName}
+          aria-label={c_adminRequestsPanel(de).reviewerName}
           className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
         />
       )}
       {status === "approved" && (
         <label className="flex items-center gap-1.5 text-xs">
           <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} data-testid="catalog-confirm" />
-          {de ? "Inhalte dieser Version fachlich geprüft" : "Content of this version reviewed"}
+          {c_adminRequestsPanel(de).contentOfThisVersionReviewed}
         </label>
       )}
       <button type="button" onClick={() => void save()} className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface">
-        {de ? "Speichern" : "Save"}
+        {c_adminRequestsPanel(de).save}
       </button>
       {error && (
         <span role="alert" className="text-xs text-danger-text">
@@ -258,9 +258,9 @@ export function AdminRequestsPanel({ requests, catalog, entitlements, locale }: 
   return (
     <>
       <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-requests">
-        <h2 className="text-lg font-medium">{de ? "Anfragen" : "Requests"}</h2>
+        <h2 className="text-lg font-medium">{c_adminRequestsPanel(de).requests}</h2>
         {requests.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">{de ? "Keine Anfragen." : "No requests."}</p>
+          <p className="mt-2 text-sm text-muted">{c_adminRequestsPanel(de).noRequests}</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-3">
             {requests.map((r) => (
@@ -270,14 +270,12 @@ export function AdminRequestsPanel({ requests, catalog, entitlements, locale }: 
         )}
       </section>
       <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-entitlements">
-        <h2 className="text-lg font-medium">{de ? "Erteilte Firmenfreigaben" : "Releases granted to companies"}</h2>
+        <h2 className="text-lg font-medium">{c_adminRequestsPanel(de).releasesGrantedToCompanies}</h2>
         <p className="mt-1 text-sm text-muted">
-          {de
-            ? "Beim Entziehen kann die Firma den Lernpfad nicht mehr neu zuweisen. Bestehende Zuweisungen und Lernfortschritt bleiben."
-            : "After revoking, the company can no longer assign the course. Existing assignments and progress stay."}
+          {c_adminRequestsPanel(de).afterRevokingTheCompanyCan}
         </p>
         {entitlements.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">{de ? "Keine Freigaben." : "No releases."}</p>
+          <p className="mt-2 text-sm text-muted">{c_adminRequestsPanel(de).noReleases}</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-2">
             {entitlements.map((e) => (
@@ -287,11 +285,9 @@ export function AdminRequestsPanel({ requests, catalog, entitlements, locale }: 
         )}
       </section>
       <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-catalog">
-        <h2 className="text-lg font-medium">{de ? "Allgemeine Lernpfade: fachliche Prüfung" : "General courses: expert review"}</h2>
+        <h2 className="text-lg font-medium">{c_adminRequestsPanel(de).generalCoursesExpertReview}</h2>
         <p className="mt-1 text-sm text-muted">
-          {de
-            ? "Nur freigegebene Lernpfade lassen sich für Firmen freigeben und zuweisen. Die Freigabe nennt die prüfende Person (auch extern) und das Datum."
-            : "Only approved courses can be released to companies and assigned. Approval records the reviewer (also external) and the date."}
+          {c_adminRequestsPanel(de).onlyApprovedCoursesCanBe}
         </p>
         <ul className="mt-3 flex flex-col gap-2">
           {catalog.map((c) => (

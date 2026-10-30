@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_agbPage } from "@/lib/i18n/components/agbPage";
 import type { Metadata } from "next";
 import { getServerLocale } from "@/lib/server/locale";
 
@@ -50,8 +51,8 @@ export default async function AgbPage() {
       ];
   return (
     <div className="mx-auto w-full max-w-3xl py-6" data-testid="agb-page">
-      <h1 className="text-2xl font-semibold">{de ? "AGB / Service Agreements" : "Terms of service"}</h1>
-      <p className="mt-1 text-sm text-subtle">{de ? "Auszug: Aussagen zu Prüfung, Bestehen und Prüfungsbedingungen." : "Excerpt: statements on review, passing and exam conditions."}</p>
+      <h1 className="text-2xl font-semibold">{c_agbPage(de).termsOfService}</h1>
+      <p className="mt-1 text-sm text-subtle">{c_agbPage(de).excerptStatementsOnReviewPassing}</p>
       <div className="mt-6 flex flex-col gap-6">
         {sections.map((s, i) => (
           <section key={s.id} id={s.id}>

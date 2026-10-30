@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { c_profilePage } from "@/lib/i18n/components/profilePage";
+import { fill } from "@/lib/i18n/fill";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
@@ -56,8 +58,8 @@ export default async function ProfilePage() {
       <span className="text-muted" data-testid="profile-course-status">
         {STATUS_LABEL[a.status][locale]}
         {a.status === "completed" && a.completedAt ? ` · ${fmt(a.completedAt)}` : ""}
-        {a.status !== "completed" && a.dueAt ? ` · ${de ? "Frist" : "Due"} ${fmt(a.dueAt)}` : ""}
-        {a.status !== "completed" && a.lastCompletedAt ? ` · ${de ? "zuletzt bestanden" : "last passed"} ${fmt(a.lastCompletedAt)}` : ""}
+        {a.status !== "completed" && a.dueAt ? ` · ${c_profilePage(de).due} ${fmt(a.dueAt)}` : ""}
+        {a.status !== "completed" && a.lastCompletedAt ? ` · ${c_profilePage(de).lastPassed} ${fmt(a.lastCompletedAt)}` : ""}
       </span>
     </li>
   );
@@ -66,7 +68,7 @@ export default async function ProfilePage() {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6" data-testid="profile-page">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold">{de ? "Mein Profil" : "My profile"}</h1>
+          <h1 className="text-2xl font-semibold">{c_profilePage(de).myProfile}</h1>
           <p className="mt-1 break-words text-sm text-muted" data-testid="profile-identity">
             {row?.name ? `${row.name} · ` : ""}{user.email}
             {membership ? ` · ${membership.organizationName} (${ROLE_LABEL[membership.role][locale]})` : ""}
@@ -74,17 +76,17 @@ export default async function ProfilePage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/how-i-learn" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background" data-testid="profile-how-i-learn-link">
-            {de ? "Wie ich lerne" : "How I learn"}
+            {c_profilePage(de).howILearn}
           </Link>
           <Link href="/account" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background" data-testid="profile-account-link">
-            {de ? "Konto & Daten" : "Account & data"}
+            {c_profilePage(de).accountData}
           </Link>
         </div>
       </header>
 
       {progress.some((p) => p.view && (p.view.review || p.view.outlook)) && (
         <section className="flex flex-col gap-1" data-testid="profile-progress">
-          <h2 className="font-semibold">{de ? "Mein Fortschritt" : "My progress"}</h2>
+          <h2 className="font-semibold">{c_profilePage(de).myProgress}</h2>
           {progress.map(({ course, view }) =>
             view && (view.review || view.outlook) ? (
               <div key={course.id}>
@@ -104,30 +106,28 @@ export default async function ProfilePage() {
 
       <CareerProfile initial={career} courseNames={catalog.map((c) => c.name)} />
 
-      <section className="rounded-xl border border-border bg-surface p-5" data-testid="profile-courses">
-        <h2 className="font-semibold">{de ? "Kurse deiner Firma" : "Your company's courses"}</h2>
+      <section className="rounded-2xl border border-border bg-surface p-5" data-testid="profile-courses">
+        <h2 className="font-semibold">{c_profilePage(de).yourCompanySCourses}</h2>
         <p className="mt-1 text-xs text-muted">
-          {de
-            ? "Das sind die Kurse, die deine Firma dir bereitgestellt hat. Deine Firma sieht dazu nur Status und Daten, keine Ergebnisse oder Antworten."
-            : "These are the courses your company provided. Your company only sees status and dates, never results or answers."}
+          {c_profilePage(de).theseAreTheCoursesYour}
         </p>
         {assignments.length === 0 ? (
           <p className="mt-3 text-sm text-muted" data-testid="profile-empty">
             {membership
-              ? de ? "Deine Firma hat dir noch keinen Kurs bereitgestellt." : "Your company has not provided any course yet."
-              : de ? "Du gehörst keiner Firma an." : "You do not belong to a company."}
+              ? c_profilePage(de).yourCompanyHasNotProvided
+              : c_profilePage(de).youDoNotBelongTo}
           </p>
         ) : (
           <>
             {done.length > 0 && (
               <>
-                <h3 className="mt-4 text-sm font-medium">{de ? `Absolviert (${done.length})` : `Completed (${done.length})`}</h3>
+                <h3 className="mt-4 text-sm font-medium">{fill(c_profilePage(de).completed0, done.length)}</h3>
                 <ul className="mt-2 flex flex-col gap-2" data-testid="profile-done">{done.map(item)}</ul>
               </>
             )}
             {rest.length > 0 && (
               <>
-                <h3 className="mt-4 text-sm font-medium">{de ? `Offen (${rest.length})` : `Open (${rest.length})`}</h3>
+                <h3 className="mt-4 text-sm font-medium">{fill(c_profilePage(de).open0, rest.length)}</h3>
                 <ul className="mt-2 flex flex-col gap-2" data-testid="profile-open">{rest.map(item)}</ul>
               </>
             )}

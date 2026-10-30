@@ -1,3 +1,5 @@
+import { c_companyModulesSection } from "@/lib/i18n/components/companyModulesSection";
+import { fill } from "@/lib/i18n/fill";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { PathModuleView } from "@/lib/server/company/modules";
@@ -20,9 +22,9 @@ export function CompanyModulesSection({ modules, companyName, locale }: { module
   const de = locale === "de";
   return (
     <section className="rounded-2xl border border-border bg-surface p-5" data-testid="company-modules">
-      <h2 className="font-semibold">{de ? `Von ${companyName}` : `From ${companyName}`}</h2>
+      <h2 className="font-semibold">{fill(c_companyModulesSection(de).from0, companyName)}</h2>
       <p className="mt-1 text-xs text-muted">
-        {de ? "Unterlagen deiner Firma zu diesem Lernpfad." : "Your company's material for this learning path."}
+        {c_companyModulesSection(de).yourCompanySMaterialFor}
       </p>
       <ul className="mt-3 flex flex-col gap-3">
         {modules.map((m) => (
@@ -31,14 +33,12 @@ export function CompanyModulesSection({ modules, companyName, locale }: { module
               <h3 className="font-medium">{m.title}</h3>
               <span className={`text-xs ${m.state === "valid" ? "text-subtle" : m.state === "expiring" ? "text-warning-text" : "text-danger-text"}`} data-testid="company-module-state">
                 {STATE_LABEL[m.state][locale]} {formatDate(m.validUntil, locale)}
-                {m.responsible ? ` · ${de ? "Verantwortlich" : "Owner"}: ${m.responsible}` : ""}
+                {m.responsible ? ` · ${c_companyModulesSection(de).owner}: ${m.responsible}` : ""}
               </span>
             </div>
             {m.body === null ? (
               <p className="mt-2 text-sm text-muted" data-testid="company-module-expired">
-                {de
-                  ? "Diese Unterlage ist abgelaufen und wird von der verantwortlichen Person überarbeitet. Bitte frage dort nach."
-                  : "This material has expired and is being revised by the person responsible. Please ask them."}
+                {c_companyModulesSection(de).thisMaterialHasExpiredAnd}
               </p>
             ) : (
               <div className="prose prose-sm mt-2 max-w-none dark:prose-invert">

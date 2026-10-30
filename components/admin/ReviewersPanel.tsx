@@ -1,5 +1,6 @@
 "use client";
 
+import { c_adminReviewersPanel } from "@/lib/i18n/components/adminReviewersPanel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
     const r = await act("/api/admin/reviewers/invitations", "POST", { email, certificationIds: [selected] });
     if (r.error) return;
     const data = r.data as { mailed: boolean; link: string | null } | null;
-    if (data?.mailed) setMessage(de ? "Einladung per E-Mail verschickt." : "Invitation sent by email.");
+    if (data?.mailed) setMessage(c_adminReviewersPanel(de).invitationSentByEmail);
     else if (data?.link) setLink(`${window.location.origin}${data.link}`);
     setEmail("");
     setSelected("");
@@ -48,49 +49,47 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
 
   return (
     <div className="flex flex-col gap-6" data-testid="reviewers-panel">
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <h2 className="font-medium">{de ? "Prüfer einladen" : "Invite a reviewer"}</h2>
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-medium">{c_adminReviewersPanel(de).inviteAReviewer}</h2>
         <form onSubmit={invite} className="mt-3 flex flex-col gap-3 text-sm">
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={de ? "E-Mail-Adresse" : "Email address"} aria-label={de ? "E-Mail-Adresse" : "Email address"} data-testid="reviewer-invite-email" className="rounded-md border border-border bg-background px-3 py-2" />
-          <fieldset>
-            <legend className="mb-1 text-subtle">{de ? "Der eine Kurs, den er nach Annahme betreut (nur allgemeine Kurse)" : "The one course they will review after acceptance (general courses only)"}</legend>
-            <div className="flex flex-col gap-1">
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={c_adminReviewersPanel(de).emailAddress} aria-label={c_adminReviewersPanel(de).emailAddress} data-testid="reviewer-invite-email" className="h-11 max-w-xl rounded-md border border-border-strong bg-control px-3" />
+          <label className="flex flex-col gap-1">
+            <span className="text-subtle">{c_adminReviewersPanel(de).theOneCourseTheyWill}</span>
+            <select required value={selected} onChange={(e) => setSelected(e.target.value)} data-testid="reviewer-invite-course" className="h-11 max-w-xl rounded-md border border-border-strong bg-control px-3">
+              <option value="">{c_adminReviewersPanel(de).chooseACourse}</option>
               {courses.map((c) => (
-                <label key={c.id} className="flex items-center gap-2">
-                  <input type="radio" name="reviewer-invite-course" required checked={selected === c.id} onChange={() => setSelected(c.id)} />
-                  {c.name}
-                </label>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
-            </div>
-          </fieldset>
-          <Button type="submit" className="w-fit" disabled={!email || !selected} data-testid="reviewer-invite-send">{de ? "Einladen" : "Invite"}</Button>
+            </select>
+          </label>
+          <Button type="submit" className="w-fit" disabled={!email || !selected} data-testid="reviewer-invite-send">{c_adminReviewersPanel(de).invite}</Button>
         </form>
         {message && <p role="status" className="mt-2 text-sm">{message}</p>}
         {link && (
           <p className="mt-2 break-all text-sm" data-testid="reviewer-invite-link">
-            {de ? "E-Mail-Versand ist nicht eingerichtet. Link zum Weitergeben:" : "Email is not set up. Link to pass on:"} <code>{link}</code>
+            {c_adminReviewersPanel(de).emailIsNotSetUp} <code>{link}</code>
           </p>
         )}
         {error && <p role="alert" className="mt-2 text-sm text-danger-text">{error}</p>}
       </section>
 
       {invitations.length > 0 && (
-        <section className="rounded-lg border border-border bg-surface p-5">
-          <h2 className="font-medium">{de ? "Offene Einladungen" : "Open invitations"}</h2>
+        <section className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="font-medium">{c_adminReviewersPanel(de).openInvitations}</h2>
           <ul className="mt-2 flex flex-col gap-1 text-sm">
             {invitations.map((i) => (
               <li key={i.id} className="flex items-center gap-3">
-                <span>{i.email} · {de ? "gültig bis" : "valid until"} {new Date(i.expiresAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}</span>
-                <button type="button" className="text-link hover:underline" onClick={() => void act(`/api/admin/reviewers/invitations/${i.id}`, "DELETE")}>{de ? "Widerrufen" : "Revoke"}</button>
+                <span>{i.email} · {c_adminReviewersPanel(de).validUntil} {new Date(i.expiresAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}</span>
+                <button type="button" className="text-link hover:underline" onClick={() => void act(`/api/admin/reviewers/invitations/${i.id}`, "DELETE")}>{c_adminReviewersPanel(de).revoke}</button>
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <h2 className="font-medium">{de ? "Prüfer und ihre Kurse" : "Reviewers and their courses"}</h2>
-        {reviewers.length === 0 && <p className="mt-2 text-sm text-subtle">{de ? "Noch keine Prüfer." : "No reviewers yet."}</p>}
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h2 className="font-medium">{c_adminReviewersPanel(de).reviewersAndTheirCourses}</h2>
+        {reviewers.length === 0 && <p className="mt-2 text-sm text-subtle">{c_adminReviewersPanel(de).noReviewersYet}</p>}
         <ul className="mt-2 flex flex-col gap-3 text-sm">
           {reviewers.map((r) => (
             <li key={r.id} data-testid="reviewer-row">
@@ -99,20 +98,20 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
                 {r.courses.map((c) => (
                   <li key={c.id}>
                     {c.name}{" "}
-                    <button type="button" className="text-link hover:underline" onClick={() => void act("/api/admin/reviewers/assignments", "DELETE", { certificationId: c.id, userId: r.id })}>{de ? "Zuweisung aufheben" : "Unassign"}</button>
+                    <button type="button" className="text-link hover:underline" onClick={() => void act("/api/admin/reviewers/assignments", "DELETE", { certificationId: c.id, userId: r.id })}>{c_adminReviewersPanel(de).unassign}</button>
                   </li>
                 ))}
-                {r.courses.length === 0 && <li className="text-subtle">{de ? "Noch kein Kurs zugewiesen (ein Prüfer betreut genau einen Kurs)" : "No course assigned yet (a reviewer looks after exactly one course)"}</li>}
+                {r.courses.length === 0 && <li className="text-subtle">{c_adminReviewersPanel(de).noCourseAssignedYetA}</li>}
               </ul>
               {r.courses.length === 0 && (
               <div className="mt-1 flex gap-2">
-                <select value={assign[r.id] ?? ""} onChange={(e) => setAssign((a) => ({ ...a, [r.id]: e.target.value }))} aria-label={de ? "Kurs zuweisen" : "Assign course"} className="rounded-md border border-border bg-background px-2 py-1">
-                  <option value="">{de ? "Kurs wählen …" : "Choose course …"}</option>
+                <select value={assign[r.id] ?? ""} onChange={(e) => setAssign((a) => ({ ...a, [r.id]: e.target.value }))} aria-label={c_adminReviewersPanel(de).assignCourse} className="rounded-md border border-border bg-background px-2 py-1">
+                  <option value="">{c_adminReviewersPanel(de).chooseCourse}</option>
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
-                <Button size="sm" variant="secondary" disabled={!assign[r.id]} onClick={() => void act("/api/admin/reviewers/assignments", "POST", { certificationId: assign[r.id], userId: r.id })}>{de ? "Zuweisen" : "Assign"}</Button>
+                <Button size="sm" variant="secondary" disabled={!assign[r.id]} onClick={() => void act("/api/admin/reviewers/assignments", "POST", { certificationId: assign[r.id], userId: r.id })}>{c_adminReviewersPanel(de).assign}</Button>
               </div>
               )}
             </li>
@@ -120,15 +119,15 @@ export function ReviewersPanel({ locale, courses, reviewers, invitations, commen
         </ul>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5" data-testid="reviewer-comments">
-        <h2 className="font-medium">{de ? "Offene Kommentare der Prüfer" : "Open reviewer comments"}</h2>
-        {comments.length === 0 && <p className="mt-2 text-sm text-subtle">{de ? "Keine offenen Kommentare." : "No open comments."}</p>}
+      <section className="rounded-2xl border border-border bg-surface p-5" data-testid="reviewer-comments">
+        <h2 className="font-medium">{c_adminReviewersPanel(de).openReviewerComments}</h2>
+        {comments.length === 0 && <p className="mt-2 text-sm text-subtle">{c_adminReviewersPanel(de).noOpenComments}</p>}
         <ul className="mt-2 flex flex-col gap-2 text-sm">
           {comments.map((c) => (
             <li key={c.id} className="rounded-md border border-border bg-background p-3">
-              <p className="text-xs text-subtle">{c.courseName} · {c.targetType === "question" ? (de ? "Frage" : "Question") : de ? "Lektion" : "Lesson"} · {c.kind === "faulty" ? (de ? "als fehlerhaft gemeldet" : "reported faulty") : de ? "Kommentar" : "comment"} · {c.reviewerName ?? "?"}</p>
+              <p className="text-xs text-subtle">{c.courseName} · {c.targetType === "question" ? (c_adminReviewersPanel(de).question) : c_adminReviewersPanel(de).lesson} · {c.kind === "faulty" ? (c_adminReviewersPanel(de).reportedFaulty) : c_adminReviewersPanel(de).comment} · {c.reviewerName ?? "?"}</p>
               <p>{c.text}</p>
-              <button type="button" className="mt-1 text-xs text-link hover:underline" onClick={() => void act(`/api/admin/reviewers/comments/${c.id}`, "POST")}>{de ? "Erledigt" : "Resolve"}</button>
+              <button type="button" className="mt-1 text-xs text-link hover:underline" onClick={() => void act(`/api/admin/reviewers/comments/${c.id}`, "POST")}>{c_adminReviewersPanel(de).resolve}</button>
             </li>
           ))}
         </ul>

@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_reviewerProfilePage } from "@/lib/i18n/components/reviewerProfilePage";
 import Link from "next/link";
 import { ReviewerProfileEditor, type OwnProfileJson } from "@/components/reviewer/ReviewerProfileEditor";
 import { getServerLocale } from "@/lib/server/locale";
@@ -21,8 +22,8 @@ export default async function ReviewerProfilePage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/reviewer" className="text-sm text-link hover:underline">← {de ? "Mein Kurs" : "My course"}</Link>
-        <h1 className="mt-2 text-2xl font-semibold">{de ? "Mein Expertenprofil" : "My expert profile"}</h1>
+        <Link href="/reviewer" className="text-sm text-link hover:underline">← {c_reviewerProfilePage(de).myCourse}</Link>
+        <h1 className="mt-2 text-2xl font-semibold">{c_reviewerProfilePage(de).myExpertProfile}</h1>
       </div>
       <ReviewerProfileEditor initial={initial} courses={courses.map((c) => ({ slug: c.slug, name: c.name, versionLabel: c.versionLabel, approvedAt: c.approvedAt.toISOString() }))} locale={locale} />
     </div>

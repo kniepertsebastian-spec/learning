@@ -1,5 +1,7 @@
 "use client";
 
+import { c_explanationReviewQueue } from "@/lib/i18n/components/explanationReviewQueue";
+import { fill } from "@/lib/i18n/fill";
 import { useEffect, useState } from "react";
 import { RichText } from "@/components/RichText";
 
@@ -66,17 +68,17 @@ export function ExplanationReviewQueue({ certificationId, locale }: { certificat
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4" data-testid="explanation-review">
-      <h3 className="mb-1 font-medium">{de ? "Alternativerklärungen (Verstehens-Modus)" : "Alternative explanations (understanding mode)"}</h3>
+    <div className="rounded-2xl border border-border bg-surface p-5" data-testid="explanation-review">
+      <h3 className="mb-1 font-medium">{c_explanationReviewQueue(de).alternativeExplanationsUnderstandingMode}</h3>
       {counts && (
         <p className="mb-3 text-xs text-subtle">
-          {de ? `${counts.approved} freigegeben, ${counts.draft} Entwürfe, ${counts.rejected} verworfen.` : `${counts.approved} approved, ${counts.draft} drafts, ${counts.rejected} rejected.`}
+          {fill(c_explanationReviewQueue(de).n0Approved1Drafts2, counts.approved, counts.draft, counts.rejected)}
         </p>
       )}
       {drafts === null ? (
-        <p className="text-sm text-subtle">{de ? "Lädt …" : "Loading …"}</p>
+        <p className="text-sm text-subtle">{c_explanationReviewQueue(de).loading}</p>
       ) : drafts.length === 0 ? (
-        <p className="text-sm text-subtle">{de ? "Keine Entwürfe zur Prüfung." : "No drafts to review."}</p>
+        <p className="text-sm text-subtle">{c_explanationReviewQueue(de).noDraftsToReview}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {drafts.map((d) => {
@@ -92,16 +94,16 @@ export function ExplanationReviewQueue({ certificationId, locale }: { certificat
                 </div>
                 {solution && (
                   <div className="mb-2 rounded-md bg-surface p-2 text-xs" data-testid="explanation-solution">
-                    <p className="mb-1 font-semibold">{de ? "Lösung zu den Lücken" : "Solution for the gaps"}</p>
+                    <p className="mb-1 font-semibold">{c_explanationReviewQueue(de).solutionForTheGaps}</p>
                     <RichText text={solution[locale]} />
                   </div>
                 )}
                 <details className="mb-2 text-xs">
-                  <summary className="cursor-pointer">{de ? "Text bearbeiten" : "Edit text"}</summary>
+                  <summary className="cursor-pointer">{c_explanationReviewQueue(de).editText}</summary>
                   {(["de", "en"] as const).map((lang) => (
                     <textarea
                       key={lang}
-                      aria-label={lang === "de" ? "Deutsch" : "English"}
+                      aria-label={c_explanationReviewQueue(lang).english}
                       value={value[lang]}
                       onChange={(e) => setEdits((cur) => ({ ...cur, [d.id]: { ...value, [lang]: e.target.value } }))}
                       rows={5}
@@ -112,7 +114,7 @@ export function ExplanationReviewQueue({ certificationId, locale }: { certificat
                     (["de", "en"] as const).map((lang) => (
                       <textarea
                         key={`s-${lang}`}
-                        aria-label={lang === "de" ? "Lösung Deutsch" : "Solution English"}
+                        aria-label={c_explanationReviewQueue(lang).solutionEnglish}
                         value={solution[lang]}
                         onChange={(e) => setSolutionEdits((cur) => ({ ...cur, [d.id]: { ...solution, [lang]: e.target.value } }))}
                         rows={3}
@@ -122,10 +124,10 @@ export function ExplanationReviewQueue({ certificationId, locale }: { certificat
                 </details>
                 <div className="flex gap-2">
                   <button type="button" disabled={busy !== null} onClick={() => void decide(d, "approved")} data-testid="explanation-approve" className="rounded-md border border-border bg-background px-2 py-1 text-xs hover:border-accent disabled:opacity-50">
-                    {de ? "Freigeben" : "Approve"}
+                    {c_explanationReviewQueue(de).approve}
                   </button>
                   <button type="button" disabled={busy !== null} onClick={() => void decide(d, "rejected")} className="rounded-md border border-border bg-background px-2 py-1 text-xs hover:border-accent disabled:opacity-50">
-                    {de ? "Verwerfen" : "Reject"}
+                    {c_explanationReviewQueue(de).reject}
                   </button>
                 </div>
               </li>

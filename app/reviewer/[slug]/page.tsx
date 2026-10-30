@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_reviewerSlugPage } from "@/lib/i18n/components/reviewerSlugPage";
 import { SolutionView } from "@/components/quiz/FormatAnswerInput";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -54,12 +55,12 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
     <div className="flex flex-col" data-testid="reviewer-course-page">
       <Link href="/reviewer" className="mb-4 flex w-fit items-center gap-1.5 text-sm text-subtle hover:text-foreground">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {de ? "Zurück zu meinen Kursen" : "Back to my courses"}
+        {c_reviewerSlugPage(de).backToMyCourses}
       </Link>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{cert.name}</h1>
         <Link href={`/reviewer/${slug}/workshop`} className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-link hover:bg-accent-soft" data-testid="reviewer-edit-link">
-          {de ? "Kurs bearbeiten" : "Edit course"}
+          {c_reviewerSlugPage(de).editCourse}
         </Link>
       </div>
       <FeedbackQueue items={feedback.map((f) => ({ ...f, createdAt: f.createdAt.toISOString() }))} locale={locale} canResolve={false} />
@@ -68,7 +69,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
         <section key={domain.id} className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">{domain.name}</h2>
           {domain.objectives.map((objective) => (
-            <div key={objective.id} className="mb-6 rounded-lg border border-border bg-surface p-4">
+            <div key={objective.id} className="mb-6 rounded-2xl border border-border bg-surface p-5">
               <h3 className="font-medium">{objective.code} {objective.title}</h3>
               {objective.sections.map((s) => (
                 <details key={s.id} className="mt-3 text-sm" data-testid="reviewer-section">
@@ -93,7 +94,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
                         ))}
                       </ul>
                       {q.solution && <SolutionView solution={q.solution} locale={locale} />}
-                      <p className="mt-1 text-xs text-subtle">{de ? "Erklärung" : "Explanation"}: {q.explanation[locale]}</p>
+                      <p className="mt-1 text-xs text-subtle">{c_reviewerSlugPage(de).explanation}: {q.explanation[locale]}</p>
                       <ReviewerItemComment certId={cert.id} targetType="question" targetId={q.id} locale={locale} existing={commentsFor("question", q.id)} />
                     </div>
                   ))}

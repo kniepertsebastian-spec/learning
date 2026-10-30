@@ -1,0 +1,56 @@
+// Texte von components/AiSettingsPanel.tsx (de/en). Neue Texte hier ergänzen, nicht als `de ? … : …` ins JSX.
+const texts = {
+  de: {
+    couldNotSave: "Speichern fehlgeschlagen.",
+    saved: "Gespeichert.",
+    couldNotRemove: "Entfernen fehlgeschlagen.",
+    keyRemoved: "Schlüssel entfernt.",
+    aiAccessForInternalLearning: "KI-Zugang für interne Lernpfade",
+    youCreateInternalLearningPaths: "Interne Lernpfade erzeugst du aus deinen Dokumenten mit KI. Wähle, über welchen Zugang das läuft. Deine Dokumente gehen dabei an den jeweiligen KI-Anbieter (Google Gemini).",
+    throughOurAccess: "Über unseren Zugang",
+    weProvideTheAiAccess: "Wir stellen den KI-Zugang bereit.",
+    ownKeyByok: "Eigener Schlüssel (BYOK)",
+    aiUsageRunsThroughYour: "Die KI-Nutzung läuft über dein eigenes Google-Gemini-Konto und wird dort abgerechnet.",
+    ownKeysCannotBeStored: "Eigene Schlüssel lassen sich auf diesem Server noch nicht speichern. Bitte den Betreiber informieren.",
+    enterANewKeyTo: "Neuen Schlüssel eingeben, um ihn zu ersetzen",
+    geminiApiKey: "Gemini-API-Schlüssel",
+    apiKey: "API-Schlüssel",
+    removeStoredKey: "Gespeicherten Schlüssel entfernen",
+    checking: "Wird geprüft …",
+    save: "Speichern",
+    current: "Aktuell: ",
+    ourAccess: "unser Zugang",
+    ownKey: "eigener Schlüssel",
+    notSetUp: "nicht eingerichtet",
+    storedKey0: "Gespeicherter Schlüssel: …{0}",
+  },
+  en: {
+    couldNotSave: "Could not save.",
+    saved: "Saved.",
+    couldNotRemove: "Could not remove.",
+    keyRemoved: "Key removed.",
+    aiAccessForInternalLearning: "AI access for internal learning paths",
+    youCreateInternalLearningPaths: "You create internal learning paths from your documents with AI. Choose which access is used. Your documents are sent to the respective AI provider (Google Gemini).",
+    throughOurAccess: "Through our access",
+    weProvideTheAiAccess: "We provide the AI access.",
+    ownKeyByok: "Own key (BYOK)",
+    aiUsageRunsThroughYour: "AI usage runs through your own Google Gemini account and is billed there.",
+    ownKeysCannotBeStored: "Own keys cannot be stored on this server yet. Please contact the operator.",
+    enterANewKeyTo: "Enter a new key to replace it",
+    geminiApiKey: "Gemini API key",
+    apiKey: "API key",
+    removeStoredKey: "Remove stored key",
+    checking: "Checking …",
+    save: "Save",
+    current: "Current: ",
+    ourAccess: "our access",
+    ownKey: "own key",
+    notSetUp: "not set up",
+    storedKey0: "Stored key: …{0}",
+  },
+} as const;
+
+/** Texte in der Sprache `lang` (Locale oder `de` als boolean). */
+export function c_aiSettingsPanel(lang: boolean | string) {
+  return texts[lang === true || lang === "de" ? "de" : "en"];
+}

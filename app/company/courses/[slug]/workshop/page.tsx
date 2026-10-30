@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_companyCoursesSlugWorkshopPage } from "@/lib/i18n/components/companyCoursesSlugWorkshopPage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -30,13 +31,11 @@ export default async function CompanyCourseWorkshopPage({ params }: { params: Pr
     <div className="flex flex-1 flex-col" data-testid="company-workshop-page">
       <Link href="/company?tab=paths" className="mb-4 flex w-fit items-center gap-1.5 text-sm text-subtle hover:text-foreground">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {de ? "Zurück zu den internen Learnings" : "Back to internal learning"}
+        {c_companyCoursesSlugWorkshopPage(de).backToInternalLearning}
       </Link>
-      <h1 className="mb-1 text-2xl font-semibold">{de ? "Kurs bearbeiten" : "Edit course"}: {cert.name}</h1>
+      <h1 className="mb-1 text-2xl font-semibold">{c_companyCoursesSlugWorkshopPage(de).editCourse}: {cert.name}</h1>
       <p className="mb-6 text-sm text-subtle">
-        {de
-          ? "Änderungen sind sofort für Lernende sichtbar. Jeder frühere Stand bleibt in den Versionen erhalten. Freigeben kannst du bei den internen Learnings."
-          : "Changes are visible to learners immediately. Every earlier version stays in the history. You approve the course under internal learning."}
+        {c_companyCoursesSlugWorkshopPage(de).changesAreVisibleToLearners}
       </p>
       <CourseWorkshop certId={cert.id} courseName={cert.name} locale={locale} reviewer />
     </div>

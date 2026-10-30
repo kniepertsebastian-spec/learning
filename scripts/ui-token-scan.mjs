@@ -7,12 +7,14 @@ const PALETTES = "red|green|amber|yellow|blue|sky|slate|gray|zinc|neutral|stone|
 const UTILITIES = "text|bg|border|ring|from|to|via|fill|stroke|divide|outline|decoration|placeholder|caret|accent|shadow";
 const PALETTE_CLASS = new RegExp(`(?<![\\w-])(?:[a-z-]+:)*(?:${UTILITIES})-(?:${PALETTES})-\\d{2,3}(?:/\\d+)?(?![\\w-])`, "g");
 const HEX = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![\w-])/g;
+// Inline-Texte `de ? "…" : "…"` bzw. mit Template-Literal: gehören nach lib/i18n/components (Sprachcodes wie "de-DE" ausgenommen).
+const INLINE_TEXT = /\b(?:de|(?:locale|lang|l) === "de")\s*\?\s*(?:"(?![a-z]{2}(?:-[A-Z]{2})?")|`)/g;
 
 /** Anzahl Verstöße je Art in einem Quelltext. */
 export function scanSource(text) {
   // Kommentare ausnehmen
   const code = text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
-  return { hex: (code.match(HEX) ?? []).length, palette: (code.match(PALETTE_CLASS) ?? []).length };
+  return { hex: (code.match(HEX) ?? []).length, palette: (code.match(PALETTE_CLASS) ?? []).length, text: (code.match(INLINE_TEXT) ?? []).length };
 }
 
 function walk(dir, out = []) {
@@ -30,8 +32,8 @@ export function scanProject(root) {
     for (const file of walk(path.join(root, dir))) {
       const rel = path.relative(root, file).split(path.sep).join("/");
       if (rel.startsWith("components/ui/") || rel.startsWith("components/ui-gallery/")) continue;
-      const { hex, palette } = scanSource(readFileSync(file, "utf8"));
-      if (hex + palette > 0) result[rel] = { hex, palette };
+      const { hex, palette, text } = scanSource(readFileSync(file, "utf8"));
+      if (hex + palette + text > 0) result[rel] = { hex, palette, text };
     }
   }
   return result;
@@ -54,14 +56,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   const problems = [];
   for (const [file, c] of Object.entries(current)) {
-    const b = baseline[file] ?? { hex: 0, palette: 0 };
-    if (c.hex > b.hex || c.palette > b.palette) problems.push(`${file}: Hex ${c.hex} (erlaubt ${b.hex}), Palette ${c.palette} (erlaubt ${b.palette})`);
+    const b = { hex: 0, palette: 0, text: 0, ...baseline[file] };
+    if (c.hex > b.hex || c.palette > b.palette || c.text > b.text) problems.push(`${file}: Hex ${c.hex} (erlaubt ${b.hex}), Palette ${c.palette} (erlaubt ${b.palette}), Inline-Texte ${c.text} (erlaubt ${b.text})`);
   }
   const total = (o) => Object.values(o).reduce((n, c) => n + c.hex + c.palette, 0);
-  console.log(`Rohfarben im JSX: ${total(current)} (Bestand ${total(baseline)}).`);
+  const texts = (o) => Object.values(o).reduce((n, c) => n + (c.text ?? 0), 0);
+  console.log(`Rohfarben im JSX: ${total(current)} (Bestand ${total(baseline)}). Inline-Texte: ${texts(current)} (Bestand ${texts(baseline)}).`);
   if (problems.length) {
-    console.error("Neue Rohfarben (nur Tokens aus app/globals.css und components/ui verwenden):\n" + problems.join("\n"));
+    console.error("Neue Rohfarben oder Inline-Texte (Tokens aus app/globals.css und components/ui verwenden, Texte nach lib/i18n/components):\n" + problems.join("\n"));
     process.exit(1);
   }
-  if (total(current) < total(baseline)) console.log("Bestand ist gesunken: `node scripts/ui-token-scan.mjs --update` hält den neuen Stand fest.");
+  if (total(current) + texts(current) < total(baseline) + texts(baseline)) console.log("Bestand ist gesunken: `node scripts/ui-token-scan.mjs --update` hält den neuen Stand fest.");
 }

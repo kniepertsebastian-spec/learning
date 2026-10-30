@@ -61,7 +61,7 @@ export function PracticeBlock({ children, minutes }: { children: React.ReactNode
     const p = el.props["data-part"] as PracticePart | undefined;
     if (p && (PRACTICE_PARTS as readonly string[]).includes(p)) parts.set(p, el.props.children);
   }
-  const tile = "min-w-0 rounded-xl border border-border bg-surface p-4 [&>*:first-child]:mt-0";
+  const tile = "min-w-0 rounded-2xl border border-border bg-surface p-5 [&>*:first-child]:mt-0";
   const label = "mb-1.5 text-2xs font-semibold tracking-overline text-faint uppercase";
   return (
     <section className="my-4 rounded-2xl border border-info/40 bg-surface-inset p-4 sm:p-5" data-testid="practice-block" aria-label={t.lesson_blocks.practice}>

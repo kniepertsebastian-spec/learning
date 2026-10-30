@@ -1,5 +1,6 @@
 "use client";
 
+import { c_profileCareerProfile } from "@/lib/i18n/components/profileCareerProfile";
 import { Plus, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
@@ -135,7 +136,7 @@ export function CareerProfile({ initial, courseNames }: { initial: ProfileData; 
   );
 
   return (
-    <section className="flex flex-col gap-5 rounded-xl border border-border bg-surface p-5" data-testid="career-profile">
+    <section className="flex flex-col gap-5 rounded-2xl border border-border bg-surface p-5" data-testid="career-profile">
       <div>
         <h2 className="font-semibold">{tr("Beruf und Skills", "Job and skills")}</h2>
         <p className="mt-1 text-xs text-muted">
@@ -221,8 +222,8 @@ function AddEntry({ kind, de, levels, recency, onAdd, suggestions }: { kind: Kin
         onChange={(e) => setName(e.target.value)}
         maxLength={80}
         list={suggestions.length ? listId : undefined}
-        placeholder={kind === "skill" ? (de ? "z. B. Kubernetes, IT-Sicherheit" : "e.g. Kubernetes, IT security") : de ? "z. B. Terraform, Wireshark" : "e.g. Terraform, Wireshark"}
-        aria-label={kind === "skill" ? (de ? "Neuer Skill" : "New skill") : de ? "Neues Tool" : "New tool"}
+        placeholder={kind === "skill" ? (c_profileCareerProfile(de).eGKubernetesItSecurity) : c_profileCareerProfile(de).eGTerraformWireshark}
+        aria-label={kind === "skill" ? (c_profileCareerProfile(de).newSkill) : c_profileCareerProfile(de).newTool}
       />
       {suggestions.length > 0 && (
         <datalist id={listId}>
@@ -231,20 +232,20 @@ function AddEntry({ kind, de, levels, recency, onAdd, suggestions }: { kind: Kin
           ))}
         </datalist>
       )}
-      <select className="h-9 rounded-md border border-border-strong bg-control px-2 text-sm" value={level} onChange={(e) => setLevel(e.target.value as Level)} aria-label={de ? "Stufe" : "Level"}>
+      <select className="h-9 rounded-md border border-border-strong bg-control px-2 text-sm" value={level} onChange={(e) => setLevel(e.target.value as Level)} aria-label={c_profileCareerProfile(de).level}>
         {(Object.keys(levels) as Level[]).map((l) => (
           <option key={l} value={l}>{levels[l]}</option>
         ))}
       </select>
       {recency && (
-        <select className="h-9 rounded-md border border-border-strong bg-control px-2 text-sm" value={rec} onChange={(e) => setRec(e.target.value as Recency)} aria-label={de ? "Aktualität" : "Recency"}>
+        <select className="h-9 rounded-md border border-border-strong bg-control px-2 text-sm" value={rec} onChange={(e) => setRec(e.target.value as Recency)} aria-label={c_profileCareerProfile(de).recency}>
           {(Object.keys(recency) as Recency[]).map((r) => (
             <option key={r} value={r}>{recency[r]}</option>
           ))}
         </select>
       )}
       <Button type="submit" size="sm" variant="secondary" disabled={!name.trim()} iconLeft={<Plus className="h-4 w-4" aria-hidden="true" />}>
-        {de ? "Hinzufügen" : "Add"}
+        {c_profileCareerProfile(de).add}
       </Button>
     </form>
   );

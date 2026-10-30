@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_unsubscribeReactivationPage } from "@/lib/i18n/components/unsubscribeReactivationPage";
 import { getServerLocale } from "@/lib/server/locale";
 import { verifyUnsubscribeToken } from "@/lib/server/reactivation/token";
 import { UnsubscribeReactivation } from "@/components/UnsubscribeReactivation";
@@ -12,11 +13,11 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
   const de = locale === "de";
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4 py-10" data-testid="unsubscribe-page">
-      <h1 className="text-2xl font-semibold">{de ? "Keine Erinnerungen mehr" : "No more reminders"}</h1>
+      <h1 className="text-2xl font-semibold">{c_unsubscribeReactivationPage(de).noMoreReminders}</h1>
       {valid ? (
         <UnsubscribeReactivation userId={u} token={t} locale={locale} />
       ) : (
-        <p className="text-sm text-subtle">{de ? "Dieser Link ist ungültig. Du kannst die Erinnerungen auch in deinem Konto abschalten." : "This link is not valid. You can also switch the reminders off in your account."}</p>
+        <p className="text-sm text-subtle">{c_unsubscribeReactivationPage(de).thisLinkIsNotValid}</p>
       )}
     </div>
   );

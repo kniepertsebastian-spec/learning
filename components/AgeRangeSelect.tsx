@@ -1,5 +1,6 @@
 "use client";
 
+import { c_ageRangeSelect } from "@/lib/i18n/components/ageRangeSelect";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useLocale } from "@/lib/i18n";
@@ -32,18 +33,18 @@ export function AgeRangeSelect({ initial }: { initial: string | null }) {
   return (
     <Card data-testid="age-range">
       <label className="block text-sm">
-        <span className="block font-medium">{de ? "Altersspanne (optional)" : "Age range (optional)"}</span>
+        <span className="block font-medium">{c_ageRangeSelect(de).ageRangeOptional}</span>
         <span className="mb-2 block text-subtle">
-          {de ? "Wird nur für die Startwerte der Wiederholungsplanung genutzt." : "Only used for the starting values of review scheduling."}
+          {c_ageRangeSelect(de).onlyUsedForTheStarting}
         </span>
         <select value={value} onChange={(e) => void change(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
-          <option value="">{de ? "Keine Angabe" : "Prefer not to say"}</option>
+          <option value="">{c_ageRangeSelect(de).preferNotToSay}</option>
           {OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </label>
-      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{de ? "Das hat nicht geklappt." : "That did not work."}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{c_ageRangeSelect(de).thatDidNotWork}</p>}
     </Card>
   );
 }

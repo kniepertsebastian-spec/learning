@@ -1,5 +1,6 @@
 "use client";
 
+import { c_blueprintPanel } from "@/lib/i18n/components/blueprintPanel";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ClipboardCheck, Loader2, Lock, Sparkles } from "lucide-react";
@@ -59,7 +60,7 @@ export function BlueprintPanel({
       setError(
         err instanceof Error
           ? err.message
-          : locale === "de" ? "Blueprint-Extraktion fehlgeschlagen." : "Blueprint extraction failed.",
+          : c_blueprintPanel(locale).blueprintExtractionFailed,
       );
     } finally {
       setGenerating(false);
@@ -74,12 +75,12 @@ export function BlueprintPanel({
     <div className="mt-3 border-t border-border pt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-xs font-medium uppercase tracking-wide text-faint">
-          {locale === "de" ? "Blueprint-Vorschlag (R1.2/R1.3)" : "Blueprint proposal (R1.2/R1.3)"}
+          {c_blueprintPanel(locale).blueprintProposalR12R1}
         </h3>
         {locked ? (
           <span className="flex items-center gap-1 text-xs text-success-text">
             <Lock className="h-3 w-3" aria-hidden="true" />
-            {locale === "de" ? "Freigegeben" : "Approved"}
+            {c_blueprintPanel(locale).approved}
           </span>
         ) : (
           <button
@@ -94,8 +95,8 @@ export function BlueprintPanel({
               <Sparkles className="h-3 w-3" aria-hidden="true" />
             )}
             {draft
-              ? locale === "de" ? "Erneut extrahieren" : "Re-extract"
-              : locale === "de" ? "Blueprint extrahieren" : "Extract blueprint"}
+              ? c_blueprintPanel(locale).reExtract
+              : c_blueprintPanel(locale).extractBlueprint}
           </button>
         )}
       </div>
@@ -109,32 +110,32 @@ export function BlueprintPanel({
               {draft.content.certificationName} · {draft.content.provider} · {draft.content.examCode}
             </span>
             <span className="ml-2">
-              {draft.content.domains.length} {locale === "de" ? "Domains" : "domains"}, {objectiveCount}{" "}
-              {locale === "de" ? "Objectives" : "objectives"}
+              {draft.content.domains.length} {c_blueprintPanel(locale).domains}, {objectiveCount}{" "}
+              {c_blueprintPanel(locale).objectives}
             </span>
             {draft.validationErrors.length > 0 && (
               <span className="ml-2 rounded-full bg-danger-soft px-1.5 py-0.5 text-danger-text">
-                {draft.validationErrors.length} {locale === "de" ? "Fehler" : "errors"}
+                {draft.validationErrors.length} {c_blueprintPanel(locale).errors}
               </span>
             )}
             {draft.warnings.length > 0 && (
               <span className="ml-2 rounded-full bg-warning-soft px-1.5 py-0.5 text-warning-text">
-                {draft.warnings.length} {locale === "de" ? "Hinweise" : "warnings"}
+                {draft.warnings.length} {c_blueprintPanel(locale).warnings}
               </span>
             )}
             {draft.truncatedSource && (
               <span className="ml-2 inline-flex items-center gap-1 text-warning-text">
                 <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                {locale === "de" ? "gekürzt" : "truncated"}
+                {c_blueprintPanel(locale).truncated}
               </span>
             )}
           </div>
           <Link
             href={`/admin/certifications/${certificationSlug}/sources/${sourceId}/review`}
-            className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:opacity-90"
+            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary hover:opacity-90"
           >
             <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
-            {locale === "de" ? "Prüfen & freigeben" : "Review & approve"}
+            {c_blueprintPanel(locale).reviewApprove}
           </Link>
         </div>
       )}

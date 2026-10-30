@@ -1,5 +1,7 @@
 "use client";
 
+import { c_cheatSheetBackfill } from "@/lib/i18n/components/cheatSheetBackfill";
+import { fill } from "@/lib/i18n/fill";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -44,7 +46,7 @@ export function CheatSheetBackfill({ courseId, initial, aiConfigured, locale }: 
     const res = await fetch(`/api/internal-courses/${courseId}/cheat-sheets`, { method: "POST" });
     setBusy(false);
     if (!res.ok) {
-      setError((await res.json().catch(() => null))?.error ?? (de ? "Start fehlgeschlagen." : "Could not start."));
+      setError((await res.json().catch(() => null))?.error ?? (c_cheatSheetBackfill(de).couldNotStart));
       return;
     }
     await refresh();
@@ -57,24 +59,24 @@ export function CheatSheetBackfill({ courseId, initial, aiConfigured, locale }: 
   return (
     <div className="mt-2 text-muted" data-testid="cheatsheet-backfill">
       <span data-testid="cheatsheet-count">
-        {de ? `Merkzettel: ${status.withCheatSheet} von ${status.lessons} Lektionen` : `Cheat sheets: ${status.withCheatSheet} of ${status.lessons} lessons`}
+        {fill(c_cheatSheetBackfill(de).cheatSheets0Of1, status.withCheatSheet, status.lessons)}
       </span>
       {missing > 0 && !running && (
         <>
           {" · "}
-          <button type="button" className={`${btn} ml-1`} disabled={busy || !aiConfigured} title={aiConfigured ? undefined : de ? "Dafür ist ein KI-Zugang nötig (KI-Zugang einrichten)" : "An AI access is required"} onClick={() => void start()} data-testid="cheatsheet-start">
-            {de ? `Fehlende ${missing} nacherzeugen` : `Generate the ${missing} missing`}
+          <button type="button" className={`${btn} ml-1`} disabled={busy || !aiConfigured} title={aiConfigured ? undefined : c_cheatSheetBackfill(de).anAiAccessIsRequired} onClick={() => void start()} data-testid="cheatsheet-start">
+            {fill(c_cheatSheetBackfill(de).generateThe0Missing, missing)}
           </button>
         </>
       )}
       {running && run && (
         <span className="ml-2" role="status" data-testid="cheatsheet-progress">
-          {de ? `läuft … ${run.created + run.skipped + run.failed} von ${run.total}` : `running … ${run.created + run.skipped + run.failed} of ${run.total}`}
+          {fill(c_cheatSheetBackfill(de).running0Of1, run.created + run.skipped + run.failed, run.total)}
         </span>
       )}
       {!running && run && (run.status === "failed" || run.message) && (
         <p className={run.status === "failed" ? "mt-1 text-danger-text" : "mt-1"} role="status">
-          {run.message ?? (de ? "Der letzte Lauf ist fehlgeschlagen." : "The last run failed.")}
+          {run.message ?? (c_cheatSheetBackfill(de).theLastRunFailed)}
         </p>
       )}
       {error && (

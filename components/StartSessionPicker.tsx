@@ -1,5 +1,7 @@
 "use client";
 
+import { c_startSessionPicker } from "@/lib/i18n/components/startSessionPicker";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Sparkles, Zap } from "lucide-react";
@@ -81,7 +83,7 @@ export function StartSessionPicker({
       }
       router.push(`/cert/${certSlug}/session`);
     } catch {
-      setError(locale === "de" ? "Session konnte nicht gestartet werden." : "Could not start session.");
+      setError(c_startSessionPicker(locale).couldNotStartSession);
       setStarting(null);
     }
   }
@@ -93,18 +95,18 @@ export function StartSessionPicker({
       <div className="hero-surface rounded-2xl border p-5" data-testid="start-first-session">
         <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold tracking-tight">
           <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
-          {de ? "Los geht's" : "Let's go"}
+          {c_startSessionPicker(de).letSGo}
         </h2>
-        <p className="mb-3 text-xs text-subtle">{de ? "Zehn Minuten reichen für den Anfang: etwa zwölf Fragen, jede dauert rund eine Dreiviertelminute. Das ist kein Einstiegstest (den gibt es je Kapitel separat und optional). Mit „Pause für heute“ machst du später weiter." : "Ten minutes are enough to start: about twelve questions, each taking roughly 45 seconds. This is not an entry test (those are separate per chapter and optional). Use “Pause for today” to continue later."}</p>
+        <p className="mb-3 text-xs text-subtle">{c_startSessionPicker(de).tenMinutesAreEnoughTo}</p>
         <button
           type="button"
           onClick={() => void handleStart("first", "minutes", 10)}
           disabled={starting !== null}
           data-testid="start-first"
-          className="flex items-center gap-1.5 h-11 rounded-md bg-accent px-5 text-sm font-semibold text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center gap-1.5 h-11 rounded-md bg-primary px-5 text-sm font-semibold text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {starting === "first" && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-          {de ? "Starten (10 Minuten)" : "Start (10 minutes)"}
+          {c_startSessionPicker(de).start10Minutes}
         </button>
         {error && <p className="mt-2 text-xs text-danger-text">{error}</p>}
       </div>
@@ -115,15 +117,15 @@ export function StartSessionPicker({
     <div className="hero-surface rounded-2xl border p-5">
       <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold tracking-tight">
         <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
-        {welcomeBack ? (de ? "Willkommen zurück – heute nur 5 Minuten" : "Welcome back – just 5 minutes today") : de ? "Wie viel Zeit hast du gerade?" : "How much time do you have?"}
+        {welcomeBack ? (c_startSessionPicker(de).welcomeBackJust5Minutes) : c_startSessionPicker(de).howMuchTimeDoYou}
       </h2>
       {welcomeBack && (
         <p className="mb-3 text-xs text-subtle" data-testid="welcome-back">
-          {de ? "Wiederholungen werden über die nächsten Tage verteilt, es wartet kein Berg auf dich." : "Reviews are spread over the next days, there is no mountain waiting for you."}
+          {c_startSessionPicker(de).reviewsAreSpreadOverThe}
         </p>
       )}
       <p className="mb-3 text-xs text-subtle" data-testid="session-length-hint">
-        {de ? "Etwa 45 Sekunden pro Frage. Das ist die Tages-Session, kein Einstiegstest, und du kannst sie jederzeit pausieren." : "About 45 seconds per question. This is the daily session, not an entry test, and you can pause it any time."}
+        {c_startSessionPicker(de).about45SecondsPerQuestion}
       </p>
       <div className="flex flex-wrap gap-2">
         {TIME_BUDGETS.map((minutes) => {
@@ -139,7 +141,7 @@ export function StartSessionPicker({
               }`}
             >
               {starting === key && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-              {minutes} {locale === "de" ? "Min." : "min"}
+              {minutes} {c_startSessionPicker(locale).min}
             </button>
           );
         })}
@@ -154,7 +156,7 @@ export function StartSessionPicker({
           ) : (
             <Zap className="h-3.5 w-3.5 text-link" aria-hidden="true" />
           )}
-          {locale === "de" ? "Nur eine Aufgabe" : "Just one task"}
+          {c_startSessionPicker(locale).justOneTask}
         </button>
         <button
           type="button"
@@ -164,7 +166,7 @@ export function StartSessionPicker({
           data-testid="custom-time-toggle"
           className="flex items-center gap-1.5 rounded-md border border-dashed border-border bg-surface px-4 py-2 text-sm font-medium hover:border-accent hover:bg-background disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {de ? "Eigene Zeit" : "Custom"}
+          {c_startSessionPicker(de).custom}
         </button>
       </div>
       {customOpen && (
@@ -178,7 +180,7 @@ export function StartSessionPicker({
           }}
         >
           <label className="text-xs text-subtle" htmlFor="custom-minutes">
-            {de ? `Minuten (${CUSTOM_MIN}–${CUSTOM_MAX})` : `Minutes (${CUSTOM_MIN}–${CUSTOM_MAX})`}
+            {fill(c_startSessionPicker(de).minutes01, CUSTOM_MIN, CUSTOM_MAX)}
           </label>
           <input
             id="custom-minutes"
@@ -199,10 +201,10 @@ export function StartSessionPicker({
             type="submit"
             disabled={starting !== null || !customValid}
             data-testid="custom-start"
-            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {starting === "custom" && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-            {de ? "Starten" : "Start"}
+            {c_startSessionPicker(de).start}
           </button>
         </form>
       )}
@@ -210,9 +212,9 @@ export function StartSessionPicker({
       {intro.offerCheckin && (
         <>
       <p className="mb-1.5 mt-3 text-xs text-faint">
-        {locale === "de" ? "Check-in (optional): Wie viel Energie hast du?" : "Check-in (optional): how much energy do you have?"}
+        {c_startSessionPicker(locale).checkInOptionalHowMuch}
       </p>
-      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={locale === "de" ? "Energie von 1 bis 5" : "Energy from 1 to 5"}>
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={c_startSessionPicker(locale).energyFrom1To5}>
         {[1, 2, 3, 4, 5].map((level) => (
           <button
             key={level}
@@ -220,7 +222,7 @@ export function StartSessionPicker({
             onClick={() => setEnergy((current) => (current === level ? null : level))}
             disabled={starting !== null}
             aria-pressed={energy === level}
-            title={level === 1 ? (locale === "de" ? "Erschöpft" : "Exhausted") : level === 5 ? (locale === "de" ? "Voller Energie" : "Full of energy") : String(level)}
+            title={level === 1 ? (c_startSessionPicker(locale).exhausted) : level === 5 ? (c_startSessionPicker(locale).fullOfEnergy) : String(level)}
             className={`h-7 w-7 rounded-md border text-xs disabled:cursor-not-allowed disabled:opacity-60 ${
               energy === level
                 ? "border-accent bg-accent-soft text-link"
@@ -232,7 +234,7 @@ export function StartSessionPicker({
         ))}
       </div>
       <p className="mb-1.5 mt-3 text-xs text-faint">
-        {locale === "de" ? "Heute gearbeitet? (optional)" : "Worked today? (optional)"}
+        {c_startSessionPicker(locale).workedTodayOptional}
       </p>
       <div className="flex gap-1.5">
         {([true, false] as const).map((value) => (
@@ -248,7 +250,7 @@ export function StartSessionPicker({
                 : "border-border bg-surface text-subtle hover:border-accent-border"
             }`}
           >
-            {value ? (locale === "de" ? "Ja" : "Yes") : locale === "de" ? "Nein" : "No"}
+            {value ? (c_startSessionPicker(locale).yes) : c_startSessionPicker(locale).no}
           </button>
         ))}
       </div>
@@ -256,17 +258,17 @@ export function StartSessionPicker({
         </>
       )}
       <p className="mt-3 text-xs text-faint">
-        <a href="/how-i-learn" className="text-link hover:underline" data-testid="how-i-learn-link">{de ? "Wie ich lerne" : "How I learn"}</a>
+        <a href="/how-i-learn" className="text-link hover:underline" data-testid="how-i-learn-link">{c_startSessionPicker(de).howILearn}</a>
       </p>
 
       {showAlternatives && (
         <div className="mt-4 rounded-md border border-border bg-surface p-3" data-testid="energy-alternatives">
-          <p className="text-sm font-medium">{de ? "Wenig Energie? Du kannst heute auch anders lernen:" : "Low on energy? You can also learn differently today:"}</p>
-          <p className="mb-2 text-xs text-subtle">{de ? "Alles optional. Die normale Session bleibt oben jederzeit wählbar." : "All optional. The normal session stays available above."}</p>
+          <p className="text-sm font-medium">{c_startSessionPicker(de).lowOnEnergyYouCan}</p>
+          <p className="mb-2 text-xs text-subtle">{c_startSessionPicker(de).allOptionalTheNormalSession}</p>
           <div className="flex flex-wrap gap-2">
             {ENERGY_ALTERNATIVES.map((mode) => {
               const href = alternativeHref(mode, certSlug);
-              const label = { simulation: de ? "Kurze Simulation (5 Min.)" : "Short simulation (5 min)", cheat_sheet: de ? "Spickzettel durchgehen" : "Browse cheat sheets", reviews_only: de ? "Nur Wiederholungen" : "Reviews only", single_task: de ? "Nur eine Aufgabe" : "Just one task" }[mode];
+              const label = { simulation: c_startSessionPicker(de).shortSimulation5Min, cheat_sheet: c_startSessionPicker(de).browseCheatSheets, reviews_only: c_startSessionPicker(de).reviewsOnly, single_task: c_startSessionPicker(de).justOneTask }[mode];
               const cls = "rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:border-accent";
               return href ? (
                 <Link key={mode} href={href} onClick={() => logChoice(mode)} className={cls} data-testid={`energy-${mode}`}>

@@ -1,5 +1,7 @@
 "use client";
 
+import { c_prerequisiteReviewQueue } from "@/lib/i18n/components/prerequisiteReviewQueue";
+import { fill } from "@/lib/i18n/fill";
 import { useEffect, useState } from "react";
 
 interface Draft {
@@ -49,33 +51,33 @@ export function PrerequisiteReviewQueue({ certificationId, locale }: { certifica
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4" data-testid="prerequisite-review">
-      <h3 className="mb-1 font-medium">{de ? "Voraussetzungen zwischen Konzepten" : "Concept prerequisites"}</h3>
+    <div className="rounded-2xl border border-border bg-surface p-5" data-testid="prerequisite-review">
+      <h3 className="mb-1 font-medium">{c_prerequisiteReviewQueue(de).conceptPrerequisites}</h3>
       {counts && (
         <p className="mb-3 text-xs text-subtle">
-          {de ? `${counts.approved} freigegeben, ${counts.draft} Vorschläge, ${counts.rejected} verworfen.` : `${counts.approved} approved, ${counts.draft} proposals, ${counts.rejected} rejected.`}
+          {fill(c_prerequisiteReviewQueue(de).n0Approved1Proposals2, counts.approved, counts.draft, counts.rejected)}
         </p>
       )}
       {drafts === null ? (
-        <p className="text-sm text-subtle">{de ? "Lädt …" : "Loading …"}</p>
+        <p className="text-sm text-subtle">{c_prerequisiteReviewQueue(de).loading}</p>
       ) : drafts.length === 0 ? (
-        <p className="text-sm text-subtle">{de ? "Keine Vorschläge zur Prüfung." : "No proposals to review."}</p>
+        <p className="text-sm text-subtle">{c_prerequisiteReviewQueue(de).noProposalsToReview}</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {drafts.map((d) => (
             <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-background p-2 text-sm" data-testid="prerequisite-draft">
               <span>
                 <span className="font-medium">{d.conceptName}</span>
-                <span className="text-muted">{de ? " setzt voraus: " : " requires: "}</span>
+                <span className="text-muted">{c_prerequisiteReviewQueue(de).requires}</span>
                 <span className="font-medium">{d.requiresName}</span>
                 <span className="text-xs text-faint"> · {d.topicArea}</span>
               </span>
               <span className="flex gap-2">
                 <button type="button" disabled={busy !== null} onClick={() => void decide(d, "approved")} data-testid="prerequisite-approve" className="rounded-md border border-border bg-background px-2 py-1 text-xs hover:border-accent disabled:opacity-50">
-                  {de ? "Freigeben" : "Approve"}
+                  {c_prerequisiteReviewQueue(de).approve}
                 </button>
                 <button type="button" disabled={busy !== null} onClick={() => void decide(d, "rejected")} className="rounded-md border border-border bg-background px-2 py-1 text-xs hover:border-accent disabled:opacity-50">
-                  {de ? "Verwerfen" : "Reject"}
+                  {c_prerequisiteReviewQueue(de).reject}
                 </button>
               </span>
             </li>

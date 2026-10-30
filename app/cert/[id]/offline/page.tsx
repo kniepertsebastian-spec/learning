@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdOfflinePage } from "@/lib/i18n/components/certIdOfflinePage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -25,7 +26,7 @@ export default async function OfflinePage({
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
         <p className="text-muted">
-          {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
+          {c_certIdOfflinePage(locale).pleaseSignIn}
         </p>
       </div>
     );
@@ -46,11 +47,11 @@ export default async function OfflinePage({
         className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
+        {c_certIdOfflinePage(locale).backToCertification}
       </Link>
 
       <h1 className="mb-6 text-2xl font-semibold">
-        {locale === "de" ? "Offline verfügbar" : "Available offline"}
+        {c_certIdOfflinePage(locale).availableOffline}
       </h1>
 
       <OfflinePackageManager

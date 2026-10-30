@@ -1,5 +1,6 @@
 "use client";
 
+import { c_reviewerReviewerApprovalPanel } from "@/lib/i18n/components/reviewerReviewerApprovalPanel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -40,16 +41,16 @@ export function ReviewerApprovalPanel({ certId, data, locale, canApprove = true 
   }
 
   return (
-    <section className="mb-6 rounded-lg border border-border bg-surface p-4 text-sm" data-testid="reviewer-approval" data-state={data.state}>
-      <h2 className="font-semibold">{de ? "Freigabe" : "Approval"}</h2>
+    <section className="mb-6 rounded-2xl border border-border bg-surface p-5 text-sm" data-testid="reviewer-approval" data-state={data.state}>
+      <h2 className="font-semibold">{c_reviewerReviewerApprovalPanel(de).approval}</h2>
       {data.approvedBy && data.approvedAtIso ? (
         <p className="mt-1" data-testid="reviewer-approval-line">
-          {de ? "Zuletzt freigegeben von" : "Last approved by"} <strong>{data.approvedBy}</strong> · {de ? "Version" : "Version"} {data.versionLabel} · {date(data.approvedAtIso)}
+          {c_reviewerReviewerApprovalPanel(de).lastApprovedBy} <strong>{data.approvedBy}</strong> · {c_reviewerReviewerApprovalPanel(de).version} {data.versionLabel} · {date(data.approvedAtIso)}
         </p>
       ) : (
-        <p className="mt-1 text-subtle">{de ? "Dieser Kurs ist noch nicht freigegeben." : "This course has not been approved yet."}</p>
+        <p className="mt-1 text-subtle">{c_reviewerReviewerApprovalPanel(de).thisCourseHasNotBeen}</p>
       )}
-      {data.sinceOwn === null && <p className="mt-1 text-subtle">{de ? "Du hast diesen Kurs noch nicht freigegeben: Prüfe bitte den ganzen Kurs." : "You have not approved this course yet: please review the whole course."}</p>}
+      {data.sinceOwn === null && <p className="mt-1 text-subtle">{c_reviewerReviewerApprovalPanel(de).youHaveNotApprovedThis}</p>}
       {data.sinceOwn && data.sinceOwn.count > 0 && (
         <div className="mt-2" data-testid="reviewer-changes">
           <p className="font-medium text-warning-text">
@@ -57,27 +58,27 @@ export function ReviewerApprovalPanel({ certId, data, locale, canApprove = true 
           </p>
           <ul className="mt-1 flex flex-col gap-0.5 text-xs">
             {data.sinceOwn.sections.map((c) => (
-              <li key={`s-${c.id}`}>{de ? "Lektion" : "Lesson"} {de ? CHANGE_DE[c.change] : CHANGE_EN[c.change]}: {c.label}</li>
+              <li key={`s-${c.id}`}>{c_reviewerReviewerApprovalPanel(de).lesson} {de ? CHANGE_DE[c.change] : CHANGE_EN[c.change]}: {c.label}</li>
             ))}
             {data.sinceOwn.questions.map((c) => (
-              <li key={`q-${c.id}`}>{de ? "Frage" : "Question"} {de ? CHANGE_DE[c.change] : CHANGE_EN[c.change]}: {c.label}</li>
+              <li key={`q-${c.id}`}>{c_reviewerReviewerApprovalPanel(de).question} {de ? CHANGE_DE[c.change] : CHANGE_EN[c.change]}: {c.label}</li>
             ))}
           </ul>
         </div>
       )}
       {upToDate ? (
-        <p className="mt-2 text-subtle" data-testid="reviewer-approval-current">{de ? "Keine Änderungen seit deiner letzten Freigabe." : "No changes since your last approval."}</p>
+        <p className="mt-2 text-subtle" data-testid="reviewer-approval-current">{c_reviewerReviewerApprovalPanel(de).noChangesSinceYourLast}</p>
       ) : (
         <div className="mt-3 flex flex-col gap-2 rounded-md border border-border bg-background p-3" data-testid="reviewer-approval-form">
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} aria-label={de ? "Name, der bei der Freigabe angezeigt wird" : "Name shown with the approval"} placeholder={de ? "Dein Name (wird angezeigt)" : "Your name (shown)"} className="rounded-md border border-border bg-surface px-2 py-1" />
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} aria-label={c_reviewerReviewerApprovalPanel(de).nameShownWithTheApproval} placeholder={c_reviewerReviewerApprovalPanel(de).yourNameShown} className="rounded-md border border-border bg-surface px-2 py-1" />
           <label className="flex items-start gap-2">
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4" data-testid="reviewer-confirm" />
-            <span>{de ? "Ich habe die Inhalte dieser Version fachlich geprüft." : "I have professionally reviewed the content of this version."}</span>
+            <span>{c_reviewerReviewerApprovalPanel(de).iHaveProfessionallyReviewedThe}</span>
           </label>
           <Button size="sm" className="w-fit" disabled={busy || !canApprove || !confirmed || name.trim().length < 2} onClick={() => void approve()} data-testid="reviewer-approve">
-            {de ? "Freigeben" : "Approve"}
+            {c_reviewerReviewerApprovalPanel(de).approve}
           </Button>
-          {!canApprove && <p className="text-warning-text" data-testid="reviewer-approve-locked">{de ? "Freigeben kannst du erst nach dem Probe-Review (oder wenn der Betreiber dich freischaltet)." : "You can approve only after the trial review (or when the operator clears you)."}</p>}
+          {!canApprove && <p className="text-warning-text" data-testid="reviewer-approve-locked">{c_reviewerReviewerApprovalPanel(de).youCanApproveOnlyAfter}</p>}
           {error && <p role="alert" className="text-danger-text">{error}</p>}
         </div>
       )}

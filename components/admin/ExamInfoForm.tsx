@@ -1,5 +1,6 @@
 "use client";
 
+import { c_adminExamInfoForm } from "@/lib/i18n/components/adminExamInfoForm";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -32,29 +33,29 @@ export function ExamInfoForm({ certId, initial, locale }: { certId: string; init
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ examProvider: v.examProvider || null, deliveryModes: v.deliveryModes, bookingUrl: v.bookingUrl || null, testCenterUrl: v.testCenterUrl || null, validityMonths: v.validityMonths ? Number(v.validityMonths) : null, successorNote: v.successorNote || null }),
     });
-    setMsg(res.ok ? (de ? "Gespeichert." : "Saved.") : de ? "Ungültige Angaben (Links müssen mit https:// beginnen)." : "Invalid input (links must start with https://).");
+    setMsg(res.ok ? (c_adminExamInfoForm(de).saved) : c_adminExamInfoForm(de).invalidInputLinksMustStart);
     if (res.ok) router.refresh();
   }
 
   return (
     <Card data-testid="exam-info-form">
-      <h2 className="text-lg font-semibold">{de ? "Prüfungsdaten (Prüfungsplaner)" : "Exam details (exam planner)"}</h2>
-      <p className="mt-1 text-sm text-subtle">{de ? "Erscheinen im Prüfungsplaner der Lernenden: Buchungslink, Testcenter, Gültigkeit, Hinweis auf eine Nachfolgeversion." : "Shown in learners' exam planner: booking link, test center, validity, successor version note."}</p>
+      <h2 className="text-lg font-semibold">{c_adminExamInfoForm(de).examDetailsExamPlanner}</h2>
+      <p className="mt-1 text-sm text-subtle">{c_adminExamInfoForm(de).shownInLearnersExamPlanner}</p>
       <form onSubmit={save} className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm"><span className="mb-1 block font-medium">{de ? "Prüfungsanbieter" : "Exam provider"}</span>
+        <label className="block text-sm"><span className="mb-1 block font-medium">{c_adminExamInfoForm(de).examProvider}</span>
           <select value={v.examProvider ?? ""} onChange={(e) => setV({ ...v, examProvider: (e.target.value || null) as ExamInfo["examProvider"] })} className={field} data-testid="exam-provider">
-            <option value="">–</option><option value="pearson_vue">Pearson VUE</option><option value="psi">PSI</option><option value="linux_foundation">Linux Foundation</option><option value="other">{de ? "Anderer" : "Other"}</option>
+            <option value="">–</option><option value="pearson_vue">Pearson VUE</option><option value="psi">PSI</option><option value="linux_foundation">Linux Foundation</option><option value="other">{c_adminExamInfoForm(de).other}</option>
           </select>
         </label>
-        <fieldset className="text-sm"><legend className="mb-1 font-medium">{de ? "Prüfungsformen" : "Delivery"}</legend>
-          <label className="mr-4 inline-flex items-center gap-2"><input type="checkbox" checked={v.deliveryModes.includes("online")} onChange={() => toggle("online")} />{de ? "Online" : "Online"}</label>
-          <label className="inline-flex items-center gap-2"><input type="checkbox" checked={v.deliveryModes.includes("test_center")} onChange={() => toggle("test_center")} />{de ? "Testcenter" : "Test center"}</label>
+        <fieldset className="text-sm"><legend className="mb-1 font-medium">{c_adminExamInfoForm(de).delivery}</legend>
+          <label className="mr-4 inline-flex items-center gap-2"><input type="checkbox" checked={v.deliveryModes.includes("online")} onChange={() => toggle("online")} />{c_adminExamInfoForm(de).online}</label>
+          <label className="inline-flex items-center gap-2"><input type="checkbox" checked={v.deliveryModes.includes("test_center")} onChange={() => toggle("test_center")} />{c_adminExamInfoForm(de).testCenter}</label>
         </fieldset>
-        <label className="block text-sm"><span className="mb-1 block font-medium">{de ? "Buchungslink" : "Booking link"}</span><input value={v.bookingUrl} onChange={(e) => setV({ ...v, bookingUrl: e.target.value })} placeholder="https://" className={field} data-testid="exam-booking-url" /></label>
-        <label className="block text-sm"><span className="mb-1 block font-medium">{de ? "Testcenter-Link" : "Test center link"}</span><input value={v.testCenterUrl} onChange={(e) => setV({ ...v, testCenterUrl: e.target.value })} placeholder="https://" className={field} /></label>
-        <label className="block text-sm"><span className="mb-1 block font-medium">{de ? "Gültigkeit (Monate, leer = unbegrenzt)" : "Validity (months, empty = unlimited)"}</span><input type="number" min={1} max={240} value={v.validityMonths} onChange={(e) => setV({ ...v, validityMonths: e.target.value })} className={field} /></label>
-        <label className="block text-sm sm:col-span-2"><span className="mb-1 block font-medium">{de ? "Hinweis auf Nachfolgeversion (optional)" : "Successor version note (optional)"}</span><input value={v.successorNote} onChange={(e) => setV({ ...v, successorNote: e.target.value })} maxLength={500} className={field} /></label>
-        <div className="flex items-center gap-3 sm:col-span-2"><Button type="submit" data-testid="exam-info-save">{de ? "Speichern" : "Save"}</Button>{msg && <span role="status" className="text-sm text-subtle">{msg}</span>}</div>
+        <label className="block text-sm"><span className="mb-1 block font-medium">{c_adminExamInfoForm(de).bookingLink}</span><input value={v.bookingUrl} onChange={(e) => setV({ ...v, bookingUrl: e.target.value })} placeholder="https://" className={field} data-testid="exam-booking-url" /></label>
+        <label className="block text-sm"><span className="mb-1 block font-medium">{c_adminExamInfoForm(de).testCenterLink}</span><input value={v.testCenterUrl} onChange={(e) => setV({ ...v, testCenterUrl: e.target.value })} placeholder="https://" className={field} /></label>
+        <label className="block text-sm"><span className="mb-1 block font-medium">{c_adminExamInfoForm(de).validityMonthsEmptyUnlimited}</span><input type="number" min={1} max={240} value={v.validityMonths} onChange={(e) => setV({ ...v, validityMonths: e.target.value })} className={field} /></label>
+        <label className="block text-sm sm:col-span-2"><span className="mb-1 block font-medium">{c_adminExamInfoForm(de).successorVersionNoteOptional}</span><input value={v.successorNote} onChange={(e) => setV({ ...v, successorNote: e.target.value })} maxLength={500} className={field} /></label>
+        <div className="flex items-center gap-3 sm:col-span-2"><Button type="submit" data-testid="exam-info-save">{c_adminExamInfoForm(de).save}</Button>{msg && <span role="status" className="text-sm text-subtle">{msg}</span>}</div>
       </form>
     </Card>
   );

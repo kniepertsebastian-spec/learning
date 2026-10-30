@@ -1,5 +1,7 @@
 "use client";
 
+import { c_sectionContent } from "@/lib/i18n/components/sectionContent";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -196,18 +198,16 @@ export function SectionContent({
 
             {relevance && (relevance.examWeight !== null || relevance.tasks.length > 0 || (relevance.frameworkGoals?.length ?? 0) > 0 || relevance.assignment || (relevance.careerPaths?.length ?? 0) > 0) && (
               <Card className="mb-6" data-testid="lesson-why">
-                <p className="mb-1 text-sm font-semibold">{locale === "de" ? "Warum lerne ich das?" : "Why am I learning this?"}</p>
+                <p className="mb-1 text-sm font-semibold">{c_sectionContent(locale).whyAmILearningThis}</p>
                 <ul className="flex flex-col gap-1 text-sm text-muted">
                   {relevance.examWeight !== null && (
                     <li>
-                      {locale === "de"
-                        ? `Der Bereich „${domainName}“ macht etwa ${relevance.examWeight} % der Prüfung aus.`
-                        : `The “${domainName}” domain makes up about ${relevance.examWeight}% of the exam.`}
+                      {fill(c_sectionContent(locale).the0DomainMakesUp, domainName, relevance.examWeight)}
                     </li>
                   )}
                   {(relevance.frameworkGoals?.length ?? 0) > 0 && (
                     <li data-testid="lesson-framework">
-                      {locale === "de" ? "Im Ausbildungsrahmenplan deiner Firma: " : "In your company's training framework: "}
+                      {c_sectionContent(locale).inYourCompanySTraining}
                       {relevance.frameworkGoals!.map((g) => `${g.code ? `${g.code} ` : ""}${g.title}`).join("; ")}
                     </li>
                   )}
@@ -220,7 +220,7 @@ export function SectionContent({
                   )}
                   {(relevance.careerPaths?.length ?? 0) > 0 && (
                     <li data-testid="lesson-career">
-                      {locale === "de" ? "Er gehört zu deinen Karrierepfaden: " : "It is part of your career paths: "}
+                      {c_sectionContent(locale).itIsPartOfYour}
                       <Link href="/career" className="text-link hover:underline">{relevance.careerPaths!.join(", ")}</Link>
                     </li>
                   )}
@@ -228,7 +228,7 @@ export function SectionContent({
                     <li key={task.title} data-testid={task.unlocked ? "lesson-task-unlocked" : "lesson-task-locked"}>
                       {task.unlocked ? (
                         <>
-                          {locale === "de" ? "Praxisaufgabe freigeschaltet: " : "Practice task unlocked: "}
+                          {c_sectionContent(locale).practiceTaskUnlocked}
                           <Link href="/" className="text-link hover:underline">{task.title}</Link>
                         </>
                       ) : locale === "de" ? (

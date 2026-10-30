@@ -1,5 +1,7 @@
 "use client";
 
+import { c_adminProbeAdmin } from "@/lib/i18n/components/adminProbeAdmin";
+import { fill } from "@/lib/i18n/fill";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -56,11 +58,11 @@ export function ProbeAdmin({ sets, attempts, qualifications, locale }: { sets: S
     const r = await call(`/api/admin/reviewers/probe/sets/${edit.id}`, "PUT", { title: edit.title, topic: edit.topic, language: edit.language, active: edit.active, items: edit.items });
     setBusy(false);
     if (!r.ok) return setMessage({ tone: "error", text: r.data.error ?? "Fehler", problems: r.data.problems });
-    setMessage({ tone: "ok", text: de ? "Gespeichert." : "Saved." });
+    setMessage({ tone: "ok", text: c_adminProbeAdmin(de).saved });
     router.refresh();
   }
   async function remove(id: string) {
-    if (!(await confirm(de ? "Satz löschen?" : "Delete set?"))) return;
+    if (!(await confirm(c_adminProbeAdmin(de).deleteSet))) return;
     const r = await call(`/api/admin/reviewers/probe/sets/${id}`, "DELETE");
     if (!r.ok) return setMessage({ tone: "error", text: r.data.error ?? "Fehler" });
     if (edit?.id === id) setEdit(null);
@@ -93,42 +95,40 @@ export function ProbeAdmin({ sets, attempts, qualifications, locale }: { sets: S
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">{de ? "Sätze" : "Sets"}</h2>
+        <h2 className="text-lg font-semibold">{c_adminProbeAdmin(de).sets}</h2>
         <p className="text-xs text-subtle">
-          {de
-            ? `Ein Satz hat ${MIN_ITEMS} bis ${MAX_ITEMS} Fragen, davon 4 bis 5 mit eingebauten Fehlern (Fehlertyp und Notiz legst du fest). Bestanden ist, wer mindestens 80 % der eingebauten Fehler findet (4 von 5) und höchstens 2 Fehlalarme hat. Sätze mit Versuchen sind gesperrt.`
-            : `A set has ${MIN_ITEMS} to ${MAX_ITEMS} questions, 4 to 5 of them with built-in errors (you define type and note). Passing means finding at least 80% of the built-in errors (4 of 5) with at most 2 false alarms. Sets with attempts are locked.`}
+          {fill(c_adminProbeAdmin(de).aSetHas0To, MIN_ITEMS, MAX_ITEMS)}
         </p>
         <ul className="flex flex-col gap-2">
           {sets.map((s) => (
             <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface p-3 text-sm" data-testid="probe-admin-set">
               <span>
-                <span className="font-medium">{s.title}</span> <span className="text-subtle">· {s.topic} · {s.language} · {s.itemCount} {de ? "Fragen" : "questions"}, {s.plantedCount} {de ? "Fehler" : "errors"} · {s.attempts} {de ? "Versuche" : "attempts"}</span>{" "}
-                {s.active ? <Badge tone="mint">{de ? "aktiv" : "active"}</Badge> : <Badge tone="neutral">{de ? "inaktiv" : "inactive"}</Badge>}
+                <span className="font-medium">{s.title}</span> <span className="text-subtle">· {s.topic} · {s.language} · {s.itemCount} {c_adminProbeAdmin(de).questions}, {s.plantedCount} {c_adminProbeAdmin(de).errors} · {s.attempts} {c_adminProbeAdmin(de).attempts}</span>{" "}
+                {s.active ? <Badge tone="mint">{c_adminProbeAdmin(de).active}</Badge> : <Badge tone="neutral">{c_adminProbeAdmin(de).inactive}</Badge>}
               </span>
               <span className="flex gap-1">
-                <Button size="sm" variant="secondary" onClick={() => void open(s.id)} data-testid="probe-admin-edit">{de ? "Bearbeiten" : "Edit"}</Button>
-                <Button size="sm" variant="ghost" onClick={() => void remove(s.id)}>{de ? "Löschen" : "Delete"}</Button>
+                <Button size="sm" variant="secondary" onClick={() => void open(s.id)} data-testid="probe-admin-edit">{c_adminProbeAdmin(de).edit}</Button>
+                <Button size="sm" variant="ghost" onClick={() => void remove(s.id)}>{c_adminProbeAdmin(de).delete}</Button>
               </span>
             </li>
           ))}
         </ul>
         <div className="grid gap-2 rounded-xl border border-dashed border-border-strong p-3 sm:grid-cols-[1fr_1fr_auto_auto]">
-          <input className={field} placeholder={de ? "Titel" : "Title"} value={create.title} onChange={(e) => setCreate({ ...create, title: e.target.value })} data-testid="probe-new-title" />
-          <input className={field} placeholder={de ? "Themengebiet" : "Topic"} value={create.topic} onChange={(e) => setCreate({ ...create, topic: e.target.value })} data-testid="probe-new-topic" />
+          <input className={field} placeholder={c_adminProbeAdmin(de).title} value={create.title} onChange={(e) => setCreate({ ...create, title: e.target.value })} data-testid="probe-new-title" />
+          <input className={field} placeholder={c_adminProbeAdmin(de).topic} value={create.topic} onChange={(e) => setCreate({ ...create, topic: e.target.value })} data-testid="probe-new-topic" />
           <select className={field} value={create.language} onChange={(e) => setCreate({ ...create, language: e.target.value as "de" | "en" })}>
             <option value="de">Deutsch</option>
             <option value="en">English</option>
           </select>
-          <Button size="sm" disabled={busy || !create.title.trim() || !create.topic.trim()} onClick={() => void createSet()} data-testid="probe-new-create">{de ? "Satz anlegen" : "Create set"}</Button>
+          <Button size="sm" disabled={busy || !create.title.trim() || !create.topic.trim()} onClick={() => void createSet()} data-testid="probe-new-create">{c_adminProbeAdmin(de).createSet}</Button>
         </div>
       </section>
 
       {edit && (
         <Card data-testid="probe-editor">
           <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-            <input className={field} value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} aria-label={de ? "Titel" : "Title"} />
-            <input className={field} value={edit.topic} onChange={(e) => setEdit({ ...edit, topic: e.target.value })} aria-label={de ? "Themengebiet" : "Topic"} />
+            <input className={field} value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} aria-label={c_adminProbeAdmin(de).title} />
+            <input className={field} value={edit.topic} onChange={(e) => setEdit({ ...edit, topic: e.target.value })} aria-label={c_adminProbeAdmin(de).topic} />
             <select className={field} value={edit.language} disabled={locked} onChange={(e) => setEdit({ ...edit, language: e.target.value as "de" | "en" })}>
               <option value="de">Deutsch</option>
               <option value="en">English</option>
@@ -136,32 +136,32 @@ export function ProbeAdmin({ sets, attempts, qualifications, locale }: { sets: S
           </div>
           <label className="mb-3 flex items-center gap-2 text-sm">
             <input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} data-testid="probe-active" />
-            {de ? "Aktiv (für Kandidaten verfügbar; nur mit gültigem Satz)" : "Active (available to candidates; only with a valid set)"}
+            {c_adminProbeAdmin(de).activeAvailableToCandidatesOnly}
           </label>
-          {locked && <p className="mb-3 text-sm text-warning-text">{de ? "Zu diesem Satz gibt es Versuche; die Fragen sind gesperrt." : "This set has attempts; the questions are locked."}</p>}
+          {locked && <p className="mb-3 text-sm text-warning-text">{c_adminProbeAdmin(de).thisSetHasAttemptsThe}</p>}
           <p className="mb-2 text-xs text-subtle" data-testid="probe-counts">
-            {edit.items.length} {de ? "Fragen" : "questions"}, {edit.items.filter((i) => i.plantedError).length} {de ? "eingebaute Fehler" : "built-in errors"}
+            {edit.items.length} {c_adminProbeAdmin(de).questions}, {edit.items.filter((i) => i.plantedError).length} {c_adminProbeAdmin(de).builtInErrors}
           </p>
           <ol className="flex flex-col gap-4">
             {edit.items.map((item, i) => (
               <li key={i} className="rounded-xl border border-border p-3 text-sm" data-testid="probe-editor-item">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="font-medium">{de ? "Frage" : "Question"} {i + 1}</span>
-                  {!locked && <Button size="sm" variant="ghost" onClick={() => setEdit({ ...edit, items: edit.items.filter((_, k) => k !== i) })}>{de ? "Entfernen" : "Remove"}</Button>}
+                  <span className="font-medium">{c_adminProbeAdmin(de).question} {i + 1}</span>
+                  {!locked && <Button size="sm" variant="ghost" onClick={() => setEdit({ ...edit, items: edit.items.filter((_, k) => k !== i) })}>{c_adminProbeAdmin(de).remove}</Button>}
                 </div>
-                <textarea className={field} rows={2} disabled={locked} placeholder={de ? "Fragetext" : "Question"} value={item.question} onChange={(e) => setItem(i, { question: e.target.value })} data-testid="probe-q-text" />
+                <textarea className={field} rows={2} disabled={locked} placeholder={c_adminProbeAdmin(de).question2} value={item.question} onChange={(e) => setItem(i, { question: e.target.value })} data-testid="probe-q-text" />
                 <div className="mt-2 flex flex-col gap-1.5">
                   {item.options.map((o, k) => (
                     <div key={k} className="flex items-center gap-2">
-                      <input type="radio" disabled={locked} name={`key-${i}`} checked={o.isCorrect} onChange={() => setItem(i, { options: item.options.map((x, n) => ({ ...x, isCorrect: n === k })) })} aria-label={de ? `Option ${k + 1} ist als richtig markiert` : `Option ${k + 1} is marked correct`} />
-                      <input className={field} disabled={locked} value={o.text} placeholder={`${de ? "Option" : "Option"} ${k + 1}`} onChange={(e) => setItem(i, { options: item.options.map((x, n) => (n === k ? { ...x, text: e.target.value } : x)) })} data-testid="probe-q-option" />
+                      <input type="radio" disabled={locked} name={`key-${i}`} checked={o.isCorrect} onChange={() => setItem(i, { options: item.options.map((x, n) => ({ ...x, isCorrect: n === k })) })} aria-label={fill(c_adminProbeAdmin(de).option0IsMarkedCorrect, k + 1)} />
+                      <input className={field} disabled={locked} value={o.text} placeholder={`${c_adminProbeAdmin(de).option} ${k + 1}`} onChange={(e) => setItem(i, { options: item.options.map((x, n) => (n === k ? { ...x, text: e.target.value } : x)) })} data-testid="probe-q-option" />
                     </div>
                   ))}
                 </div>
-                <textarea className={`${field} mt-2`} rows={2} disabled={locked} placeholder={de ? "Erklärung" : "Explanation"} value={item.explanation} onChange={(e) => setItem(i, { explanation: e.target.value })} data-testid="probe-q-explanation" />
+                <textarea className={`${field} mt-2`} rows={2} disabled={locked} placeholder={c_adminProbeAdmin(de).explanation} value={item.explanation} onChange={(e) => setItem(i, { explanation: e.target.value })} data-testid="probe-q-explanation" />
                 <label className="mt-2 flex items-center gap-2">
                   <input type="checkbox" disabled={locked} checked={Boolean(item.plantedError)} onChange={(e) => setItem(i, { plantedError: e.target.checked ? { type: "wrong_key", note: "" } : null })} data-testid="probe-q-planted" />
-                  {de ? "Hier ist ein Fehler eingebaut" : "A built-in error is here"}
+                  {c_adminProbeAdmin(de).aBuiltInErrorIs}
                 </label>
                 {item.plantedError && (
                   <div className="mt-2 grid gap-2 sm:grid-cols-[auto_1fr]">
@@ -170,36 +170,36 @@ export function ProbeAdmin({ sets, attempts, qualifications, locale }: { sets: S
                         <option key={t} value={t}>{PROBE_ERROR_LABEL[t][de ? "de" : "en"]}</option>
                       ))}
                     </select>
-                    <input className={field} disabled={locked} placeholder={de ? "Notiz (nur für Admins): was ist falsch?" : "Note (admins only): what is wrong?"} value={item.plantedError.note} onChange={(e) => setItem(i, { plantedError: { ...item.plantedError!, note: e.target.value } })} data-testid="probe-q-error-note" />
+                    <input className={field} disabled={locked} placeholder={c_adminProbeAdmin(de).noteAdminsOnlyWhatIs} value={item.plantedError.note} onChange={(e) => setItem(i, { plantedError: { ...item.plantedError!, note: e.target.value } })} data-testid="probe-q-error-note" />
                   </div>
                 )}
               </li>
             ))}
           </ol>
           <div className="mt-4 flex flex-wrap gap-2">
-            {!locked && <Button size="sm" variant="secondary" disabled={edit.items.length >= MAX_ITEMS} onClick={() => setEdit({ ...edit, items: [...edit.items, blankItem()] })} data-testid="probe-add-item">{de ? "Frage hinzufügen" : "Add question"}</Button>}
-            <Button size="sm" disabled={busy} onClick={() => void save()} data-testid="probe-save">{de ? "Speichern" : "Save"}</Button>
-            <Button size="sm" variant="ghost" onClick={() => setEdit(null)}>{de ? "Schließen" : "Close"}</Button>
+            {!locked && <Button size="sm" variant="secondary" disabled={edit.items.length >= MAX_ITEMS} onClick={() => setEdit({ ...edit, items: [...edit.items, blankItem()] })} data-testid="probe-add-item">{c_adminProbeAdmin(de).addQuestion}</Button>}
+            <Button size="sm" disabled={busy} onClick={() => void save()} data-testid="probe-save">{c_adminProbeAdmin(de).save}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setEdit(null)}>{c_adminProbeAdmin(de).close}</Button>
           </div>
         </Card>
       )}
 
       <section className="flex flex-col gap-3" data-testid="probe-results">
-        <h2 className="text-lg font-semibold">{de ? "Ergebnisse (nur intern)" : "Results (internal only)"}</h2>
+        <h2 className="text-lg font-semibold">{c_adminProbeAdmin(de).resultsInternalOnly}</h2>
         {attempts.length === 0 ? (
-          <p className="text-sm text-subtle">{de ? "Noch keine abgegebenen Versuche." : "No submitted attempts yet."}</p>
+          <p className="text-sm text-subtle">{c_adminProbeAdmin(de).noSubmittedAttemptsYet}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {attempts.map((a) => (
               <li key={a.id} className="rounded-lg border border-border bg-surface p-3 text-sm" data-testid="probe-result-row">
                 <p className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{a.reviewerName}</span> <span className="text-subtle">· {a.setTitle} · {new Date(a.submittedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}</span>
-                  {a.result.passed ? <Badge tone="mint">{de ? "bestanden" : "passed"}</Badge> : <Badge tone="danger">{de ? "nicht bestanden" : "not passed"}</Badge>}
+                  {a.result.passed ? <Badge tone="mint">{c_adminProbeAdmin(de).passed}</Badge> : <Badge tone="danger">{c_adminProbeAdmin(de).notPassed}</Badge>}
                 </p>
-                <p className="text-xs text-subtle">{a.result.found} {de ? "von" : "of"} {a.result.plantedTotal} {de ? "Fehlern gefunden" : "errors found"} · {a.result.falseAlarms} {de ? "Fehlalarme" : "false alarms"}</p>
+                <p className="text-xs text-subtle">{a.result.found} {c_adminProbeAdmin(de).of} {a.result.plantedTotal} {c_adminProbeAdmin(de).errorsFound} · {a.result.falseAlarms} {c_adminProbeAdmin(de).falseAlarms}</p>
                 {a.extraNotes.length > 0 && (
                   <details className="mt-1 text-xs">
-                    <summary className="cursor-pointer">{de ? "Weitere Hinweise zu Fragen ohne eingebauten Fehler" : "Further notes on questions without a built-in error"} ({a.extraNotes.length})</summary>
+                    <summary className="cursor-pointer">{c_adminProbeAdmin(de).furtherNotesOnQuestionsWithout} ({a.extraNotes.length})</summary>
                     <ul className="mt-1 list-disc pl-5">
                       {a.extraNotes.map((n, i) => (
                         <li key={i}>
@@ -216,17 +216,17 @@ export function ProbeAdmin({ sets, attempts, qualifications, locale }: { sets: S
       </section>
 
       <section className="flex flex-col gap-3" data-testid="probe-qualifications">
-        <h2 className="text-lg font-semibold">{de ? "Freigaberechte" : "Approval rights"}</h2>
-        <p className="text-xs text-subtle">{de ? "Wer das Probe-Review bestanden hat oder hier freigeschaltet wird, darf Kurse freigeben und sein Profil veröffentlichen. Den ersten Experten wählst du persönlich aus und schaltest ihn hier frei." : "Anyone who passed the trial review or is cleared here may approve courses and publish their profile. You pick the first expert personally and clear them here."}</p>
+        <h2 className="text-lg font-semibold">{c_adminProbeAdmin(de).approvalRights}</h2>
+        <p className="text-xs text-subtle">{c_adminProbeAdmin(de).anyoneWhoPassedTheTrial}</p>
         <ul className="flex flex-col gap-2">
           {qualifications.map((q) => (
             <li key={q.userId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface p-3 text-sm" data-testid="probe-qualification-row">
               <span>
                 <span className="font-medium">{q.name ?? q.email}</span> {q.name ? <span className="text-subtle">· {q.email}</span> : null}{" "}
-                {q.qualified ? <Badge tone="mint">{q.source === "probe" ? (de ? "Probe bestanden" : "passed trial") : de ? "vom Betreiber freigeschaltet" : "cleared by operator"}</Badge> : <Badge tone="warning">{de ? "nicht freigeschaltet" : "not cleared"}</Badge>}
+                {q.qualified ? <Badge tone="mint">{q.source === "probe" ? (c_adminProbeAdmin(de).passedTrial) : c_adminProbeAdmin(de).clearedByOperator}</Badge> : <Badge tone="warning">{c_adminProbeAdmin(de).notCleared}</Badge>}
               </span>
               <Button size="sm" variant={q.qualified ? "ghost" : "secondary"} onClick={() => void qualify(q.userId, !q.qualified)} data-testid="probe-qualify-toggle">
-                {q.qualified ? (de ? "Freischaltung zurücknehmen" : "Revoke clearance") : de ? "Freischalten" : "Clear"}
+                {q.qualified ? (c_adminProbeAdmin(de).revokeClearance) : c_adminProbeAdmin(de).clear}
               </Button>
             </li>
           ))}

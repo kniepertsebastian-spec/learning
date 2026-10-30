@@ -1,5 +1,7 @@
 "use client";
 
+import { c_practiceTasksPanel } from "@/lib/i18n/components/practiceTasksPanel";
+import { fill } from "@/lib/i18n/fill";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -61,15 +63,15 @@ function PendingItem({ p, locale }: { p: PendingRowView; locale: "de" | "en" }) 
           value={note}
           onChange={(e) => setNote(e.target.value)}
           maxLength={1000}
-          placeholder={de ? "Hinweis (bei Nacharbeit Pflicht)" : "Note (required for rework)"}
-          aria-label={de ? "Hinweis" : "Note"}
+          placeholder={c_practiceTasksPanel(de).noteRequiredForRework}
+          aria-label={c_practiceTasksPanel(de).note}
           className="flex-1 rounded-md border border-border bg-surface px-2 py-1 text-sm"
         />
-        <button type="button" disabled={busy} onClick={() => void decide("confirm")} data-testid="practice-confirm" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
-          {de ? "Bestätigen" : "Confirm"}
+        <button type="button" disabled={busy} onClick={() => void decide("confirm")} data-testid="practice-confirm" className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50">
+          {c_practiceTasksPanel(de).confirm}
         </button>
         <button type="button" disabled={busy} onClick={() => void decide("rework")} data-testid="practice-rework" className={btn}>
-          {de ? "Zur Nacharbeit zurück" : "Send back for rework"}
+          {c_practiceTasksPanel(de).sendBackForRework}
         </button>
       </div>
       {error && <p role="alert" className="mt-2 text-xs text-danger-text">{error}</p>}
@@ -120,7 +122,7 @@ export function PracticeTasksPanel({
     }
   }
   async function archive(id: string) {
-    if (!(await confirm(de ? "Aufgabe archivieren? Sie zählt dann nicht mehr, Abgaben bleiben erhalten." : "Archive this task? It no longer counts, submissions are kept."))) return;
+    if (!(await confirm(c_practiceTasksPanel(de).archiveThisTaskItNo))) return;
     setError(await call(`/api/company/practice-tasks/${id}`, "DELETE"));
     router.refresh();
   }
@@ -129,17 +131,15 @@ export function PracticeTasksPanel({
     <>
     {confirmDialog}
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="practice-tasks">
-      <h2 className="text-lg font-medium">{de ? "Praxisaufgaben" : "Practice tasks"}</h2>
+      <h2 className="text-lg font-medium">{c_practiceTasksPanel(de).practiceTasks}</h2>
       <p className="mt-1 text-sm text-muted">
-        {de
-          ? "Praktische Aufgaben zu euren Lernpfaden. Wer den Lernpfad hat, gibt die Aufgabe ab; eine andere Person aus Mentor oder Firmen-Admin bestätigt sie. In der Statusliste steht nur „x von y bestätigt“."
-          : "Practical tasks for your learning paths. People assigned the path hand them in; a different mentor or company admin confirms. The status list only shows “x of y confirmed”."}
+        {c_practiceTasksPanel(de).practicalTasksForYourLearning}
       </p>
 
       {paths.length > 0 ? (
         <form onSubmit={create} className="mt-4 flex flex-col gap-2">
           <div className="flex flex-col gap-2 sm:flex-row">
-            <select value={pathId} onChange={(e) => { setPathId(e.target.value); setObjectiveId(""); setUnlockSectionId(""); }} aria-label={de ? "Lernpfad" : "Learning path"} data-testid="practice-path" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
+            <select value={pathId} onChange={(e) => { setPathId(e.target.value); setObjectiveId(""); setUnlockSectionId(""); }} aria-label={c_practiceTasksPanel(de).learningPath} data-testid="practice-path" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
               {paths.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -150,8 +150,8 @@ export function PracticeTasksPanel({
               required
               minLength={3}
               maxLength={200}
-              placeholder={de ? "Aufgabe, z. B. „Setze einen Testserver auf“" : "Task, e.g. “Set up a test server”"}
-              aria-label={de ? "Titel der Aufgabe" : "Task title"}
+              placeholder={c_practiceTasksPanel(de).taskEGSetUp}
+              aria-label={c_practiceTasksPanel(de).taskTitle}
               data-testid="practice-title"
               className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
             />
@@ -161,16 +161,16 @@ export function PracticeTasksPanel({
             onChange={(e) => setDescription(e.target.value)}
             maxLength={2000}
             rows={2}
-            placeholder={de ? "Beschreibung (optional)" : "Description (optional)"}
-            aria-label={de ? "Beschreibung" : "Description"}
+            placeholder={c_practiceTasksPanel(de).descriptionOptional}
+            aria-label={c_practiceTasksPanel(de).description}
             className="rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted">
-              {de ? "Lernziel (optional): Bestätigung und Nacharbeit fließen in die Wiederholungsplanung der Person ein" : "Objective (optional): confirmation and rework feed into the person's review scheduling"}
+              {c_practiceTasksPanel(de).objectiveOptionalConfirmationAndRework}
             </span>
-            <select value={objectiveId} onChange={(e) => setObjectiveId(e.target.value)} aria-label={de ? "Lernziel" : "Objective"} data-testid="practice-objective" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
-              <option value="">{de ? "Keins" : "None"}</option>
+            <select value={objectiveId} onChange={(e) => setObjectiveId(e.target.value)} aria-label={c_practiceTasksPanel(de).objective} data-testid="practice-objective" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
+              <option value="">{c_practiceTasksPanel(de).none}</option>
               {(objectivesByPath[pathId] ?? []).map((o) => (
                 <option key={o.id} value={o.id}>{o.code} {o.title}</option>
               ))}
@@ -178,27 +178,27 @@ export function PracticeTasksPanel({
           </label>
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted">
-              {de ? "Freischalten nach Lektion (optional): Die Aufgabe erscheint erst, wenn die Person diese Lektion abgeschlossen hat" : "Unlock after lesson (optional): the task only appears once the person has finished this lesson"}
+              {c_practiceTasksPanel(de).unlockAfterLessonOptionalThe}
             </span>
-            <select value={unlockSectionId} onChange={(e) => setUnlockSectionId(e.target.value)} aria-label={de ? "Freischalten nach Lektion" : "Unlock after lesson"} data-testid="practice-unlock" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
-              <option value="">{de ? "Sofort sichtbar" : "Visible right away"}</option>
+            <select value={unlockSectionId} onChange={(e) => setUnlockSectionId(e.target.value)} aria-label={c_practiceTasksPanel(de).unlockAfterLesson} data-testid="practice-unlock" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
+              <option value="">{c_practiceTasksPanel(de).visibleRightAway}</option>
               {(sectionsByPath[pathId] ?? []).map((o) => (
                 <option key={o.id} value={o.id}>{o.code} {o.title}</option>
               ))}
             </select>
           </label>
-          <button type="submit" disabled={busy || !title.trim()} data-testid="practice-create" className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
-            {de ? "Aufgabe anlegen" : "Create task"}
+          <button type="submit" disabled={busy || !title.trim()} data-testid="practice-create" className="self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50">
+            {c_practiceTasksPanel(de).createTask}
           </button>
         </form>
       ) : (
-        <p className="mt-3 text-sm text-muted">{de ? "Es gibt noch keinen Lernpfad, zu dem sich Aufgaben anlegen lassen." : "There is no learning path yet to add tasks to."}</p>
+        <p className="mt-3 text-sm text-muted">{c_practiceTasksPanel(de).thereIsNoLearningPath}</p>
       )}
       {error && <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>}
 
       {pending.length > 0 && (
         <>
-          <h3 className="mt-6 text-base font-medium">{de ? "Wartet auf Bestätigung" : "Waiting for confirmation"}</h3>
+          <h3 className="mt-6 text-base font-medium">{c_practiceTasksPanel(de).waitingForConfirmation}</h3>
           <ul className="mt-2 flex flex-col gap-2" data-testid="practice-pending-list">
             {pending.map((p) => (
               <PendingItem key={p.id} p={p} locale={locale} />
@@ -209,7 +209,7 @@ export function PracticeTasksPanel({
 
       {tasks.length > 0 && (
         <>
-          <h3 className="mt-6 text-base font-medium">{de ? "Aufgaben" : "Tasks"}</h3>
+          <h3 className="mt-6 text-base font-medium">{c_practiceTasksPanel(de).tasks}</h3>
           <ul className="mt-2 flex flex-col gap-2" data-testid="practice-task-list">
             {tasks.map((t) => (
               <li key={t.id} className="rounded-md border border-border bg-background p-3 text-sm">
@@ -219,14 +219,12 @@ export function PracticeTasksPanel({
                     <span className="text-muted"> · {t.learningPath}</span>
                   </span>
                   <button type="button" onClick={() => void archive(t.id)} className="text-xs text-subtle hover:text-danger-text">
-                    {de ? "Archivieren" : "Archive"}
+                    {c_practiceTasksPanel(de).archive}
                   </button>
                 </div>
                 {t.description && <p className="mt-1 text-muted">{t.description}</p>}
                 <p className="mt-1 text-xs text-muted">
-                  {de
-                    ? `${t.confirmed} von ${t.assignees} bestätigt · ${t.submitted} wartet · ${t.rework} in Nacharbeit`
-                    : `${t.confirmed} of ${t.assignees} confirmed · ${t.submitted} waiting · ${t.rework} in rework`}
+                  {fill(c_practiceTasksPanel(de).n0Of1Confirmed2, t.confirmed, t.assignees, t.submitted, t.rework)}
                 </p>
               </li>
             ))}

@@ -1,5 +1,7 @@
 "use client";
 
+import { c_bulkSourceImport } from "@/lib/i18n/components/bulkSourceImport";
+import { fill } from "@/lib/i18n/fill";
 import { useRef, useState } from "react";
 import { Loader2, UploadCloud } from "lucide-react";
 import { MAX_BULK_SOURCES, parseSourceList, titleFromFileName } from "@/lib/source-list";
@@ -63,12 +65,12 @@ export function BulkSourceImport({ certificationId, locale, online, onDone }: { 
       if (autoParse && (data.source.status === "uploaded" || data.source.status === "failed")) {
         const parse = await fetch(`/api/admin/sources/${data.source.id}/parse`, { method: "POST" });
         const parseData = (await parse.json().catch(() => ({}))) as { error?: string };
-        setRow(task.key, { state, message: parse.ok ? (de ? "Text extrahiert" : "text extracted") : `${de ? "Text nicht extrahiert" : "text not extracted"}: ${parseData.error ?? parse.status}` });
+        setRow(task.key, { state, message: parse.ok ? (c_bulkSourceImport(de).textExtracted) : `${c_bulkSourceImport(de).textNotExtracted}: ${parseData.error ?? parse.status}` });
         return;
       }
       setRow(task.key, { state, message: null });
     } catch {
-      setRow(task.key, { state: "failed", message: de ? "Netzwerkfehler" : "Network error" });
+      setRow(task.key, { state: "failed", message: c_bulkSourceImport(de).networkError });
     }
   }
 
@@ -100,15 +102,15 @@ export function BulkSourceImport({ certificationId, locale, online, onDone }: { 
   return (
     <div className="grid gap-3 sm:grid-cols-2" data-testid="bulk-sources">
       <label className="block text-sm">
-        <span className="mb-1 block font-medium">{de ? "Anbieter (für alle)" : "Provider (for all)"}</span>
+        <span className="mb-1 block font-medium">{c_bulkSourceImport(de).providerForAll}</span>
         <input value={provider} onChange={(e) => setProvider(e.target.value)} placeholder="CompTIA" disabled={running} data-testid="bulk-provider" className="w-full rounded-md border border-border bg-background px-3 py-2" />
       </label>
       <label className="block text-sm">
-        <span className="mb-1 block font-medium">{de ? "Veröffentlichungsdatum (optional, für alle)" : "Published date (optional, for all)"}</span>
+        <span className="mb-1 block font-medium">{c_bulkSourceImport(de).publishedDateOptionalForAll}</span>
         <input type="date" value={publishedAt} onChange={(e) => setPublishedAt(e.target.value)} disabled={running} className="w-full rounded-md border border-border bg-background px-3 py-2" />
       </label>
       <label className="block text-sm sm:col-span-2">
-        <span className="mb-1 block font-medium">{de ? "Adressen (eine je Zeile)" : "URLs (one per line)"}</span>
+        <span className="mb-1 block font-medium">{c_bulkSourceImport(de).urlsOnePerLine}</span>
         <textarea
           value={urlText}
           onChange={(e) => setUrlText(e.target.value)}
@@ -119,23 +121,23 @@ export function BulkSourceImport({ certificationId, locale, online, onDone }: { 
           className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
         />
         <span className="mt-1 block text-xs text-subtle">
-          {de ? "Optional mit Titel: „Titel | Adresse“. Ohne Titel wird er aus der Adresse abgeleitet. Zeilen mit # werden ignoriert." : "Optionally with a title: “Title | URL”. Without one it is derived from the URL. Lines starting with # are ignored."}
+          {c_bulkSourceImport(de).optionallyWithATitleTitle}
         </span>
       </label>
       <label className="block text-sm sm:col-span-2">
-        <span className="mb-1 block font-medium">{de ? "PDF-Dateien (mehrere möglich)" : "PDF files (multiple allowed)"}</span>
+        <span className="mb-1 block font-medium">{c_bulkSourceImport(de).pdfFilesMultipleAllowed}</span>
         <input ref={fileInput} type="file" accept="application/pdf" multiple disabled={running} onChange={(e) => setFiles(Array.from(e.target.files ?? []))} data-testid="bulk-files" className="w-full rounded-md border border-border bg-background px-3 py-2" />
       </label>
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input type="checkbox" checked={autoParse} onChange={(e) => setAutoParse(e.target.checked)} disabled={running} />
-        {de ? "Text gleich extrahieren" : "Extract text right away"}
+        {c_bulkSourceImport(de).extractTextRightAway}
       </label>
 
       <div className="text-sm sm:col-span-2" role="status" data-testid="bulk-summary">
-        {de ? `${total} Quelle(n) erkannt` : `${total} source(s) found`}
-        {parsed.duplicates > 0 ? (de ? `, ${parsed.duplicates} doppelte Adresse(n) ignoriert` : `, ${parsed.duplicates} duplicate URL(s) ignored`) : ""}
-        {parsed.invalid.length > 0 && <span className="text-danger-text">{de ? `, ${parsed.invalid.length} ungültige Zeile(n): ${parsed.invalid.slice(0, 3).join(" · ")}${parsed.invalid.length > 3 ? " …" : ""}` : `, ${parsed.invalid.length} invalid line(s): ${parsed.invalid.slice(0, 3).join(" · ")}${parsed.invalid.length > 3 ? " …" : ""}`}</span>}
-        {tooMany && <span className="text-danger-text">{de ? ` Höchstens ${MAX_BULK_SOURCES} auf einmal.` : ` At most ${MAX_BULK_SOURCES} at once.`}</span>}
+        {fill(c_bulkSourceImport(de).n0SourceSFound, total)}
+        {parsed.duplicates > 0 ? (fill(c_bulkSourceImport(de).n0DuplicateUrlSIgnored, parsed.duplicates)) : ""}
+        {parsed.invalid.length > 0 && <span className="text-danger-text">{fill(c_bulkSourceImport(de).n0InvalidLineS1, parsed.invalid.length, parsed.invalid.slice(0, 3).join(" · "), parsed.invalid.length > 3 ? " …" : "")}</span>}
+        {tooMany && <span className="text-danger-text">{fill(c_bulkSourceImport(de).atMost0AtOnce, MAX_BULK_SOURCES)}</span>}
       </div>
 
       <button
@@ -143,7 +145,7 @@ export function BulkSourceImport({ certificationId, locale, online, onDone }: { 
         onClick={() => void start()}
         disabled={running || !online || total === 0 || tooMany || !provider.trim()}
         data-testid="bulk-start"
-        className="flex items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
+        className="flex items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
       >
         {running ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <UploadCloud className="h-4 w-4" aria-hidden="true" />}
         {de ? `${total || ""} Quelle(n) hinzufügen`.trim() : `Add ${total || ""} source(s)`.trim()}
@@ -153,7 +155,7 @@ export function BulkSourceImport({ certificationId, locale, online, onDone }: { 
         <div className="sm:col-span-2" data-testid="bulk-results">
           {finished && (
             <p className="mb-2 text-sm font-medium" role="status">
-              {de ? `Fertig: ${counts.new} neu, ${counts.existing} schon vorhanden, ${counts.failed} fehlgeschlagen.` : `Done: ${counts.new} new, ${counts.existing} already there, ${counts.failed} failed.`}
+              {fill(c_bulkSourceImport(de).done0New1Already, counts.new, counts.existing, counts.failed)}
             </p>
           )}
           <ul className="max-h-72 overflow-y-auto rounded-md border border-border text-xs">

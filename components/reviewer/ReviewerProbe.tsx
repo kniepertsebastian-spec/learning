@@ -1,5 +1,7 @@
 "use client";
 
+import { c_reviewerReviewerProbe } from "@/lib/i18n/components/reviewerReviewerProbe";
+import { fill } from "@/lib/i18n/fill";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -55,7 +57,7 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
   }
 
   async function submit() {
-    if (!attempt || !(await confirm(de ? "Versuch abgeben? Danach lässt sich nichts mehr ändern." : "Submit the attempt? You cannot change anything afterwards."))) return;
+    if (!attempt || !(await confirm(c_reviewerReviewerProbe(de).submitTheAttemptYouCannot))) return;
     setBusy(true);
     setError(null);
     const r = await send(`/api/reviewer/probe/attempts/${attempt.id}/submit`, "POST");
@@ -68,11 +70,11 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
   if (result) {
     return (
       <Card data-testid="probe-result" data-passed={result.passed}>
-        <h2 className="mb-1 text-lg font-semibold">{result.passed ? (de ? "Bestanden" : "Passed") : de ? "Leider nicht bestanden" : "Not passed"}</h2>
+        <h2 className="mb-1 text-lg font-semibold">{result.passed ? (c_reviewerReviewerProbe(de).passed) : c_reviewerReviewerProbe(de).notPassed}</h2>
         <p className="text-sm text-subtle">
           {result.passed
-            ? de ? "Du kannst jetzt Kurse freigeben und dein Expertenprofil veröffentlichen." : "You can now approve courses and publish your expert profile."
-            : de ? `Einen weiteren Versuch mit einem anderen Satz kannst du ab ${date(result.nextAttemptAt ?? new Date().toISOString())} machen.` : `You can try again with a different set from ${date(result.nextAttemptAt ?? new Date().toISOString())}.`}
+            ? c_reviewerReviewerProbe(de).youCanNowApproveCourses
+            : fill(c_reviewerReviewerProbe(de).youCanTryAgainWith, date(result.nextAttemptAt ?? new Date().toISOString()))}
         </p>
       </Card>
     );
@@ -82,9 +84,9 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
     return (
       <Card data-testid="probe-qualified">
         <p className="text-sm">
-          <Badge tone="mint">{de ? "Freigeschaltet" : "Cleared"}</Badge>{" "}
-          {overview.source === "probe" ? (de ? "Du hast das Probe-Review bestanden." : "You passed the trial review.") : de ? "Der Betreiber hat dich freigeschaltet." : "The operator has cleared you."}{" "}
-          {de ? "Du kannst Kurse freigeben und dein Profil veröffentlichen." : "You can approve courses and publish your profile."}
+          <Badge tone="mint">{c_reviewerReviewerProbe(de).cleared}</Badge>{" "}
+          {overview.source === "probe" ? (c_reviewerReviewerProbe(de).youPassedTheTrialReview) : c_reviewerReviewerProbe(de).theOperatorHasClearedYou}{" "}
+          {c_reviewerReviewerProbe(de).youCanApproveCoursesAnd}
         </p>
       </Card>
     );
@@ -98,11 +100,9 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
         <div>
           <h2 className="text-lg font-semibold">{attempt.title}</h2>
           <p className="text-sm text-subtle">
-            {de
-              ? "Prüfe jede Frage fachlich: Stimmt der markierte Lösungsschlüssel, ist die Frage eindeutig und aktuell, passt die Erklärung? Melde nur Fragen mit einem echten Fehler und begründe kurz. Mehrere Fehlalarme verschlechtern das Ergebnis."
-              : "Check every question technically: is the marked key right, is the question unambiguous and current, does the explanation fit? Only report questions with a real error and give a short reason. Several false alarms hurt the result."}
+            {c_reviewerReviewerProbe(de).checkEveryQuestionTechnicallyIs}
           </p>
-          <p className="mt-1 text-xs text-subtle" data-testid="probe-count">{attempt.reports.length} {de ? "von" : "of"} {attempt.items.length} {de ? "Fragen gemeldet" : "questions reported"}</p>
+          <p className="mt-1 text-xs text-subtle" data-testid="probe-count">{attempt.reports.length} {c_reviewerReviewerProbe(de).of} {attempt.items.length} {c_reviewerReviewerProbe(de).questionsReported}</p>
         </div>
         {error && <p role="alert" className="text-sm text-danger-text">{error}</p>}
         <ol className="flex flex-col gap-3">
@@ -111,7 +111,7 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
           ))}
         </ol>
         <div>
-          <Button onClick={() => void submit()} disabled={busy} data-testid="probe-submit">{de ? "Versuch abgeben" : "Submit attempt"}</Button>
+          <Button onClick={() => void submit()} disabled={busy} data-testid="probe-submit">{c_reviewerReviewerProbe(de).submitAttempt}</Button>
         </div>
       </div>
     );
@@ -122,21 +122,19 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
     {confirmDialog}
     <div className="flex flex-col gap-4" data-testid="probe-start">
       <p className="text-sm text-subtle">
-        {de
-          ? "Bevor du Kurse freigeben und dein Profil veröffentlichen kannst, zeigst du in einem kurzen Probe-Review, dass du fachlich gut prüfst: Ein Satz Fragen enthält eingebaute Fehler, die du finden sollst. Das Ergebnis sehen nur die Betreiber; dir zeigen wir „bestanden“ oder „nicht bestanden“. Ein neuer Versuch ist frühestens nach 30 Tagen mit einem anderen Satz möglich."
-          : "Before you can approve courses and publish your profile, a short trial review shows that you check well: a set of questions contains built-in errors you should find. Only the operators see the details; you get “passed” or “not passed”. A new attempt is possible after 30 days at the earliest, with a different set."}
+        {c_reviewerReviewerProbe(de).beforeYouCanApproveCourses}
       </p>
-      {overview.lastOutcome === "failed" && <p className="text-sm text-warning-text" data-testid="probe-failed-note">{de ? "Dein letzter Versuch war nicht erfolgreich." : "Your last attempt was not successful."}</p>}
-      {overview.blockedUntil && <p className="text-sm" data-testid="probe-blocked">{de ? `Der nächste Versuch ist ab ${date(overview.blockedUntil)} möglich.` : `The next attempt is possible from ${date(overview.blockedUntil)}.`}</p>}
+      {overview.lastOutcome === "failed" && <p className="text-sm text-warning-text" data-testid="probe-failed-note">{c_reviewerReviewerProbe(de).yourLastAttemptWasNot}</p>}
+      {overview.blockedUntil && <p className="text-sm" data-testid="probe-blocked">{fill(c_reviewerReviewerProbe(de).theNextAttemptIsPossible, date(overview.blockedUntil))}</p>}
       {error && <p role="alert" className="text-sm text-danger-text">{error}</p>}
-      {overview.available.length === 0 && !overview.blockedUntil && <p className="text-sm text-subtle" data-testid="probe-none">{de ? "Zurzeit ist kein Satz für dich verfügbar. Die Betreiber melden sich." : "No set is available for you right now. The operators will get in touch."}</p>}
+      {overview.available.length === 0 && !overview.blockedUntil && <p className="text-sm text-subtle" data-testid="probe-none">{c_reviewerReviewerProbe(de).noSetIsAvailableFor}</p>}
       <ul className="flex flex-col gap-2">
         {overview.available.map((s) => (
           <li key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3 text-sm" data-testid="probe-set">
             <span>
-              <span className="font-medium">{s.title}</span> <span className="text-subtle">· {s.topic} · {s.itemCount} {de ? "Fragen" : "questions"}</span>
+              <span className="font-medium">{s.title}</span> <span className="text-subtle">· {s.topic} · {s.itemCount} {c_reviewerReviewerProbe(de).questions}</span>
             </span>
-            <Button size="sm" onClick={() => void start(s.id)} disabled={busy} data-testid="probe-begin">{de ? "Beginnen" : "Begin"}</Button>
+            <Button size="sm" onClick={() => void start(s.id)} disabled={busy} data-testid="probe-begin">{c_reviewerReviewerProbe(de).begin}</Button>
           </li>
         ))}
       </ul>
@@ -165,30 +163,30 @@ function ProbeItem({ index, item, report, attemptId, de, onChanged }: { index: n
   }
 
   return (
-    <li className="rounded-xl border border-border bg-surface p-4 text-sm" data-testid="probe-item" data-reported={Boolean(report)}>
+    <li className="rounded-2xl border border-border bg-surface p-5 text-sm" data-testid="probe-item" data-reported={Boolean(report)}>
       <p className="font-medium">{index}. {item.question}</p>
       <ul className="mt-2 flex flex-col gap-1">
         {item.options.map((o, k) => (
           <li key={k} className={o.isCorrect ? "font-medium text-mint-text" : ""}>
-            {o.isCorrect ? (de ? "✓ (Lösungsschlüssel) " : "✓ (answer key) ") : "· "}
+            {o.isCorrect ? (c_reviewerReviewerProbe(de).answerKey) : "· "}
             {o.text}
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-xs text-subtle">{de ? "Erklärung" : "Explanation"}: {item.explanation}</p>
+      <p className="mt-2 text-xs text-subtle">{c_reviewerReviewerProbe(de).explanation}: {item.explanation}</p>
       {report && !open && (
         <p className="mt-2 text-xs" data-testid="probe-reported">
-          <Badge tone="warning">{de ? "Gemeldet" : "Reported"}</Badge> {label(report.type)}: {report.text}
+          <Badge tone="warning">{c_reviewerReviewerProbe(de).reported}</Badge> {label(report.type)}: {report.text}
         </p>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
-        {!open && <Button size="sm" variant="secondary" onClick={() => setOpen(true)} data-testid="probe-report-open">{report ? (de ? "Meldung ändern" : "Edit report") : de ? "Als fehlerhaft melden" : "Report as faulty"}</Button>}
-        {report && !open && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void save(null)} data-testid="probe-report-remove">{de ? "Meldung zurücknehmen" : "Withdraw report"}</Button>}
+        {!open && <Button size="sm" variant="secondary" onClick={() => setOpen(true)} data-testid="probe-report-open">{report ? (c_reviewerReviewerProbe(de).editReport) : c_reviewerReviewerProbe(de).reportAsFaulty}</Button>}
+        {report && !open && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void save(null)} data-testid="probe-report-remove">{c_reviewerReviewerProbe(de).withdrawReport}</Button>}
       </div>
       {open && (
         <div className="mt-3 flex flex-col gap-2 rounded-lg border border-accent-border p-3" data-testid="probe-report-form">
           <label className="text-xs font-medium">
-            {de ? "Art des Fehlers" : "Kind of error"}
+            {c_reviewerReviewerProbe(de).kindOfError}
             <select className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" value={type} onChange={(e) => setType(e.target.value as ProbeErrorType)} data-testid="probe-report-type">
               {PROBE_ERROR_TYPES.map((t) => (
                 <option key={t} value={t}>{label(t)}</option>
@@ -196,13 +194,13 @@ function ProbeItem({ index, item, report, attemptId, de, onChanged }: { index: n
             </select>
           </label>
           <label className="text-xs font-medium">
-            {de ? "Begründung" : "Reason"}
+            {c_reviewerReviewerProbe(de).reason}
             <textarea className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" rows={2} maxLength={500} value={text} onChange={(e) => setText(e.target.value)} data-testid="probe-report-text" />
           </label>
           {error && <p role="alert" className="text-xs text-danger-text">{error}</p>}
           <div className="flex gap-2">
-            <Button size="sm" disabled={busy || text.trim().length < 3} onClick={() => void save({ type, text })} data-testid="probe-report-save">{de ? "Meldung speichern" : "Save report"}</Button>
-            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>{de ? "Abbrechen" : "Cancel"}</Button>
+            <Button size="sm" disabled={busy || text.trim().length < 3} onClick={() => void save({ type, text })} data-testid="probe-report-save">{c_reviewerReviewerProbe(de).saveReport}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>{c_reviewerReviewerProbe(de).cancel}</Button>
           </div>
         </div>
       )}

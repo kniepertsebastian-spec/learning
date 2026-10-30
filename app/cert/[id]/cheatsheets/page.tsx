@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdCheatsheetsPage } from "@/lib/i18n/components/certIdCheatsheetsPage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Lock } from "lucide-react";
@@ -60,22 +61,22 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
       </Link>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">{de ? "Merkzettel" : "Cheat sheets"}</h1>
+          <h1 className="text-2xl font-semibold">{c_certIdCheatsheetsPage(de).cheatSheets}</h1>
           <p className="text-sm text-muted">{cert.name}</p>
         </div>
-        {rows.length > 0 && <PrintButton label={de ? "Drucken / als PDF speichern" : "Print / save as PDF"} />}
+        {rows.length > 0 && <PrintButton label={c_certIdCheatsheetsPage(de).printSaveAsPdf} />}
       </div>
 
       {rows.length === 0 ? (
         <p className="text-sm text-muted" data-testid="cheatsheets-empty">
           {allRows.length > 0
-            ? de ? "Dein Merkzettel ist noch leer. Er füllt sich Kapitel für Kapitel, sobald du ein Kapitel abgeschlossen hast." : "Your cheat sheet is still empty. It fills up chapter by chapter as you complete chapters."
-            : de ? "Zu diesem Kurs gibt es noch keine Merkzettel. Neue Kurse bekommen nach jeder Lektion einen." : "This course has no cheat sheets yet. New courses get one after every lesson."}
+            ? c_certIdCheatsheetsPage(de).yourCheatSheetIsStill
+            : c_certIdCheatsheetsPage(de).thisCourseHasNoCheat}
         </p>
       ) : (
         <div className="flex flex-col gap-6">
           {rows.map((r) => (
-            <section key={r.sectionId} className="break-inside-avoid rounded-lg border border-border bg-surface p-4" data-testid="cheatsheet-entry">
+            <section key={r.sectionId} className="break-inside-avoid rounded-2xl border border-border bg-surface p-5" data-testid="cheatsheet-entry">
               <p className="text-xs text-subtle">
                 {r.domain} · {r.objectiveCode} {r.objectiveTitle}
               </p>
@@ -95,12 +96,10 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
         <aside className="mt-6 rounded-lg border border-dashed border-border p-4 text-sm text-muted print:hidden" data-testid="cheatsheets-locked">
           <p className="mb-2 flex items-center gap-2 font-medium text-foreground">
             <Lock className="h-4 w-4" aria-hidden="true" />
-            {de ? "Wächst mit deinem Fortschritt" : "Grows with your progress"}
+            {c_certIdCheatsheetsPage(de).growsWithYourProgress}
           </p>
           <p className="mb-2">
-            {de
-              ? "Die Merksätze eines Kapitels kommen dazu, sobald du es abgeschlossen hast (alle Lektionen durchgearbeitet und das Kapitelquiz bestanden)."
-              : "A chapter's key points are added once you have completed it (all lessons done and the chapter quiz passed)."}
+            {c_certIdCheatsheetsPage(de).aChapterSKeyPoints}
           </p>
           <ul className="list-disc pl-5">
             {lockedNames.map((name) => (

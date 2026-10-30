@@ -1,5 +1,6 @@
 "use client";
 
+import { c_reviewerReviewerItemComment } from "@/lib/i18n/components/reviewerReviewerItemComment";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -30,27 +31,27 @@ export function ReviewerItemComment({ certId, targetType, targetId, locale, exis
     <div className="mt-2 text-xs" data-testid="reviewer-item-comment">
       {sent.map((c, i) => (
         <p key={i} className="mb-1 rounded-md bg-surface-2 px-2 py-1">
-          <strong>{c.kind === "faulty" ? (de ? "Fehlerhaft gemeldet" : "Reported as faulty") : de ? "Kommentar" : "Comment"}</strong> ({c.status === "open" ? (de ? "offen" : "open") : de ? "erledigt" : "resolved"}): {c.text}
+          <strong>{c.kind === "faulty" ? (c_reviewerReviewerItemComment(de).reportedAsFaulty) : c_reviewerReviewerItemComment(de).comment}</strong> ({c.status === "open" ? (c_reviewerReviewerItemComment(de).open) : c_reviewerReviewerItemComment(de).resolved}): {c.text}
         </p>
       ))}
       {!open ? (
         <button type="button" className="text-link hover:underline" onClick={() => setOpen(true)} data-testid="reviewer-comment-open">
-          {de ? "Kommentieren" : "Comment"}
+          {c_reviewerReviewerItemComment(de).comment2}
         </button>
       ) : (
         <div className="flex flex-col gap-1.5">
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={2000} aria-label={de ? "Kommentar" : "Comment"} className="rounded-md border border-border bg-background px-2 py-1" data-testid="reviewer-comment-text" />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={2000} aria-label={c_reviewerReviewerItemComment(de).comment} className="rounded-md border border-border bg-background px-2 py-1" data-testid="reviewer-comment-text" />
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" disabled={busy || text.trim().length < 3} onClick={() => void send("comment")} data-testid="reviewer-comment-send">
-              {de ? "Kommentar senden" : "Send comment"}
+              {c_reviewerReviewerItemComment(de).sendComment}
             </Button>
             {targetType === "question" && (
               <Button size="sm" variant="secondary" disabled={busy || text.trim().length < 3} onClick={() => void send("faulty")} data-testid="reviewer-faulty-send">
-                {de ? "Als fehlerhaft melden" : "Report as faulty"}
+                {c_reviewerReviewerItemComment(de).reportAsFaulty}
               </Button>
             )}
             <button type="button" className="text-subtle hover:underline" onClick={() => setOpen(false)}>
-              {de ? "Abbrechen" : "Cancel"}
+              {c_reviewerReviewerItemComment(de).cancel}
             </button>
           </div>
           {error && <p role="alert" className="text-danger-text">{error}</p>}

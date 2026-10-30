@@ -1,5 +1,6 @@
 "use client";
 
+import { c_unsubscribeReactivation } from "@/lib/i18n/components/unsubscribeReactivation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -11,14 +12,14 @@ export function UnsubscribeReactivation({ userId, token, locale }: { userId: str
     const res = await fetch("/api/unsubscribe/reactivation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ u: userId, t: token }) });
     setState(res.ok ? "done" : "error");
   }
-  if (state === "done") return <p role="status" className="text-sm" data-testid="unsubscribed">{de ? "Erledigt. Du bekommst keine Erinnerungen dieser Art mehr." : "Done. You will not get reminders of this kind any more."}</p>;
+  if (state === "done") return <p role="status" className="text-sm" data-testid="unsubscribed">{c_unsubscribeReactivation(de).doneYouWillNotGet}</p>;
   return (
     <>
-      <p className="text-sm text-subtle">{de ? "Wir schreiben dir nach längerer Pause höchstens dreimal. Möchtest du sie ganz abschalten?" : "After a longer break we write at most three times. Do you want to switch them off completely?"}</p>
+      <p className="text-sm text-subtle">{c_unsubscribeReactivation(de).afterALongerBreakWe}</p>
       <Button onClick={() => void unsubscribe()} disabled={state === "busy"} className="w-fit" data-testid="unsubscribe-button">
-        {de ? "Abmelden" : "Unsubscribe"}
+        {c_unsubscribeReactivation(de).unsubscribe}
       </Button>
-      {state === "error" && <p role="alert" className="text-sm text-danger-text">{de ? "Das hat nicht geklappt." : "That did not work."}</p>}
+      {state === "error" && <p role="alert" className="text-sm text-danger-text">{c_unsubscribeReactivation(de).thatDidNotWork}</p>}
     </>
   );
 }

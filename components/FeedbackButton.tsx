@@ -1,5 +1,6 @@
 "use client";
 
+import { c_feedbackButton } from "@/lib/i18n/components/feedbackButton";
 import { useState } from "react";
 import { Check, Flag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ export function FeedbackButton({ certificationId, domainId = null, sectionId = n
       setState("sent");
       setMessage("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : de ? "Das hat nicht geklappt." : "That did not work.");
+      setError(err instanceof Error ? err.message : c_feedbackButton(de).thatDidNotWork);
       setState("error");
     }
   }
@@ -49,7 +50,7 @@ export function FeedbackButton({ certificationId, domainId = null, sectionId = n
     return (
       <p className={`flex items-center gap-1.5 text-xs text-mint-text ${className ?? ""}`} role="status" data-testid="feedback-sent">
         <Check className="h-3.5 w-3.5" aria-hidden="true" />
-        {de ? "Danke für deine Meldung! Wir schauen sie uns an." : "Thanks for your report! We will look into it."}
+        {c_feedbackButton(de).thanksForYourReportWe}
       </p>
     );
   }
@@ -57,14 +58,14 @@ export function FeedbackButton({ certificationId, domainId = null, sectionId = n
     return (
       <button type="button" onClick={() => setOpen(true)} className={`flex min-h-8 items-center gap-1.5 rounded-md px-1 text-xs text-subtle hover:text-foreground ${className ?? ""}`} data-testid="feedback-open">
         <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-        {de ? "Problem melden / Feedback" : "Report a problem / feedback"}
+        {c_feedbackButton(de).reportAProblemFeedback}
       </button>
     );
   }
   return (
-    <form onSubmit={send} className={`flex max-w-xl flex-col gap-3 rounded-xl border border-border bg-surface p-4 text-sm ${className ?? ""}`} data-testid="feedback-form">
-      <p className="font-medium">{de ? "Was ist dir aufgefallen?" : "What did you notice?"}</p>
-      <fieldset className="flex flex-wrap gap-2" aria-label={de ? "Art des Problems" : "Kind of problem"}>
+    <form onSubmit={send} className={`flex max-w-xl flex-col gap-3 rounded-2xl border border-border bg-surface p-5 text-sm ${className ?? ""}`} data-testid="feedback-form">
+      <p className="font-medium">{c_feedbackButton(de).whatDidYouNotice}</p>
+      <fieldset className="flex flex-wrap gap-2" aria-label={c_feedbackButton(de).kindOfProblem}>
         {CATEGORIES.map((c) => (
           <label key={c.value} className={`cursor-pointer rounded-md border px-2.5 py-1 text-xs ${category === c.value ? "border-accent bg-accent-soft text-link" : "border-border-strong"}`}>
             <input type="radio" name="feedback-category" value={c.value} checked={category === c.value} onChange={() => setCategory(c.value)} className="sr-only" data-testid={`feedback-category-${c.value}`} />
@@ -79,18 +80,18 @@ export function FeedbackButton({ certificationId, domainId = null, sectionId = n
         minLength={5}
         maxLength={2000}
         rows={4}
-        placeholder={de ? "Beschreibe kurz, was nicht stimmt oder wo es hakt." : "Briefly describe what is wrong or where it gets stuck."}
-        aria-label={de ? "Beschreibung" : "Description"}
+        placeholder={c_feedbackButton(de).brieflyDescribeWhatIsWrong}
+        aria-label={c_feedbackButton(de).description}
         className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         data-testid="feedback-message"
       />
-      <p className="text-xs text-subtle">{de ? "Kurs, Kapitel und Lektion werden automatisch mitgeschickt." : "Course, chapter and lesson are sent along automatically."}</p>
+      <p className="text-xs text-subtle">{c_feedbackButton(de).courseChapterAndLessonAre}</p>
       {error && <p role="alert" className="text-xs text-danger-text">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={state === "sending" || message.trim().length < 5} iconLeft={state === "sending" ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : undefined} data-testid="feedback-send">
-          {de ? "Senden" : "Send"}
+          {c_feedbackButton(de).send}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>{de ? "Abbrechen" : "Cancel"}</Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>{c_feedbackButton(de).cancel}</Button>
       </div>
     </form>
   );

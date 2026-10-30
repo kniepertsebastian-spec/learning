@@ -1,5 +1,6 @@
 "use client";
 
+import { c_richtextSimulation } from "@/lib/i18n/components/richtextSimulation";
 import { BookOpen, CheckCircle2, GitBranch, Lightbulb, RotateCcw, SlidersHorizontal, SquareTerminal, XCircle } from "lucide-react";
 import * as React from "react";
 import { MentorAskForm } from "@/components/MentorAskForm";
@@ -74,7 +75,7 @@ function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () =>
           {t.lesson_blocks.simRestart}
         </Button>
       </header>
-      <div className="rounded-xl border border-border bg-surface p-4 text-body [&>*:first-child]:mt-0">
+      <div className="rounded-2xl border border-border bg-surface p-5 text-body [&>*:first-child]:mt-0">
         <RichText text={sim.scenario} />
       </div>
       <div className="mt-3">{children}</div>
@@ -128,7 +129,7 @@ function SolvedBanner({ helps, children, selfExplain }: { helps: number | null; 
         )}
         {struggled && <p className="mt-3 text-sm text-subtle" data-testid="simulation-struggled">{t.lesson_blocks.simStruggled}</p>}
         {woven && lesson && <WovenStep sectionId={lesson.sectionId} question={woven} locale={locale} />}
-        {selfExplain && <SelfExplanation storageKey={selfExplain.key} prompt={locale === "de" ? "Erkläre in einem Satz, warum dieser Weg zum Ziel geführt hat." : "Explain in one sentence why this path led to the goal."} modelAnswer={selfExplain.model} locale={locale} />}
+        {selfExplain && <SelfExplanation storageKey={selfExplain.key} prompt={c_richtextSimulation(locale).explainInOneSentenceWhy} modelAnswer={selfExplain.model} locale={locale} />}
       </div>
     </div>
   );

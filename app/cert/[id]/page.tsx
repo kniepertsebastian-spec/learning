@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdPage } from "@/lib/i18n/components/certIdPage";
+import { fill } from "@/lib/i18n/fill";
 import { CourseSeal } from "@/components/seal/CourseSeal";
 import { getCourseSeal } from "@/lib/server/approvals/seal";
 import Link from "next/link";
@@ -375,9 +377,7 @@ export default async function CertDetailPage({
           {preAssessment?.status === "completed" && preAssessment.domainResults && (
             <details className="rounded-2xl border border-border bg-surface p-5" data-testid="pre-assessment-card">
               <summary className="cursor-pointer text-sm font-semibold">
-                {locale === "de"
-                  ? `Dein Einstufungstest: ${preAssessment.correctCount} von ${preAssessment.totalCount} richtig`
-                  : `Your entry assessment: ${preAssessment.correctCount} of ${preAssessment.totalCount} correct`}
+                {fill(c_certIdPage(locale).yourEntryAssessment0Of, preAssessment.correctCount, preAssessment.totalCount)}
               </summary>
               <ul className="mt-3 flex flex-col gap-1.5 text-sm text-text-2">
                 {preAssessment.domainResults.map((d) => (
@@ -391,16 +391,14 @@ export default async function CertDetailPage({
           )}
 
           {allSections.length === 0 && (
-            <Callout tone="mistake" title={locale === "de" ? "Noch keine Lerninhalte" : "No learning content yet"}>
+            <Callout tone="mistake" title={c_certIdPage(locale).noLearningContentYet}>
               <p>
-                {locale === "de" ? "Für diesen Kurs wurden noch keine Lerninhalte erzeugt." : "Learning content has not been generated for this course yet."}{" "}
-                {locale === "de"
-                  ? "Im Adminbereich siehst du den Content-Status. Danach müssen Curriculum und Lektionen einmalig im App-Container erzeugt werden."
-                  : "Admin shows the content status. The curriculum and lessons then need to be generated once in the app container."}
+                {c_certIdPage(locale).learningContentHasNotBeen}{" "}
+                {c_certIdPage(locale).adminShowsTheContentStatus}
               </p>
               {session && (
                 <Link href={`/admin/certifications/${slug}`} className="mt-2 inline-block text-sm font-medium text-link hover:underline">
-                  {locale === "de" ? "Zum Adminbereich" : "Open admin"}
+                  {c_certIdPage(locale).openAdmin}
                 </Link>
               )}
             </Callout>
@@ -409,15 +407,11 @@ export default async function CertDetailPage({
           {session && !quizzes && allSections.length > 0 && (
             <div className="rounded-2xl border border-border bg-surface px-5 py-4 text-sm" data-testid="lesson-progress">
               <p className="font-medium">
-                {locale === "de"
-                  ? `${completedSections.size} von ${allSections.length} Lektionen durchgearbeitet`
-                  : `${completedSections.size} of ${allSections.length} lessons completed`}
+                {fill(c_certIdPage(locale).n0Of1LessonsCompleted, completedSections.size, allSections.length)}
               </p>
               <ProgressBar value={allSections.length ? (completedSections.size / allSections.length) * 100 : 0} className="mt-2" label={c.chapters} />
               <p className="mt-2 text-xs text-muted">
-                {locale === "de"
-                  ? "Dieser Lernpfad hat keine Tests: Er gilt als abgeschlossen, sobald du alle Lektionen durchgearbeitet hast."
-                  : "This learning path has no tests: it counts as completed once you have worked through all lessons."}
+                {c_certIdPage(locale).thisLearningPathHasNo}
               </p>
             </div>
           )}

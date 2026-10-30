@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { c_certIdHistoryAttemptIdPage } from "@/lib/i18n/components/certIdHistoryAttemptIdPage";
+import { fill } from "@/lib/i18n/fill";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, RotateCcw, TrendingDown, TrendingUp } from "lucide-react";
@@ -13,7 +15,7 @@ import { ExamAttemptNotFoundError, getExamAttemptDetail } from "@/lib/server/exa
 function formatDuration(seconds: number | null, locale: "de" | "en"): string {
   if (seconds === null) return "–";
   const minutes = Math.round(seconds / 60);
-  return locale === "de" ? `${minutes} Min.` : `${minutes} min`;
+  return fill(c_certIdHistoryAttemptIdPage(locale).n0Min, minutes);
 }
 
 /**
@@ -37,7 +39,7 @@ export default async function ExamAttemptDetailPage({
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
         <p className="text-muted">
-          {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
+          {c_certIdHistoryAttemptIdPage(locale).pleaseSignIn}
         </p>
       </div>
     );
@@ -68,7 +70,7 @@ export default async function ExamAttemptDetailPage({
         className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {locale === "de" ? "Zurück zu meinen Prüfungen" : "Back to my exams"}
+        {c_certIdHistoryAttemptIdPage(locale).backToMyExams}
       </Link>
 
       <div className="mb-6 rounded-lg border border-border bg-surface p-6 text-center">
@@ -81,7 +83,7 @@ export default async function ExamAttemptDetailPage({
 
         {previousScore === null ? (
           <p className="text-xs text-faint">
-            {locale === "de" ? "Kein vorheriger Versuch zum Vergleich." : "No previous attempt to compare."}
+            {c_certIdHistoryAttemptIdPage(locale).noPreviousAttemptToCompare}
           </p>
         ) : (
           <p
@@ -95,7 +97,7 @@ export default async function ExamAttemptDetailPage({
           >
             {delta !== null && delta > 0 && <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />}
             {delta !== null && delta < 0 && <TrendingDown className="h-3.5 w-3.5" aria-hidden="true" />}
-            {locale === "de" ? "vs. voriger Versuch" : "vs. previous attempt"}: {previousScore}% (
+            {c_certIdHistoryAttemptIdPage(locale).vsPreviousAttempt}: {previousScore}% (
             {delta !== null && delta >= 0 ? "+" : ""}
             {delta}%)
           </p>
@@ -103,8 +105,8 @@ export default async function ExamAttemptDetailPage({
       </div>
 
       {scoring.domainPerformance.length > 0 && (
-        <div className="mb-6 rounded-lg border border-border bg-surface p-4">
-          <h2 className="mb-3 font-medium">{locale === "de" ? "Nach Domain" : "By domain"}</h2>
+        <div className="mb-6 rounded-2xl border border-border bg-surface p-5">
+          <h2 className="mb-3 font-medium">{c_certIdHistoryAttemptIdPage(locale).byDomain}</h2>
           <div className="flex flex-col gap-2">
             {scoring.domainPerformance.map((d) => (
               <div key={d.domainId} className="flex items-center justify-between text-sm">
@@ -119,7 +121,7 @@ export default async function ExamAttemptDetailPage({
       {scoring.weakObjectives.length > 0 && (
         <div className="mb-6 rounded-lg border border-warning/40 bg-warning-soft p-4">
           <h2 className="mb-3 font-medium text-warning-text">
-            {locale === "de" ? "Schwache Bereiche" : "Weak areas"}
+            {c_certIdHistoryAttemptIdPage(locale).weakAreas}
           </h2>
           <ul className="flex flex-col gap-2">
             {scoring.weakObjectives.map((w) => {
@@ -133,7 +135,7 @@ export default async function ExamAttemptDetailPage({
                     {isRepeated && (
                       <span className="flex items-center gap-1 rounded-full bg-warning-soft px-1.5 py-0.5 text-[10px] font-medium text-warning-text">
                         <RotateCcw className="h-2.5 w-2.5" aria-hidden="true" />
-                        {locale === "de" ? "wiederholt schwach" : "repeatedly weak"}
+                        {c_certIdHistoryAttemptIdPage(locale).repeatedlyWeak}
                       </span>
                     )}
                   </div>
@@ -141,7 +143,7 @@ export default async function ExamAttemptDetailPage({
                     href={`/cert/${slug}/remediation/${w.objectiveId}`}
                     className="mt-1 inline-block text-xs font-medium text-link hover:underline"
                   >
-                    {locale === "de" ? "Gezielt üben →" : "Practice this now →"}
+                    {c_certIdHistoryAttemptIdPage(locale).practiceThisNow}
                   </Link>
                 </li>
               );
@@ -151,8 +153,8 @@ export default async function ExamAttemptDetailPage({
       )}
 
       {scoring.recommendations.length > 0 && (
-        <div className="mb-6 rounded-lg border border-border bg-surface p-4">
-          <h2 className="mb-2 font-medium">{locale === "de" ? "Empfehlungen" : "Recommendations"}</h2>
+        <div className="mb-6 rounded-2xl border border-border bg-surface p-5">
+          <h2 className="mb-2 font-medium">{c_certIdHistoryAttemptIdPage(locale).recommendations}</h2>
           <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
             {scoring.recommendations.map((r, i) => (
               <li key={i}>{r}</li>
@@ -164,15 +166,15 @@ export default async function ExamAttemptDetailPage({
       <div className="flex flex-wrap justify-center gap-3">
         <Link
           href={`/cert/${slug}/session`}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90"
         >
-          {locale === "de" ? "Heute lernen" : "Study today"}
+          {c_certIdHistoryAttemptIdPage(locale).studyToday}
         </Link>
         <Link
           href={`/cert/${slug}`}
           className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface"
         >
-          {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
+          {c_certIdHistoryAttemptIdPage(locale).backToCertification}
         </Link>
       </div>
     </div>

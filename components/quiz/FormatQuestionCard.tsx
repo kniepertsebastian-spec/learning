@@ -1,5 +1,6 @@
 "use client";
 
+import { c_quizFormatQuestionCard } from "@/lib/i18n/components/quizFormatQuestionCard";
 import { useState } from "react";
 import { ConfidenceBar } from "@/components/quiz/ConfidenceBar";
 import { FormatAnswerInput, initialDraft, isDraftComplete } from "@/components/quiz/FormatAnswerInput";
@@ -97,7 +98,7 @@ export function FormatQuestionCard({
         <FormatAnswerInput prompt={prompt} value={locked ? submitted : draft} onChange={setDraft} disabled={locked} locale={locale} />
         {!locked && (
           <div className="mt-4">
-            <Button onClick={submit} disabled={!isDraftComplete(prompt, draft)} data-testid="check-answer">{de ? "Antwort prüfen" : "Check answer"}</Button>
+            <Button onClick={submit} disabled={!isDraftComplete(prompt, draft)} data-testid="check-answer">{c_quizFormatQuestionCard(de).checkAnswer}</Button>
           </div>
         )}
       </div>

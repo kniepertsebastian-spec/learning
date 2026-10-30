@@ -1,5 +1,6 @@
 "use client";
 
+import { c_reactivationToggle } from "@/lib/i18n/components/reactivationToggle";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useLocale } from "@/lib/i18n";
@@ -21,11 +22,11 @@ export function ReactivationToggle({ initialOptOut }: { initialOptOut: boolean }
       <label className="flex items-start gap-3 text-sm">
         <input type="checkbox" className="mt-0.5 h-4 w-4" checked={!optOut} onChange={(e) => void change(!e.target.checked)} />
         <span>
-          <span className="block font-medium">{de ? "Freundliche Erinnerung nach einer Pause" : "Friendly nudge after a break"}</span>
-          <span className="text-subtle">{de ? "Nach 5, 12 und 26 Tagen ohne Lernen eine kurze Mail, höchstens dreimal, ohne Zähler. Nie an Arbeitgeber oder Mentor." : "A short email after 5, 12 and 26 days without studying, at most three times, no counters. Never to employer or mentor."}</span>
+          <span className="block font-medium">{c_reactivationToggle(de).friendlyNudgeAfterABreak}</span>
+          <span className="text-subtle">{c_reactivationToggle(de).aShortEmailAfter5}</span>
         </span>
       </label>
-      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{de ? "Das hat nicht geklappt." : "That did not work."}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{c_reactivationToggle(de).thatDidNotWork}</p>}
     </Card>
   );
 }

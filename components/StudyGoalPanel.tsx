@@ -1,5 +1,7 @@
 "use client";
 
+import { c_studyGoalPanel } from "@/lib/i18n/components/studyGoalPanel";
+import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { CalendarClock, CheckCircle2, Loader2, Target } from "lucide-react";
 import type { Locale } from "@/lib/types";
@@ -73,10 +75,10 @@ export function StudyGoalPanel({
       });
       const data = (await response.json()) as { profile?: unknown; error?: string };
       if (!response.ok) throw new Error(data.error ?? `Status ${response.status}`);
-      setSavedNote(locale === "de" ? "Lernziel gespeichert." : "Study goal saved.");
+      setSavedNote(c_studyGoalPanel(locale).studyGoalSaved);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : locale === "de" ? "Speichern fehlgeschlagen." : "Save failed.",
+        err instanceof Error ? err.message : c_studyGoalPanel(locale).saveFailed,
       );
     } finally {
       setSaving(false);
@@ -87,14 +89,14 @@ export function StudyGoalPanel({
     <div id="study-goal" className="@container scroll-mt-4 rounded-2xl border border-border bg-surface p-5">
       <h2 className="mb-3 flex items-center gap-1.5 text-sm font-medium">
         <Target className="h-4 w-4" aria-hidden="true" />
-        {locale === "de" ? "Lernziel" : "Study goal"}
+        {c_studyGoalPanel(locale).studyGoal}
       </h2>
 
       <div className="grid gap-3 @xl:grid-cols-3">
         <label className="block text-xs">
           <span className="mb-1 flex items-center gap-1 font-medium text-muted">
             <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
-            {locale === "de" ? "Prüfungstermin (optional)" : "Exam date (optional)"}
+            {c_studyGoalPanel(locale).examDateOptional}
           </span>
           <input
             type="date"
@@ -107,7 +109,7 @@ export function StudyGoalPanel({
 
         <label className="block text-xs">
           <span className="mb-1 block font-medium text-muted">
-            {locale === "de" ? "Tagesziel" : "Daily goal"}
+            {c_studyGoalPanel(locale).dailyGoal}
           </span>
           <div className="flex gap-1.5">
             <input
@@ -124,15 +126,15 @@ export function StudyGoalPanel({
               }
               className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-xs"
             >
-              <option value="minutes">{locale === "de" ? "Minuten/Tag" : "minutes/day"}</option>
-              <option value="questions">{locale === "de" ? "Fragen/Tag" : "questions/day"}</option>
+              <option value="minutes">{c_studyGoalPanel(locale).minutesDay}</option>
+              <option value="questions">{c_studyGoalPanel(locale).questionsDay}</option>
             </select>
           </div>
         </label>
 
         <label className="block text-xs">
           <span className="mb-1 block font-medium text-muted">
-            {locale === "de" ? "Bevorzugte Inhaltssprache" : "Preferred content language"}
+            {c_studyGoalPanel(locale).preferredContentLanguage}
           </span>
           <select
             value={goal.preferredLocale ?? ""}
@@ -144,7 +146,7 @@ export function StudyGoalPanel({
             }
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
           >
-            <option value="">{locale === "de" ? "Keine Präferenz" : "No preference"}</option>
+            <option value="">{c_studyGoalPanel(locale).noPreference}</option>
             <option value="de">Deutsch</option>
             <option value="en">English</option>
           </select>
@@ -153,7 +155,7 @@ export function StudyGoalPanel({
 
       <div className="mt-3">
         <span className="mb-1 block text-xs font-medium text-muted">
-          {locale === "de" ? "Aktive Lerntage" : "Active study days"}
+          {c_studyGoalPanel(locale).activeStudyDays}
         </span>
         <div className="flex flex-wrap gap-1.5">
           {WEEKDAYS.map(({ day, de, en }) => {
@@ -178,7 +180,7 @@ export function StudyGoalPanel({
 
       <div className="mt-3">
         <span className="mb-1 block text-xs font-medium text-muted">
-          {locale === "de" ? "Leichte Tage (weniger Wiederholungen)" : "Light days (fewer reviews)"}
+          {c_studyGoalPanel(locale).lightDaysFewerReviews}
         </span>
         <div className="flex flex-wrap gap-1.5">
           {WEEKDAYS.map(({ day, de, en }) => {
@@ -209,24 +211,22 @@ export function StudyGoalPanel({
         if (!outlook) {
           return (
             <p className="mt-3 text-xs text-subtle" data-testid="time-outlook">
-              {de ? "Mit diesem Termin und diesen Lerntagen ist keine Rechnung möglich. Wähle einen Termin in der Zukunft und mindestens einen Lerntag." : "No estimate possible with this date and these study days. Choose a future date and at least one study day."}
+              {c_studyGoalPanel(de).noEstimatePossibleWithThis}
             </p>
           );
         }
         const tone = outlook.status === "ok" ? "text-mint-text" : outlook.status === "tight" ? "text-warning-text" : "text-danger-text";
         const headline =
           outlook.status === "ok"
-            ? de ? "Die Zeit reicht." : "You have enough time."
+            ? c_studyGoalPanel(de).youHaveEnoughTime
             : outlook.status === "tight"
-              ? de ? "Es wird knapp." : "It will be tight."
-              : de ? "So reicht die Zeit nicht." : "This is not enough time.";
+              ? c_studyGoalPanel(de).itWillBeTight
+              : c_studyGoalPanel(de).thisIsNotEnoughTime;
         return (
           <div className="mt-3 rounded-md border border-border bg-background p-3 text-xs" data-testid="time-outlook" data-status={outlook.status}>
             <p className={`font-medium ${tone}`}>{headline}</p>
             <p className="mt-1 text-muted">
-              {de
-                ? `Bis zum Termin hast du ${outlook.studyDays} Lerntage mit je ${dailyMinutes(goal.dailyGoalType, goal.dailyGoalValue)} Minuten, zusammen ${outlook.availableMinutes} Minuten. Geschätzt fehlen dir noch ${outlook.neededMinutes} Minuten (Lektionen lesen und neue Fragen üben, ohne spätere Wiederholungen).`
-                : `Until the exam you have ${outlook.studyDays} study days of ${dailyMinutes(goal.dailyGoalType, goal.dailyGoalValue)} minutes each, ${outlook.availableMinutes} minutes in total. You still need an estimated ${outlook.neededMinutes} minutes (reading lessons and practising new questions, without later reviews).`}
+              {fill(c_studyGoalPanel(de).untilTheExamYouHave, outlook.studyDays, dailyMinutes(goal.dailyGoalType, goal.dailyGoalValue), outlook.availableMinutes, outlook.neededMinutes)}
             </p>
             {outlook.status !== "ok" && (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -237,7 +237,7 @@ export function StudyGoalPanel({
                     onClick={() => setGoal({ ...goal, dailyGoalType: "minutes", dailyGoalValue: Math.ceil(outlook.neededPerDay! * 1.2) })}
                     className="rounded-md border border-border px-2.5 py-1 font-medium hover:bg-surface"
                   >
-                    {de ? `Mit ${Math.ceil(outlook.neededPerDay * 1.2)} Min./Tag planen` : `Plan with ${Math.ceil(outlook.neededPerDay * 1.2)} min/day`}
+                    {fill(c_studyGoalPanel(de).planWith0MinDay, Math.ceil(outlook.neededPerDay * 1.2))}
                   </button>
                 )}
                 {outlook.suggestedExamDate && (
@@ -252,7 +252,7 @@ export function StudyGoalPanel({
                 )}
               </div>
             )}
-            <p className="mt-2 text-faint">{de ? "Das ist eine grobe Schätzung. Der Termin darf sich verschieben, du kannst das Ziel jederzeit anpassen." : "This is a rough estimate. The date may shift, you can adjust the goal at any time."}</p>
+            <p className="mt-2 text-faint">{c_studyGoalPanel(de).thisIsARoughEstimate}</p>
           </div>
         );
       })()}
@@ -262,10 +262,10 @@ export function StudyGoalPanel({
           type="button"
           onClick={() => void save()}
           disabled={saving}
-          className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-          {locale === "de" ? "Lernziel speichern" : "Save study goal"}
+          {c_studyGoalPanel(locale).saveStudyGoal}
         </button>
         {savedNote && (
           <span className="flex items-center gap-1 text-xs text-success-text">

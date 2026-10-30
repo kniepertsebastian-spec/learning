@@ -1,5 +1,7 @@
 "use client";
 
+import { c_simulationsOverview } from "@/lib/i18n/components/simulationsOverview";
+import { fill } from "@/lib/i18n/fill";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Circle, GitBranch, Lock, SlidersHorizontal, SquareTerminal, TriangleAlert } from "lucide-react";
 import * as React from "react";
@@ -37,17 +39,17 @@ export function SimulationsOverview({ certSlug, items, locked = [], locale, sign
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4" data-testid="simulations-summary">
           <div className="min-w-0 flex-1">
             <p className="text-lg font-semibold">
-              {count("solved") + count("struggled")} {de ? "von" : "of"} {items.length} {de ? "gelöst" : "solved"}
+              {count("solved") + count("struggled")} {c_simulationsOverview(de).of} {items.length} {c_simulationsOverview(de).solved}
             </p>
             <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
               <span className="bg-mint" style={{ width: `${(count("solved") / items.length) * 100}%` }} />
               <span className="bg-warning" style={{ width: `${(count("struggled") / items.length) * 100}%` }} />
             </div>
-            {count("struggled") > 0 && <p className="mt-1.5 text-xs text-subtle">{de ? `${count("struggled")} nur mit Hilfe gelöst: am besten noch einmal ohne Tipp versuchen.` : `${count("struggled")} solved only with help: try them again without hints.`}</p>}
+            {count("struggled") > 0 && <p className="mt-1.5 text-xs text-subtle">{fill(c_simulationsOverview(de).n0SolvedOnlyWithHelp, count("struggled"))}</p>}
           </div>
           {next && (
-            <Link href={href(certSlug, next)} className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-on-accent hover:opacity-90" data-testid="simulations-next">
-              {next.status === "open" ? (de ? "Nächste offene" : "Next open") : de ? "Noch einmal üben" : "Practise again"}
+            <Link href={href(certSlug, next)} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary hover:opacity-90" data-testid="simulations-next">
+              {next.status === "open" ? (c_simulationsOverview(de).nextOpen) : c_simulationsOverview(de).practiseAgain}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           )}
@@ -55,10 +57,10 @@ export function SimulationsOverview({ certSlug, items, locked = [], locale, sign
       )}
 
       {signedIn && items.length > 0 && (
-        <div className="inline-flex w-fit flex-wrap gap-1 rounded-lg border border-border-subtle bg-surface-inset p-1" role="group" aria-label={de ? "Filter" : "Filter"}>
+        <div className="inline-flex w-fit flex-wrap gap-1 rounded-lg border border-border-subtle bg-surface-inset p-1" role="group" aria-label={c_simulationsOverview(de).filter}>
           {(["all", "open", "struggled", "solved"] as const).map((f) => (
             <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={cn("h-8 rounded-md px-2.5 text-meta font-medium", filter === f ? "bg-surface-2 text-foreground" : "text-subtle hover:text-foreground")} data-testid={`simulations-filter-${f}`}>
-              {f === "all" ? `${de ? "Alle" : "All"} (${items.length})` : `${STATUS[f][locale]} (${count(f)})`}
+              {f === "all" ? `${c_simulationsOverview(de).all} (${items.length})` : `${STATUS[f][locale]} (${count(f)})`}
             </button>
           ))}
         </div>
@@ -66,10 +68,10 @@ export function SimulationsOverview({ certSlug, items, locked = [], locale, sign
 
       {items.length === 0 && locked.length > 0 && (
         <p className="text-sm text-subtle" data-testid="simulations-none-unlocked">
-          {de ? "Noch ist keine Simulation freigeschaltet. Sie erscheinen hier, sobald du das jeweilige Kapitel abgeschlossen hast." : "No simulation is unlocked yet. They appear here as soon as you have completed the respective chapter."}
+          {c_simulationsOverview(de).noSimulationIsUnlockedYet}
         </p>
       )}
-      {items.length > 0 && shown.length === 0 && <p className="text-sm text-subtle">{de ? "Keine Simulationen in dieser Auswahl." : "No simulations in this selection."}</p>}
+      {items.length > 0 && shown.length === 0 && <p className="text-sm text-subtle">{c_simulationsOverview(de).noSimulationsInThisSelection}</p>}
       {domains.map((d) => (
         <section key={d}>
           <h2 className="mb-2 text-2xs font-semibold tracking-overline text-faint uppercase">{d}</h2>
@@ -108,13 +110,13 @@ export function SimulationsOverview({ certSlug, items, locked = [], locale, sign
 
       {locked.length > 0 && (
         <section data-testid="simulations-locked">
-          <h2 className="mb-2 text-2xs font-semibold tracking-overline text-faint uppercase">{de ? "Noch gesperrt" : "Still locked"}</h2>
+          <h2 className="mb-2 text-2xs font-semibold tracking-overline text-faint uppercase">{c_simulationsOverview(de).stillLocked}</h2>
           <ul className="flex flex-col gap-2">
             {locked.map((c) => (
               <li key={c.name} className="flex items-center gap-3 rounded-xl border border-dashed border-border px-3 py-2.5 text-sm text-subtle" data-testid="simulation-locked-entry">
                 <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                <span className="shrink-0 text-xs">{de ? `${c.count} Simulation(en) nach Abschluss des Kapitels` : `${c.count} simulation(s) after completing the chapter`}</span>
+                <span className="shrink-0 text-xs">{fill(c_simulationsOverview(de).n0SimulationSAfterCompleting, c.count)}</span>
               </li>
             ))}
           </ul>

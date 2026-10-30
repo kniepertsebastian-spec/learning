@@ -1,5 +1,6 @@
 "use client";
 
+import { c_studySession } from "@/lib/i18n/components/studySession";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/toaster";
@@ -357,12 +358,12 @@ export function StudySession({
       });
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error || (locale === "de" ? "Das hat nicht geklappt." : "That did not work."));
+        setError(data.error || (c_studySession(locale).thatDidNotWork));
       } else {
         setExitState({ winSession: Boolean(data.winSession) });
       }
     } catch {
-      setError(locale === "de" ? "Das hat nicht geklappt." : "That did not work.");
+      setError(c_studySession(locale).thatDidNotWork);
     } finally {
       setExiting(false);
     }
@@ -395,7 +396,7 @@ export function StudySession({
         offline.userId,
         "study_session",
         { sessionId, answers: payload.answers.map((a, i) => ({ ...a, answeredAt: answeredAtRef.current[i] })) },
-        locale === "de" ? "Tages-Session" : "Today's session",
+        c_studySession(locale).todaySSession,
       ).catch(() => {});
       setResult({ score, results });
       setSubmitting(false);
@@ -410,13 +411,13 @@ export function StudySession({
       });
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error || (locale === "de" ? "Einreichen fehlgeschlagen." : "Failed to submit."));
+        setError(data.error || (c_studySession(locale).failedToSubmit));
         setSubmitting(false);
         return;
       }
       setResult(data);
     } catch {
-      setError(locale === "de" ? "Einreichen fehlgeschlagen." : "Failed to submit.");
+      setError(c_studySession(locale).failedToSubmit);
     } finally {
       setSubmitting(false);
     }
@@ -807,11 +808,11 @@ function PracticeTask({ certSlug, practice, locale }: { certSlug: string; practi
   if (!source) return null;
   return (
     <section className="text-left" data-testid="session-practice">
-      <h2 className="mb-1 text-sm font-semibold">{locale === "de" ? "Praxisaufgabe" : "Hands-on task"}</h2>
+      <h2 className="mb-1 text-sm font-semibold">{c_studySession(locale).handsOnTask}</h2>
       <p className="mb-3 text-xs text-subtle">
-        {locale === "de" ? "Aus der Lektion " : "From the lesson "}
+        {c_studySession(locale).fromTheLesson}
         <Link href={`/cert/${certSlug}/section/${practice.sectionId}`} className="text-link hover:underline">{practice.title[locale]}</Link>
-        {locale === "de" ? ": wende das Gelernte selbst an." : ": apply what you've learned."}
+        {c_studySession(locale).applyWhatYouVeLearned}
       </p>
       <LessonSimulationsProvider text={text} sectionId={practice.sectionId} persist initialProgress={[]}>
         <RichText text={"````simulation\n" + source + "\n````"} />

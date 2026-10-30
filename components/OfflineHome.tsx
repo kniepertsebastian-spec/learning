@@ -1,5 +1,6 @@
 "use client";
 
+import { c_offlineHome } from "@/lib/i18n/components/offlineHome";
 import { useEffect, useState } from "react";
 import { BookOpen, RefreshCw } from "lucide-react";
 import { OfflinePackageManager } from "@/components/OfflinePackageManager";
@@ -105,10 +106,10 @@ export function OfflineHome() {
           <p className="text-sm text-subtle">{t.pwa.offlineIntro}</p>
           <ul className="flex flex-col gap-2">
             {state.packages.map((pkg) => (
-              <li key={pkg.key} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4">
+              <li key={pkg.key} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-5">
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{pkg.certName}</span>
-                  <span className="block text-xs text-subtle">{formatBytes(pkg.sizeBytes)} · {t.pwa.offlineSaved} {new Date(pkg.downloadedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-US")}{isPackageLocked({ offlineMaxAgeDays: pkg.data.offlineMaxAgeDays, lastVerifiedAt: pkg.lastVerifiedAt, downloadedAt: pkg.downloadedAt }, new Date()) ? ` · ${locale === "de" ? "gesperrt, bitte online prüfen" : "locked, please check online"}` : ""}</span>
+                  <span className="block text-xs text-subtle">{formatBytes(pkg.sizeBytes)} · {t.pwa.offlineSaved} {new Date(pkg.downloadedAt).toLocaleDateString(locale === "de" ? "de-DE" : "en-US")}{isPackageLocked({ offlineMaxAgeDays: pkg.data.offlineMaxAgeDays, lastVerifiedAt: pkg.lastVerifiedAt, downloadedAt: pkg.downloadedAt }, new Date()) ? ` · ${c_offlineHome(locale).lockedPleaseCheckOnline}` : ""}</span>
                 </span>
                 <Button size="sm" onClick={() => setSelected(pkg)} iconLeft={<BookOpen className="h-4 w-4" aria-hidden="true" />} data-testid="open-offline-course">
                   {t.pwa.offlineOpen}
@@ -123,7 +124,7 @@ export function OfflineHome() {
           <span>{pending} {t.pwa.offlinePending}</span>
           {oldestAt && oldestAgeMs(oldestAt, new Date()) !== null && (
             <span className="text-subtle" data-testid="offline-oldest-pending">
-              {locale === "de" ? "Ältestes unübertragenes Ergebnis" : "Oldest result not uploaded"}: {formatAge(oldestAgeMs(oldestAt, new Date()) ?? 0, locale)}
+              {c_offlineHome(locale).oldestResultNotUploaded}: {formatAge(oldestAgeMs(oldestAt, new Date()) ?? 0, locale)}
             </span>
           )}
           {online && (

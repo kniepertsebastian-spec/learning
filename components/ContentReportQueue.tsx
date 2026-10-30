@@ -1,5 +1,7 @@
 "use client";
 
+import { c_contentReportQueue } from "@/lib/i18n/components/contentReportQueue";
+import { fill } from "@/lib/i18n/fill";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
 
@@ -64,15 +66,15 @@ export function ContentReportQueue({ certificationId, locale }: { certificationI
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="rounded-2xl border border-border bg-surface p-5">
       <h3 className="mb-3 font-medium">
-        {locale === "de" ? "Gemeldete Fragen" : "Reported questions"}
+        {c_contentReportQueue(locale).reportedQuestions}
       </h3>
       {reports === null ? (
-        <p className="text-sm text-subtle">{locale === "de" ? "Lädt …" : "Loading …"}</p>
+        <p className="text-sm text-subtle">{c_contentReportQueue(locale).loading}</p>
       ) : reports.length === 0 ? (
         <p className="text-sm text-subtle">
-          {locale === "de" ? "Keine offenen Meldungen." : "No open reports."}
+          {c_contentReportQueue(locale).noOpenReports}
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -88,9 +90,7 @@ export function ContentReportQueue({ certificationId, locale }: { certificationI
               <p className="mb-2 text-sm">{report.question[locale]}</p>
               {report.detail && (
                 <p className="mb-2 text-xs text-muted" data-testid="report-detail">
-                  {locale === "de"
-                    ? `Konzept „${report.detail.conceptName}“: ${report.detail.struggling} von ${report.detail.learners} Lernenden im Verstehens-Modus.`
-                    : `Concept "${report.detail.conceptName}": ${report.detail.struggling} of ${report.detail.learners} learners in understanding mode.`}
+                  {fill(c_contentReportQueue(locale).concept01Of2, report.detail.conceptName, report.detail.struggling, report.detail.learners)}
                   {report.detail.topWrongOption &&
                     (locale === "de"
                       ? ` Häufigste falsche Option: „${report.detail.topWrongOption.text.de}“ (${report.detail.topWrongOption.count}×).`
@@ -105,7 +105,7 @@ export function ContentReportQueue({ certificationId, locale }: { certificationI
                   className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Check className="h-3 w-3" aria-hidden="true" />
-                  {locale === "de" ? "Erledigt" : "Resolved"}
+                  {c_contentReportQueue(locale).resolved}
                 </button>
                 <button
                   type="button"
@@ -114,7 +114,7 @@ export function ContentReportQueue({ certificationId, locale }: { certificationI
                   className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <X className="h-3 w-3" aria-hidden="true" />
-                  {locale === "de" ? "Verwerfen" : "Dismiss"}
+                  {c_contentReportQueue(locale).dismiss}
                 </button>
               </div>
             </li>

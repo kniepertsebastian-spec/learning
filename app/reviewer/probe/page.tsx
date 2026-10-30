@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { c_reviewerProbePage } from "@/lib/i18n/components/reviewerProbePage";
 import Link from "next/link";
 import { ReviewerProbe, type ProbeAttemptJson, type ProbeOverviewJson } from "@/components/reviewer/ReviewerProbe";
 import { getServerLocale } from "@/lib/server/locale";
@@ -18,8 +19,8 @@ export default async function ReviewerProbePage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/reviewer" className="text-sm text-link hover:underline">← {de ? "Mein Kurs" : "My course"}</Link>
-        <h1 className="mt-2 text-2xl font-semibold">{de ? "Probe-Review" : "Trial review"}</h1>
+        <Link href="/reviewer" className="text-sm text-link hover:underline">← {c_reviewerProbePage(de).myCourse}</Link>
+        <h1 className="mt-2 text-2xl font-semibold">{c_reviewerProbePage(de).trialReview}</h1>
       </div>
       <ReviewerProbe overview={overviewJson} attempt={attempt} locale={locale} />
     </div>

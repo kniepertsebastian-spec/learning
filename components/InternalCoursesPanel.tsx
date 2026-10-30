@@ -1,5 +1,7 @@
 "use client";
 
+import { c_internalCoursesPanel } from "@/lib/i18n/components/internalCoursesPanel";
+import { fill } from "@/lib/i18n/fill";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { FileDropZone } from "@/components/FileDropZone";
@@ -70,7 +72,7 @@ export function InternalCoursesPanel({
     setBusy(false);
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      setError(data?.error ?? (de ? "Das hat nicht geklappt." : "That did not work."));
+      setError(data?.error ?? (c_internalCoursesPanel(de).thatDidNotWork));
       return false;
     }
     await refresh();
@@ -94,13 +96,13 @@ export function InternalCoursesPanel({
       res = await fetch("/api/internal-courses", { method: "POST", body: form });
     } catch {
       setBusy(false);
-      setError(de ? "Das Hochladen hat nicht geklappt. Bitte erneut versuchen." : "Upload failed. Please try again.");
+      setError(c_internalCoursesPanel(de).uploadFailedPleaseTryAgain);
       return;
     }
     setBusy(false);
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      setError(data?.error ?? (de ? "Das hat nicht geklappt." : "That did not work."));
+      setError(data?.error ?? (c_internalCoursesPanel(de).thatDidNotWork));
       if (Array.isArray(data?.files)) setFileProblems(data.files);
       return;
     }
@@ -111,36 +113,32 @@ export function InternalCoursesPanel({
   }
 
   const statusLabel = (s: Course["catalogStatus"]) =>
-    s === "approved" ? (de ? "Freigegeben" : "Approved") : de ? "Entwurf – wartet auf Prüfung" : "Draft – awaiting review";
+    s === "approved" ? (c_internalCoursesPanel(de).approved) : c_internalCoursesPanel(de).draftAwaitingReview;
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="internal-courses">
-      <h2 className="text-lg font-medium">{de ? "Interne Learnings" : "Internal learning"}</h2>
+      <h2 className="text-lg font-medium">{c_internalCoursesPanel(de).internalLearning}</h2>
       <p className="mt-1 text-sm text-muted">
-        {de
-          ? "Aus euren Dateien (eine oder viele) erstellt die KI einen Kurs-Entwurf. Ihr prüft ihn und gebt ihn frei; erst dann sehen ihn Lernende und er lässt sich zuweisen. Wir sehen weder Dateien noch Kurs."
-          : "The AI drafts a course from your files (one or many). You review and approve it; only then can learners see and be assigned to it. We see neither the files nor the course."}
+        {c_internalCoursesPanel(de).theAiDraftsACourse}
       </p>
 
       {error && <p role="alert" data-testid="internal-error" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>}
 
       {!aiConfigured && (
         <p className="mt-3 rounded-md bg-warning-soft px-3 py-2 text-sm" data-testid="internal-ai-missing">
-          {de ? "Zuerst muss der Firmen-Admin unten den KI-Zugang einrichten." : "A company admin must first set up the AI access below."}
+          {c_internalCoursesPanel(de).aCompanyAdminMustFirst}
         </p>
       )}
 
       <form onSubmit={start} className="mt-4 flex flex-col gap-3">
         <FileDropZone files={files} onChange={setFiles} locale={locale} maxFiles={50} maxBytes={10 * 1024 * 1024} disabled={busy} testId="internal-drop" />
         <p className="text-xs text-muted" data-testid="internal-files-hint">
-          {de
-            ? "Bis zu 50 Dateien je Kurs (z. B. PDFs, Texte, Konfiguration wie .yml, Skripte wie .py). Die Dateien liegen nur für die Erstellung bereit und werden danach gelöscht."
-            : "Up to 50 files per course (e.g. PDFs, text, config such as .yml, scripts such as .py). Files are kept only for the generation and deleted afterwards."}
+          {c_internalCoursesPanel(de).upTo50FilesPer}
         </p>
         {usable.length > 0 && (
           <details className="text-sm" data-testid="internal-stored">
             <summary className="cursor-pointer text-text-2">
-              {de ? `Gespeicherte Dokumente hinzufügen (${storedIds.length} gewählt)` : `Add stored documents (${storedIds.length} selected)`}
+              {fill(c_internalCoursesPanel(de).addStoredDocuments0Selected, storedIds.length)}
             </summary>
             <ul className="mt-2 flex flex-col gap-1">
               {usable.map((d) => (
@@ -160,20 +158,18 @@ export function InternalCoursesPanel({
               <li key={i}>
                 <span className="font-medium">{p.filename}</span>: {p.message}
                 {p.findings?.map((f, k) => (
-                  <span key={k} className="block pl-3 text-xs">{f.label} ({de ? "Seite" : "page"} {f.pageNumber}, {de ? "Zeile" : "line"} {f.line})</span>
+                  <span key={k} className="block pl-3 text-xs">{f.label} ({c_internalCoursesPanel(de).page} {f.pageNumber}, {c_internalCoursesPanel(de).line} {f.line})</span>
                 ))}
               </li>
             ))}
             <li className="text-xs">
-              {de
-                ? "Stellen schwärzen und erneut wählen. Ein Firmen-Admin kann einen Fehlalarm unter „Dokumente“ bestätigen; das Dokument lässt sich dann hier unter „Gespeicherte Dokumente“ wählen."
-                : "Redact the lines and choose again. A company admin can confirm a false alarm under “Documents”; the document can then be picked here under “Stored documents”."}
+              {c_internalCoursesPanel(de).redactTheLinesAndChoose}
             </li>
           </ul>
         )}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <label className="flex-1 text-sm font-medium">
-          {de ? "Titel des Kurses" : "Course title"}
+          {c_internalCoursesPanel(de).courseTitle}
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -183,36 +179,28 @@ export function InternalCoursesPanel({
             className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
         </label>
-        <button type="submit" disabled={busy || !aiConfigured || files.length + storedIds.length === 0} data-testid="internal-start" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
-          {de ? "Entwurf erstellen" : "Create draft"}
+        <button type="submit" disabled={busy || !aiConfigured || files.length + storedIds.length === 0} data-testid="internal-start" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50">
+          {c_internalCoursesPanel(de).createDraft}
         </button>
         </div>
         <fieldset className="flex flex-col gap-1.5 text-sm" data-testid="internal-tests">
-          <legend className="mb-1 font-medium">{de ? "Tests" : "Tests"}</legend>
+          <legend className="mb-1 font-medium">{c_internalCoursesPanel(de).tests}</legend>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={includeSectionQuizzes} onChange={(e) => setIncludeSectionQuizzes(e.target.checked)} data-testid="internal-quizzes" />
-            {de ? "Lektionstests integrieren" : "Include lesson tests"}
+            {c_internalCoursesPanel(de).includeLessonTests}
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={includeFinalExam} onChange={(e) => setIncludeFinalExam(e.target.checked)} data-testid="internal-exam" />
-            {de ? "Abschlussprüfung integrieren" : "Include final exam"}
+            {c_internalCoursesPanel(de).includeFinalExam}
           </label>
           <p className="text-xs text-muted" data-testid="internal-tests-hint">
             {!includeSectionQuizzes && !includeFinalExam
-              ? de
-                ? "Reiner Durchlauf: Es entstehen nur Lektionen, keine Fragen (das ist deutlich günstiger). Der Lernpfad gilt als abgeschlossen, sobald alle Lektionen durchgearbeitet sind."
-                : "Plain walkthrough: only lessons, no questions (much cheaper). The path counts as completed once all lessons are worked through."
+              ? c_internalCoursesPanel(de).plainWalkthroughOnlyLessonsNo
               : !includeSectionQuizzes
-                ? de
-                  ? "Fragen entstehen nur für die Abschlussprüfung. Lektionen werden ohne Test abgeschlossen; die Prüfung ist eine Selbstkontrolle und zählt nicht für den Abschluss."
-                  : "Questions are created for the final exam only. Lessons are completed without a test; the exam is a self-check and does not count towards completion."
+                ? c_internalCoursesPanel(de).questionsAreCreatedForThe
                 : !includeFinalExam
-                  ? de
-                    ? "Fragen entstehen für die Lektionstests; es gibt keine Abschlussprüfung."
-                    : "Questions are created for the lesson tests; there is no final exam."
-                  : de
-                    ? "Lektionstests und Abschlussprüfung (Standard). Der Lernpfad gilt als abgeschlossen, wenn jedes Lernziel beherrscht wird."
-                    : "Lesson tests and final exam (default). The path counts as completed once every objective is mastered."}
+                  ? c_internalCoursesPanel(de).questionsAreCreatedForThe2
+                  : c_internalCoursesPanel(de).lessonTestsAndFinalExam}
           </p>
         </fieldset>
       </form>
@@ -225,7 +213,7 @@ export function InternalCoursesPanel({
                 <span className="font-medium">{j.title}</span>
                 {j.active && (
                   <button type="button" className={btn} disabled={busy} onClick={() => call(`/api/internal-courses/jobs/${j.id}/cancel`, "POST")}>
-                    {de ? "Abbrechen" : "Cancel"}
+                    {c_internalCoursesPanel(de).cancel}
                   </button>
                 )}
               </div>
@@ -246,19 +234,19 @@ export function InternalCoursesPanel({
                   <span className="font-medium">{c.name}</span>{" "}
                   <span className="text-muted">· {statusLabel(c.catalogStatus)}</span>
                   {!c.includeSectionQuizzes && !c.includeFinalExam && (
-                    <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 text-xs">{de ? "ohne Tests" : "no tests"}</span>
+                    <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 text-xs">{c_internalCoursesPanel(de).noTests}</span>
                   )}
                 </span>
                 <span className="flex gap-2">
-                  <Link href={`/cert/${c.slug}`} className={btn}>{de ? "Ansehen" : "View"}</Link>
-                  <Link href={`/company/courses/${c.slug}/workshop`} className={btn} data-testid="internal-workshop">{de ? "Bearbeiten" : "Edit"}</Link>
+                  <Link href={`/cert/${c.slug}`} className={btn}>{c_internalCoursesPanel(de).view}</Link>
+                  <Link href={`/company/courses/${c.slug}/workshop`} className={btn} data-testid="internal-workshop">{c_internalCoursesPanel(de).edit}</Link>
                   {c.catalogStatus !== "approved" && (
                     <>
                       <button type="button" className={btn} disabled={busy} data-testid="internal-approve" onClick={() => call(`/api/internal-courses/${c.id}/approve`, "POST")}>
-                        {de ? "Geprüft – freigeben" : "Reviewed – approve"}
+                        {c_internalCoursesPanel(de).reviewedApprove}
                       </button>
                       <button type="button" className={btn} disabled={busy} onClick={() => call(`/api/internal-courses/${c.id}`, "DELETE")}>
-                        {de ? "Verwerfen" : "Discard"}
+                        {c_internalCoursesPanel(de).discard}
                       </button>
                     </>
                   )}
@@ -267,7 +255,7 @@ export function InternalCoursesPanel({
               <CheatSheetBackfill courseId={c.id} initial={cheatSheets.find((x) => x.certificationId === c.id)} aiConfigured={aiConfigured} locale={locale} />
               {c.catalogStatus === "approved" && c.approvedByName && c.approvedAt && (
                 <p className="mt-1 text-muted">
-                  {de ? "Freigegeben von" : "Approved by"} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB")}
+                  {c_internalCoursesPanel(de).approvedBy} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB")}
                 </p>
               )}
             </li>

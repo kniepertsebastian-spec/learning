@@ -1,5 +1,6 @@
 "use client";
 
+import { c_installBanner } from "@/lib/i18n/components/installBanner";
 import { useEffect, useState } from "react";
 import { Share, SquarePlus, X } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
@@ -25,19 +26,19 @@ export function InstallBanner() {
 
   if (!offer) return null;
   return (
-    <div role="region" aria-label={de ? "App installieren" : "Install the app"} data-testid="install-banner" className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-surface p-4">
+    <div role="region" aria-label={c_installBanner(de).installTheApp} data-testid="install-banner" className="flex flex-wrap items-start gap-3 rounded-2xl border border-border bg-surface p-5">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">{de ? "Knowvia als App installieren" : "Install Knowvia as an app"}</p>
+        <p className="text-sm font-semibold">{c_installBanner(de).installKnowviaAsAnApp}</p>
         {offer === "native" ? (
-          <p className="mt-1 text-sm text-muted">{de ? "Schneller starten, offline lernen und Ergebnisse im Hintergrund übertragen." : "Start faster, study offline and upload results in the background."}</p>
+          <p className="mt-1 text-sm text-muted">{c_installBanner(de).startFasterStudyOfflineAnd}</p>
         ) : (
           <ol className="mt-1 flex list-decimal flex-col gap-0.5 pl-5 text-sm text-muted" data-testid="install-ios-steps">
             <li>
-              {de ? "Tippe unten in Safari auf „Teilen“ " : "Tap “Share” "}
+              {c_installBanner(de).tapShare}
               <Share className="inline h-4 w-4 align-text-bottom" aria-hidden="true" />
             </li>
             <li>
-              {de ? "Wähle „Zum Home-Bildschirm“ " : "Choose “Add to Home Screen” "}
+              {c_installBanner(de).chooseAddToHomeScreen}
               <SquarePlus className="inline h-4 w-4 align-text-bottom" aria-hidden="true" />
             </li>
           </ol>
@@ -46,12 +47,12 @@ export function InstallBanner() {
       <div className="flex items-center gap-2">
         {offer === "native" && (
           <Button onClick={() => void promptInstall()} data-testid="install-button">
-            {de ? "Installieren" : "Install"}
+            {c_installBanner(de).install}
           </Button>
         )}
-        <button type="button" onClick={dismissInstallOffer} aria-label={de ? "Nicht jetzt (30 Tage Ruhe)" : "Not now (30 days)"} data-testid="install-dismiss" className="flex h-10 items-center gap-1 rounded-md px-2 text-sm text-subtle hover:bg-surface-2 hover:text-foreground">
+        <button type="button" onClick={dismissInstallOffer} aria-label={c_installBanner(de).notNow30Days} data-testid="install-dismiss" className="flex h-10 items-center gap-1 rounded-md px-2 text-sm text-subtle hover:bg-surface-2 hover:text-foreground">
           <X className="h-4 w-4" aria-hidden="true" />
-          {de ? "Nicht jetzt" : "Not now"}
+          {c_installBanner(de).notNow}
         </button>
       </div>
     </div>
