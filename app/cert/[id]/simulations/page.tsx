@@ -37,16 +37,16 @@ export default async function SimulationsPage({ params }: { params: Promise<{ id
 
   return (
     <div className="mx-auto w-full max-w-3xl" data-testid="simulations-page">
-      <Link href={`/cert/${slug}`} className="mb-4 inline-flex items-center gap-1 text-sm text-foreground/70 hover:text-foreground">
+      <Link href={`/cert/${slug}`} className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-foreground">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {cert.name}
       </Link>
       <div className="mb-5">
         <h1 className="text-2xl font-semibold">{de ? "Simulationen" : "Simulations"}</h1>
-        <p className="text-sm text-foreground/70">{de ? "Hier wendest du das Gelernte selbst an. Jede Simulation steht in ihrer Lektion; ein Klick führt direkt dorthin." : "Apply what you've learned. Each simulation lives in its lesson; one click takes you straight there."}</p>
+        <p className="text-sm text-muted">{de ? "Hier wendest du das Gelernte selbst an. Jede Simulation steht in ihrer Lektion; ein Klick führt direkt dorthin." : "Apply what you've learned. Each simulation lives in its lesson; one click takes you straight there."}</p>
       </div>
       {all.length === 0 ? (
-        <p className="text-sm text-foreground/70" data-testid="simulations-empty">
+        <p className="text-sm text-muted" data-testid="simulations-empty">
           {de ? "Dieser Kurs hat noch keine Simulationen." : "This course has no simulations yet."}
         </p>
       ) : (

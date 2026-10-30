@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileDown, Loader2 } from "lucide-react";
@@ -21,6 +22,7 @@ export interface IssuedExport {
  * Zertifikatsprüfung), erstellt das PDF und listet die bisher ausgestellten, jederzeit widerrufbar.
  */
 export function LearningProfileExport({ courses, issued, locale }: { courses: ExportCourse[]; issued: IssuedExport[]; locale: Locale }) {
+  const [confirm, confirmDialog] = useConfirm();
   const router = useRouter();
   const de = locale === "de";
   const [busy, setBusy] = useState(false);
@@ -49,15 +51,17 @@ export function LearningProfileExport({ courses, issued, locale }: { courses: Ex
   }
 
   async function revoke(id: string) {
-    if (!window.confirm(de ? "Dieses PDF widerrufen? Die Prüfseite zeigt es danach als widerrufen." : "Revoke this PDF? The verification page will then show it as revoked.")) return;
+    if (!(await confirm(de ? "Dieses PDF widerrufen? Die Prüfseite zeigt es danach als widerrufen." : "Revoke this PDF? The verification page will then show it as revoked."))) return;
     const response = await fetch(`/api/profile/export/${id}`, { method: "DELETE" });
     if (response.ok) router.refresh();
   }
 
   return (
+    <>
+    {confirmDialog}
     <section className="rounded-lg border border-border bg-surface p-4" data-testid="profile-export">
       <h2 className="font-semibold">{de ? "Lernprofil als PDF-Nachweis" : "Learning profile as a PDF record"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Ein standardisierter, fälschungssicherer Nachweis über deinen Kenntnisstand, z. B. für Arbeitgeber. Aufgeführt werden nur Kurse, zu denen eine erfolgreiche Zertifikatsprüfung hinterlegt ist. Jedes PDF trägt einen Prüfcode und lässt sich online prüfen."
           : "A standardised, tamper-proof record of your knowledge, e.g. for employers. Only courses with a recorded, passed certification exam are listed. Every PDF carries a verification code and can be checked online."}
@@ -99,5 +103,6 @@ export function LearningProfileExport({ courses, issued, locale }: { courses: Ex
         </ul>
       )}
     </section>
+    </>
   );
 }

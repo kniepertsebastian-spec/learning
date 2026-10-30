@@ -48,14 +48,6 @@ export function FocusFrame({
   // Im Browser nach document.body (außerhalb der App-Shell, die währenddessen inert ist); auf dem Server inline.
   const inBrowser = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
-/*  function navigateOut(target: string) {
-    if (typeof window !== "undefined" && typeof navigator !== "undefined" && !navigator.onLine) {
-      window.location.assign(target);
-      return;
-    }
-    router.push(target);
-  }*/
-
   function navigateOut(target: string) {
     if (typeof window !== "undefined" && window.navigator && !window.navigator.onLine) {
       window.location.assign(target);
@@ -98,12 +90,12 @@ export function FocusFrame({
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             {t.quiz.backToCourse}
           </button>
-          <button type="button" onClick={() => requestClose("/")} aria-label={t.quiz.toDashboard} data-testid="focus-dashboard" className="flex h-11 items-center gap-1.5 rounded-md border border-border-strong bg-control px-3 text-sm font-medium hover:bg-surface-2">
+          <button type="button" onClick={() => requestClose("/")} aria-label={t.quiz.toDashboard} data-testid="focus-dashboard" className="flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-subtle hover:bg-surface-2 hover:text-foreground">
             <House className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">{t.quiz.toDashboard}</span>
           </button>
         </div>
-        <div className="min-w-0 flex-1 basis-40">
+        <div className="order-last min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-40">
           <div className="flex items-center gap-2">
             {contextLabel && <p className="truncate text-sm font-semibold">{contextLabel}</p>}
             <Badge tone={mode === "exam" ? "warning" : "accent"}>{mode === "exam" ? t.quiz.examMode : t.quiz.practiceMode}</Badge>
@@ -118,8 +110,8 @@ export function FocusFrame({
         </div>
         {right}
         {navigator && (
-          <Button variant="secondary" size="sm" className="lg:hidden" onClick={() => setNavOpen(true)} iconLeft={<LayoutGrid className="h-4 w-4" aria-hidden="true" />} data-testid="open-navigator">
-            {t.quiz.navigator}
+          <Button variant="secondary" size="sm" className="ml-auto h-11 sm:ml-0 sm:h-9 lg:hidden" onClick={() => setNavOpen(true)} iconLeft={<LayoutGrid className="h-4 w-4" aria-hidden="true" />} aria-label={t.quiz.navigator} data-testid="open-navigator">
+            <span className="hidden sm:inline">{t.quiz.navigator}</span>
           </Button>
         )}
       </header>

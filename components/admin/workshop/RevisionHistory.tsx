@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { History, RotateCcw } from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ export function RevisionHistory({
   disabled?: string | null;
   onRestored: () => void;
 }) {
+  const [confirm, confirmDialog] = useConfirm();
   const tr = useTr(locale);
   const [revs, setRevs] = React.useState<Revision[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -65,7 +67,7 @@ export function RevisionHistory({
   const rev = revs?.find((r) => r.id === selected) ?? null;
 
   async function restore() {
-    if (!rev || !window.confirm(tr("Auf diesen Stand zurücksetzen? Der aktuelle Stand bleibt in der Versionsgeschichte.", "Restore this version? The current version stays in the history."))) return;
+    if (!rev || !(await confirm(tr("Auf diesen Stand zurücksetzen? Der aktuelle Stand bleibt in der Versionsgeschichte.", "Restore this version? The current version stays in the history.")))) return;
     setBusy(true);
     const r = await api<{ result: string }>(`/api/admin/certifications/${certId}/workshop/revisions/${rev.id}/restore`, { method: "POST" });
     setBusy(false);
@@ -76,6 +78,8 @@ export function RevisionHistory({
   }
 
   return (
+    <>
+    {confirmDialog}
     <section className="rounded-2xl border border-border bg-surface p-4" data-testid="revision-history">
       <h3 className="flex items-center gap-2 text-sm font-semibold">
         <History className="h-4 w-4" aria-hidden="true" />
@@ -116,5 +120,6 @@ export function RevisionHistory({
         </div>
       )}
     </section>
+    </>
   );
 }

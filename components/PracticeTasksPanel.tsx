@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -51,9 +52,9 @@ function PendingItem({ p, locale }: { p: PendingRowView; locale: "de" | "en" }) 
     <li className="rounded-md border border-border bg-background p-3 text-sm" data-testid="practice-pending">
       <p>
         <span className="font-medium">{p.memberName ?? p.memberEmail}</span>
-        <span className="text-foreground/70"> · {p.taskTitle} · {p.learningPath}</span>
+        <span className="text-muted"> · {p.taskTitle} · {p.learningPath}</span>
       </p>
-      {p.note && <p className="mt-1 whitespace-pre-wrap text-foreground/80">„{p.note}“</p>}
+      {p.note && <p className="mt-1 whitespace-pre-wrap text-text-2">„{p.note}“</p>}
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
@@ -71,7 +72,7 @@ function PendingItem({ p, locale }: { p: PendingRowView; locale: "de" | "en" }) 
           {de ? "Zur Nacharbeit zurück" : "Send back for rework"}
         </button>
       </div>
-      {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-xs text-danger-text">{error}</p>}
     </li>
   );
 }
@@ -95,6 +96,7 @@ export function PracticeTasksPanel({
   sectionsByPath: Record<string, Array<{ id: string; code: string; title: string }>>;
   locale: "de" | "en";
 }) {
+  const [confirm, confirmDialog] = useConfirm();
   const router = useRouter();
   const de = locale === "de";
   const [pathId, setPathId] = useState(paths[0]?.id ?? "");
@@ -118,15 +120,17 @@ export function PracticeTasksPanel({
     }
   }
   async function archive(id: string) {
-    if (!window.confirm(de ? "Aufgabe archivieren? Sie zählt dann nicht mehr, Abgaben bleiben erhalten." : "Archive this task? It no longer counts, submissions are kept.")) return;
+    if (!(await confirm(de ? "Aufgabe archivieren? Sie zählt dann nicht mehr, Abgaben bleiben erhalten." : "Archive this task? It no longer counts, submissions are kept."))) return;
     setError(await call(`/api/company/practice-tasks/${id}`, "DELETE"));
     router.refresh();
   }
 
   return (
+    <>
+    {confirmDialog}
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="practice-tasks">
       <h2 className="text-lg font-medium">{de ? "Praxisaufgaben" : "Practice tasks"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Praktische Aufgaben zu euren Lernpfaden. Wer den Lernpfad hat, gibt die Aufgabe ab; eine andere Person aus Mentor oder Firmen-Admin bestätigt sie. In der Statusliste steht nur „x von y bestätigt“."
           : "Practical tasks for your learning paths. People assigned the path hand them in; a different mentor or company admin confirms. The status list only shows “x of y confirmed”."}
@@ -162,7 +166,7 @@ export function PracticeTasksPanel({
             className="rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-foreground/70">
+            <span className="text-muted">
               {de ? "Lernziel (optional): Bestätigung und Nacharbeit fließen in die Wiederholungsplanung der Person ein" : "Objective (optional): confirmation and rework feed into the person's review scheduling"}
             </span>
             <select value={objectiveId} onChange={(e) => setObjectiveId(e.target.value)} aria-label={de ? "Lernziel" : "Objective"} data-testid="practice-objective" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
@@ -173,7 +177,7 @@ export function PracticeTasksPanel({
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-foreground/70">
+            <span className="text-muted">
               {de ? "Freischalten nach Lektion (optional): Die Aufgabe erscheint erst, wenn die Person diese Lektion abgeschlossen hat" : "Unlock after lesson (optional): the task only appears once the person has finished this lesson"}
             </span>
             <select value={unlockSectionId} onChange={(e) => setUnlockSectionId(e.target.value)} aria-label={de ? "Freischalten nach Lektion" : "Unlock after lesson"} data-testid="practice-unlock" className="rounded-md border border-border bg-background px-3 py-2 text-sm">
@@ -188,9 +192,9 @@ export function PracticeTasksPanel({
           </button>
         </form>
       ) : (
-        <p className="mt-3 text-sm text-foreground/70">{de ? "Es gibt noch keinen Lernpfad, zu dem sich Aufgaben anlegen lassen." : "There is no learning path yet to add tasks to."}</p>
+        <p className="mt-3 text-sm text-muted">{de ? "Es gibt noch keinen Lernpfad, zu dem sich Aufgaben anlegen lassen." : "There is no learning path yet to add tasks to."}</p>
       )}
-      {error && <p role="alert" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p>}
+      {error && <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>}
 
       {pending.length > 0 && (
         <>
@@ -212,14 +216,14 @@ export function PracticeTasksPanel({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span>
                     <span className="font-medium">{t.title}</span>
-                    <span className="text-foreground/70"> · {t.learningPath}</span>
+                    <span className="text-muted"> · {t.learningPath}</span>
                   </span>
-                  <button type="button" onClick={() => void archive(t.id)} className="text-xs text-foreground/60 hover:text-red-500">
+                  <button type="button" onClick={() => void archive(t.id)} className="text-xs text-subtle hover:text-danger-text">
                     {de ? "Archivieren" : "Archive"}
                   </button>
                 </div>
-                {t.description && <p className="mt-1 text-foreground/70">{t.description}</p>}
-                <p className="mt-1 text-xs text-foreground/70">
+                {t.description && <p className="mt-1 text-muted">{t.description}</p>}
+                <p className="mt-1 text-xs text-muted">
                   {de
                     ? `${t.confirmed} von ${t.assignees} bestätigt · ${t.submitted} wartet · ${t.rework} in Nacharbeit`
                     : `${t.confirmed} of ${t.assignees} confirmed · ${t.submitted} waiting · ${t.rework} in rework`}
@@ -230,5 +234,6 @@ export function PracticeTasksPanel({
         </>
       )}
     </section>
+    </>
   );
 }

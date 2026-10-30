@@ -2,12 +2,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "@/lib/cn";
 
-/** Pille: weiche Fläche (12–14 % Alpha) + farbiger Text. `accent` folgt dem Kontext, `violet` nur als Kategoriefarbe. */
+/** Pille: weiche Fläche (12–14 % Alpha) + farbiger Text. `accent` folgt dem Kontext, `success` (Alias `mint`) heißt richtig/geschafft, `violet` nur als Kategoriefarbe. */
 export const badgeVariants = cva("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap", {
   variants: {
     tone: {
       accent: "bg-accent-soft text-link",
-      mint: "bg-mint-soft text-mint-text",
+      mint: "bg-success-soft text-success-text",
+      success: "bg-success-soft text-success-text",
       info: "bg-info-soft text-info-text",
       warning: "bg-warning-soft text-warning-text",
       danger: "bg-danger-soft text-danger-text",

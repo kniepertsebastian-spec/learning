@@ -36,7 +36,7 @@ export function SegmentedControl<T extends string>({ value, onChange, options, l
           role="radio"
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={cn("h-8 rounded-md px-3 text-[13px] font-medium transition-colors duration-150", value === o.value ? "bg-surface-2 text-foreground" : "text-subtle hover:text-foreground")}
+          className={cn("h-8 rounded-md px-3 text-meta font-medium transition-colors duration-150", value === o.value ? "bg-surface-2 text-foreground" : "text-subtle hover:text-foreground")}
         >
           {o.label}
         </button>

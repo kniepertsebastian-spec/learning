@@ -132,7 +132,7 @@ export function CompanyOverview({
       <Dialog open={privacyOpen} onOpenChange={setPrivacyOpen}>
         <DialogContent closeLabel={o.close}>
           <DialogTitle>{o.privacyTitle}</DialogTitle>
-          <DialogDescription className="mt-2 text-[15px] leading-relaxed text-muted">{o.privacyLong}</DialogDescription>
+          <DialogDescription className="mt-2 text-body leading-relaxed text-muted">{o.privacyLong}</DialogDescription>
         </DialogContent>
       </Dialog>
 

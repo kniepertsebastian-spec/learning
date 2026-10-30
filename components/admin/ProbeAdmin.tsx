@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,7 @@ async function call(url: string, method: string, body?: unknown): Promise<{ ok: 
 
 /** Betreiber: Probe-Review-Sätze mit eingebauten Fehlern pflegen, Ergebnisse einsehen (nur intern), Prüfer freischalten. */
 export function ProbeAdmin({ sets, attempts, qualifications, locale }: { sets: SetRow[]; attempts: AttemptRow[]; qualifications: QualificationRow[]; locale: "de" | "en" }) {
+  const [confirm, confirmDialog] = useConfirm();
   const de = locale === "de";
   const router = useRouter();
   const [edit, setEdit] = useState<EditSet | null>(null);
@@ -58,7 +60,7 @@ export function ProbeAdmin({ sets, attempts, qualifications, locale }: { sets: S
     router.refresh();
   }
   async function remove(id: string) {
-    if (!window.confirm(de ? "Satz löschen?" : "Delete set?")) return;
+    if (!(await confirm(de ? "Satz löschen?" : "Delete set?"))) return;
     const r = await call(`/api/admin/reviewers/probe/sets/${id}`, "DELETE");
     if (!r.ok) return setMessage({ tone: "error", text: r.data.error ?? "Fehler" });
     if (edit?.id === id) setEdit(null);
@@ -74,6 +76,8 @@ export function ProbeAdmin({ sets, attempts, qualifications, locale }: { sets: S
   const setItem = (i: number, patch: Partial<ProbeItemDraft>) => edit && setEdit({ ...edit, items: edit.items.map((x, k) => (k === i ? { ...x, ...patch } : x)) });
 
   return (
+    <>
+    {confirmDialog}
     <div className="flex flex-col gap-8" data-testid="probe-admin">
       {message && (
         <div role={message.tone === "error" ? "alert" : "status"} className={message.tone === "error" ? "rounded-xl border border-danger/40 bg-danger-soft p-3 text-sm text-danger-text" : "rounded-xl border border-mint-border bg-mint-soft p-3 text-sm text-mint-text"} data-testid="probe-admin-message">
@@ -229,5 +233,6 @@ export function ProbeAdmin({ sets, attempts, qualifications, locale }: { sets: S
         </ul>
       </section>
     </div>
+    </>
   );
 }

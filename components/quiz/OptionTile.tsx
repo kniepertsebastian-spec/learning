@@ -14,8 +14,8 @@ const TILE: Record<OptionState, string> = {
 const BADGE: Record<OptionState, string> = {
   neutral: "bg-control text-muted",
   selected: "bg-info text-on-accent",
-  correct: "bg-mint text-on-accent",
-  wrong: "bg-danger text-on-accent",
+  correct: "bg-success text-on-success",
+  wrong: "bg-danger text-on-danger",
   dimmed: "bg-control text-faint opacity-70",
 };
 
@@ -45,7 +45,7 @@ export function OptionTile({
       disabled={disabled}
       data-state={state}
       data-testid={`option-${index}`}
-      className={cn("flex min-h-[60px] w-full items-center gap-3.5 rounded-[14px] border px-4 py-3 text-left text-[15px] transition-colors disabled:cursor-default", TILE[state])}
+      className={cn("flex min-h-[60px] w-full items-center gap-3.5 rounded-[14px] border px-4 py-3 text-left text-body transition-colors disabled:cursor-default", TILE[state])}
     >
       <span className={cn("flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg font-mono text-sm font-semibold", BADGE[state])} aria-hidden="true">
         {letterOf(index)}

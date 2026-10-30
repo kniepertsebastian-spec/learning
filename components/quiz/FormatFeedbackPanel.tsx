@@ -48,7 +48,7 @@ export function FormatFeedbackPanel({
   const de = locale === "de";
   const confidenceLabel = confidence ? t.quiz[confidence] : null;
   return (
-    <div className={cn("anim-fade-in rounded-2xl border p-5", correct ? "border-mint bg-mint-soft" : "border-danger bg-danger-soft")} role="status" aria-live="polite" data-testid="feedback-panel" data-correct={correct}>
+    <div className={cn("anim-fade-in rounded-2xl border border-t-[3px] border-border bg-surface p-5", correct ? "border-t-success" : "border-t-danger")} role="status" aria-live="polite" data-testid="feedback-panel" data-correct={correct}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className={cn("flex items-center gap-2 text-base font-semibold", correct ? "text-mint-text" : "text-danger-text")}>
           {correct ? <CircleCheck className="h-5 w-5" aria-hidden="true" /> : <CircleX className="h-5 w-5" aria-hidden="true" />}
@@ -59,7 +59,7 @@ export function FormatFeedbackPanel({
       </div>
       {!correct && note && <p className="mt-2 text-xs text-subtle" data-testid="platform-note">{note}</p>}
       {!correct && solution && <SolutionView solution={solution} locale={locale} />}
-      <div className="mt-3 text-[15px] leading-[1.65] text-foreground">
+      <div className="mt-3 text-body leading-[1.65] text-foreground">
         <RichText text={explanation} />
       </div>
       {!correct && selfExplain && <SelfExplanation storageKey={`q:${questionId}`} prompt={de ? "Erkläre in einem Satz, warum das die richtige Lösung ist." : "Explain in one sentence why this is the right solution."} modelAnswer={explanation} locale={locale} />}

@@ -55,7 +55,7 @@ export function CheatSheetBackfill({ courseId, initial, aiConfigured, locale }: 
   const run = status.run;
 
   return (
-    <div className="mt-2 text-foreground/70" data-testid="cheatsheet-backfill">
+    <div className="mt-2 text-muted" data-testid="cheatsheet-backfill">
       <span data-testid="cheatsheet-count">
         {de ? `Merkzettel: ${status.withCheatSheet} von ${status.lessons} Lektionen` : `Cheat sheets: ${status.withCheatSheet} of ${status.lessons} lessons`}
       </span>
@@ -73,12 +73,12 @@ export function CheatSheetBackfill({ courseId, initial, aiConfigured, locale }: 
         </span>
       )}
       {!running && run && (run.status === "failed" || run.message) && (
-        <p className={run.status === "failed" ? "mt-1 text-red-600" : "mt-1"} role="status">
+        <p className={run.status === "failed" ? "mt-1 text-danger-text" : "mt-1"} role="status">
           {run.message ?? (de ? "Der letzte Lauf ist fehlgeschlagen." : "The last run failed.")}
         </p>
       )}
       {error && (
-        <p role="alert" className="mt-1 text-red-600">
+        <p role="alert" className="mt-1 text-danger-text">
           {error}
         </p>
       )}

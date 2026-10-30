@@ -58,105 +58,56 @@ Was schon da ist und wiederverwendet wird: `Geist`/`Geist Mono` über `next/font
 
 ## Designsprache (verbindlich)
 
-Diese Werte sind die Quelle der Wahrheit. **Keine Farb-, Radius- oder Schattenwerte außerhalb der Tokens** im JSX.
+Diese Werte sind die Quelle der Wahrheit; die genauen Hex-Werte stehen in `app/globals.css` (Kontrast: `docs/UI-KONTRAST.md`). **Keine Farb-, Radius-, Schriftgrößen- oder Schattenwerte außerhalb der Tokens** im JSX.
 
-### Farben – Dunkel (Standard, entspricht den Screens)
+**Stand „Calm Intelligence“ (10/2026):** Navy/Slate-Basis statt Grafit, **Indigo** als Markenfarbe, **Grün nur für Erfolg**. Ruhig statt leuchtend: keine Verläufe (auch der Hero ist eine getönte Fläche), kein Leuchten, Schatten nur für Overlays. Die früheren Mint-Werte und Screens aus dem Design-Entwurf gelten nicht mehr.
 
-| Token | Wert | Verwendung |
-|---|---|---|
-| `--bg` | `#0A0C10` | Seitenhintergrund |
-| `--bg-sidebar` | `#0E1117` | Sidebar, Fokusleiste |
-| `--surface` | `#12161E` | Karten, Tabellen, Panels |
-| `--surface-2` | `#171D28` | Innenflächen in Karten, aktive Nav-Einträge, Chips |
-| `--surface-inset` | `#0F1219` | Eingelassene Flächen (Segment-Control, Codeblock-Rahmen) |
-| `--control` | `#1A212D` | Sekundär-Buttons, Inline-Code |
-| `--track` | `#1E2633` | Hintergrund von Fortschrittsbalken |
-| `--border` | `#222938` | Standardrahmen |
-| `--border-strong` | `#2A3242` | Rahmen von Controls |
-| `--border-subtle` | `#1C2230` | Tabellenzeilen, Trenner |
-| `--text` | `#E8ECF3` | Haupttext |
-| `--text-2` | `#C9D0DC` | Fließtext in Lektionen |
-| `--text-muted` | `#AEB7C6` | Nav-Einträge, Sekundärtext |
-| `--text-subtle` | `#9AA4B5` | Untertitel, Labels |
-| `--text-faint` | `#8C96A8` | Meta-Angaben (nur ≥ 12 px) |
-| `--accent` | `#34E3A4` | Primär (Mint): Buttons, Fortschritt, aktive Markierung |
-| `--accent-hover` | `#7BF0C6` | Link-Hover |
-| `--on-accent` | `#04140D` | Text auf Mint |
-| `--accent-soft` | `rgba(52,227,164,0.12)` | Mint-Badges, Icon-Hintergründe |
-| `--accent-border` | `#1F4A3B` | Rahmen bei Mint-Flächen |
-| `--info` / `--info-text` | `#6EA8FF` / `#8DBBFF` | „In Arbeit“, gewählte Antwort, Praxisbeispiel |
-| `--warning` | `#F4B740` | Hinweise, „Läuft bald ab“, Häufiger Fehler |
-| `--danger` / `--danger-text` | `#FF7A66` / `#FF9A8A` | Falsch, überfällig, abgelaufen |
-| `--violet` | `#C9A2FF` | Nur Kategorie-/Gruppenfarbe |
+### Farbrollen
 
-Hero-Fläche („Weitermachen“, „Nächste Prüfung“, Kurz-Check): `linear-gradient(135deg, #12201B 0%, #12161E 55%)`, Rahmen `#1F3A30`. **Sonst keine Verläufe.**
+| Rolle | Token | Hell | Dunkel | Verwendung |
+|---|---|---|---|---|
+| Seitengrund | `--bg` | `#F4F7F9` | `#0A1118` | Seite |
+| Flächen | `--surface` / `--surface-2` / `--surface-inset` | `#FFF` / `#EEF3F6` / `#E8EEF2` | `#101A24` / `#15212D` / `#0B131B` | Karten / Innenflächen / eingelassene Flächen |
+| Text | `--text` … `--text-faint` | Ink `#0B1620` … `#5D6B79` | `#E8EEF4` … `#8493A4` | Haupt- bis Metatext |
+| Marke | `--accent` / `--accent-text` / `--on-accent` | `#4F5BD5` / `#3F49B8` / weiß | `#8B93F8` / `#A9AFFF` / `#0B0F2A` | Hauptaktion (einmal je Screen), Lernfortschritt, Links, aktive Navigation |
+| Erfolg | `--success` / `--success-text` / `--on-success` | `#0E9F73` / `#067552` | `#3CC79A` / `#62D3AE` | **nur** richtig, bestanden, gemeistert (Tailwind-Alias `mint-*` bleibt) |
+| Info | `--info` / `--info-text` | `#1B72A6` / `#17648F` | `#5EB8E8` / `#85CBF0` | gewählte Antwort, „in Arbeit“, Hinweise |
+| Warnung | `--warning` / `--warning-text` | `#D99A1E` / `#83580A` | `#F5B544` / `#F7C266` | fällig, Frist, Prüfungsmodus, Firmenkontext |
+| Gefahr | `--danger` / `--danger-text` / `--on-danger` | `#D9503F` / `#AE3A2A` | `#FF7B6B` / `#FF9C8F` | falsch, überfällig, löschen, Admin-Kontext |
+| Datenreihen | `--chart-data` | `#5E7FA8` | `#6F8DB5` | wertungsfreie Diagrammreihen; nur „heute“ in Markenfarbe |
+| Hero | `--hero` / `--hero-border` | `#F0F1FC` / `#D9DCF6` | `#13172C` / `#262C4C` | „Als Nächstes“, „Heute für dich“ |
+| Logo | `logo-tile` / `logo-mark` | `#161B3A` / `#A9AFFF` | gleich | Markenzeichen und App-Icon |
+
+Theme: **System** (Standard), Hell, Dunkel – Auswahl im Benutzermenü (`lib/theme.tsx`).
 
 ### Kontextfarben (Kern der Trennung Privat / Firma / Admin)
 
-| Kontext | Akzent | Sidebar-Hintergrund | Sidebar-Rahmen | Switcher-Fläche / -Rahmen | Aktiver Nav-Eintrag | Label-Farbe | Text auf Akzent |
-|---|---|---|---|---|---|---|---|
-| Persönlich | `#34E3A4` | `#0E1117` | `#1C2230` | `#151A23` / `#252C3B` | `#171D28` | `#8C96A8` | `#04140D` |
-| Firma | `#F4B740` | `#100F0B` | `#2A2414` | `#1A1710` / `#3A3018` | `#1F1B10` | `#B8A47A` | `#1A1204` |
-| Plattform-Admin | `#FF7A66` | `#0E1117` | `#1C2230` | `#1A1312` / `#3A2420` | `#1A1D26` | `#C0928A` | `#1A0805` |
-
-Admin zusätzlich: Warnstreifen über der ganzen Seite (Hintergrund `#2A1210`, Rahmen unten `#5A2C26`, Text `#FFC0B5`). Primär-Buttons im Admin sind **invertiert** (`#E8ECF3` auf `#0A0C10`), nicht Koralle – Koralle bleibt Warnfarbe.
-
-Links übernehmen die Kontextfarbe (Persönlich Mint, Firma Bernstein, Admin `#FF9A8A`).
-
-### Farben – Hell
-
-Gleiche Token-Namen, Werte unter `:root`; die dunklen Werte unter `.dark` (bestehender Mechanismus in `lib/theme.tsx`).
-
-| Token | Wert |
-|---|---|
-| `--bg` | `#F6F7F9` |
-| `--bg-sidebar` | `#FFFFFF` |
-| `--surface` | `#FFFFFF` |
-| `--surface-2` | `#F1F3F6` |
-| `--surface-inset` | `#ECEFF3` |
-| `--control` | `#F1F3F6` |
-| `--track` | `#E3E7EE` |
-| `--border` | `#E3E7EE` |
-| `--border-strong` | `#D3D9E2` |
-| `--border-subtle` | `#ECEFF3` |
-| `--text` | `#0E1218` |
-| `--text-2` | `#2A3140` |
-| `--text-muted` | `#4A5466` |
-| `--text-subtle` | `#5B6577` |
-| `--text-faint` | `#6B7588` |
-| `--accent` | `#1FCB8F` (Flächen), Text/Links `#0A8F63` |
-| `--on-accent` | `#04140D` |
-| Firma-Akzent | `#E3A21A` (Flächen), Text `#9A6A08` |
-| Admin-Akzent | `#E85A45` (Flächen), Text `#B83E2B` |
-
-Im Hellmodus Kontrast jedes Text-/Hintergrundpaars mit einem Kontrastprüfer bestätigen (≥ 4.5:1, ab 24 px ≥ 3:1). Wo es nicht reicht, den Textwert abdunkeln, nicht die Fläche.
+Unverändert über `--ctx-*` und `data-context`: Persönlich = Markenfarbe (Indigo), Firma = Bernstein, Admin = Koralle. Komponenten nutzen nur `--ctx-*` (`bg-accent`, `text-link`), nie die Kontextfarbe direkt; `bg-brand` ist die Markenfarbe unabhängig vom Kontext.
 
 ### Typografie
 
-Schrift: **Geist** (Text), **Geist Mono** (Befehle, Codes, Timer, Tastenkürzel, Kurzcodes wie `K8s`). Zahlen in Statistiken, Tabellen und Timern mit `font-variant-numeric: tabular-nums`.
+Schrift: **Geist** (Text), **Geist Mono** (Befehle, Codes, Timer, Tastenkürzel, Kurzcodes wie `K8s`). Zahlen in Statistiken, Tabellen und Timern mit `tabular-nums`. Größen als Tokens (`@theme` in `app/globals.css`), keine `text-[13px]` mehr:
 
-| Stufe | Größe / Zeilenhöhe | Gewicht | Laufweite | Einsatz |
-|---|---|---|---|---|
-| Display | 38 px / 1.15 | 600 | −0.03em | Lektionstitel |
-| H1 | 32–34 px / 1.15 | 600 | −0.025em | Seitentitel, Begrüßung |
-| H1 Quiz | 24 px / 1.4 | 600 | −0.015em | Fragetext |
-| H2 Hero | 26 px / 1.2 | 600 | −0.02em | Titel in Hero-Karten |
-| H2 | 24 px (Lektion) / 18 px (Seiten) | 600 | −0.02em / −0.01em | Abschnitte |
-| H3 | 15–17 px | 600 | 0 | Kartentitel |
-| Body Lektion | 16 px / 1.75 | 400 | 0 | Fließtext in Lektionen |
-| Lead | 17 px / 1.65 | 400 | 0 | Einleitung unter Lektionstitel |
-| Body | 14–15 px / 1.5 | 400 | 0 | Standard |
-| Small | 12–13 px | 400–500 | 0 | Meta, Tabellen |
-| Overline | 11–12 px, GROSS | 600 | 0.06–0.08em | Abschnittslabels („Weitermachen“, „Kontext“) |
+| Token | Größe / Zeilenhöhe | Einsatz |
+|---|---|---|
+| `text-display` | 36 / 1.15 | Lektionstitel |
+| `text-title` (+ `tracking-title`) | 30 / 1.15 | Seitentitel, Begrüßung |
+| `text-stat` | 28 / 1.15 | Kennzahlen, Ringwert |
+| `text-question` | 22 / 1.4 | Fragetext |
+| `text-lead` | 17 / 1.65 | Einleitung, Lesetext |
+| `text-body` | 15 / 1.55 | Kartentitel, Standardtext |
+| `text-meta` | 13 / 1.45 | Meta, Tabellen, Listen |
+| `text-2xs` (+ `tracking-overline`, GROSS) | 11 / 1.4 | Overline-Labels |
 
 ### Radius, Abstände, Schatten, Bewegung
 
 - **Radius:** `xs 6` (Inline-Code, Kbd) · `sm 8–9` (kleine Controls, Nav-Einträge) · `md 10–11` (Buttons, Inputs) · `lg 12` (Innenpanels, Callouts) · `xl 14` (Antwortkacheln, Tabellencontainer, Stat-Kacheln) · `2xl 16` (Karten) · `3xl 18` (Hero) · `full` (Pills, Badges, Avatare).
 - **Abstände:** 4-px-Raster. Seitenpadding Desktop `28–40 px`, Mobil `16 px`. Abstand zwischen Sektionen `24–28 px`, zwischen Karten `12–16 px`.
-- **Schatten:** im Dunkelmodus praktisch keine; Tiefe entsteht über Flächenstufen (`bg → surface → surface-2`). Einzige Ausnahme: Sheets/Drawer (`-24px 0 48px rgba(0,0,0,.35)`) und Dialoge.
-- **Bewegung:** 150 ms für Hover/Zustände, 200–250 ms für Einblenden (Feedback-Panel, Sheet). `prefers-reduced-motion` respektieren.
+- **Schatten:** keine auf Karten; Tiefe entsteht über Flächenstufen (`bg → surface → surface-2`). Nur Overlays haben Schatten: `shadow-sheet` (Sheets) und `shadow-overlay` (Dialoge, Menüs, Popover).
+- **Bewegung:** 150 ms für Hover/Zustände, 200–220 ms für Einblenden (Feedback-Panel, Sheet), Kurve `--ease-calm`, nie in Dauerschleife. `prefers-reduced-motion` schaltet Bewegung ab.
 - **Touch-Ziele:** mindestens 40 px Höhe, primäre Aktionen 44–46 px.
 - **Icons:** `lucide-react`, Strichstärke 1.8–2, 16–18 px. **Keine Emojis.**
+- **Bestätigungen:** `useConfirm()` aus `components/ui/confirm-dialog.tsx` statt `window.confirm`.
 
 ### Sprache und Begriffe
 

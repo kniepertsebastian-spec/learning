@@ -62,13 +62,13 @@ export function LessonPhases({
             aria-current={s.state === "current" ? "step" : undefined}
             data-state={s.state}
             className={cn(
-              "flex min-h-9 items-center gap-2 rounded-full border px-3 text-[13px] font-medium",
+              "flex min-h-9 items-center gap-2 rounded-full border px-3 text-meta font-medium",
               s.state === "done" && "border-mint-border bg-mint-soft text-mint-text",
               s.state === "current" && "border-accent-border bg-accent-soft text-foreground",
               s.state === "todo" && "border-border-strong text-muted hover:text-foreground",
             )}
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-2 text-[11px]" aria-hidden="true">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-2 text-2xs" aria-hidden="true">
               {s.state === "done" ? <Check className="h-3 w-3" /> : i + 1}
             </span>
             {s.label}

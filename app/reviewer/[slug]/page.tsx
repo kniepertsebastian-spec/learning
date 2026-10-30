@@ -58,7 +58,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
       </Link>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{cert.name}</h1>
-        <Link href={`/reviewer/${slug}/workshop`} className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-link hover:bg-accent/10" data-testid="reviewer-edit-link">
+        <Link href={`/reviewer/${slug}/workshop`} className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-link hover:bg-accent-soft" data-testid="reviewer-edit-link">
           {de ? "Kurs bearbeiten" : "Edit course"}
         </Link>
       </div>
@@ -73,7 +73,7 @@ export default async function ReviewerCoursePage({ params }: { params: Promise<{
               {objective.sections.map((s) => (
                 <details key={s.id} className="mt-3 text-sm" data-testid="reviewer-section">
                   <summary className="cursor-pointer font-medium">{s.title[locale]}</summary>
-                  <div className="mt-2 text-foreground/90"><RichText text={s.content[locale]} /></div>
+                  <div className="mt-2 text-text-2"><RichText text={s.content[locale]} /></div>
                   <ReviewerItemComment certId={cert.id} targetType="section" targetId={s.id} locale={locale} existing={commentsFor("section", s.id)} />
                 </details>
               ))}

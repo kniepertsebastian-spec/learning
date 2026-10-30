@@ -42,7 +42,7 @@ export function ExpertProfileView({ profile, courses, locale }: { profile: Publi
       {bio && (
         <section aria-labelledby="expert-bio">
           <h2 id="expert-bio" className="mb-1 text-lg font-semibold">{de ? "Kurzvorstellung" : "About"}</h2>
-          <p className="whitespace-pre-wrap text-[15px] leading-relaxed" data-testid="expert-bio-text">{bio}</p>
+          <p className="whitespace-pre-wrap text-body leading-relaxed" data-testid="expert-bio-text">{bio}</p>
         </section>
       )}
 

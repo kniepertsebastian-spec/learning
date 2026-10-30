@@ -62,8 +62,8 @@ function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () =>
           <Icon className="h-[18px] w-[18px]" />
         </span>
         <div className="min-w-0 flex-1 basis-40">
-          <p className="text-[11px] font-semibold tracking-[0.07em] text-link uppercase">{kind}</p>
-          <p className="text-[15px] font-semibold">{sim.title}</p>
+          <p className="text-2xs font-semibold tracking-overline text-link uppercase">{kind}</p>
+          <p className="text-body font-semibold">{sim.title}</p>
         </div>
         {lesson && (
           <Button variant="ghost" size="sm" onClick={() => lesson.openText()} iconLeft={<BookOpen className="h-3.5 w-3.5" aria-hidden="true" />} data-testid="simulation-open-text">
@@ -74,7 +74,7 @@ function Frame({ sim, onRestart, children }: { sim: Simulation; onRestart: () =>
           {t.lesson_blocks.simRestart}
         </Button>
       </header>
-      <div className="rounded-xl border border-border bg-surface p-4 text-[15px] [&>*:first-child]:mt-0">
+      <div className="rounded-xl border border-border bg-surface p-4 text-body [&>*:first-child]:mt-0">
         <RichText text={sim.scenario} />
       </div>
       <div className="mt-3">{children}</div>
@@ -112,14 +112,14 @@ function SolvedBanner({ helps, children, selfExplain }: { helps: number | null; 
     <div className="mt-3 flex gap-3 rounded-xl border border-mint-border bg-mint-soft p-4" data-testid="simulation-solved" role="status">
       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-mint-text" aria-hidden="true" />
       <div className="min-w-0">
-        <p className="text-[13px] font-semibold tracking-wide text-mint-text uppercase">{title}</p>
-        <div className="mt-1 text-[15px] leading-relaxed text-text-2">{children}</div>
+        <p className="text-meta font-semibold tracking-wide text-mint-text uppercase">{title}</p>
+        <div className="mt-1 text-body leading-relaxed text-text-2">{children}</div>
         {review.length > 0 && (
           <div className="mt-3" data-testid="simulation-review">
             <p className="text-xs font-semibold text-subtle">{t.lesson_blocks.simReviewTitle}</p>
             <div className="mt-1 flex flex-wrap gap-2">
               {review.map((h) => (
-                <button key={h} type="button" onClick={() => lesson?.openText(h)} className="rounded-full border border-border-strong bg-surface px-3 py-1 text-left text-[13px] hover:bg-surface-2">
+                <button key={h} type="button" onClick={() => lesson?.openText(h)} className="rounded-full border border-border-strong bg-surface px-3 py-1 text-left text-meta hover:bg-surface-2">
                   {h}
                 </button>
               ))}
@@ -200,10 +200,10 @@ function TerminalSim({ sim }: { sim: TerminalSimulation }) {
     <div>
       {!done && (
         <div className="mb-3 rounded-xl border border-border bg-surface p-3" data-testid="simulation-goal">
-          <p className="text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">
+          <p className="text-2xs font-semibold tracking-overline text-faint uppercase">
             {fmt(t.lesson_blocks.simStep, { x: String(step + 1), y: String(sim.steps.length) })} · {t.lesson_blocks.simGoal}
           </p>
-          <p className="mt-0.5 text-[15px]">{current.goal}</p>
+          <p className="mt-0.5 text-body">{current.goal}</p>
           {(hintShown || misses >= 2) && <Hint>{current.hint}</Hint>}
         </div>
       )}
@@ -216,7 +216,7 @@ function TerminalSim({ sim }: { sim: TerminalSimulation }) {
           </span>
           <span className="font-mono text-xs text-subtle">{t.lesson_blocks.terminal}</span>
         </div>
-        <div className="max-h-80 overflow-auto p-3.5 font-mono text-[13px] leading-relaxed" aria-live="polite" data-testid="simulation-terminal">
+        <div className="max-h-80 overflow-auto p-3.5 font-mono text-meta leading-relaxed" aria-live="polite" data-testid="simulation-terminal">
           {lines.map((l, i) => (
             <div key={i} data-row={l.ok ? "ok" : "wrong"}>
               <div className="break-all whitespace-pre-wrap">
@@ -309,12 +309,12 @@ function DecisionSim({ sim, restarts, onRestart }: { sim: DecisionSimulation; re
       )}
       {node.status && node.status.length > 0 && (
         <div className="mb-3 rounded-xl border border-border bg-surface p-3" data-testid="simulation-status">
-          <p className="mb-1.5 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">{t.lesson_blocks.simStatus}</p>
+          <p className="mb-1.5 text-2xs font-semibold tracking-overline text-faint uppercase">{t.lesson_blocks.simStatus}</p>
           <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
             {node.status.map((s, i) => (
               <div key={i} className="flex min-w-0 items-center justify-between gap-2">
                 <dt className="text-subtle">{s.label}</dt>
-                <dd className="min-w-0 truncate">{s.tone ? <Badge tone={STATUS_TONE[s.tone]}>{s.value}</Badge> : <span className="font-mono text-[13px]">{s.value}</span>}</dd>
+                <dd className="min-w-0 truncate">{s.tone ? <Badge tone={STATUS_TONE[s.tone]}>{s.value}</Badge> : <span className="font-mono text-meta">{s.value}</span>}</dd>
               </div>
             ))}
           </dl>
@@ -328,8 +328,8 @@ function DecisionSim({ sim, restarts, onRestart }: { sim: DecisionSimulation; re
         <div className="flex gap-3 rounded-xl border border-warning/40 bg-warning-soft p-4" data-testid="simulation-failed" role="status">
           <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning-text" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold tracking-wide text-warning-text uppercase">{t.lesson_blocks.simFailed}</p>
-            <div className="mt-1 text-[15px] leading-relaxed text-text-2">
+            <p className="text-meta font-semibold tracking-wide text-warning-text uppercase">{t.lesson_blocks.simFailed}</p>
+            <div className="mt-1 text-body leading-relaxed text-text-2">
               <RichText text={node.text} />
               <p className="mt-2 text-sm text-subtle">{t.lesson_blocks.simFailedBody}</p>
             </div>
@@ -340,7 +340,7 @@ function DecisionSim({ sim, restarts, onRestart }: { sim: DecisionSimulation; re
         </div>
       ) : (
         <>
-          <div className="text-[15px] [&>*:first-child]:mt-0" data-testid="simulation-situation">
+          <div className="text-body [&>*:first-child]:mt-0" data-testid="simulation-situation">
             <RichText text={node.text} />
           </div>
           <div className="mt-3 flex flex-col gap-2" role="group" aria-label={sim.title}>
@@ -412,7 +412,7 @@ function ConfigSim({ sim }: { sim: ConfigSimulation }) {
         {sim.file && (
           <figcaption className="border-b border-border-subtle bg-surface px-3.5 py-1.5 font-mono text-xs text-subtle">{sim.file}</figcaption>
         )}
-        <pre className="overflow-x-auto p-3.5 font-mono text-[13px] leading-[2.1] text-foreground" data-testid="simulation-template">
+        <pre className="overflow-x-auto p-3.5 font-mono text-meta leading-[2.1] text-foreground" data-testid="simulation-template">
           {parts.map((p, i) => {
             if ("text" in p) return <React.Fragment key={i}>{p.text}</React.Fragment>;
             const b = blanks.get(p.blank)!;
@@ -431,7 +431,7 @@ function ConfigSim({ sim }: { sim: ConfigSimulation }) {
                 }}
                 data-testid="simulation-select"
                 className={cn(
-                  "mx-0.5 rounded-md border bg-control px-1.5 py-0.5 font-mono text-[13px] text-foreground",
+                  "mx-0.5 rounded-md border bg-control px-1.5 py-0.5 font-mono text-meta text-foreground",
                   wrong ? "border-danger bg-danger-soft" : ok ? "border-mint-border bg-mint-soft" : "border-accent-border",
                 )}
               >
@@ -450,7 +450,7 @@ function ConfigSim({ sim }: { sim: ConfigSimulation }) {
       </figure>
 
       {checked !== null && (solved ? sim.successOutput : sim.failureOutput) && (
-        <pre className={cn("mt-3 overflow-x-auto rounded-[14px] border p-3.5 font-mono text-[13px] leading-relaxed whitespace-pre-wrap", solved ? "border-border bg-surface-inset text-code-muted" : "border-danger/40 bg-danger-soft text-danger-text")} data-testid="simulation-output">
+        <pre className={cn("mt-3 overflow-x-auto rounded-[14px] border p-3.5 font-mono text-meta leading-relaxed whitespace-pre-wrap", solved ? "border-border bg-surface-inset text-code-muted" : "border-danger/40 bg-danger-soft text-danger-text")} data-testid="simulation-output">
           {solved ? sim.successOutput : sim.failureOutput}
         </pre>
       )}
@@ -477,7 +477,7 @@ function ConfigSim({ sim }: { sim: ConfigSimulation }) {
           <ul className="mt-3 flex flex-col gap-2" data-testid="simulation-explanations">
             {sim.blanks.map((b, i) => (
               <li key={b.id} className="rounded-xl border border-border bg-surface p-3 text-sm">
-                <p className="text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">
+                <p className="text-2xs font-semibold tracking-overline text-faint uppercase">
                   {fmt(t.lesson_blocks.simBlank, { n: String(i + 1) })} · <span className="font-mono normal-case">{b.answer}</span>
                 </p>
                 <p className="mt-0.5">{b.explanation}</p>

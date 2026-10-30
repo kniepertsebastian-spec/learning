@@ -17,3 +17,4 @@ export * from "./stat-tile";
 export * from "./tabs";
 export * from "./toaster";
 export * from "./tooltip";
+export * from "./confirm-dialog";

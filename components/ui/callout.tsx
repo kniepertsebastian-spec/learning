@@ -22,8 +22,8 @@ export function Callout({ tone, title, children, className }: { tone: CalloutTon
         <Icon className="h-[18px] w-[18px]" strokeWidth={1.9} />
       </span>
       <div className="min-w-0">
-        <p className={cn("text-[13px] font-semibold tracking-wide uppercase", t.title)}>{title}</p>
-        <div className="mt-1 text-[15px] leading-relaxed text-text-2">{children}</div>
+        <p className={cn("text-meta font-semibold tracking-wide uppercase", t.title)}>{title}</p>
+        <div className="mt-1 text-body leading-relaxed text-text-2">{children}</div>
       </div>
     </aside>
   );

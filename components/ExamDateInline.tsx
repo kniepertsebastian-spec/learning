@@ -42,7 +42,7 @@ export function ExamDateInline({ certId, locale, goal }: { certId: string; local
 
   const shown = current ? new Date(`${current}T00:00:00Z`).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" }) : null;
   return (
-    <div className="mb-6 rounded-lg border border-border bg-surface px-4 py-3" data-testid="exam-date-inline">
+    <div className="rounded-2xl border border-border bg-surface px-5 py-4" data-testid="exam-date-inline">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <CalendarClock className="h-4 w-4 text-link" aria-hidden="true" />
         <span className="font-medium">{de ? "Prüfungstermin" : "Exam date"}:</span>

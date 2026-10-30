@@ -91,9 +91,9 @@ function withHeadingIds(base: Components): Components {
       const slug = slugify(nodeText(children).replace(/[`*_]/g, "").trim());
       const n = seen.get(slug) ?? 0;
       seen.set(slug, n + 1);
-      return <h2 id={n === 0 ? slug : `${slug}-${n + 1}`} className="mt-8 mb-2 scroll-mt-24 text-[22px] leading-tight font-semibold tracking-tight">{children}</h2>;
+      return <h2 id={n === 0 ? slug : `${slug}-${n + 1}`} className="mt-8 mb-2 scroll-mt-24 text-question leading-tight font-semibold tracking-tight">{children}</h2>;
     },
-    h3: ({ children }) => <h3 className="mt-5 mb-1.5 text-[17px] font-semibold">{children}</h3>,
+    h3: ({ children }) => <h3 className="mt-5 mb-1.5 text-lead font-semibold">{children}</h3>,
   };
 }
 

@@ -57,11 +57,11 @@ function PlanCard({ plan, members, canSetStatus, de }: { plan: OnboardingPlanRow
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-medium">{plan.name}</h3>
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-muted">
             {de ? "Mentor: " : "Mentor: "}
             {plan.mentor ? label(plan.mentor) : de ? "niemand (bitte neu zuordnen)" : "nobody (please reassign)"}
           </p>
-          {plan.description && <p className="mt-1 whitespace-pre-line text-sm text-foreground/80">{plan.description}</p>}
+          {plan.description && <p className="mt-1 whitespace-pre-line text-sm text-text-2">{plan.description}</p>}
         </div>
         <button type="button" className={btn} disabled={busy} onClick={() => void run(() => call(`/api/company/onboardings/${plan.id}`, "DELETE"))}>
           {de ? "Plan archivieren" : "Archive plan"}
@@ -77,7 +77,7 @@ function PlanCard({ plan, members, canSetStatus, de }: { plan: OnboardingPlanRow
           {plan.people.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2" data-testid="onboarding-person">
               <span className="min-w-0 flex-1 break-words">{label(p)}</span>
-              <span className="text-foreground/70">
+              <span className="text-muted">
                 {p.coursesDone}/{p.coursesTotal} {de ? "Kurse" : "courses"}
               </span>
               <span className="rounded-full border border-border px-2 py-0.5 text-xs" data-testid="onboarding-status">
@@ -120,7 +120,7 @@ function PlanCard({ plan, members, canSetStatus, de }: { plan: OnboardingPlanRow
         </button>
       </div>
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-600">
+        <p role="alert" className="mt-2 text-sm text-danger-text">
           {error}
         </p>
       )}
@@ -175,7 +175,7 @@ export function OnboardingsPanel({
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="onboardings-panel">
       <h2 className="text-lg font-medium">Onboarding</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Lege fest, welche Kurse neue Personen absolvieren müssen und wer sie als Mentor begleitet. Beim Start werden alle Kurse zugewiesen; der Mentor setzt den Stand „besprochen“ und, sobald alle Kurse abgeschlossen sind, „geprüft“."
           : "Define which courses new people must complete and who mentors them. Starting an onboarding assigns all courses; the mentor marks it “discussed” and, once every course is completed, “reviewed”."}
@@ -185,7 +185,7 @@ export function OnboardingsPanel({
         {plans.map((plan) => (
           <PlanCard key={plan.id} plan={plan} members={members} canSetStatus={(p) => isAdmin || p.mentor?.userId === currentUserId} de={de} />
         ))}
-        {plans.length === 0 && <li className="text-sm text-foreground/70">{de ? "Noch kein Onboarding-Plan." : "No onboarding plan yet."}</li>}
+        {plans.length === 0 && <li className="text-sm text-muted">{de ? "Noch kein Onboarding-Plan." : "No onboarding plan yet."}</li>}
       </ul>
 
       <form onSubmit={(e) => void create(e)} className="mt-6 flex flex-col gap-3 border-t border-border pt-4">
@@ -204,7 +204,7 @@ export function OnboardingsPanel({
         </label>
         <fieldset className="flex flex-col gap-1 text-sm">
           <legend className="mb-1">{de ? "Benötigte Kurse" : "Required courses"}</legend>
-          {paths.length === 0 && <span className="text-foreground/70">{de ? "Noch keine zuweisbaren Kurse." : "No assignable courses yet."}</span>}
+          {paths.length === 0 && <span className="text-muted">{de ? "Noch keine zuweisbaren Kurse." : "No assignable courses yet."}</span>}
           {paths.map((p) => (
             <label key={p.id} className="flex items-center gap-2">
               <input type="checkbox" checked={selected.includes(p.id)} onChange={(e) => setSelected((s) => (e.target.checked ? [...s, p.id] : s.filter((x) => x !== p.id)))} />
@@ -213,7 +213,7 @@ export function OnboardingsPanel({
           ))}
         </fieldset>
         {error && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-danger-text">
             {error}
           </p>
         )}

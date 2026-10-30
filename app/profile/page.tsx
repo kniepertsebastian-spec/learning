@@ -53,7 +53,7 @@ export default async function ProfilePage() {
   const item = (a: MyAssignment) => (
     <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm" data-testid="profile-course">
       <Link href={`/cert/${a.slug}`} className="font-medium hover:text-link">{a.learningPath}</Link>
-      <span className="text-foreground/70" data-testid="profile-course-status">
+      <span className="text-muted" data-testid="profile-course-status">
         {STATUS_LABEL[a.status][locale]}
         {a.status === "completed" && a.completedAt ? ` · ${fmt(a.completedAt)}` : ""}
         {a.status !== "completed" && a.dueAt ? ` · ${de ? "Frist" : "Due"} ${fmt(a.dueAt)}` : ""}
@@ -67,7 +67,7 @@ export default async function ProfilePage() {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold">{de ? "Mein Profil" : "My profile"}</h1>
-          <p className="mt-1 break-words text-sm text-foreground/70" data-testid="profile-identity">
+          <p className="mt-1 break-words text-sm text-muted" data-testid="profile-identity">
             {row?.name ? `${row.name} · ` : ""}{user.email}
             {membership ? ` · ${membership.organizationName} (${ROLE_LABEL[membership.role][locale]})` : ""}
           </p>
@@ -88,7 +88,7 @@ export default async function ProfilePage() {
           {progress.map(({ course, view }) =>
             view && (view.review || view.outlook) ? (
               <div key={course.id}>
-                <p className="mb-1 text-xs text-foreground/70">{course.name}</p>
+                <p className="mb-1 text-xs text-muted">{course.name}</p>
                 <ProgressReviewCard review={view.review} outlook={view.outlook} series={view.series} locale={locale} certSlug={course.slug} />
               </div>
             ) : null,
@@ -106,13 +106,13 @@ export default async function ProfilePage() {
 
       <section className="rounded-xl border border-border bg-surface p-5" data-testid="profile-courses">
         <h2 className="font-semibold">{de ? "Kurse deiner Firma" : "Your company's courses"}</h2>
-        <p className="mt-1 text-xs text-foreground/70">
+        <p className="mt-1 text-xs text-muted">
           {de
             ? "Das sind die Kurse, die deine Firma dir bereitgestellt hat. Deine Firma sieht dazu nur Status und Daten, keine Ergebnisse oder Antworten."
             : "These are the courses your company provided. Your company only sees status and dates, never results or answers."}
         </p>
         {assignments.length === 0 ? (
-          <p className="mt-3 text-sm text-foreground/70" data-testid="profile-empty">
+          <p className="mt-3 text-sm text-muted" data-testid="profile-empty">
             {membership
               ? de ? "Deine Firma hat dir noch keinen Kurs bereitgestellt." : "Your company has not provided any course yet."
               : de ? "Du gehörst keiner Firma an." : "You do not belong to a company."}

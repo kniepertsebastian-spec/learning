@@ -23,7 +23,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 function ErrorBox({ children }: { children: React.ReactNode }) {
   return (
-    <p role="alert" className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
+    <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
       {children}
     </p>
   );
@@ -69,12 +69,12 @@ export function EmailRequestForm({
   return (
     <Card title={title[locale]}>
       {state === "done" ? (
-        <p role="status" className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600" data-testid="request-done">
+        <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-text" data-testid="request-done">
           {doneMessage[locale]}
         </p>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">
-          <p className="text-sm text-foreground/70">{intro[locale]}</p>
+          <p className="text-sm text-muted">{intro[locale]}</p>
           {error && <ErrorBox>{error}</ErrorBox>}
           <label className="text-sm font-medium">
             {locale === "de" ? "E-Mail-Adresse" : "Email address"}
@@ -85,7 +85,7 @@ export function EmailRequestForm({
           </button>
         </form>
       )}
-      <p className="mt-4 text-center text-sm text-foreground/60">
+      <p className="mt-4 text-center text-sm text-subtle">
         <Link href="/login" className="text-link hover:underline">
           {locale === "de" ? "Zurück zur Anmeldung" : "Back to sign in"}
         </Link>
@@ -173,7 +173,7 @@ export function VerifyEmailButton({ token }: { token: string }) {
     <Card title={de ? "E-Mail-Adresse bestätigen" : "Confirm your email address"}>
       {state === "done" ? (
         <div className="flex flex-col gap-4">
-          <p role="status" className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600" data-testid="verified">
+          <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-text" data-testid="verified">
             {de ? "Deine E-Mail-Adresse ist bestätigt." : "Your email address is confirmed."}
           </p>
           <Link href="/login?verified=1" className={`${buttonClass} text-center`}>
@@ -183,7 +183,7 @@ export function VerifyEmailButton({ token }: { token: string }) {
       ) : (
         <div className="flex flex-col gap-4">
           {error && <ErrorBox>{error}</ErrorBox>}
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-muted">
             {de ? "Klicke, um deine E-Mail-Adresse zu bestätigen." : "Click to confirm your email address."}
           </p>
           <button type="button" onClick={verify} disabled={state === "pending"} className={buttonClass}>
@@ -226,7 +226,7 @@ export function ConfirmCompanyButton({ token }: { token: string }) {
     <Card title={de ? "Unternehmen bestätigen" : "Confirm your company"}>
       {state === "done" ? (
         <div className="flex flex-col gap-4">
-          <p role="status" className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600" data-testid="company-confirmed">
+          <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-text" data-testid="company-confirmed">
             {de ? `„${company}“ ist angelegt, du bist Firmen-Admin.` : `"${company}" was created, you are its company admin.`}
           </p>
           <Link href="/login?from=%2Fcompany" className={`${buttonClass} text-center`}>
@@ -236,7 +236,7 @@ export function ConfirmCompanyButton({ token }: { token: string }) {
       ) : (
         <div className="flex flex-col gap-4">
           {error && <ErrorBox>{error}</ErrorBox>}
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-muted">
             {de
               ? "Klicke, um zu bestätigen, dass diese Firmen-E-Mail-Adresse dir gehört. Danach wird das Unternehmen angelegt."
               : "Click to confirm that this company email address is yours. The company is created afterwards."}

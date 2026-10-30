@@ -25,7 +25,7 @@ const THEME_BOOTSTRAP_SCRIPT = `
 (function () {
   try {
     var stored = window.localStorage.getItem("certstudy-theme");
-    var dark = stored ? stored === "dark" : true;
+    var dark = stored === "dark" || stored === "light" ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
     document.documentElement.classList.toggle("dark", dark);
   } catch (e) {}
 })();
@@ -87,8 +87,8 @@ export const viewport: Viewport = {
   // Inhalt bis unter Notch und Home-Indikator; die Bedienelemente halten Abstand über env(safe-area-inset-*).
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F6F7F9" },
-    { media: "(prefers-color-scheme: dark)", color: "#0A0C10" },
+    { media: "(prefers-color-scheme: light)", color: "#F4F7F9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A1118" },
   ],
 };
 
@@ -119,6 +119,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang={locale}
+      // Das Theme-Skript setzt die Klasse `dark` vor der Hydration; der Unterschied ist gewollt.
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>

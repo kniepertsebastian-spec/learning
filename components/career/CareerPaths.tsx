@@ -42,7 +42,7 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold">{tr("Karrierepfade", "Career paths")}</h1>
-          <p className="mt-1 max-w-xl text-sm text-foreground/70">
+          <p className="mt-1 max-w-xl text-sm text-muted">
             {tr("Passende nächste Stellen aus deinem Profil, mit den Kursen, die dich dorthin bringen. Die Vorschläge entstehen mit KI; dafür werden Profil und Skills an den KI-Dienst geschickt.", "Suitable next jobs based on your profile, with the courses that get you there. Suggestions are created with AI; your profile and skills are sent to the AI service for this.")}
           </p>
         </div>
@@ -88,7 +88,7 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
                     {p.title}
                     {p.isTarget && <Badge tone="mint" data-testid="career-target-badge">{tr("Deine Zielrolle", "Your target role")}</Badge>}
                   </h2>
-                  <p className="mt-1 text-sm text-foreground/80">{p.fit}</p>
+                  <p className="mt-1 text-sm text-text-2">{p.fit}</p>
                   <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-subtle">
                     <span>{LEVEL[p.level as 1 | 2 | 3 | 4]?.[de ? 0 : 1]}</span>
                     {p.courseItems.length > 0 && <span>{done}/{p.courseItems.length} {tr("Kurse abgeschlossen", "courses completed")}</span>}
@@ -103,9 +103,9 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
                 <div className="flex flex-col gap-4 border-t border-border-subtle p-4 text-sm" data-testid="career-details">
                   <section>
                     <h3 className="font-semibold">{tr("Was die Stelle macht", "What the job involves")}</h3>
-                    <p className="mt-1 text-foreground/80">{p.summary}</p>
+                    <p className="mt-1 text-text-2">{p.summary}</p>
                     {p.tasks.length > 0 && (
-                      <ul className="mt-2 list-disc pl-5 text-foreground/80">
+                      <ul className="mt-2 list-disc pl-5 text-text-2">
                         {p.tasks.map((t, i) => (
                           <li key={i}>{t}</li>
                         ))}
@@ -128,7 +128,7 @@ export function CareerPaths({ initial, locale }: { initial: CareerView; locale: 
                               <Link href={`/cert/${c.slug}`} className="font-medium hover:text-link">{c.name}</Link>
                               <details className="mt-0.5 text-xs text-subtle" data-testid="career-why">
                                 <summary className="cursor-pointer text-link hover:underline">{tr("Warum dieser Kurs?", "Why this course?")}</summary>
-                                <div className="mt-1 flex flex-col gap-1 text-foreground/80">
+                                <div className="mt-1 flex flex-col gap-1 text-text-2">
                                   {c.closesGap && (
                                     <p>
                                       <span className="font-medium">{tr("Schließt diese Lücke", "Closes this gap")}:</span> {c.closesGap}

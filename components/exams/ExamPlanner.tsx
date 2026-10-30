@@ -156,7 +156,7 @@ export function ExamPlanner({ data }: { data: PlannerOverview }) {
                       {w.kind === "learn" && w.lessonIds.length > 0 && (
                         <div className="mt-auto">
                           <div className="mb-1 flex justify-between text-xs text-subtle tabular-nums"><span>{fmt(p.lessonsXofY, { x: w.doneLessons, y: w.lessonIds.length })}</span><span>{(w.plannedMinutes / 60).toFixed(1)} {p.hoursShort}</span></div>
-                          <ProgressBar value={(w.doneLessons / w.lessonIds.length) * 100} tone="mint" label={fmt(p.week, { n: w.kw })} />
+                          <ProgressBar value={(w.doneLessons / w.lessonIds.length) * 100} tone="accent" label={fmt(p.week, { n: w.kw })} />
                         </div>
                       )}
                     </Card>
@@ -179,7 +179,7 @@ export function ExamPlanner({ data }: { data: PlannerOverview }) {
               return (
                 <li key={c.id}>
                   <Card className="flex flex-wrap items-center gap-3 p-4" data-testid={`planner-cert-${c.slug}`}>
-                    <span className={cn("flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl font-mono text-[13px] font-semibold", TILE[c.color])} aria-hidden="true">{c.shortCode}</span>
+                    <span className={cn("flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl font-mono text-meta font-semibold", TILE[c.color])} aria-hidden="true">{c.shortCode}</span>
                     <div className="min-w-0 flex-1 basis-48">
                       <p className="truncate font-semibold">{c.name}</p>
                       <p className="text-xs text-subtle">{c.provider}{c.deliveryModes.length ? ` · ${c.deliveryModes.map((m) => modeText(m)).join(" / ")}` : ""}</p>

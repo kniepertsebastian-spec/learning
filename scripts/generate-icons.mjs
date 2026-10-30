@@ -1,22 +1,22 @@
-// Erzeugt alle App-Icons und iOS-Startbilder aus einem Entwurf (Marke: mintfarbenes „P“ auf dunklem Grund).
+// Erzeugt alle App-Icons und iOS-Startbilder aus einem Entwurf (Marke: indigofarbenes „K“ auf Navy).
 // Aufruf: node scripts/generate-icons.mjs   (benötigt `sharp`, kommt mit Next.js)
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 
-const BG = "#0A0C10"; // Dunkles Theme (--bg in globals.css)
-const MINT = "#1FCB8F"; // --accent
-const INK = "#04140D"; // --on-accent
+const BG = "#0A1118"; // Dunkles Theme (--bg in globals.css)
+const TILE = "#161B3A"; // Navy-Kachel der Marke
+const MARK = "#A9AFFF"; // --accent-text (dunkel)
 
-// „P“ auf einer 512er-Fläche, mittig; Maße so, dass es in der 80-%-Sicherheitszone (Mitte, Radius 205) bleibt.
-const GLYPH = `M168 128 H260 A84 84 0 0 1 260 296 H224 V384 H168 Z M224 184 V240 H260 A28 28 0 0 0 260 184 Z`;
+// „K“ auf einer 512er-Fläche, mittig; Maße so, dass es in der 80-%-Sicherheitszone (Mitte, Radius 205) bleibt.
+const GLYPH = `M160 128 H216 V240 L292 128 H358 L276 248 L362 384 H294 L224 284 V384 H160 Z`;
 const glyph = (fill, scale = 1) => `<g transform="translate(256 256) scale(${scale}) translate(-256 -256)"><path d="${GLYPH}" fill="${fill}" fill-rule="evenodd"/></g>`;
 
 const svg = (body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">${body}</svg>`;
 /** Rundes Symbol (purpose „any“): transparente Ecken. */
-const anySvg = svg(`<rect width="512" height="512" rx="112" fill="${MINT}"/>${glyph(INK)}`);
+const anySvg = svg(`<rect width="512" height="512" rx="112" fill="${TILE}"/>${glyph(MARK)}`);
 /** Maskable und Apple: bis an den Rand gefüllt, das System schneidet zu; das Zeichen bleibt in der Sicherheitszone. */
-const fullSvg = svg(`<rect width="512" height="512" fill="${MINT}"/>${glyph(INK, 0.9)}`);
+const fullSvg = svg(`<rect width="512" height="512" fill="${TILE}"/>${glyph(MARK, 0.9)}`);
 
 const out = "public/icons";
 mkdirSync(out, { recursive: true });
@@ -27,7 +27,7 @@ for (const size of [192, 512]) {
   writeFileSync(join(out, `icon-${size}x${size}.png`), await png(anySvg, size));
   writeFileSync(join(out, `maskable-${size}x${size}.png`), await png(fullSvg, size));
 }
-writeFileSync(join(out, "apple-touch-icon.png"), await sharp(Buffer.from(fullSvg)).resize(180, 180).flatten({ background: MINT }).png().toBuffer());
+writeFileSync(join(out, "apple-touch-icon.png"), await sharp(Buffer.from(fullSvg)).resize(180, 180).flatten({ background: TILE }).png().toBuffer());
 
 // favicon.ico mit 32×32 und 48×48 (PNG-Einträge sind in ICO erlaubt)
 const sizes = [32, 48];

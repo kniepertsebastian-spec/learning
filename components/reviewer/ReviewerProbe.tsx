@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ async function send(url: string, method: string, body?: unknown): Promise<{ ok: 
 
 /** Probe-Review für neue Prüfer: Fragen prüfen und fehlerhafte melden. Ergebnis nur „bestanden/nicht bestanden“, Einzelheiten sind intern. */
 export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOverviewJson; attempt: ProbeAttemptJson | null; locale: Locale }) {
+  const [confirm, confirmDialog] = useConfirm();
   const de = locale === "de";
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -53,7 +55,7 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
   }
 
   async function submit() {
-    if (!attempt || !window.confirm(de ? "Versuch abgeben? Danach lässt sich nichts mehr ändern." : "Submit the attempt? You cannot change anything afterwards.")) return;
+    if (!attempt || !(await confirm(de ? "Versuch abgeben? Danach lässt sich nichts mehr ändern." : "Submit the attempt? You cannot change anything afterwards."))) return;
     setBusy(true);
     setError(null);
     const r = await send(`/api/reviewer/probe/attempts/${attempt.id}/submit`, "POST");
@@ -92,6 +94,7 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
     const reportOf = (id: string) => attempt.reports.find((r) => r.itemId === id) ?? null;
     return (
       <div className="flex flex-col gap-4" data-testid="probe-attempt">
+        {confirmDialog}
         <div>
           <h2 className="text-lg font-semibold">{attempt.title}</h2>
           <p className="text-sm text-subtle">
@@ -115,6 +118,8 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
   }
 
   return (
+    <>
+    {confirmDialog}
     <div className="flex flex-col gap-4" data-testid="probe-start">
       <p className="text-sm text-subtle">
         {de
@@ -136,6 +141,7 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
         ))}
       </ul>
     </div>
+    </>
   );
 }
 

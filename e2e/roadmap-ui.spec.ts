@@ -113,9 +113,9 @@ test("Lernprofil-PDF: nur mit hinterlegter Zertifikatsprüfung, mit Prüfseite u
 
   await login(page, gateway.url, USERS.profileUser.email);
   await page.goto(`${gateway.url}/profile`);
-  page.once("dialog", (d) => void d.accept());
   const revoked = page.waitForResponse((r) => r.request().method() === "DELETE" && r.url().includes("/api/profile/export/"));
   await page.getByTestId("profile-export-revoke").first().click();
+  await page.getByTestId("confirm-accept").click();
   expect((await revoked).ok()).toBe(true);
   await page.goto(`${gateway.url}${verifyUrl}`);
   await expect(page.getByTestId("verify-status")).toHaveAttribute("data-valid", "false");
@@ -124,7 +124,10 @@ test("Lernprofil-PDF: nur mit hinterlegter Zertifikatsprüfung, mit Prüfseite u
   await page.goto(`${gateway.url}/profile`);
   await page.getByTestId("profile-job-title").fill("Cloud Engineer");
   await page.getByTestId("profile-target-role").fill("Site Reliability Engineer");
+  // Erst nach der gespeicherten Antwort weiter, sonst bricht der Seitenwechsel das Speichern ab.
+  const saved = page.waitForResponse((r) => r.url().endsWith("/api/profile") && r.request().method() !== "GET");
   await page.getByTestId("profile-save").click();
+  expect((await saved).ok()).toBe(true);
   await page.goto(`${gateway.url}/career`);
   await expect(page.getByTestId("career-roles")).toContainText("Cloud Engineer");
   await expect(page.getByTestId("career-roles")).toContainText("Site Reliability Engineer");

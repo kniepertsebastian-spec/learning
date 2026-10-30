@@ -61,7 +61,7 @@ export function FeedbackPanel({
 
   return (
     <div
-      className={cn("anim-fade-in rounded-2xl border p-5", correct ? "border-mint bg-mint-soft" : "border-danger bg-danger-soft")}
+      className={cn("anim-fade-in rounded-2xl border border-t-[3px] border-border bg-surface p-5", correct ? "border-t-success" : "border-t-danger")}
       role="status"
       aria-live="polite"
       data-testid="feedback-panel"
@@ -76,7 +76,7 @@ export function FeedbackPanel({
       </div>
       {!correct && note && <p className="mt-2 text-xs text-subtle" data-testid="platform-note">{note}</p>}
 
-      <div className="mt-3 text-[15px] leading-[1.65] text-foreground">
+      <div className="mt-3 text-body leading-[1.65] text-foreground">
         <RichText text={explanation} />
       </div>
 
@@ -84,7 +84,7 @@ export function FeedbackPanel({
 
       {wrongWithReason.length > 0 && (
         <div className="mt-4 border-t border-border pt-4" data-testid="option-rationales">
-          <p className="mb-2 text-[13px] font-semibold">{t.quiz.whyNot}</p>
+          <p className="mb-2 text-meta font-semibold">{t.quiz.whyNot}</p>
           <ul className="flex flex-col gap-2">
             {wrongWithReason.map(([i, reason]) => (
               <li key={i} className="flex gap-2.5 text-sm text-muted">

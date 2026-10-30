@@ -67,9 +67,9 @@ export function FileDropZone({
           setOver(false);
           if (!disabled) add([...e.dataTransfer.files]);
         }}
-        className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm ${over ? "border-accent bg-accent/5" : "border-border"} ${disabled ? "opacity-60" : ""}`}
+        className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm ${over ? "border-accent bg-accent-soft" : "border-border"} ${disabled ? "opacity-60" : ""}`}
       >
-        <Upload className="h-6 w-6 text-foreground/60" aria-hidden="true" />
+        <Upload className="h-6 w-6 text-subtle" aria-hidden="true" />
         <p>
           {multiple
             ? de ? "Dateien hierher ziehen oder" : "Drag files here or"
@@ -94,7 +94,7 @@ export function FileDropZone({
         />
       </div>
       {notice && (
-        <p role="alert" className="mt-2 text-sm text-red-600" data-testid={`${testId}-notice`}>
+        <p role="alert" className="mt-2 text-sm text-danger-text" data-testid={`${testId}-notice`}>
           {notice}
         </p>
       )}
@@ -103,9 +103,9 @@ export function FileDropZone({
           {files.map((f) => (
             <li key={`${f.name}-${f.size}`} className="flex items-center justify-between gap-2 px-3 py-1.5">
               <span className="flex min-w-0 items-center gap-2">
-                <FileText className="h-4 w-4 shrink-0 text-foreground/60" aria-hidden="true" />
+                <FileText className="h-4 w-4 shrink-0 text-subtle" aria-hidden="true" />
                 <span className="min-w-0 break-all">{f.name}</span>
-                <span className="shrink-0 text-xs text-foreground/60">{formatSize(f.size)}</span>
+                <span className="shrink-0 text-xs text-subtle">{formatSize(f.size)}</span>
               </span>
               <button type="button" disabled={disabled} onClick={() => onChange(files.filter((x) => x !== f))} className="shrink-0 rounded p-1 hover:bg-background" aria-label={`${f.name} ${de ? "entfernen" : "remove"}`}>
                 <X className="h-4 w-4" aria-hidden="true" />

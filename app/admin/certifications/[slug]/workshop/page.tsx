@@ -19,12 +19,12 @@ export default async function CourseWorkshopPage({ params }: { params: Promise<{
   const [cert] = await getDb().select({ id: certifications.id, name: certifications.name, kind: certifications.kind }).from(certifications).where(eq(certifications.slug, slug)).limit(1);
   return (
     <div className="flex flex-1 flex-col">
-      <Link href={`/admin/certifications/${slug}`} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground">
+      <Link href={`/admin/certifications/${slug}`} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {de ? "Zurück zur Kursverwaltung" : "Back to course admin"}
       </Link>
       {!cert || cert.kind !== "general" ? (
-        <p className="text-foreground/70">{de ? "Kurs nicht gefunden (interne Kurse einer Firma werden hier nicht bearbeitet)." : "Course not found (company-internal courses aren't edited here)."}</p>
+        <p className="text-muted">{de ? "Kurs nicht gefunden (interne Kurse einer Firma werden hier nicht bearbeitet)." : "Course not found (company-internal courses aren't edited here)."}</p>
       ) : (
         <>
           <h1 className="mb-1 text-2xl font-semibold">{de ? "Kurs bearbeiten" : "Edit course"}: {cert.name}</h1>

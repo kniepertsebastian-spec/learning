@@ -33,7 +33,7 @@ export function ContentLanguageSwitch({ available, translationPending = false }:
             lang={l}
             data-testid={`content-language-${l}`}
             className={cn(
-              "min-h-8 rounded px-2.5 text-[13px] font-semibold",
+              "min-h-8 rounded px-2.5 text-meta font-semibold",
               l === locale ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground",
             )}
           >

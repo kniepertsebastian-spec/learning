@@ -1,4 +1,4 @@
-import { BookOpen, CalendarClock, ChartColumn, FileText, GraduationCap, Home, Inbox, KeyRound, Layers, ListChecks, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { Award, BookOpen, CalendarClock, ChartColumn, FileText, GraduationCap, Home, Inbox, KeyRound, Layers, ListChecks, Settings, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
 import type { NavIcon } from "@/lib/shell/nav";
 
 export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
@@ -14,6 +14,8 @@ export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   key: KeyRound,
   inbox: Inbox,
   layers: Layers,
+  award: Award,
+  settings: Settings,
 };
 
 export const ContextIcon = GraduationCap;

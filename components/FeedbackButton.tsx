@@ -66,7 +66,7 @@ export function FeedbackButton({ certificationId, domainId = null, sectionId = n
       <p className="font-medium">{de ? "Was ist dir aufgefallen?" : "What did you notice?"}</p>
       <fieldset className="flex flex-wrap gap-2" aria-label={de ? "Art des Problems" : "Kind of problem"}>
         {CATEGORIES.map((c) => (
-          <label key={c.value} className={`cursor-pointer rounded-md border px-2.5 py-1 text-xs ${category === c.value ? "border-accent bg-accent/10 text-link" : "border-border-strong"}`}>
+          <label key={c.value} className={`cursor-pointer rounded-md border px-2.5 py-1 text-xs ${category === c.value ? "border-accent bg-accent-soft text-link" : "border-border-strong"}`}>
             <input type="radio" name="feedback-category" value={c.value} checked={category === c.value} onChange={() => setCategory(c.value)} className="sr-only" data-testid={`feedback-category-${c.value}`} />
             {de ? c.de : c.en}
           </label>

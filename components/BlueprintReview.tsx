@@ -59,9 +59,9 @@ function updateObjective(
 }
 
 function confidenceColor(confidence: number): string {
-  if (confidence < 0.5) return "bg-red-500/10 text-red-600";
-  if (confidence < 0.8) return "bg-yellow-500/10 text-yellow-600";
-  return "bg-green-500/10 text-green-600";
+  if (confidence < 0.5) return "bg-danger-soft text-danger-text";
+  if (confidence < 0.8) return "bg-warning-soft text-warning-text";
+  return "bg-success-soft text-success-text";
 }
 
 // Muss exakt lowConfidenceObjectiveKey() aus lib/server/admin/blueprint.ts
@@ -193,7 +193,7 @@ export function BlueprintReview({
   return (
     <div className="flex flex-col gap-4">
       {locked && (
-        <div className="flex items-center gap-2 rounded-md bg-green-500/10 p-3 text-sm text-green-700">
+        <div className="flex items-center gap-2 rounded-md bg-success-soft p-3 text-sm text-success-text">
           <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
           {status === "approved"
             ? locale === "de"
@@ -206,7 +206,7 @@ export function BlueprintReview({
       )}
 
       {truncated && (
-        <p className="flex items-center gap-1.5 rounded-md bg-yellow-500/10 p-2 text-xs text-yellow-700">
+        <p className="flex items-center gap-1.5 rounded-md bg-warning-soft p-2 text-xs text-warning-text">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {locale === "de"
             ? "Das Dokument war zu lang und wurde für die Extraktion gekürzt."
@@ -225,40 +225,40 @@ export function BlueprintReview({
           diff.addedObjectives.length === 0 &&
           diff.removedObjectives.length === 0 &&
           diff.changedObjectives.length === 0 ? (
-            <p className="text-xs text-foreground/60">
+            <p className="text-xs text-subtle">
               {locale === "de" ? "Keine Unterschiede zum aktuellen Stand." : "No differences from the current state."}
             </p>
           ) : (
             <ul className="space-y-1 text-xs">
               {diff.addedDomains.map((name) => (
-                <li key={`ad-${name}`} className="text-green-700">
+                <li key={`ad-${name}`} className="text-success-text">
                   + {locale === "de" ? "Neue Domain" : "New domain"}: {name}
                 </li>
               ))}
               {diff.removedDomains.map((name) => (
-                <li key={`rd-${name}`} className="text-red-600">
+                <li key={`rd-${name}`} className="text-danger-text">
                   − {locale === "de" ? "Domain entfernt" : "Domain removed"}: {name}
                 </li>
               ))}
               {diff.addedObjectives.map((o) => (
-                <li key={`ao-${o.domainName}-${o.code}`} className="text-green-700">
+                <li key={`ao-${o.domainName}-${o.code}`} className="text-success-text">
                   + {o.code} {o.title} ({o.domainName})
                 </li>
               ))}
               {diff.removedObjectives.map((o) => (
-                <li key={`ro-${o.id}`} className="text-red-600">
+                <li key={`ro-${o.id}`} className="text-danger-text">
                   − {o.code} {o.title} ({o.domainName})
                 </li>
               ))}
               {diff.changedObjectives.map((o, i) => (
-                <li key={`co-${o.id}-${o.field}-${i}`} className="text-yellow-700">
+                <li key={`co-${o.id}-${o.field}-${i}`} className="text-warning-text">
                   ~ {o.code} ({o.domainName}): {o.field} {locale === "de" ? "geändert" : "changed"}
                 </li>
               ))}
             </ul>
           )}
           {(diff.changedObjectives.length > 0 || diff.removedObjectives.length > 0) && (
-            <p className="mt-2 text-xs text-foreground/50">
+            <p className="mt-2 text-xs text-faint">
               {locale === "de"
                 ? "Bei Freigabe werden Lessons/Fragen der geänderten oder entfernten Objectives als veraltet markiert."
                 : "Approving this will mark lessons/questions of changed or removed objectives as stale."}
@@ -268,7 +268,7 @@ export function BlueprintReview({
       )}
 
       {staleResult && (staleResult.lessonsMarkedStale > 0 || staleResult.questionsMarkedStale > 0) && (
-        <p className="rounded-md bg-yellow-500/10 p-2 text-xs text-yellow-700">
+        <p className="rounded-md bg-warning-soft p-2 text-xs text-warning-text">
           {locale === "de"
             ? `${staleResult.lessonsMarkedStale} Lesson(s) und ${staleResult.questionsMarkedStale} Frage(n) als veraltet markiert - Neugenerierung erzeugt sie gezielt neu.`
             : `${staleResult.lessonsMarkedStale} lesson(s) and ${staleResult.questionsMarkedStale} question(s) marked stale - regeneration will target just those.`}
@@ -276,7 +276,7 @@ export function BlueprintReview({
       )}
 
       {errors.length > 0 && (
-        <div className="rounded-md border border-red-300 bg-red-500/10 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-danger/40 bg-danger-soft p-3 text-sm text-danger-text">
           <p className="flex items-center gap-1.5 font-medium">
             <AlertTriangle className="h-4 w-4" aria-hidden="true" />
             {locale === "de" ? "Fehler (blockieren die Freigabe)" : "Errors (block approval)"} ({errors.length})
@@ -290,7 +290,7 @@ export function BlueprintReview({
       )}
 
       {warnings.length > 0 && (
-        <div className="rounded-md bg-yellow-500/10 p-3 text-sm text-yellow-700">
+        <div className="rounded-md bg-warning-soft p-3 text-sm text-warning-text">
           <p className="font-medium">
             {locale === "de" ? "Hinweise" : "Warnings"} ({warnings.length})
           </p>
@@ -307,16 +307,16 @@ export function BlueprintReview({
           <h2 className="mb-3 font-medium">{locale === "de" ? "Originalquelle" : "Original source"}</h2>
           <div className="max-h-[70vh] overflow-y-auto rounded-md bg-background p-3 text-xs">
             {pages.length === 0 ? (
-              <p className="text-foreground/60">
+              <p className="text-subtle">
                 {locale === "de" ? "Kein extrahierter Seitentext vorhanden." : "No extracted page text available."}
               </p>
             ) : (
               pages.map((page) => (
                 <div key={page.pageNumber} className="mb-4">
-                  <p className="mb-1 font-mono font-medium text-foreground/50">
+                  <p className="mb-1 font-mono font-medium text-faint">
                     {locale === "de" ? "Seite" : "Page"} {page.pageNumber}
                   </p>
-                  <p className="whitespace-pre-wrap text-foreground/80">{page.content}</p>
+                  <p className="whitespace-pre-wrap text-text-2">{page.content}</p>
                 </div>
               ))
             )}
@@ -330,7 +330,7 @@ export function BlueprintReview({
 
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Zertifizierung" : "Certification"}
               </span>
               <input
@@ -341,7 +341,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Anbieter" : "Provider"}
               </span>
               <input
@@ -352,7 +352,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Exam-Code" : "Exam code"}
               </span>
               <input
@@ -366,7 +366,7 @@ export function BlueprintReview({
 
           <div className="grid gap-3 sm:grid-cols-4">
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Fragenanzahl" : "Question count"}
               </span>
               <input
@@ -385,7 +385,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Zeitlimit (Min.)" : "Time limit (min)"}
               </span>
               <input
@@ -404,7 +404,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Bestehensgrenze" : "Passing score"}
               </span>
               <input
@@ -423,7 +423,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Skala" : "Scale"}
               </span>
               <input
@@ -439,7 +439,7 @@ export function BlueprintReview({
           </div>
 
           <label className="block text-xs">
-            <span className="mb-1 block font-medium text-foreground/70">
+            <span className="mb-1 block font-medium text-muted">
               {locale === "de" ? "Vorgeschlagener Slug" : "Suggested slug"}
             </span>
             <input
@@ -509,7 +509,7 @@ export function BlueprintReview({
                         >
                           {Math.round(objective.confidence * 100)}%
                         </span>
-                        <span className="text-[10px] text-foreground/50">{objective.locator}</span>
+                        <span className="text-[10px] text-faint">{objective.locator}</span>
                       </div>
                       <textarea
                         value={objective.description}
@@ -525,7 +525,7 @@ export function BlueprintReview({
                         className="mt-1.5 w-full rounded border border-border bg-surface px-1.5 py-1 text-xs disabled:opacity-60"
                       />
                       {objective.confidence < 0.5 && (
-                        <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-red-600">
+                        <label className="mt-1.5 flex items-center gap-1.5 text-2xs text-danger-text">
                           <input
                             type="checkbox"
                             disabled={locked}
@@ -584,7 +584,7 @@ export function BlueprintReview({
             {locale === "de" ? "Blueprint freigeben" : "Approve blueprint"}
           </button>
           {savedNote && (
-            <span className="flex items-center gap-1 text-xs text-green-600">
+            <span className="flex items-center gap-1 text-xs text-success-text">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               {savedNote}
             </span>
@@ -592,7 +592,7 @@ export function BlueprintReview({
         </div>
       )}
 
-      {requestError && <p className="text-sm text-red-500">{requestError}</p>}
+      {requestError && <p className="text-sm text-danger-text">{requestError}</p>}
     </div>
   );
 }

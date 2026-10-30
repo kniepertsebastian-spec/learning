@@ -25,11 +25,11 @@ export function TocList({ entries }: { entries: TocEntry[] }) {
   if (entries.length === 0) return null;
   return (
     <nav aria-label={t.lesson_page.onThisPage} data-testid="toc">
-      <p className="mb-2 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">{t.lesson_page.onThisPage}</p>
+      <p className="mb-2 text-2xs font-semibold tracking-overline text-faint uppercase">{t.lesson_page.onThisPage}</p>
       <ul className="border-l border-border-subtle">
         {entries.map((e) => (
           <li key={e.id}>
-            <a href={`#${e.id}`} aria-current={active === e.id ? "location" : undefined} className={cn("-ml-px block border-l-2 py-1.5 pl-3 text-[13px]", active === e.id ? "border-mint text-foreground" : "border-transparent text-subtle hover:text-foreground")}>
+            <a href={`#${e.id}`} aria-current={active === e.id ? "location" : undefined} className={cn("-ml-px block border-l-2 py-1.5 pl-3 text-meta", active === e.id ? "border-mint text-foreground" : "border-transparent text-subtle hover:text-foreground")}>
               {e.text}
             </a>
           </li>

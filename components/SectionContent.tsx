@@ -137,7 +137,7 @@ export function SectionContent({
       <ReadingProgress />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Breadcrumb" className="flex min-w-0 flex-wrap items-center gap-1.5 text-[13px] text-subtle">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 flex-wrap items-center gap-1.5 text-meta text-subtle">
           <Link href={offline ? `/cert/${certSlug}/offline` : "/"} className="hover:text-foreground">{lp.overview}</Link>
           <span aria-hidden="true">/</span>
           <Link href={`/cert/${certSlug}`} className="hover:text-foreground">{courseName ?? certSlug}</Link>
@@ -190,7 +190,7 @@ export function SectionContent({
                 {isHandsOn(content) && <Badge tone="mint">{lp.handsOn}</Badge>}
                 <Badge tone="info">{objectiveCode}</Badge>
               </div>
-              <h1 className="text-[28px] leading-[1.15] font-semibold tracking-tight sm:text-[38px]">{sectionTitle[locale]}</h1>
+              <h1 className="text-stat leading-[1.15] font-semibold tracking-tight sm:text-[38px]">{sectionTitle[locale]}</h1>
               <p className="mt-2 text-sm text-subtle">{objectiveCode} · {objectiveTitle}</p>
             </header>
 
@@ -245,7 +245,7 @@ export function SectionContent({
             <LessonPhases quizStarted={showQuiz} completed={completed} hasEvaluation={hasQuiz || !quizEnabled} />
 
             <>
-            <div className="text-base leading-[1.7] text-text-2 [&_p:first-child]:text-[17px] [&_p]:my-3 [&_p]:whitespace-normal">
+            <div className="text-base leading-[1.7] text-text-2 [&_p:first-child]:text-lead [&_p]:my-3 [&_p]:whitespace-normal">
               <RichText text={content} headingIds />
             </div>
 

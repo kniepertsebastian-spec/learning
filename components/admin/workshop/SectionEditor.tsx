@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Save } from "lucide-react";
 import * as React from "react";
 import { RichText } from "@/components/RichText";
@@ -79,6 +80,7 @@ export function SectionEditor({
   /** Lektion löschen ist möglich, sobald dies gesetzt ist. */
   onDeleted?: () => void;
 }) {
+  const [confirm, confirmDialog] = useConfirm();
   const tr = useTr(locale);
   const [saved, setSaved] = React.useState<{ snapshot: SectionSnapshot; fingerprint: string } | null>(null);
   const [draft, setDraft] = React.useState<Draft | null>(sectionId ? null : EMPTY);
@@ -120,7 +122,7 @@ export function SectionEditor({
 
   async function remove() {
     if (!sectionId || !onDeleted) return;
-    if (!window.confirm(tr("Diese Lektion endgültig löschen? Lektionstext, Merkzettel, Simulationen und der Lernfortschritt dazu gehen verloren. Der letzte Stand bleibt in der Versionsgeschichte.", "Delete this lesson for good? Its text, cheat sheet, simulations and learner progress are lost. The last version stays in the history."))) return;
+    if (!(await confirm(tr("Diese Lektion endgültig löschen? Lektionstext, Merkzettel, Simulationen und der Lernfortschritt dazu gehen verloren. Der letzte Stand bleibt in der Versionsgeschichte.", "Delete this lesson for good? Its text, cheat sheet, simulations and learner progress are lost. The last version stays in the history.")))) return;
     setBusy(true);
     const r = await api(`/api/admin/certifications/${certId}/workshop/sections/${sectionId}`, { method: "DELETE" });
     setBusy(false);
@@ -175,6 +177,8 @@ export function SectionEditor({
   const otherLang: Lang = lang === "de" ? "en" : "de";
 
   return (
+    <>
+    {confirmDialog}
     <div className="flex flex-col gap-4" data-testid="section-editor">
       <div className="flex flex-wrap items-center gap-2">
         <SegmentedControl value={lang} onChange={setLang} options={[{ value: "de", label: "Deutsch" }, { value: "en", label: "English" }]} label={tr("Sprache", "Language")} />
@@ -234,7 +238,7 @@ export function SectionEditor({
           <DiffView before={sectionText(saved.snapshot, proposal.locale)} after={sectionText(proposal.snapshot, proposal.locale)} locale={locale} testId="ai-diff" />
           <details className="rounded-xl border border-border">
             <summary className="cursor-pointer px-3 py-2 text-sm font-medium">{tr("Vorschau des Vorschlags (so sähen es Lernende)", "Preview of the proposal (as learners would see it)")}</summary>
-            <div className="max-h-[60vh] overflow-y-auto border-t border-border bg-background p-4 text-[15px] leading-relaxed" data-testid="ai-preview">
+            <div className="max-h-[60vh] overflow-y-auto border-t border-border bg-background p-4 text-body leading-relaxed" data-testid="ai-preview">
               <RichText text={proposal.snapshot.content[proposal.locale]} headingIds />
             </div>
           </details>
@@ -273,7 +277,7 @@ export function SectionEditor({
         {view !== "edit" && (
           <div className="min-w-0">
             <p className="mb-1 text-sm font-medium">{tr("Vorschau (so sehen es Lernende)", "Preview (as learners see it)")}</p>
-            <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-background p-4 text-[15px] leading-relaxed" data-testid="section-preview">
+            <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-background p-4 text-body leading-relaxed" data-testid="section-preview">
               <RichText text={content} headingIds />
             </div>
           </div>
@@ -338,6 +342,7 @@ export function SectionEditor({
         />
       )}
     </div>
+    </>
   );
 }
 

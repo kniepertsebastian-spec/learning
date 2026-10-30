@@ -39,7 +39,7 @@ export function AcceptInvitationButton({
   return (
     <div className="flex flex-col gap-3">
       {error && (
-        <p role="alert" className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
+        <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
           {error}
         </p>
       )}

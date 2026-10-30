@@ -90,7 +90,7 @@ export function CompletionChart({ periods, granularity, locale, title }: { perio
           {ticks.map((t) => (
             <g key={t}>
               <line x1={pad.left} x2={w - pad.right} y1={y(t)} y2={y(t)} stroke="var(--border-subtle)" strokeWidth={1} />
-              <text x={pad.left - 6} y={y(t)} dy="0.32em" textAnchor="end" className="fill-faint text-[11px]">
+              <text x={pad.left - 6} y={y(t)} dy="0.32em" textAnchor="end" className="fill-faint text-2xs">
                 {t}
               </text>
             </g>
@@ -103,7 +103,7 @@ export function CompletionChart({ periods, granularity, locale, title }: { perio
                 <path d={bar(x0, p.final_exam_passed)} fill={series[0].color} />
                 <path d={bar(x0 + barW + 2, p.certified)} fill={series[1].color} />
                 {i % labelEvery === 0 && (
-                  <text x={pad.left + i * band + band / 2} y={height - 8} textAnchor="middle" className="fill-faint text-[11px]">
+                  <text x={pad.left + i * band + band / 2} y={height - 8} textAnchor="middle" className="fill-faint text-2xs">
                     {periodLabel(p.start, granularity, locale)}
                   </text>
                 )}
@@ -117,7 +117,7 @@ export function CompletionChart({ periods, granularity, locale, title }: { perio
         )}
         {tip && hover !== null && width !== null && (
           <div
-            className="pointer-events-none absolute z-10 rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-lg"
+            className="pointer-events-none absolute z-10 rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-overlay"
             // Neben den Zeitraum, nie darüber: die Säulen, die man ansieht, bleiben sichtbar.
             style={{ left: pad.left + hover * band + band / 2 > w / 2 ? Math.max(0, pad.left + hover * band - 188) : Math.min(w - 180, pad.left + (hover + 1) * band + 8), top: 0, width: 180 }}
             role="tooltip"

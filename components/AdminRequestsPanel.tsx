@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CATALOG_STATUS_LABELS, REQUEST_STATUS_LABELS, SETTABLE_REQUEST_STATUSES } from "@/lib/course-requests";
@@ -39,6 +40,7 @@ export type EntitlementView = {
 };
 
 function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en" }) {
+  const [confirm, confirmDialog] = useConfirm();
   const router = useRouter();
   const de = locale === "de";
   const [note, setNote] = useState("");
@@ -47,17 +49,19 @@ function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en
     const hint = de
       ? `Freigabe „${e.courseName}“ für ${e.organizationName} entziehen? Bestehende Zuweisungen (${e.openAssignments} offen) bleiben bestehen, neue sind nicht mehr möglich.`
       : `Revoke release of "${e.courseName}" for ${e.organizationName}? Existing assignments (${e.openAssignments} open) stay, new ones are no longer possible.`;
-    if (!window.confirm(hint)) return;
+    if (!(await confirm(hint))) return;
     const err = await call("/api/admin/entitlements", "DELETE", { organizationId: e.organizationId, certificationId: e.certificationId, note: note || null });
     setError(err);
     if (!err) router.refresh();
   }
   return (
+    <>
+    {confirmDialog}
     <li className="rounded-md border border-border bg-background p-3 text-sm" data-testid="admin-entitlement-row">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span>
           <span className="font-medium">{e.courseName}</span>
-          <span className="ml-2 text-xs text-foreground/70">
+          <span className="ml-2 text-xs text-muted">
             {e.organizationName} · {new Date(e.releasedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })} · {de ? "offene Zuweisungen" : "open assignments"}: {e.openAssignments}
           </span>
         </span>
@@ -77,11 +81,12 @@ function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en
         </span>
       </div>
       {error && (
-        <p role="alert" className="mt-2 text-xs text-red-500">
+        <p role="alert" className="mt-2 text-xs text-danger-text">
           {error}
         </p>
       )}
     </li>
+    </>
   );
 }
 
@@ -117,15 +122,15 @@ function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: Ca
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span>
           <span className="font-medium">{r.courseName ?? r.wishTitle}</span>
-          <span className="ml-2 text-xs text-foreground/70">
+          <span className="ml-2 text-xs text-muted">
             {r.organizationName} · {r.requesterName ?? r.requesterEmail ?? "–"} · {new Date(r.createdAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}
           </span>
         </span>
-        <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-link" data-testid="admin-request-status">
+        <span className="rounded bg-accent-soft px-2 py-0.5 text-xs font-medium text-link" data-testid="admin-request-status">
           {REQUEST_STATUS_LABELS[r.status][locale]}
         </span>
       </div>
-      {r.wishDescription && <p className="mt-1 text-xs text-foreground/70">{r.wishDescription}</p>}
+      {r.wishDescription && <p className="mt-1 text-xs text-muted">{r.wishDescription}</p>}
       {r.statusNote && <p className="mt-1 text-xs">{r.statusNote}</p>}
       {!done && (
         <div className="mt-3 flex flex-col gap-2">
@@ -169,12 +174,12 @@ function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: Ca
             </button>
           </div>
           {r.certificationId && r.courseCatalogStatus !== "approved" && (
-            <p className="text-xs text-red-500">{de ? "Der angefragte Lernpfad ist noch nicht fachlich freigegeben." : "The requested course has not been approved by an expert yet."}</p>
+            <p className="text-xs text-danger-text">{de ? "Der angefragte Lernpfad ist noch nicht fachlich freigegeben." : "The requested course has not been approved by an expert yet."}</p>
           )}
         </div>
       )}
       {error && (
-        <p role="alert" className="mt-2 text-xs text-red-500">
+        <p role="alert" className="mt-2 text-xs text-danger-text">
           {error}
         </p>
       )}
@@ -199,7 +204,7 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
       <span className="flex-1">
         <span className="font-medium">{c.name}</span>
         {c.approvedAt && (
-          <span className="ml-2 text-xs text-foreground/70">
+          <span className="ml-2 text-xs text-muted">
             {de ? "geprüft von" : "reviewed by"} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB", { timeZone: "UTC" })}
             {c.versionLabel ? ` · ${de ? "Version" : "Version"} ${c.versionLabel}` : ""}
           </span>
@@ -238,7 +243,7 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
         {de ? "Speichern" : "Save"}
       </button>
       {error && (
-        <span role="alert" className="text-xs text-red-500">
+        <span role="alert" className="text-xs text-danger-text">
           {error}
         </span>
       )}
@@ -255,7 +260,7 @@ export function AdminRequestsPanel({ requests, catalog, entitlements, locale }: 
       <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-requests">
         <h2 className="text-lg font-medium">{de ? "Anfragen" : "Requests"}</h2>
         {requests.length === 0 ? (
-          <p className="mt-2 text-sm text-foreground/70">{de ? "Keine Anfragen." : "No requests."}</p>
+          <p className="mt-2 text-sm text-muted">{de ? "Keine Anfragen." : "No requests."}</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-3">
             {requests.map((r) => (
@@ -266,13 +271,13 @@ export function AdminRequestsPanel({ requests, catalog, entitlements, locale }: 
       </section>
       <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-entitlements">
         <h2 className="text-lg font-medium">{de ? "Erteilte Firmenfreigaben" : "Releases granted to companies"}</h2>
-        <p className="mt-1 text-sm text-foreground/70">
+        <p className="mt-1 text-sm text-muted">
           {de
             ? "Beim Entziehen kann die Firma den Lernpfad nicht mehr neu zuweisen. Bestehende Zuweisungen und Lernfortschritt bleiben."
             : "After revoking, the company can no longer assign the course. Existing assignments and progress stay."}
         </p>
         {entitlements.length === 0 ? (
-          <p className="mt-2 text-sm text-foreground/70">{de ? "Keine Freigaben." : "No releases."}</p>
+          <p className="mt-2 text-sm text-muted">{de ? "Keine Freigaben." : "No releases."}</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-2">
             {entitlements.map((e) => (
@@ -283,7 +288,7 @@ export function AdminRequestsPanel({ requests, catalog, entitlements, locale }: 
       </section>
       <section className="rounded-lg border border-border bg-surface p-6" data-testid="admin-catalog">
         <h2 className="text-lg font-medium">{de ? "Allgemeine Lernpfade: fachliche Prüfung" : "General courses: expert review"}</h2>
-        <p className="mt-1 text-sm text-foreground/70">
+        <p className="mt-1 text-sm text-muted">
           {de
             ? "Nur freigegebene Lernpfade lassen sich für Firmen freigeben und zuweisen. Die Freigabe nennt die prüfende Person (auch extern) und das Datum."
             : "Only approved courses can be released to companies and assigned. Approval records the reviewer (also external) and the date."}

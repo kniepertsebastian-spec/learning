@@ -36,7 +36,7 @@ export default async function ExamAttemptDetailPage({
   if (!session?.user?.id) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
         </p>
       </div>
@@ -65,7 +65,7 @@ export default async function ExamAttemptDetailPage({
     <div className="mx-auto flex max-w-2xl flex-1 flex-col py-6">
       <Link
         href={`/cert/${slug}/history`}
-        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {locale === "de" ? "Zurück zu meinen Prüfungen" : "Back to my exams"}
@@ -74,23 +74,23 @@ export default async function ExamAttemptDetailPage({
       <div className="mb-6 rounded-lg border border-border bg-surface p-6 text-center">
         <p className="mb-1 text-4xl font-bold">{scoring.overallScore}%</p>
         <p className="mb-1 text-lg font-medium">{scoring.readinessLabel}</p>
-        <p className="mb-2 text-xs text-foreground/50">
+        <p className="mb-2 text-xs text-faint">
           {detail.completedAt?.toLocaleDateString(locale === "de" ? "de-DE" : "en-US")} ·{" "}
           {formatDuration(detail.durationSeconds, locale)}
         </p>
 
         {previousScore === null ? (
-          <p className="text-xs text-foreground/50">
+          <p className="text-xs text-faint">
             {locale === "de" ? "Kein vorheriger Versuch zum Vergleich." : "No previous attempt to compare."}
           </p>
         ) : (
           <p
             className={`flex items-center justify-center gap-1 text-xs font-medium ${
               delta !== null && delta > 0
-                ? "text-green-600"
+                ? "text-success-text"
                 : delta !== null && delta < 0
-                  ? "text-red-600"
-                  : "text-foreground/60"
+                  ? "text-danger-text"
+                  : "text-subtle"
             }`}
           >
             {delta !== null && delta > 0 && <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />}
@@ -117,21 +117,21 @@ export default async function ExamAttemptDetailPage({
       )}
 
       {scoring.weakObjectives.length > 0 && (
-        <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-          <h2 className="mb-3 font-medium text-yellow-800">
+        <div className="mb-6 rounded-lg border border-warning/40 bg-warning-soft p-4">
+          <h2 className="mb-3 font-medium text-warning-text">
             {locale === "de" ? "Schwache Bereiche" : "Weak areas"}
           </h2>
           <ul className="flex flex-col gap-2">
             {scoring.weakObjectives.map((w) => {
               const isRepeated = repeatedWeakObjectiveCodes.includes(w.objectiveCode);
               return (
-                <li key={w.objectiveId} className="text-sm text-yellow-800">
+                <li key={w.objectiveId} className="text-sm text-warning-text">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="font-mono text-xs">{w.objectiveCode}</span>
                     <span>{w.objectiveTitle}</span>
                     <span className="text-xs">({w.examScore}%)</span>
                     {isRepeated && (
-                      <span className="flex items-center gap-1 rounded-full bg-yellow-200 px-1.5 py-0.5 text-[10px] font-medium text-yellow-900">
+                      <span className="flex items-center gap-1 rounded-full bg-warning-soft px-1.5 py-0.5 text-[10px] font-medium text-warning-text">
                         <RotateCcw className="h-2.5 w-2.5" aria-hidden="true" />
                         {locale === "de" ? "wiederholt schwach" : "repeatedly weak"}
                       </span>
@@ -153,7 +153,7 @@ export default async function ExamAttemptDetailPage({
       {scoring.recommendations.length > 0 && (
         <div className="mb-6 rounded-lg border border-border bg-surface p-4">
           <h2 className="mb-2 font-medium">{locale === "de" ? "Empfehlungen" : "Recommendations"}</h2>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-foreground/70">
+          <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
             {scoring.recommendations.map((r, i) => (
               <li key={i}>{r}</li>
             ))}

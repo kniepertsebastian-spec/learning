@@ -304,14 +304,14 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           {locale === "de" ? "Kurs automatisch generieren" : "Generate course automatically"}
         </h2>
       </div>
-      <p className="mb-4 text-sm text-foreground/60">
+      <p className="mb-4 text-sm text-subtle">
         {locale === "de"
           ? "Ein Klick erzeugt Blueprint, Lektionen und Fragen vollautomatisch aus offiziellen Quellen (course_generation.md)."
           : "One click generates the blueprint, lessons, and questions fully automatically from official sources (course_generation.md)."}
       </p>
 
       {!online && (
-        <p className="mb-3 text-xs text-amber-600 dark:text-amber-400">
+        <p className="mb-3 text-xs text-warning-text dark:text-warning-text">
           {locale === "de"
             ? "Die Kursgenerierung benötigt eine Verbindung."
             : "Course generation requires a connection."}
@@ -414,7 +414,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
 
           {step === 3 && summary && (
             <dl className="space-y-2 rounded-xl border border-border bg-surface-inset p-4 text-sm" data-testid="wizard-summary">
-              <p className="text-xs font-semibold tracking-[0.07em] text-faint uppercase">{ac.reviewTitle}</p>
+              <p className="text-xs font-semibold tracking-overline text-faint uppercase">{ac.reviewTitle}</p>
               <div><dt className="text-xs text-subtle">{ac.fieldTitle}</dt><dd className="font-medium">{summary.title}</dd></div>
               <div><dt className="text-xs text-subtle">{ac.fieldProvider}</dt><dd>{summary.provider}{summary.version ? ` · ${summary.version}` : ""}</dd></div>
               <div><dt className="text-xs text-subtle">{ac.fieldGroup}</dt><dd>{summary.group}</dd></div>
@@ -449,14 +449,14 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
             </span>
             {active && <Loader2 className="h-3.5 w-3.5 animate-spin text-link" aria-hidden="true" />}
           </div>
-          {job.message && <p className="text-xs text-foreground/60">{job.message}</p>}
+          {job.message && <p className="text-xs text-subtle">{job.message}</p>}
 
           {objectives.length > 0 && (
             <div>
               <button
                 type="button"
                 onClick={() => setShowObjectiveCosts((v) => !v)}
-                className="text-xs text-foreground/50 underline decoration-dotted hover:text-foreground/80"
+                className="text-xs text-faint underline decoration-dotted hover:text-text-2"
               >
                 {locale === "de"
                   ? `${validCount}/${objectives.length} Lernziel(e) fertig${failedCount > 0 ? `, ${failedCount} fehlgeschlagen` : ""}`
@@ -470,7 +470,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                 <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border">
                   <table className="w-full text-left text-xs">
                     <thead className="sticky top-0 bg-surface">
-                      <tr className="text-foreground/50">
+                      <tr className="text-faint">
                         <th className="px-2 py-1 font-medium">Code</th>
                         <th className="px-2 py-1 font-medium">{locale === "de" ? "Status" : "Status"}</th>
                         <th className="px-2 py-1 text-right font-medium">Tokens</th>
@@ -505,12 +505,12 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           {!active && job.status !== "published" && (
             <div className="rounded-md border border-border p-3 text-xs" data-testid="last-state">
               <p className="font-medium">{locale === "de" ? "Letzter Stand" : "Last state"}{job.courseTitle ? `: ${job.courseTitle}` : ""}</p>
-              <p className="mt-1 text-foreground/70">
+              <p className="mt-1 text-muted">
                 {locale === "de" ? "Zuletzt in Phase" : "Last in phase"} „{PHASE_LABEL[job.phase]?.[locale] ?? job.phase}“
                 {job.updatedAt ? ` · ${new Date(job.updatedAt).toLocaleString(locale === "de" ? "de-DE" : "en-GB")}` : ""}
               </p>
               {objectives.length > 0 && (
-                <p className="mt-1 text-foreground/70">
+                <p className="mt-1 text-muted">
                   {locale === "de"
                     ? `${validCount} von ${objectives.length} Lernzielen fertig und gespeichert${failedCount > 0 ? `, ${failedCount} fehlgeschlagen` : ""}.`
                     : `${validCount} of ${objectives.length} objectives done and saved${failedCount > 0 ? `, ${failedCount} failed` : ""}.`}
@@ -519,7 +519,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
               {objectives.filter((o) => o.status === "failed" && (o.validationErrorsJson?.length ?? 0) > 0).map((o) => (
                 <div key={o.id} className="mt-2" data-testid="failed-objective">
                   <p className="font-mono font-medium">{o.code}</p>
-                  <ul className="list-disc pl-4 text-red-600">
+                  <ul className="list-disc pl-4 text-danger-text">
                     {o.validationErrorsJson!.slice(0, 4).map((e, i) => (
                       <li key={i}>{e}</li>
                     ))}
@@ -527,7 +527,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                 </div>
               ))}
               {RETRYABLE_STATUSES.has(job.status) && job.status !== "package_ready" && (
-                <p className="mt-2 text-foreground/70">
+                <p className="mt-2 text-muted">
                   {locale === "de"
                     ? "Mit „Generierung neu starten“ geht es dort weiter: bereits fertige Lernziele bleiben erhalten, nur das Fehlende wird neu erzeugt."
                     : "“Restart generation” continues from there: finished objectives are kept, only what is missing is generated again."}
@@ -537,14 +537,14 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           )}
 
           {pricingConfigured ? (
-            <p className="text-xs text-foreground/50">
+            <p className="text-xs text-faint">
               {locale === "de" ? "Kosten" : "Cost"}: ~${Number(job.actualCostUsd).toFixed(4)}
               {job.estimatedCostUsd && ` (${locale === "de" ? "geschätzt" : "estimated"} ~$${Number(job.estimatedCostUsd).toFixed(4)})`}
               {" · "}
               {locale === "de" ? "Limit" : "limit"} ${job.initialCostLimitUsd}/${job.absoluteCostLimitUsd}
             </p>
           ) : (
-            <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-600" data-testid="pricing-missing">
+            <p className="rounded-md bg-warning-soft p-2 text-xs text-warning-text" data-testid="pricing-missing">
               {locale === "de"
                 ? "Kosten werden nicht berechnet: Für das KI-Modell sind keine Preise hinterlegt (GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD und GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD in der Server-.env). Solange greift auch das Kostenlimit nicht."
                 : "Costs are not calculated: no prices are set for the AI model (GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD and GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD in the server .env). The cost limit does not apply until then."}
@@ -552,14 +552,14 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           )}
 
           {job.status === "package_ready" && (
-            <p className="rounded-md bg-accent/10 p-2 text-xs text-link">
+            <p className="rounded-md bg-accent-soft p-2 text-xs text-link">
               {locale === "de"
                 ? "Kurs vollständig generiert und validiert - wartet auf manuelle Freigabe."
                 : "Course fully generated and validated - waiting for manual approval."}
             </p>
           )}
           {job.status === "published" && (
-            <p className="flex items-center gap-1.5 text-sm text-green-600">
+            <p className="flex items-center gap-1.5 text-sm text-success-text">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               {locale === "de" ? "Kurs veröffentlicht." : "Course published."}
             </p>
@@ -569,7 +569,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
             job.status === "canary_failed" ||
             job.status === "circuit_breaker_open" ||
             job.status === "cost_limit_reached") && (
-            <div className="rounded-md bg-red-500/10 p-3 text-sm text-red-600">
+            <div className="rounded-md bg-danger-soft p-3 text-sm text-danger-text">
               <p className="flex items-center gap-1.5 font-medium">
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 {job.errorMessage ?? job.status}
@@ -613,8 +613,8 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       )}
 
       {badSources && (
-        <div role="alert" className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm" data-testid="bad-sources">
-          <p className="font-medium text-red-500">
+        <div role="alert" className="mt-3 rounded-md border border-danger/40 bg-danger-soft p-3 text-sm" data-testid="bad-sources">
+          <p className="font-medium text-danger-text">
             {locale === "de"
               ? `${badSources.length} Quelle(n) lassen sich nicht verwenden:`
               : `${badSources.length} source(s) cannot be used:`}
@@ -623,7 +623,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
             {badSources.map((b) => (
               <li key={b.url}>
                 <span className="block break-all font-mono text-xs">{b.url}</span>
-                <span className="block text-xs text-red-500">{b.error}</span>
+                <span className="block text-xs text-danger-text">{b.error}</span>
               </li>
             ))}
           </ul>
@@ -638,7 +638,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           </div>
         </div>
       )}
-      {requestError && <p className="mt-3 text-sm text-red-500">{requestError}</p>}
+      {requestError && <p className="mt-3 text-sm text-danger-text">{requestError}</p>}
     </section>
   );
 }

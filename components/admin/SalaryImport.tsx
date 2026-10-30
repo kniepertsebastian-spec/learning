@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Trash2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -16,6 +17,7 @@ const field = "h-9 w-full rounded-md border border-border-strong bg-control px-2
  * Zuordnung ändern, und die Vorschau zeigt, was daraus würde, bevor etwas gespeichert wird.
  */
 export function SalaryImport({ locale, datasets }: { locale: "de" | "en"; datasets: Dataset[] }) {
+  const [confirm, confirmDialog] = useConfirm();
   const de = locale === "de";
   const tr = (d: string, e: string) => (de ? d : e);
   const router = useRouter();
@@ -60,7 +62,7 @@ export function SalaryImport({ locale, datasets }: { locale: "de" | "en"; datase
     router.refresh();
   }
   async function remove(d: Dataset) {
-    if (!window.confirm(tr(`Datensatz „${d.source}“ (Stichtag ${d.referenceDate}) löschen?`, `Delete dataset “${d.source}” (reference date ${d.referenceDate})?`))) return;
+    if (!(await confirm(tr(`Datensatz „${d.source}“ (Stichtag ${d.referenceDate}) löschen?`, `Delete dataset “${d.source}” (reference date ${d.referenceDate})?`)))) return;
     const res = await fetch(`/api/admin/salary/${d.id}`, { method: "DELETE" });
     if (res.ok) router.refresh();
   }
@@ -78,6 +80,8 @@ export function SalaryImport({ locale, datasets }: { locale: "de" | "en"; datase
   );
 
   return (
+    <>
+    {confirmDialog}
     <div className="flex flex-col gap-5">
       <Card>
         <h2 className="text-lg font-semibold">{tr("Neue Tabelle importieren", "Import a new table")}</h2>
@@ -216,5 +220,6 @@ export function SalaryImport({ locale, datasets }: { locale: "de" | "en"; datase
         </table>
       </Card>
     </div>
+    </>
   );
 }

@@ -103,7 +103,7 @@ export function MandatoryRulesPanel({
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="mandatory-panel">
       <h2 className="text-lg font-medium">{de ? "Pflichtschulungen" : "Mandatory training"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Ein Lernpfad wird für Rollen (und auf Wunsch Abteilungen) verpflichtend: vorhandene Mitglieder bekommen ihn sofort, neue beim Beitritt, jeweils mit Frist. Vor der Frist gibt es eine Erinnerung, danach eine Meldung an die Person und später eine Sammelmail an Mentoren und Firmen-Admins (nur mit eingerichtetem Mailversand)."
           : "A learning path becomes mandatory for roles: existing members get it immediately, new members when they join, each with a deadline. A reminder goes out before the deadline, a notice to the person after it and later a digest to mentors and admins (only with mail set up)."}
@@ -116,20 +116,20 @@ export function MandatoryRulesPanel({
               <div className="min-w-0">
                 <p className="font-medium break-words">{r.learningPath}</p>
                 {r.pendingRelease && (
-                  <p className="mt-0.5 inline-block rounded bg-amber-500/15 px-2 py-0.5 text-xs" data-testid="mandatory-pending">
+                  <p className="mt-0.5 inline-block rounded bg-warning-soft px-2 py-0.5 text-xs" data-testid="mandatory-pending">
                     {de ? "Wartet auf Freischaltung durch uns – wird danach automatisch zugewiesen" : "Waiting for our release – assigned automatically afterwards"}
                   </p>
                 )}
-                <p className="text-foreground/70">
+                <p className="text-muted">
                   {r.roles.map((x) => roleLabels[x]).join(", ")} · {r.departments.length > 0 ? r.departments.join(", ") : de ? "alle Abteilungen" : "all departments"} · {de ? `Frist ${r.dueInDays} Tage` : `${r.dueInDays} days`} ·{" "}
                   {r.reminderDaysBefore > 0 ? (de ? `Erinnerung ${r.reminderDaysBefore} Tage vorher` : `reminder ${r.reminderDaysBefore} days before`) : de ? "keine Erinnerung" : "no reminder"} ·{" "}
                   {de ? `Eskalation nach ${r.escalateAfterDays} Tagen` : `escalation after ${r.escalateAfterDays} days`}
                 </p>
                 {r.allowPlacementSkip && (
-                  <p className="text-foreground/70" data-testid="mandatory-skip-allowed">{de ? "Überspringen per Einstiegstest erlaubt" : "Skipping via placement test allowed"}</p>
+                  <p className="text-muted" data-testid="mandatory-skip-allowed">{de ? "Überspringen per Einstiegstest erlaubt" : "Skipping via placement test allowed"}</p>
                 )}
                 {(r.repeatEveryMonths !== null || !r.applyOnChange) && (
-                  <p className="text-foreground/70" data-testid="mandatory-extras">
+                  <p className="text-muted" data-testid="mandatory-extras">
                     {r.repeatEveryMonths !== null && (de ? `Wiederholung ${r.repeatEveryMonths} Monate nach dem Abschluss (Status wird dann zurückgesetzt)` : `Repeats ${r.repeatEveryMonths} months after completion (status is reset)`)}
                     {r.repeatEveryMonths !== null && !r.applyOnChange ? " · " : ""}
                     {!r.applyOnChange && (de ? "nicht bei Rollen-/Abteilungswechsel" : "not on role/department change")}
@@ -137,7 +137,7 @@ export function MandatoryRulesPanel({
                 )}
                 <p className="mt-1">
                   {r.completed}/{r.assigned} {de ? "bestanden" : "passed"}
-                  {r.overdue > 0 && <span className="ml-2 text-red-600">{r.overdue} {de ? "überfällig" : "overdue"}</span>}
+                  {r.overdue > 0 && <span className="ml-2 text-danger-text">{r.overdue} {de ? "überfällig" : "overdue"}</span>}
                 </p>
               </div>
               {canEdit && (
@@ -148,7 +148,7 @@ export function MandatoryRulesPanel({
             </div>
           </li>
         ))}
-        {rules.length === 0 && <li className="text-sm text-foreground/70">{de ? "Noch keine Pflichtschulung." : "No mandatory training yet."}</li>}
+        {rules.length === 0 && <li className="text-sm text-muted">{de ? "Noch keine Pflichtschulung." : "No mandatory training yet."}</li>}
       </ul>
 
       {canEdit && (
@@ -174,7 +174,7 @@ export function MandatoryRulesPanel({
             )}
           </select>
           {catalog.some((c) => c.id === pathId) && (
-            <p className="text-xs text-foreground/70" data-testid="mandatory-catalog-hint">
+            <p className="text-xs text-muted" data-testid="mandatory-catalog-hint">
               {de
                 ? "Dieser Kurs ist noch nicht für euch freigeschaltet. Wir fragen ihn damit bei uns an; die Pflicht wirkt, sobald wir ihn freigeben."
                 : "This course is not yet released for you. This requests it from us; the rule takes effect once we release it."}
@@ -232,7 +232,7 @@ export function MandatoryRulesPanel({
             </select>
           </label>
           {repeat !== null && (
-            <div role="note" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="repeat-warning">
+            <div role="note" className="rounded-md border border-warning/40 bg-warning-soft p-3 text-sm" data-testid="repeat-warning">
               <p className="font-medium">{de ? "Achtung: Der Status wird zurückgesetzt" : "Warning: the status will be reset"}</p>
               <p className="mt-1">
                 {de
@@ -262,7 +262,7 @@ export function MandatoryRulesPanel({
             </span>
           </label>
           {error && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-danger-text">
               {error}
             </p>
           )}

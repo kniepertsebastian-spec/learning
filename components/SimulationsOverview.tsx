@@ -57,7 +57,7 @@ export function SimulationsOverview({ certSlug, items, locked = [], locale, sign
       {signedIn && items.length > 0 && (
         <div className="inline-flex w-fit flex-wrap gap-1 rounded-lg border border-border-subtle bg-surface-inset p-1" role="group" aria-label={de ? "Filter" : "Filter"}>
           {(["all", "open", "struggled", "solved"] as const).map((f) => (
-            <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={cn("h-8 rounded-md px-2.5 text-[13px] font-medium", filter === f ? "bg-surface-2 text-foreground" : "text-subtle hover:text-foreground")} data-testid={`simulations-filter-${f}`}>
+            <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={cn("h-8 rounded-md px-2.5 text-meta font-medium", filter === f ? "bg-surface-2 text-foreground" : "text-subtle hover:text-foreground")} data-testid={`simulations-filter-${f}`}>
               {f === "all" ? `${de ? "Alle" : "All"} (${items.length})` : `${STATUS[f][locale]} (${count(f)})`}
             </button>
           ))}
@@ -72,7 +72,7 @@ export function SimulationsOverview({ certSlug, items, locked = [], locale, sign
       {items.length > 0 && shown.length === 0 && <p className="text-sm text-subtle">{de ? "Keine Simulationen in dieser Auswahl." : "No simulations in this selection."}</p>}
       {domains.map((d) => (
         <section key={d}>
-          <h2 className="mb-2 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">{d}</h2>
+          <h2 className="mb-2 text-2xs font-semibold tracking-overline text-faint uppercase">{d}</h2>
           <ul className="flex flex-col gap-2">
             {shown
               .filter((i) => i.domain === d)
@@ -108,7 +108,7 @@ export function SimulationsOverview({ certSlug, items, locked = [], locale, sign
 
       {locked.length > 0 && (
         <section data-testid="simulations-locked">
-          <h2 className="mb-2 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">{de ? "Noch gesperrt" : "Still locked"}</h2>
+          <h2 className="mb-2 text-2xs font-semibold tracking-overline text-faint uppercase">{de ? "Noch gesperrt" : "Still locked"}</h2>
           <ul className="flex flex-col gap-2">
             {locked.map((c) => (
               <li key={c.name} className="flex items-center gap-3 rounded-xl border border-dashed border-border px-3 py-2.5 text-sm text-subtle" data-testid="simulation-locked-entry">

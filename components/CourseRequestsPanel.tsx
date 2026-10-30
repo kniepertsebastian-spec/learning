@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { REQUEST_STATUS_LABELS } from "@/lib/course-requests";
@@ -30,6 +31,7 @@ export function CourseRequestsPanel({
   catalog: { id: string; name: string }[];
   locale: "de" | "en";
 }) {
+  const [confirm, confirmDialog] = useConfirm();
   const router = useRouter();
   const de = locale === "de";
   const [mode, setMode] = useState<"catalog" | "wish">(catalog.length > 0 ? "catalog" : "wish");
@@ -60,7 +62,7 @@ export function CourseRequestsPanel({
   }
 
   async function withdraw(id: string) {
-    if (!window.confirm(de ? "Anfrage wirklich zurückziehen?" : "Really withdraw this request?")) return;
+    if (!(await confirm(de ? "Anfrage wirklich zurückziehen?" : "Really withdraw this request?"))) return;
     setError(null);
     const res = await fetch(`/api/company/course-requests/${id}/withdraw`, { method: "POST" });
     if (!res.ok) {
@@ -71,9 +73,11 @@ export function CourseRequestsPanel({
   }
 
   return (
+    <>
+    {confirmDialog}
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="requests-panel">
       <h2 className="text-lg font-medium">{de ? "Allgemeine Lernpfade anfragen" : "Request general learning paths"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Allgemeine Lernpfade (z. B. Security oder Zertifikate) erstellen wir und geben sie für deine Firma frei. Gibt es den Kurs schon, geben wir ihn frei. Sonst erstellen wir ihn, lassen ihn fachlich prüfen und melden uns. Bis dahin steht hier der aktuelle Stand."
           : "We create general learning paths (e.g. security or certifications) and release them for your company. If the course exists we release it. Otherwise we create it, have it reviewed by an expert and get back to you. The current status is shown here."}
@@ -133,7 +137,7 @@ export function CourseRequestsPanel({
       </form>
 
       {error && (
-        <p role="alert" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
+        <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
           {error}
         </p>
       )}
@@ -145,7 +149,7 @@ export function CourseRequestsPanel({
 
       <h3 className="mt-6 text-base font-medium">{de ? "Deine Anfragen" : "Your requests"}</h3>
       {requests.length === 0 ? (
-        <p className="mt-2 text-sm text-foreground/70" data-testid="requests-empty">
+        <p className="mt-2 text-sm text-muted" data-testid="requests-empty">
           {de ? "Noch keine Anfragen." : "No requests yet."}
         </p>
       ) : (
@@ -154,7 +158,7 @@ export function CourseRequestsPanel({
             <li key={r.id} className="rounded-md border border-border bg-background p-3 text-sm" data-testid="request-row">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">{r.courseName ?? r.wishTitle}</span>
-                <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-link" data-testid="request-status">
+                <span className="rounded bg-accent-soft px-2 py-0.5 text-xs font-medium text-link" data-testid="request-status">
                   {REQUEST_STATUS_LABELS[r.status][locale]}
                 </span>
               </div>
@@ -163,13 +167,13 @@ export function CourseRequestsPanel({
                   {de ? "Anfrage zurückziehen" : "Withdraw request"}
                 </button>
               )}
-              {r.wishDescription && <p className="mt-1 text-xs text-foreground/70">{r.wishDescription}</p>}
+              {r.wishDescription && <p className="mt-1 text-xs text-muted">{r.wishDescription}</p>}
               {r.statusNote && (
                 <p className="mt-1 text-xs" data-testid="request-note">
                   {r.statusNote}
                 </p>
               )}
-              <ol className="mt-2 border-l border-border pl-3 text-xs text-foreground/70">
+              <ol className="mt-2 border-l border-border pl-3 text-xs text-muted">
                 {r.events.map((ev, i) => (
                   <li key={i}>
                     {date(ev.createdAt, locale)} · {REQUEST_STATUS_LABELS[ev.status][locale]}
@@ -182,5 +186,6 @@ export function CourseRequestsPanel({
         </ul>
       )}
     </section>
+    </>
   );
 }

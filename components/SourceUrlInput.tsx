@@ -55,8 +55,8 @@ export function SourceUrlInput({ urls, onChange, locale, max, name = "sourceUrls
         }}
         className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
       />
-      {notice && <p className="mt-1 text-xs text-amber-600" role="status" data-testid="source-urls-notice">{notice}</p>}
-      <p className="mt-1 text-xs text-foreground/60" data-testid="source-urls-count">
+      {notice && <p className="mt-1 text-xs text-warning-text" role="status" data-testid="source-urls-notice">{notice}</p>}
+      <p className="mt-1 text-xs text-subtle" data-testid="source-urls-count">
         {de ? `${urls.length} von ${max} Quellen` : `${urls.length} of ${max} sources`}
         {urls.length > 0 && (
           <button type="button" className="ml-2 underline" onClick={() => onChange([])}>{de ? "alle entfernen" : "clear all"}</button>
@@ -68,10 +68,10 @@ export function SourceUrlInput({ urls, onChange, locale, max, name = "sourceUrls
             const d = describeUrl(url);
             return (
               <li key={url} className="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs">
-                <Link2 className="h-3.5 w-3.5 shrink-0 text-foreground/50" aria-hidden="true" />
+                <Link2 className="h-3.5 w-3.5 shrink-0 text-faint" aria-hidden="true" />
                 <span className="min-w-0 flex-1" title={url}>
                   <span className="block truncate font-medium">{d.host}</span>
-                  {d.path && <span className="block truncate text-foreground/60">{d.path}</span>}
+                  {d.path && <span className="block truncate text-subtle">{d.path}</span>}
                 </span>
                 <button type="button" aria-label={de ? "Quelle entfernen" : "Remove source"} onClick={() => onChange(urls.filter((u) => u !== url))} className="rounded p-1 hover:bg-background">
                   <X className="h-3.5 w-3.5" aria-hidden="true" />

@@ -27,7 +27,7 @@ export function ProgressReviewCard({ review, outlook, series, locale, certSlug }
   if (!review && !outlook) return null;
   const de = locale === "de";
   return (
-    <Card className="mb-6" data-testid="progress-review">
+    <Card data-testid="progress-review">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="flex items-center gap-1.5 text-sm font-semibold">

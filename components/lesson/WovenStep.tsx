@@ -29,7 +29,7 @@ export function WovenStep({ sectionId, question, locale }: { sectionId: string; 
   return (
     <div className="mt-4 rounded-xl border border-border bg-surface p-4" data-testid="woven-step">
       <p className="text-xs font-semibold text-subtle">{de ? "Kurz aufgefrischt: noch eine Frage von früher (zählt nicht für diese Lektion)" : "A quick refresher from earlier (does not count for this lesson)"}</p>
-      <div className="my-2 text-[15px] font-medium">
+      <div className="my-2 text-body font-medium">
         <RichText text={question.question[locale]} />
       </div>
       <div className="flex flex-col gap-2">

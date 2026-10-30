@@ -26,7 +26,7 @@ export default async function RemediationPage({
   if (!session?.user?.id) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
         </p>
         <Link href="/login" className="mt-4 text-link hover:underline">
@@ -56,7 +56,7 @@ export default async function RemediationPage({
     console.error("Error loading remediation:", error);
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {locale === "de" ? "Remediation konnte nicht geladen werden." : "Could not load remediation."}
         </p>
       </div>
@@ -67,14 +67,14 @@ export default async function RemediationPage({
     <div className="flex flex-1 flex-col">
       <Link
         href={`/cert/${certSlug}`}
-        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
       </Link>
 
-      <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
-        <p className="text-sm font-medium text-yellow-800">
+      <div className="mb-6 rounded-lg border border-warning/40 bg-warning-soft px-4 py-3">
+        <p className="text-sm font-medium text-warning-text">
           {locale === "de" ? "Wiederholung: " : "Review: "}
           <span className="font-mono text-xs">{objective.code}</span> {objective.title}
         </p>

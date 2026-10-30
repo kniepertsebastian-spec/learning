@@ -33,18 +33,18 @@ function LoginForm() {
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-8">
         <div className="mb-6 text-center">
           <p className="text-lg font-semibold">Knowvia</p>
-          <p className="text-xs text-foreground/60">Capture Knowledge. Empower People. Strengthen Business.</p>
+          <p className="text-xs text-subtle">Capture Knowledge. Empower People. Strengthen Business.</p>
         </div>
         <h1 className="mb-6 text-xl font-semibold">Sign in</h1>
         <form action={formAction} className="flex flex-col gap-4">
           <input type="hidden" name="from" value={from} />
           {notice && (
-            <p role="status" className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600" data-testid="login-notice">
+            <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-text" data-testid="login-notice">
               {notice}
             </p>
           )}
           {error && (
-            <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
+            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
               Invalid email or password.
             </p>
           )}
@@ -87,7 +87,7 @@ function LoginForm() {
             Sign in with company account (SSO)
           </Link>
         </p>
-        <p className="mt-2 text-center text-sm text-foreground/60">
+        <p className="mt-2 text-center text-sm text-subtle">
           <Link href="/forgot-password" className="text-link hover:underline">
             Forgot password?
           </Link>
@@ -96,7 +96,7 @@ function LoginForm() {
             Resend confirmation email
           </Link>
         </p>
-        <p className="mt-2 text-center text-sm text-foreground/60">
+        <p className="mt-2 text-center text-sm text-subtle">
           No account?{" "}
           <Link
             href={from === "/" ? "/register" : `/register?from=${encodeURIComponent(from)}`}

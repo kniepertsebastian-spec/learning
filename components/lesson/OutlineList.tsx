@@ -13,7 +13,7 @@ export function OutlineList({ outline, certSlug, onNavigate }: { outline: Sectio
   const { locale, t } = useLocaleOptional();
   return (
     <div data-testid="outline">
-      <p className="mb-1 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">{outline.domain.name}</p>
+      <p className="mb-1 text-2xs font-semibold tracking-overline text-faint uppercase">{outline.domain.name}</p>
       <ol className="mt-2 flex flex-col gap-0.5">
         {outline.sections.map((s) => (
           <li key={s.id}>
@@ -27,7 +27,7 @@ export function OutlineList({ outline, certSlug, onNavigate }: { outline: Sectio
               <span
                 className={cn(
                   "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2",
-                  s.status === "done" && "border-mint bg-mint text-on-accent",
+                  s.status === "done" && "border-success bg-success text-on-success",
                   s.status === "current" && "border-mint",
                   s.status === "open" && "border-border-strong",
                 )}
@@ -48,7 +48,7 @@ export function OutlineList({ outline, certSlug, onNavigate }: { outline: Sectio
       </ol>
       <div className="mt-4 rounded-xl border border-border-subtle bg-surface-inset p-3">
         <p className="mb-1.5 text-xs text-subtle">{t.lesson_page.domainProgress}</p>
-        <ProgressBar value={outline.domainProgress} tone="mint" label={t.lesson_page.domainProgress} />
+        <ProgressBar value={outline.domainProgress} tone="accent" label={t.lesson_page.domainProgress} />
         <div className="mt-1.5 flex justify-between text-xs text-faint">
           <span className="tabular-nums">{outline.domainProgress} %</span>
           {outline.domain.weightPercent !== null && <span>{fmt(t.lesson_page.domainWeight, { n: Math.round(outline.domain.weightPercent) })}</span>}

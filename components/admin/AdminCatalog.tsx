@@ -136,7 +136,7 @@ export function AdminCatalog({
         {unassigned.length > 0 && (
           <Chip active={filter === "none"} onClick={() => setFilter("none")}>{ac.unassigned} <span className="text-faint">{unassigned.length}</span></Chip>
         )}
-        <button type="button" onClick={() => setDialog({ kind: "new" })} data-testid="new-group" className="flex min-h-9 items-center gap-1.5 rounded-full border border-dashed border-border-strong px-3 text-[13px] text-subtle hover:text-foreground">
+        <button type="button" onClick={() => setDialog({ kind: "new" })} data-testid="new-group" className="flex min-h-9 items-center gap-1.5 rounded-full border border-dashed border-border-strong px-3 text-meta text-subtle hover:text-foreground">
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />{ac.newGroup}
         </button>
       </div>
@@ -175,18 +175,18 @@ export function AdminCatalog({
 
       <div className="mt-8 grid gap-3 sm:grid-cols-3">
         <Link href="/admin/requests" data-testid="admin-requests-link" className="rounded-2xl border border-border bg-surface p-4 hover:border-border-strong">
-          <p className="text-[13px] text-subtle">{ac.requests}</p>
-          <p className="mt-1 text-[26px] font-semibold tabular-nums">{openRequests}</p>
+          <p className="text-meta text-subtle">{ac.requests}</p>
+          <p className="mt-1 text-stat font-semibold tabular-nums">{openRequests}</p>
           <p className="text-xs text-faint">{fmt(ac.requestsOpen, { n: openRequests })}</p>
         </Link>
         <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="text-[13px] text-subtle">{ac.reports}</p>
-          <p className="mt-1 text-[26px] font-semibold tabular-nums">{openReports}</p>
+          <p className="text-meta text-subtle">{ac.reports}</p>
+          <p className="mt-1 text-stat font-semibold tabular-nums">{openReports}</p>
           <p className="text-xs text-faint">{fmt(ac.requestsOpen, { n: openReports })}</p>
         </div>
         <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="text-[13px] text-subtle">{ac.cost}</p>
-          <p className="mt-1 text-[26px] font-semibold tabular-nums">$ {aiCostMonthUsd.toFixed(2)}</p>
+          <p className="text-meta text-subtle">{ac.cost}</p>
+          <p className="mt-1 text-stat font-semibold tabular-nums">$ {aiCostMonthUsd.toFixed(2)}</p>
         </div>
       </div>
 
@@ -227,7 +227,7 @@ export function AdminCatalog({
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className={cn("flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium", active ? "border-foreground bg-surface-2 text-foreground" : "border-border-strong text-muted hover:text-foreground")}>
+    <button type="button" onClick={onClick} aria-pressed={active} className={cn("flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-meta font-medium", active ? "border-foreground bg-surface-2 text-foreground" : "border-border-strong text-muted hover:text-foreground")}>
       {children}
     </button>
   );
@@ -419,7 +419,7 @@ function GroupDialogs({ dialog, onClose, groups, colorLabel }: { dialog: null | 
                 <legend className="mb-1 text-sm font-medium">{ac.color}</legend>
                 <div className="flex flex-wrap gap-2">
                   {COLORS.map((c) => (
-                    <button key={c} type="button" onClick={() => setColor(c)} aria-pressed={color === c} className={cn("flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px]", color === c ? "border-foreground" : "border-border-strong")}>
+                    <button key={c} type="button" onClick={() => setColor(c)} aria-pressed={color === c} className={cn("flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-meta", color === c ? "border-foreground" : "border-border-strong")}>
                       <span className={cn("h-2.5 w-2.5 rounded-full", DOT[c])} aria-hidden="true" />{colorLabel[c]}
                     </button>
                   ))}

@@ -14,7 +14,7 @@ export function DialogContent({ className, children, closeLabel = "Schließen", 
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="anim-fade-in fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" />
       <DialogPrimitive.Content
-        className={cn("anim-pop-in fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[calc(100vw-32px)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-sheet", className)}
+        className={cn("anim-pop-in fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[calc(100vw-32px)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-overlay", className)}
         {...props}
       >
         {children}

@@ -56,7 +56,7 @@ export default async function AgbPage() {
         {sections.map((s, i) => (
           <section key={s.id} id={s.id}>
             <h2 className="text-lg font-semibold">§ {i + 1} {s.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-foreground/90">{s.text}</p>
+            <p className="mt-2 text-sm leading-relaxed text-text-2">{s.text}</p>
           </section>
         ))}
       </div>

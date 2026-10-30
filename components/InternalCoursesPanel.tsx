@@ -116,30 +116,30 @@ export function InternalCoursesPanel({
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="internal-courses">
       <h2 className="text-lg font-medium">{de ? "Interne Learnings" : "Internal learning"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Aus euren Dateien (eine oder viele) erstellt die KI einen Kurs-Entwurf. Ihr prüft ihn und gebt ihn frei; erst dann sehen ihn Lernende und er lässt sich zuweisen. Wir sehen weder Dateien noch Kurs."
           : "The AI drafts a course from your files (one or many). You review and approve it; only then can learners see and be assigned to it. We see neither the files nor the course."}
       </p>
 
-      {error && <p role="alert" data-testid="internal-error" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p>}
+      {error && <p role="alert" data-testid="internal-error" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>}
 
       {!aiConfigured && (
-        <p className="mt-3 rounded-md bg-amber-500/10 px-3 py-2 text-sm" data-testid="internal-ai-missing">
+        <p className="mt-3 rounded-md bg-warning-soft px-3 py-2 text-sm" data-testid="internal-ai-missing">
           {de ? "Zuerst muss der Firmen-Admin unten den KI-Zugang einrichten." : "A company admin must first set up the AI access below."}
         </p>
       )}
 
       <form onSubmit={start} className="mt-4 flex flex-col gap-3">
         <FileDropZone files={files} onChange={setFiles} locale={locale} maxFiles={50} maxBytes={10 * 1024 * 1024} disabled={busy} testId="internal-drop" />
-        <p className="text-xs text-foreground/70" data-testid="internal-files-hint">
+        <p className="text-xs text-muted" data-testid="internal-files-hint">
           {de
             ? "Bis zu 50 Dateien je Kurs (z. B. PDFs, Texte, Konfiguration wie .yml, Skripte wie .py). Die Dateien liegen nur für die Erstellung bereit und werden danach gelöscht."
             : "Up to 50 files per course (e.g. PDFs, text, config such as .yml, scripts such as .py). Files are kept only for the generation and deleted afterwards."}
         </p>
         {usable.length > 0 && (
           <details className="text-sm" data-testid="internal-stored">
-            <summary className="cursor-pointer text-foreground/80">
+            <summary className="cursor-pointer text-text-2">
               {de ? `Gespeicherte Dokumente hinzufügen (${storedIds.length} gewählt)` : `Add stored documents (${storedIds.length} selected)`}
             </summary>
             <ul className="mt-2 flex flex-col gap-1">
@@ -155,7 +155,7 @@ export function InternalCoursesPanel({
           </details>
         )}
         {fileProblems.length > 0 && (
-          <ul className="flex flex-col gap-1 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500" data-testid="internal-file-problems">
+          <ul className="flex flex-col gap-1 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text" data-testid="internal-file-problems">
             {fileProblems.map((p, i) => (
               <li key={i}>
                 <span className="font-medium">{p.filename}</span>: {p.message}
@@ -197,7 +197,7 @@ export function InternalCoursesPanel({
             <input type="checkbox" checked={includeFinalExam} onChange={(e) => setIncludeFinalExam(e.target.checked)} data-testid="internal-exam" />
             {de ? "Abschlussprüfung integrieren" : "Include final exam"}
           </label>
-          <p className="text-xs text-foreground/70" data-testid="internal-tests-hint">
+          <p className="text-xs text-muted" data-testid="internal-tests-hint">
             {!includeSectionQuizzes && !includeFinalExam
               ? de
                 ? "Reiner Durchlauf: Es entstehen nur Lektionen, keine Fragen (das ist deutlich günstiger). Der Lernpfad gilt als abgeschlossen, sobald alle Lektionen durchgearbeitet sind."
@@ -229,7 +229,7 @@ export function InternalCoursesPanel({
                   </button>
                 )}
               </div>
-              <p className="mt-1 text-foreground/70">
+              <p className="mt-1 text-muted">
                 {j.errorMessage ?? j.message ?? j.status}
               </p>
             </li>
@@ -244,7 +244,7 @@ export function InternalCoursesPanel({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span>
                   <span className="font-medium">{c.name}</span>{" "}
-                  <span className="text-foreground/70">· {statusLabel(c.catalogStatus)}</span>
+                  <span className="text-muted">· {statusLabel(c.catalogStatus)}</span>
                   {!c.includeSectionQuizzes && !c.includeFinalExam && (
                     <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 text-xs">{de ? "ohne Tests" : "no tests"}</span>
                   )}
@@ -266,7 +266,7 @@ export function InternalCoursesPanel({
               </div>
               <CheatSheetBackfill courseId={c.id} initial={cheatSheets.find((x) => x.certificationId === c.id)} aiConfigured={aiConfigured} locale={locale} />
               {c.catalogStatus === "approved" && c.approvedByName && c.approvedAt && (
-                <p className="mt-1 text-foreground/70">
+                <p className="mt-1 text-muted">
                   {de ? "Freigegeben von" : "Approved by"} {c.approvedByName}, {new Date(c.approvedAt).toLocaleDateString(de ? "de-DE" : "en-GB")}
                 </p>
               )}

@@ -54,20 +54,20 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
 
   return (
     <div className="mx-auto w-full max-w-3xl" data-testid="cheatsheets-page">
-      <Link href={`/cert/${slug}`} className="mb-4 inline-flex items-center gap-1 text-sm text-foreground/70 hover:text-foreground print:hidden">
+      <Link href={`/cert/${slug}`} className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-foreground print:hidden">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {cert.name}
       </Link>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{de ? "Merkzettel" : "Cheat sheets"}</h1>
-          <p className="text-sm text-foreground/70">{cert.name}</p>
+          <p className="text-sm text-muted">{cert.name}</p>
         </div>
         {rows.length > 0 && <PrintButton label={de ? "Drucken / als PDF speichern" : "Print / save as PDF"} />}
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-foreground/70" data-testid="cheatsheets-empty">
+        <p className="text-sm text-muted" data-testid="cheatsheets-empty">
           {allRows.length > 0
             ? de ? "Dein Merkzettel ist noch leer. Er füllt sich Kapitel für Kapitel, sobald du ein Kapitel abgeschlossen hast." : "Your cheat sheet is still empty. It fills up chapter by chapter as you complete chapters."
             : de ? "Zu diesem Kurs gibt es noch keine Merkzettel. Neue Kurse bekommen nach jeder Lektion einen." : "This course has no cheat sheets yet. New courses get one after every lesson."}
@@ -76,7 +76,7 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
         <div className="flex flex-col gap-6">
           {rows.map((r) => (
             <section key={r.sectionId} className="break-inside-avoid rounded-lg border border-border bg-surface p-4" data-testid="cheatsheet-entry">
-              <p className="text-xs text-foreground/60">
+              <p className="text-xs text-subtle">
                 {r.domain} · {r.objectiveCode} {r.objectiveTitle}
               </p>
               <h2 className="mb-2 font-medium">
@@ -84,7 +84,7 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
                   {r.sectionTitle[locale]}
                 </Link>
               </h2>
-              <div className="text-sm text-foreground/90">
+              <div className="text-sm text-text-2">
                 <RichText text={r.cheatSheet![locale]} />
               </div>
             </section>
@@ -92,7 +92,7 @@ export default async function CheatSheetsPage({ params }: { params: Promise<{ id
         </div>
       )}
       {lockedNames.length > 0 && (
-        <aside className="mt-6 rounded-lg border border-dashed border-border p-4 text-sm text-foreground/70 print:hidden" data-testid="cheatsheets-locked">
+        <aside className="mt-6 rounded-lg border border-dashed border-border p-4 text-sm text-muted print:hidden" data-testid="cheatsheets-locked">
           <p className="mb-2 flex items-center gap-2 font-medium text-foreground">
             <Lock className="h-4 w-4" aria-hidden="true" />
             {de ? "Wächst mit deinem Fortschritt" : "Grows with your progress"}

@@ -59,13 +59,13 @@ function RegisterForm() {
       <div className="flex flex-1 flex-col items-center justify-center">
         <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-8" data-testid="check-inbox">
           <h1 className="mb-4 text-xl font-semibold">Check your inbox</h1>
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-muted">
             We sent a confirmation link to <strong>{sentTo}</strong>.{" "}
             {accountType === "company"
               ? "Confirm it to create your company and verify your address, then sign in."
               : "Confirm your email address, then sign in."}
           </p>
-          <p className="mt-4 text-center text-sm text-foreground/60">
+          <p className="mt-4 text-center text-sm text-subtle">
             <Link
               href={from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`}
               className="text-link hover:underline"
@@ -83,12 +83,12 @@ function RegisterForm() {
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-8">
         <div className="mb-6 text-center">
           <p className="text-lg font-semibold">Knowvia</p>
-          <p className="text-xs text-foreground/60">Capture Knowledge. Empower People. Strengthen Business.</p>
+          <p className="text-xs text-subtle">Capture Knowledge. Empower People. Strengthen Business.</p>
         </div>
         <h1 className="mb-6 text-xl font-semibold">Create account</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {error && (
-            <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p>
+            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>
           )}
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-sm font-medium">I am registering as</legend>
@@ -126,7 +126,7 @@ function RegisterForm() {
                 autoComplete="organization"
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
               />
-              <p className="mt-1 text-xs text-foreground/60">
+              <p className="mt-1 text-xs text-subtle">
                 Use your company email address below. We send a confirmation link to it; the company is created once you confirm.
               </p>
             </div>
@@ -179,7 +179,7 @@ function RegisterForm() {
             {isPending ? "Creating account…" : "Create account"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-foreground/60">
+        <p className="mt-4 text-center text-sm text-subtle">
           Already have an account?{" "}
           <Link
             href={from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`}

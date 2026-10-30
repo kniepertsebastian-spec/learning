@@ -69,14 +69,14 @@ export function ExplanationReviewQueue({ certificationId, locale }: { certificat
     <div className="rounded-lg border border-border bg-surface p-4" data-testid="explanation-review">
       <h3 className="mb-1 font-medium">{de ? "Alternativerklärungen (Verstehens-Modus)" : "Alternative explanations (understanding mode)"}</h3>
       {counts && (
-        <p className="mb-3 text-xs text-foreground/60">
+        <p className="mb-3 text-xs text-subtle">
           {de ? `${counts.approved} freigegeben, ${counts.draft} Entwürfe, ${counts.rejected} verworfen.` : `${counts.approved} approved, ${counts.draft} drafts, ${counts.rejected} rejected.`}
         </p>
       )}
       {drafts === null ? (
-        <p className="text-sm text-foreground/60">{de ? "Lädt …" : "Loading …"}</p>
+        <p className="text-sm text-subtle">{de ? "Lädt …" : "Loading …"}</p>
       ) : drafts.length === 0 ? (
-        <p className="text-sm text-foreground/60">{de ? "Keine Entwürfe zur Prüfung." : "No drafts to review."}</p>
+        <p className="text-sm text-subtle">{de ? "Keine Entwürfe zur Prüfung." : "No drafts to review."}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {drafts.map((d) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 import * as React from "react";
 import { CourseOverviewView } from "@/components/CourseOverviewView";
@@ -18,6 +19,7 @@ type TextField = "summary" | "audience";
  * wird erst mit „Speichern“.
  */
 export function OverviewEditor({ certId, locale, onDirtyChange }: { certId: string; locale: Lang; onDirtyChange: (dirty: boolean) => void }) {
+  const [confirm, confirmDialog] = useConfirm();
   const tr = useTr(locale);
   const [saved, setSaved] = React.useState<CourseOverview | null | undefined>(undefined);
   const [value, setValue] = React.useState<CourseOverview>(emptyOverview());
@@ -76,7 +78,7 @@ export function OverviewEditor({ certId, locale, onDirtyChange }: { certId: stri
   }
 
   async function draft() {
-    if (dirty && !window.confirm(tr("Die KI überschreibt die aktuellen Eingaben im Formular (gespeichert wird erst mit „Speichern“). Fortfahren?", "The AI replaces the current form entries (nothing is saved until you press “Save”). Continue?"))) return;
+    if (dirty && !(await confirm(tr("Die KI überschreibt die aktuellen Eingaben im Formular (gespeichert wird erst mit „Speichern“). Fortfahren?", "The AI replaces the current form entries (nothing is saved until you press “Save”). Continue?")))) return;
     setBusy("draft");
     setMsg(null);
     const r = await api<{ overview: CourseOverview }>(`/api/admin/certifications/${certId}/workshop/overview/draft`, { method: "POST" });
@@ -94,6 +96,8 @@ export function OverviewEditor({ certId, locale, onDirtyChange }: { certId: stri
   const lines = (f: ListField) => value[f][L].join("\n");
 
   return (
+    <>
+    {confirmDialog}
     <div className="flex flex-col gap-5" data-testid="overview-editor">
       <div>
         <h2 className="text-lg font-semibold">{tr("Kursbeschreibung", "Course description")}</h2>
@@ -172,10 +176,11 @@ export function OverviewEditor({ certId, locale, onDirtyChange }: { certId: stri
 
       {courseOverviewSchema.safeParse(cleaned()).success && (
         <div className="rounded-2xl border border-border-subtle p-4">
-          <p className="mb-3 text-xs font-semibold tracking-[0.07em] text-faint uppercase">{tr("Vorschau für Lernende", "Learner preview")}</p>
+          <p className="mb-3 text-xs font-semibold tracking-overline text-faint uppercase">{tr("Vorschau für Lernende", "Learner preview")}</p>
           <CourseOverviewView overview={cleaned()} scope={scope} locale={L} />
         </div>
       )}
     </div>
+    </>
   );
 }
