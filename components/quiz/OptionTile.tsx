@@ -15,7 +15,7 @@ const BADGE: Record<OptionState, string> = {
   neutral: "bg-control text-muted",
   selected: "bg-info text-on-accent",
   correct: "bg-success text-on-success",
-  wrong: "bg-danger text-on-accent",
+  wrong: "bg-danger text-on-danger",
   dimmed: "bg-control text-faint opacity-70",
 };
 

@@ -61,7 +61,7 @@ export function FeedbackPanel({
 
   return (
     <div
-      className={cn("anim-fade-in rounded-2xl border p-5", correct ? "border-mint bg-mint-soft" : "border-danger bg-danger-soft")}
+      className={cn("anim-fade-in rounded-2xl border border-t-[3px] border-border bg-surface p-5", correct ? "border-t-success" : "border-t-danger")}
       role="status"
       aria-live="polite"
       data-testid="feedback-panel"
