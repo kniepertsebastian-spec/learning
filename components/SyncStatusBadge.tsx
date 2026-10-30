@@ -107,7 +107,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
         ) : syncing ? (
           <RefreshCw className="h-4 w-4 animate-spin text-link" aria-hidden="true" />
         ) : (
-          <CloudOff className="h-4 w-4 text-amber-500" aria-hidden="true" />
+          <CloudOff className="h-4 w-4 text-warning-text" aria-hidden="true" />
         )}
         {pendingTotal > 0 && (
           <span className="rounded-full bg-accent-soft px-1.5 text-xs font-medium text-link">
@@ -136,7 +136,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
             </p>
           )}
           {summary && summary.failedCount > 0 && (
-            <p className="mb-1 text-amber-600 dark:text-amber-400">
+            <p className="mb-1 text-warning-text dark:text-warning-text">
               {locale === "de" ? "Fehlgeschlagen (wird erneut versucht)" : "Failed (will retry)"}: {summary.failedCount}
             </p>
           )}
@@ -169,7 +169,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
             </div>
           )}
           {summary && summary.conflictCount > 0 && (
-            <p className="mb-1 text-red-600 dark:text-red-400">
+            <p className="mb-1 text-danger-text dark:text-danger-text">
               {locale === "de" ? "Konflikte" : "Conflicts"}: {summary.conflictCount}
             </p>
           )}

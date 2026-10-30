@@ -49,7 +49,7 @@ export function ActivityTrends({
         </h2>
         <div className="flex items-center gap-3">
           {streak > 0 && (
-            <span className="flex items-center gap-1 text-xs font-medium text-orange-600">
+            <span className="flex items-center gap-1 text-xs font-medium text-warning-text">
               <Flame className="h-3.5 w-3.5" aria-hidden="true" />
               {streak} {locale === "de" ? "Tage in Folge" : "day streak"}
             </span>

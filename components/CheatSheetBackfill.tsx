@@ -73,12 +73,12 @@ export function CheatSheetBackfill({ courseId, initial, aiConfigured, locale }: 
         </span>
       )}
       {!running && run && (run.status === "failed" || run.message) && (
-        <p className={run.status === "failed" ? "mt-1 text-red-600" : "mt-1"} role="status">
+        <p className={run.status === "failed" ? "mt-1 text-danger-text" : "mt-1"} role="status">
           {run.message ?? (de ? "Der letzte Lauf ist fehlgeschlagen." : "The last run failed.")}
         </p>
       )}
       {error && (
-        <p role="alert" className="mt-1 text-red-600">
+        <p role="alert" className="mt-1 text-danger-text">
           {error}
         </p>
       )}

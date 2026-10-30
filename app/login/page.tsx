@@ -39,12 +39,12 @@ function LoginForm() {
         <form action={formAction} className="flex flex-col gap-4">
           <input type="hidden" name="from" value={from} />
           {notice && (
-            <p role="status" className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600" data-testid="login-notice">
+            <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success-text" data-testid="login-notice">
               {notice}
             </p>
           )}
           {error && (
-            <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
+            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
               Invalid email or password.
             </p>
           )}

@@ -81,7 +81,7 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
         {mode === "byok" && (
           <div className="ml-6 flex flex-col gap-2">
             {!settings.encryptionConfigured && (
-              <p className="text-xs text-red-500" data-testid="ai-no-encryption">
+              <p className="text-xs text-danger-text" data-testid="ai-no-encryption">
                 {de ? "Eigene Schlüssel lassen sich auf diesem Server noch nicht speichern. Bitte den Betreiber informieren." : "Own keys cannot be stored on this server yet. Please contact the operator."}
               </p>
             )}
@@ -101,7 +101,7 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
             />
             {settings.hasKey && (
               <div>
-                <button type="button" onClick={() => void removeKey()} className="text-xs text-red-500 hover:underline">
+                <button type="button" onClick={() => void removeKey()} className="text-xs text-danger-text hover:underline">
                   {de ? "Gespeicherten Schlüssel entfernen" : "Remove stored key"}
                 </button>
               </div>
@@ -119,7 +119,7 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
         </div>
       </form>
       {error && (
-        <p role="alert" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
+        <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
           {error}
         </p>
       )}

@@ -121,7 +121,7 @@ export function InvitationsPanel({
       </form>
 
       {error && (
-        <p role="alert" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
+        <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
           {error}
         </p>
       )}
@@ -180,7 +180,7 @@ export function InvitationsPanel({
               <button
                 type="button"
                 onClick={() => revoke(inv.id, inv.email)}
-                className="text-red-500 hover:underline"
+                className="text-danger-text hover:underline"
                 aria-label={de ? `Einladung für ${inv.email} widerrufen` : `Revoke invitation for ${inv.email}`}
               >
                 {de ? "Widerrufen" : "Revoke"}

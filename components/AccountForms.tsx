@@ -15,8 +15,8 @@ function Message({ kind, children }: { kind: "error" | "ok"; children: React.Rea
       role={kind === "error" ? "alert" : "status"}
       className={
         kind === "error"
-          ? "rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500"
-          : "rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600"
+          ? "rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text"
+          : "rounded-md bg-success-soft px-3 py-2 text-sm text-success-text"
       }
     >
       {children}
@@ -143,7 +143,7 @@ export function DeleteAccountForm({ userId, locale }: { userId: string; locale: 
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+        className="self-start rounded-md bg-danger px-4 py-2 text-sm font-medium text-on-danger hover:opacity-90 disabled:opacity-50"
       >
         {de ? "Konto endgültig löschen" : "Delete account permanently"}
       </button>

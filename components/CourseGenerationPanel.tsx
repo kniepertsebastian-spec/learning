@@ -311,7 +311,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       </p>
 
       {!online && (
-        <p className="mb-3 text-xs text-amber-600 dark:text-amber-400">
+        <p className="mb-3 text-xs text-warning-text dark:text-warning-text">
           {locale === "de"
             ? "Die Kursgenerierung benötigt eine Verbindung."
             : "Course generation requires a connection."}
@@ -519,7 +519,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
               {objectives.filter((o) => o.status === "failed" && (o.validationErrorsJson?.length ?? 0) > 0).map((o) => (
                 <div key={o.id} className="mt-2" data-testid="failed-objective">
                   <p className="font-mono font-medium">{o.code}</p>
-                  <ul className="list-disc pl-4 text-red-600">
+                  <ul className="list-disc pl-4 text-danger-text">
                     {o.validationErrorsJson!.slice(0, 4).map((e, i) => (
                       <li key={i}>{e}</li>
                     ))}
@@ -544,7 +544,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
               {locale === "de" ? "Limit" : "limit"} ${job.initialCostLimitUsd}/${job.absoluteCostLimitUsd}
             </p>
           ) : (
-            <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-600" data-testid="pricing-missing">
+            <p className="rounded-md bg-warning-soft p-2 text-xs text-warning-text" data-testid="pricing-missing">
               {locale === "de"
                 ? "Kosten werden nicht berechnet: Für das KI-Modell sind keine Preise hinterlegt (GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD und GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD in der Server-.env). Solange greift auch das Kostenlimit nicht."
                 : "Costs are not calculated: no prices are set for the AI model (GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD and GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD in the server .env). The cost limit does not apply until then."}
@@ -559,7 +559,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
             </p>
           )}
           {job.status === "published" && (
-            <p className="flex items-center gap-1.5 text-sm text-green-600">
+            <p className="flex items-center gap-1.5 text-sm text-success-text">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               {locale === "de" ? "Kurs veröffentlicht." : "Course published."}
             </p>
@@ -569,7 +569,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
             job.status === "canary_failed" ||
             job.status === "circuit_breaker_open" ||
             job.status === "cost_limit_reached") && (
-            <div className="rounded-md bg-red-500/10 p-3 text-sm text-red-600">
+            <div className="rounded-md bg-danger-soft p-3 text-sm text-danger-text">
               <p className="flex items-center gap-1.5 font-medium">
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 {job.errorMessage ?? job.status}
@@ -613,8 +613,8 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       )}
 
       {badSources && (
-        <div role="alert" className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm" data-testid="bad-sources">
-          <p className="font-medium text-red-500">
+        <div role="alert" className="mt-3 rounded-md border border-danger/40 bg-danger-soft p-3 text-sm" data-testid="bad-sources">
+          <p className="font-medium text-danger-text">
             {locale === "de"
               ? `${badSources.length} Quelle(n) lassen sich nicht verwenden:`
               : `${badSources.length} source(s) cannot be used:`}
@@ -623,7 +623,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
             {badSources.map((b) => (
               <li key={b.url}>
                 <span className="block break-all font-mono text-xs">{b.url}</span>
-                <span className="block text-xs text-red-500">{b.error}</span>
+                <span className="block text-xs text-danger-text">{b.error}</span>
               </li>
             ))}
           </ul>
@@ -638,7 +638,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           </div>
         </div>
       )}
-      {requestError && <p className="mt-3 text-sm text-red-500">{requestError}</p>}
+      {requestError && <p className="mt-3 text-sm text-danger-text">{requestError}</p>}
     </section>
   );
 }

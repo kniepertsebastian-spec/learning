@@ -29,7 +29,7 @@ export function CompanyModulesSection({ modules, companyName, locale }: { module
           <li key={m.id} className="rounded-md border border-border bg-surface p-4" data-testid="company-module">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="font-medium">{m.title}</h3>
-              <span className={`text-xs ${m.state === "valid" ? "text-subtle" : m.state === "expiring" ? "text-amber-600" : "text-red-500"}`} data-testid="company-module-state">
+              <span className={`text-xs ${m.state === "valid" ? "text-subtle" : m.state === "expiring" ? "text-warning-text" : "text-danger-text"}`} data-testid="company-module-state">
                 {STATE_LABEL[m.state][locale]} {formatDate(m.validUntil, locale)}
                 {m.responsible ? ` · ${de ? "Verantwortlich" : "Owner"}: ${m.responsible}` : ""}
               </span>

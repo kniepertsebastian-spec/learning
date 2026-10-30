@@ -65,8 +65,8 @@ export function AccountForms({
         </a>
       </section>
 
-      <section className={`${card} border-red-500/40`}>
-        <h2 className="text-lg font-medium text-red-600">{de ? "Konto löschen" : "Delete account"}</h2>
+      <section className={`${card} border-danger/40`}>
+        <h2 className="text-lg font-medium text-danger-text">{de ? "Konto löschen" : "Delete account"}</h2>
         <div className="mt-3">
           <DeleteAccountForm userId={userId} locale={locale} />
         </div>

@@ -70,7 +70,7 @@ export function DepartmentsPanel({ departments, members, locale }: { departments
               <span>
                 {d.name} ({d.members})
               </span>
-              <button type="button" className="text-red-500 hover:underline" disabled={busy} onClick={() => void run(() => call(`/api/company/departments/${d.id}`, "DELETE"))} aria-label={`${d.name} ${de ? "löschen" : "delete"}`}>
+              <button type="button" className="text-danger-text hover:underline" disabled={busy} onClick={() => void run(() => call(`/api/company/departments/${d.id}`, "DELETE"))} aria-label={`${d.name} ${de ? "löschen" : "delete"}`}>
                 ×
               </button>
             </li>
@@ -100,7 +100,7 @@ export function DepartmentsPanel({ departments, members, locale }: { departments
         ))}
       </ul>
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-600">
+        <p role="alert" className="mt-2 text-sm text-danger-text">
           {error}
         </p>
       )}

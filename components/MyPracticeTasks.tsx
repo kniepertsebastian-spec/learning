@@ -53,7 +53,7 @@ function Task({ t, locale, canAskMentor }: { t: MyTaskRow; locale: "de" | "en"; 
         <span className="rounded bg-accent-soft px-2 py-0.5 text-xs font-medium text-link" data-testid="my-practice-status">{LABELS[t.status][locale]}</span>
       </div>
       {t.description && <p className="mt-1 whitespace-pre-wrap text-muted">{t.description}</p>}
-      {t.status === "rework" && t.reviewerNote && <p className="mt-2 rounded bg-amber-500/10 px-2 py-1" data-testid="my-practice-reviewer-note">{t.reviewerNote}</p>}
+      {t.status === "rework" && t.reviewerNote && <p className="mt-2 rounded bg-warning-soft px-2 py-1" data-testid="my-practice-reviewer-note">{t.reviewerNote}</p>}
       {t.status === "confirmed" && t.reviewerNote && <p className="mt-1 text-xs text-subtle">{t.reviewerNote}</p>}
       {canSubmit && (
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
@@ -71,7 +71,7 @@ function Task({ t, locale, canAskMentor }: { t: MyTaskRow; locale: "de" | "en"; 
           </button>
         </div>
       )}
-      {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-xs text-danger-text">{error}</p>}
       {canAskMentor && t.status !== "confirmed" && <MentorAskForm topic={t.title} certificationId={t.certificationId} locale={locale} />}
     </li>
   );

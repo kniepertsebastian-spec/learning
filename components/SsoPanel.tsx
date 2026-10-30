@@ -70,8 +70,8 @@ export function SsoPanel({ view }: { view: SsoViewProps }) {
       <p className="mt-1 text-sm text-muted">
         Mitarbeitende melden sich mit dem Firmenkonto an (OpenID Connect: Microsoft Entra ID, Okta, Google Workspace, Keycloak …). Wer sich mit einer bestätigten Firmen-Domain anmeldet, wird automatisch Mitglied; die Rolle ergibt sich bei jeder Anmeldung aus den Gruppen im Anmeldedienst. Einladungen sind dann nicht nötig.
       </p>
-      {error && <p role="alert" data-testid="sso-admin-error" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p>}
-      {notice && <p role="status" className="mt-3 rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-600">{notice}</p>}
+      {error && <p role="alert" data-testid="sso-admin-error" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>}
+      {notice && <p role="status" className="mt-3 rounded-md bg-success-soft px-3 py-2 text-sm text-success-text">{notice}</p>}
 
       <h3 className="mt-5 font-medium">1. E-Mail-Domains bestätigen</h3>
       <p className="text-sm text-muted">Nur Adressen bestätigter Domains können sich anmelden. Zur Bestätigung einen DNS-TXT-Eintrag setzen und danach „Prüfen“ klicken.</p>
@@ -79,7 +79,7 @@ export function SsoPanel({ view }: { view: SsoViewProps }) {
         {view.domains.map((d) => (
           <li key={d.id} className="rounded-md border border-border p-3 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-medium">{d.domain} <span className={d.verified ? "text-green-600" : "text-amber-600"}>{d.verified ? "· bestätigt" : "· noch nicht bestätigt"}</span></span>
+              <span className="font-medium">{d.domain} <span className={d.verified ? "text-success-text" : "text-warning-text"}>{d.verified ? "· bestätigt" : "· noch nicht bestätigt"}</span></span>
               <span className="flex gap-2">
                 {!d.verified && <button type="button" className={btn} disabled={busy} data-testid="sso-verify" onClick={() => void run(async () => { const r = await call(`/api/company/sso/domains/${d.id}/verify`, "POST"); if (!r.error && r.data?.verified !== true) return { error: "Der DNS-Eintrag wurde noch nicht gefunden (Änderungen im DNS können etwas dauern).", data: null }; return r; }, () => "Domain bestätigt.")}>Prüfen</button>}
                 <button type="button" className={btn} disabled={busy} onClick={() => void run(() => call(`/api/company/sso/domains/${d.id}`, "DELETE"))}>Entfernen</button>
@@ -100,7 +100,7 @@ export function SsoPanel({ view }: { view: SsoViewProps }) {
 
       <h3 className="mt-6 font-medium">2. Anmeldedienst eintragen</h3>
       {view.redirectUri && <p className="text-sm text-muted">Im Anmeldedienst als Weiterleitungs-Adresse (Redirect URI) eintragen: <code className="break-all">{view.redirectUri}</code></p>}
-      {!view.encryptionConfigured && <p className="mt-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm">Auf dem Server fehlt APP_ENCRYPTION_KEY: das Geheimnis lässt sich nicht speichern.</p>}
+      {!view.encryptionConfigured && <p className="mt-2 rounded-md bg-warning-soft px-3 py-2 text-sm">Auf dem Server fehlt APP_ENCRYPTION_KEY: das Geheimnis lässt sich nicht speichern.</p>}
       <form className="mt-2 flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); void run(() => call("/api/company/sso", "PUT", { issuer, clientId, clientSecret: secret || null, groupsClaim, roleMappings: { company_admin: toList(groups.company_admin), mentor: toList(groups.mentor), learner: toList(groups.learner) }, enabled, enforceSso: enforce }), () => { setSecret(""); return "Gespeichert."; }); }}>
         <label className="text-sm font-medium">Aussteller (Issuer)
           <input className={`${field} mt-1`} value={issuer} onChange={(e) => setIssuer(e.target.value)} placeholder="https://login.microsoftonline.com/<Verzeichnis-ID>/v2.0" data-testid="sso-issuer" />

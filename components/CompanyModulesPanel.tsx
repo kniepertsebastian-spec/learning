@@ -112,7 +112,7 @@ function ModuleForm({
         <button type="submit" disabled={busy || !title.trim() || !body.trim()} data-testid="module-submit" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90 disabled:opacity-50">
           {submitLabel}
         </button>
-        {error && <p role="alert" data-testid="module-error" className="text-sm text-red-500">{error}</p>}
+        {error && <p role="alert" data-testid="module-error" className="text-sm text-danger-text">{error}</p>}
       </div>
     </form>
   );
@@ -127,10 +127,10 @@ function ModuleItem({ m, paths, people, currentUserId, de }: { m: ModuleRowView;
   const mine = m.responsibleUserId === currentUserId;
   const badge =
     m.state === "expired"
-      ? { text: de ? "Abgelaufen" : "Expired", cls: "bg-red-500/10 text-red-500" }
+      ? { text: de ? "Abgelaufen" : "Expired", cls: "bg-danger-soft text-danger-text" }
       : m.state === "expiring"
-        ? { text: de ? "Läuft bald ab" : "Expiring soon", cls: "bg-amber-500/10 text-amber-600" }
-        : { text: de ? "Gültig" : "Valid", cls: "bg-green-500/10 text-green-600" };
+        ? { text: de ? "Läuft bald ab" : "Expiring soon", cls: "bg-warning-soft text-warning-text" }
+        : { text: de ? "Gültig" : "Valid", cls: "bg-success-soft text-success-text" };
 
   async function extend() {
     setError(await call(`/api/company/modules/${m.id}`, "PATCH", { validUntil: until }));
@@ -158,7 +158,7 @@ function ModuleItem({ m, paths, people, currentUserId, de }: { m: ModuleRowView;
         {m.responsibleUserId ? (
           <span data-testid="module-owner">{de ? "Verantwortlich" : "Responsible"}: {m.responsibleName ?? m.responsibleEmail}{mine ? (de ? " (du)" : " (you)") : ""}</span>
         ) : (
-          <span className="text-red-500" data-testid="module-owner">{de ? "ohne Verantwortlichen" : "no one responsible"}</span>
+          <span className="text-danger-text" data-testid="module-owner">{de ? "ohne Verantwortlichen" : "no one responsible"}</span>
         )}
       </p>
       {editing ? (
@@ -168,10 +168,10 @@ function ModuleItem({ m, paths, people, currentUserId, de }: { m: ModuleRowView;
           <input type="date" value={until} min={plusDays(0)} onChange={(e) => setUntil(e.target.value)} aria-label={de ? "Neues Ablaufdatum" : "New expiry date"} data-testid="module-extend-date" className="rounded-md border border-border bg-surface px-2 py-1 text-xs" />
           <button type="button" onClick={() => void extend()} data-testid="module-extend" className={btn}>{de ? "Verlängern" : "Extend"}</button>
           <button type="button" onClick={() => setEditing(true)} className={btn}>{de ? "Bearbeiten" : "Edit"}</button>
-          <button type="button" onClick={() => void archive()} className="text-xs text-subtle hover:text-red-500">{de ? "Archivieren" : "Archive"}</button>
+          <button type="button" onClick={() => void archive()} className="text-xs text-subtle hover:text-danger-text">{de ? "Archivieren" : "Archive"}</button>
         </div>
       )}
-      {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-xs text-danger-text">{error}</p>}
     </li>
     </>
   );
@@ -210,7 +210,7 @@ export function CompanyModulesPanel({
       </p>
 
       {(expired > 0 || expiring > 0 || orphaned > 0) && (
-        <p className="mt-3 rounded-md bg-amber-500/10 px-3 py-2 text-sm" role="status" data-testid="module-warning">
+        <p className="mt-3 rounded-md bg-warning-soft px-3 py-2 text-sm" role="status" data-testid="module-warning">
           {[
             expired > 0 && (de ? `${expired} abgelaufen` : `${expired} expired`),
             expiring > 0 && (de ? `${expiring} laufen bald ab` : `${expiring} expiring soon`),

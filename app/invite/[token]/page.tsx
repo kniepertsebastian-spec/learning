@@ -85,7 +85,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
               </Link>
             </div>
           ) : normalizeEmail(user.email) !== preview.email ? (
-            <p role="alert" className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500" data-testid="invite-mismatch">
+            <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text" data-testid="invite-mismatch">
               {de
                 ? `Diese Einladung gilt für ${preview.email}. Du bist als ${user.email} angemeldet.`
                 : `This invitation is for ${preview.email}. You are signed in as ${user.email}.`}

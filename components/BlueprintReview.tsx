@@ -59,9 +59,9 @@ function updateObjective(
 }
 
 function confidenceColor(confidence: number): string {
-  if (confidence < 0.5) return "bg-red-500/10 text-red-600";
-  if (confidence < 0.8) return "bg-yellow-500/10 text-yellow-600";
-  return "bg-green-500/10 text-green-600";
+  if (confidence < 0.5) return "bg-danger-soft text-danger-text";
+  if (confidence < 0.8) return "bg-warning-soft text-warning-text";
+  return "bg-success-soft text-success-text";
 }
 
 // Muss exakt lowConfidenceObjectiveKey() aus lib/server/admin/blueprint.ts
@@ -193,7 +193,7 @@ export function BlueprintReview({
   return (
     <div className="flex flex-col gap-4">
       {locked && (
-        <div className="flex items-center gap-2 rounded-md bg-green-500/10 p-3 text-sm text-green-700">
+        <div className="flex items-center gap-2 rounded-md bg-success-soft p-3 text-sm text-success-text">
           <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
           {status === "approved"
             ? locale === "de"
@@ -206,7 +206,7 @@ export function BlueprintReview({
       )}
 
       {truncated && (
-        <p className="flex items-center gap-1.5 rounded-md bg-yellow-500/10 p-2 text-xs text-yellow-700">
+        <p className="flex items-center gap-1.5 rounded-md bg-warning-soft p-2 text-xs text-warning-text">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {locale === "de"
             ? "Das Dokument war zu lang und wurde für die Extraktion gekürzt."
@@ -231,27 +231,27 @@ export function BlueprintReview({
           ) : (
             <ul className="space-y-1 text-xs">
               {diff.addedDomains.map((name) => (
-                <li key={`ad-${name}`} className="text-green-700">
+                <li key={`ad-${name}`} className="text-success-text">
                   + {locale === "de" ? "Neue Domain" : "New domain"}: {name}
                 </li>
               ))}
               {diff.removedDomains.map((name) => (
-                <li key={`rd-${name}`} className="text-red-600">
+                <li key={`rd-${name}`} className="text-danger-text">
                   − {locale === "de" ? "Domain entfernt" : "Domain removed"}: {name}
                 </li>
               ))}
               {diff.addedObjectives.map((o) => (
-                <li key={`ao-${o.domainName}-${o.code}`} className="text-green-700">
+                <li key={`ao-${o.domainName}-${o.code}`} className="text-success-text">
                   + {o.code} {o.title} ({o.domainName})
                 </li>
               ))}
               {diff.removedObjectives.map((o) => (
-                <li key={`ro-${o.id}`} className="text-red-600">
+                <li key={`ro-${o.id}`} className="text-danger-text">
                   − {o.code} {o.title} ({o.domainName})
                 </li>
               ))}
               {diff.changedObjectives.map((o, i) => (
-                <li key={`co-${o.id}-${o.field}-${i}`} className="text-yellow-700">
+                <li key={`co-${o.id}-${o.field}-${i}`} className="text-warning-text">
                   ~ {o.code} ({o.domainName}): {o.field} {locale === "de" ? "geändert" : "changed"}
                 </li>
               ))}
@@ -268,7 +268,7 @@ export function BlueprintReview({
       )}
 
       {staleResult && (staleResult.lessonsMarkedStale > 0 || staleResult.questionsMarkedStale > 0) && (
-        <p className="rounded-md bg-yellow-500/10 p-2 text-xs text-yellow-700">
+        <p className="rounded-md bg-warning-soft p-2 text-xs text-warning-text">
           {locale === "de"
             ? `${staleResult.lessonsMarkedStale} Lesson(s) und ${staleResult.questionsMarkedStale} Frage(n) als veraltet markiert - Neugenerierung erzeugt sie gezielt neu.`
             : `${staleResult.lessonsMarkedStale} lesson(s) and ${staleResult.questionsMarkedStale} question(s) marked stale - regeneration will target just those.`}
@@ -276,7 +276,7 @@ export function BlueprintReview({
       )}
 
       {errors.length > 0 && (
-        <div className="rounded-md border border-red-300 bg-red-500/10 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-danger/40 bg-danger-soft p-3 text-sm text-danger-text">
           <p className="flex items-center gap-1.5 font-medium">
             <AlertTriangle className="h-4 w-4" aria-hidden="true" />
             {locale === "de" ? "Fehler (blockieren die Freigabe)" : "Errors (block approval)"} ({errors.length})
@@ -290,7 +290,7 @@ export function BlueprintReview({
       )}
 
       {warnings.length > 0 && (
-        <div className="rounded-md bg-yellow-500/10 p-3 text-sm text-yellow-700">
+        <div className="rounded-md bg-warning-soft p-3 text-sm text-warning-text">
           <p className="font-medium">
             {locale === "de" ? "Hinweise" : "Warnings"} ({warnings.length})
           </p>
@@ -525,7 +525,7 @@ export function BlueprintReview({
                         className="mt-1.5 w-full rounded border border-border bg-surface px-1.5 py-1 text-xs disabled:opacity-60"
                       />
                       {objective.confidence < 0.5 && (
-                        <label className="mt-1.5 flex items-center gap-1.5 text-2xs text-red-600">
+                        <label className="mt-1.5 flex items-center gap-1.5 text-2xs text-danger-text">
                           <input
                             type="checkbox"
                             disabled={locked}
@@ -584,7 +584,7 @@ export function BlueprintReview({
             {locale === "de" ? "Blueprint freigeben" : "Approve blueprint"}
           </button>
           {savedNote && (
-            <span className="flex items-center gap-1 text-xs text-green-600">
+            <span className="flex items-center gap-1 text-xs text-success-text">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               {savedNote}
             </span>
@@ -592,7 +592,7 @@ export function BlueprintReview({
         </div>
       )}
 
-      {requestError && <p className="text-sm text-red-500">{requestError}</p>}
+      {requestError && <p className="text-sm text-danger-text">{requestError}</p>}
     </div>
   );
 }

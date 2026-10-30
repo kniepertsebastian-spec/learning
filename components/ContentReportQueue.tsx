@@ -77,9 +77,9 @@ export function ContentReportQueue({ certificationId, locale }: { certificationI
       ) : (
         <ul className="flex flex-col gap-3">
           {reports.map((report) => (
-            <li key={report.id} className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3">
+            <li key={report.id} className="rounded-md border border-warning/40 bg-warning-soft p-3">
               <div className="mb-1.5 flex items-start justify-between gap-2">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-yellow-700 dark:text-yellow-500">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-warning-text dark:text-warning-text">
                   <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
                   {REASON_LABEL[report.reason][locale]}
                 </span>

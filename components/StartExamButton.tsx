@@ -51,7 +51,7 @@ export function StartExamButton({ certId, certSlug, locale }: StartExamButtonPro
             ? "Prüfung starten"
             : "Start exam"}
       </button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger-text">{error}</p>}
     </div>
   );
 }

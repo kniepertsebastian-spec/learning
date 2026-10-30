@@ -77,7 +77,7 @@ export function BlueprintPanel({
           {locale === "de" ? "Blueprint-Vorschlag (R1.2/R1.3)" : "Blueprint proposal (R1.2/R1.3)"}
         </h3>
         {locked ? (
-          <span className="flex items-center gap-1 text-xs text-green-700">
+          <span className="flex items-center gap-1 text-xs text-success-text">
             <Lock className="h-3 w-3" aria-hidden="true" />
             {locale === "de" ? "Freigegeben" : "Approved"}
           </span>
@@ -100,7 +100,7 @@ export function BlueprintPanel({
         )}
       </div>
 
-      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-xs text-danger-text">{error}</p>}
 
       {draft && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -113,17 +113,17 @@ export function BlueprintPanel({
               {locale === "de" ? "Objectives" : "objectives"}
             </span>
             {draft.validationErrors.length > 0 && (
-              <span className="ml-2 rounded-full bg-red-500/10 px-1.5 py-0.5 text-red-600">
+              <span className="ml-2 rounded-full bg-danger-soft px-1.5 py-0.5 text-danger-text">
                 {draft.validationErrors.length} {locale === "de" ? "Fehler" : "errors"}
               </span>
             )}
             {draft.warnings.length > 0 && (
-              <span className="ml-2 rounded-full bg-yellow-500/10 px-1.5 py-0.5 text-yellow-700">
+              <span className="ml-2 rounded-full bg-warning-soft px-1.5 py-0.5 text-warning-text">
                 {draft.warnings.length} {locale === "de" ? "Hinweise" : "warnings"}
               </span>
             )}
             {draft.truncatedSource && (
-              <span className="ml-2 inline-flex items-center gap-1 text-yellow-700">
+              <span className="ml-2 inline-flex items-center gap-1 text-warning-text">
                 <AlertTriangle className="h-3 w-3" aria-hidden="true" />
                 {locale === "de" ? "gekürzt" : "truncated"}
               </span>

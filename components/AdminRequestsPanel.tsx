@@ -81,7 +81,7 @@ function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en
         </span>
       </div>
       {error && (
-        <p role="alert" className="mt-2 text-xs text-red-500">
+        <p role="alert" className="mt-2 text-xs text-danger-text">
           {error}
         </p>
       )}
@@ -174,12 +174,12 @@ function RequestRow({ r, releasable, locale }: { r: AdminRequest; releasable: Ca
             </button>
           </div>
           {r.certificationId && r.courseCatalogStatus !== "approved" && (
-            <p className="text-xs text-red-500">{de ? "Der angefragte Lernpfad ist noch nicht fachlich freigegeben." : "The requested course has not been approved by an expert yet."}</p>
+            <p className="text-xs text-danger-text">{de ? "Der angefragte Lernpfad ist noch nicht fachlich freigegeben." : "The requested course has not been approved by an expert yet."}</p>
           )}
         </div>
       )}
       {error && (
-        <p role="alert" className="mt-2 text-xs text-red-500">
+        <p role="alert" className="mt-2 text-xs text-danger-text">
           {error}
         </p>
       )}
@@ -243,7 +243,7 @@ function CatalogItem({ c, locale }: { c: CatalogRow; locale: "de" | "en" }) {
         {de ? "Speichern" : "Save"}
       </button>
       {error && (
-        <span role="alert" className="text-xs text-red-500">
+        <span role="alert" className="text-xs text-danger-text">
           {error}
         </span>
       )}

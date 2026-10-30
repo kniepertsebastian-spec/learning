@@ -87,9 +87,9 @@ export default async function ExamAttemptDetailPage({
           <p
             className={`flex items-center justify-center gap-1 text-xs font-medium ${
               delta !== null && delta > 0
-                ? "text-green-600"
+                ? "text-success-text"
                 : delta !== null && delta < 0
-                  ? "text-red-600"
+                  ? "text-danger-text"
                   : "text-subtle"
             }`}
           >
@@ -117,21 +117,21 @@ export default async function ExamAttemptDetailPage({
       )}
 
       {scoring.weakObjectives.length > 0 && (
-        <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-          <h2 className="mb-3 font-medium text-yellow-800">
+        <div className="mb-6 rounded-lg border border-warning/40 bg-warning-soft p-4">
+          <h2 className="mb-3 font-medium text-warning-text">
             {locale === "de" ? "Schwache Bereiche" : "Weak areas"}
           </h2>
           <ul className="flex flex-col gap-2">
             {scoring.weakObjectives.map((w) => {
               const isRepeated = repeatedWeakObjectiveCodes.includes(w.objectiveCode);
               return (
-                <li key={w.objectiveId} className="text-sm text-yellow-800">
+                <li key={w.objectiveId} className="text-sm text-warning-text">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="font-mono text-xs">{w.objectiveCode}</span>
                     <span>{w.objectiveTitle}</span>
                     <span className="text-xs">({w.examScore}%)</span>
                     {isRepeated && (
-                      <span className="flex items-center gap-1 rounded-full bg-yellow-200 px-1.5 py-0.5 text-[10px] font-medium text-yellow-900">
+                      <span className="flex items-center gap-1 rounded-full bg-warning-soft px-1.5 py-0.5 text-[10px] font-medium text-warning-text">
                         <RotateCcw className="h-2.5 w-2.5" aria-hidden="true" />
                         {locale === "de" ? "wiederholt schwach" : "repeatedly weak"}
                       </span>

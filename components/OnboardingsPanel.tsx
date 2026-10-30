@@ -120,7 +120,7 @@ function PlanCard({ plan, members, canSetStatus, de }: { plan: OnboardingPlanRow
         </button>
       </div>
       {error && (
-        <p role="alert" className="mt-2 text-sm text-red-600">
+        <p role="alert" className="mt-2 text-sm text-danger-text">
           {error}
         </p>
       )}
@@ -213,7 +213,7 @@ export function OnboardingsPanel({
           ))}
         </fieldset>
         {error && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-danger-text">
             {error}
           </p>
         )}

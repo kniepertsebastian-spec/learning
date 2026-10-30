@@ -153,30 +153,30 @@ export default async function AdminCertificationPage({
             <p className="text-xs text-subtle">{locale === "de" ? "Gesamt" : "Total"}</p>
             <p className="mt-1 text-xl font-semibold">{validation.totalContent}</p>
           </div>
-          <div className="rounded-lg border border-green-200/50 bg-green-50 p-4">
-            <p className="text-xs text-green-700">{locale === "de" ? "Gültig" : "Valid"}</p>
-            <p className="mt-1 text-xl font-semibold text-green-700">{validation.validContent}</p>
+          <div className="rounded-lg border border-success-border bg-success-soft p-4">
+            <p className="text-xs text-success-text">{locale === "de" ? "Gültig" : "Valid"}</p>
+            <p className="mt-1 text-xl font-semibold text-success-text">{validation.validContent}</p>
           </div>
-          <div className="rounded-lg border border-red-200/50 bg-red-50 p-4">
-            <p className="text-xs text-red-700">{locale === "de" ? "Fehler" : "Errors"}</p>
-            <p className="mt-1 text-xl font-semibold text-red-700">{validation.invalidContent}</p>
+          <div className="rounded-lg border border-danger/40 bg-danger-soft p-4">
+            <p className="text-xs text-danger-text">{locale === "de" ? "Fehler" : "Errors"}</p>
+            <p className="mt-1 text-xl font-semibold text-danger-text">{validation.invalidContent}</p>
           </div>
-          <div className="rounded-lg border border-yellow-200/50 bg-yellow-50 p-4">
-            <p className="text-xs text-yellow-700">{locale === "de" ? "Warnungen" : "Warnings"}</p>
-            <p className="mt-1 text-xl font-semibold text-yellow-700">{validation.warnings}</p>
+          <div className="rounded-lg border border-warning/40 bg-warning-soft p-4">
+            <p className="text-xs text-warning-text">{locale === "de" ? "Warnungen" : "Warnings"}</p>
+            <p className="mt-1 text-xl font-semibold text-warning-text">{validation.warnings}</p>
           </div>
         </div>
 
         {/* Issues by severity */}
         {errorIssues.length > 0 && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="rounded-lg border border-danger/40 bg-danger-soft p-4">
             <div className="flex items-center gap-2 mb-3">
-              <AlertCircle className="h-5 w-5 text-red-700" />
-              <h3 className="font-semibold text-red-700">
+              <AlertCircle className="h-5 w-5 text-danger-text" />
+              <h3 className="font-semibold text-danger-text">
                 {locale === "de" ? "Fehler" : "Errors"} ({errorIssues.length})
               </h3>
             </div>
-            <ul className="space-y-1 text-sm text-red-700">
+            <ul className="space-y-1 text-sm text-danger-text">
               {errorIssues.slice(0, 5).map((issue, i) => (
                 <li key={i}>• {issue.message}</li>
               ))}
@@ -186,14 +186,14 @@ export default async function AdminCertificationPage({
         )}
 
         {warningIssues.length > 0 && (
-          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+          <div className="rounded-lg border border-warning/40 bg-warning-soft p-4">
             <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-5 w-5 text-yellow-700" />
-              <h3 className="font-semibold text-yellow-700">
+              <AlertTriangle className="h-5 w-5 text-warning-text" />
+              <h3 className="font-semibold text-warning-text">
                 {locale === "de" ? "Warnungen" : "Warnings"} ({warningIssues.length})
               </h3>
             </div>
-            <ul className="space-y-1 text-sm text-yellow-700">
+            <ul className="space-y-1 text-sm text-warning-text">
               {warningIssues.slice(0, 5).map((issue, i) => (
                 <li key={i}>• {issue.message}</li>
               ))}
@@ -203,10 +203,10 @@ export default async function AdminCertificationPage({
         )}
 
         {errorIssues.length === 0 && warningIssues.length === 0 && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+          <div className="rounded-lg border border-success-border bg-success-soft p-4">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-700" />
-              <p className="font-semibold text-green-700">
+              <CheckCircle className="h-5 w-5 text-success-text" />
+              <p className="font-semibold text-success-text">
                 {locale === "de" ? "Alle Inhalte validieren sich erfolgreich!" : "All content validates successfully!"}
               </p>
             </div>
@@ -219,33 +219,33 @@ export default async function AdminCertificationPage({
           <div
             className={`rounded-lg border p-4 ${
               validation.sourceCoverage.objectivesWithoutReference.length > 0
-                ? "border-yellow-200 bg-yellow-50"
-                : "border-green-200 bg-green-50"
+                ? "border-warning/40 bg-warning-soft"
+                : "border-success-border bg-success-soft"
             }`}
           >
             <h3
               className={`mb-2 font-medium ${
                 validation.sourceCoverage.objectivesWithoutReference.length > 0
-                  ? "text-yellow-700"
-                  : "text-green-700"
+                  ? "text-warning-text"
+                  : "text-success-text"
               }`}
             >
               {locale === "de" ? "Quellenabdeckung" : "Source coverage"}
             </h3>
             {validation.sourceCoverage.objectivesWithoutReference.length === 0 ? (
-              <p className="text-sm text-green-700">
+              <p className="text-sm text-success-text">
                 {locale === "de"
                   ? "Jedes Objective hat mindestens eine Quellenreferenz."
                   : "Every objective has at least one source reference."}
               </p>
             ) : (
               <>
-                <p className="mb-2 text-sm text-yellow-700">
+                <p className="mb-2 text-sm text-warning-text">
                   {locale === "de"
                     ? `${validation.sourceCoverage.objectivesWithoutReference.length} Objective(s) ohne Quellenreferenz:`
                     : `${validation.sourceCoverage.objectivesWithoutReference.length} objective(s) without a source reference:`}
                 </p>
-                <ul className="space-y-1 text-sm text-yellow-700">
+                <ul className="space-y-1 text-sm text-warning-text">
                   {validation.sourceCoverage.objectivesWithoutReference.map((o) => (
                     <li key={o.id}>
                       <span className="font-mono text-xs">{o.code}</span> {o.title}
@@ -261,11 +261,11 @@ export default async function AdminCertificationPage({
             Quellenversion - Neugenerierung (Button oben) erzeugt gezielt
             nur diese neu. */}
         {(validation.staleContent.staleLessons > 0 || validation.staleContent.staleQuestions > 0) && (
-          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-            <h3 className="mb-1 font-medium text-yellow-700">
+          <div className="rounded-lg border border-warning/40 bg-warning-soft p-4">
+            <h3 className="mb-1 font-medium text-warning-text">
               {locale === "de" ? "Veraltete Inhalte" : "Stale content"}
             </h3>
-            <p className="text-sm text-yellow-700">
+            <p className="text-sm text-warning-text">
               {locale === "de"
                 ? `${validation.staleContent.staleLessons} Lesson(s) und ${validation.staleContent.staleQuestions} Frage(n) durch eine neuere Quellenversion veraltet. "Inhalte generieren" oben erzeugt gezielt nur diese neu.`
                 : `${validation.staleContent.staleLessons} lesson(s) and ${validation.staleContent.staleQuestions} question(s) are stale due to a newer source version. "Generate content" above regenerates just those.`}
@@ -296,11 +296,11 @@ export default async function AdminCertificationPage({
         </div>
 
         {objectiveAnalytics.problematicObjectives > 0 && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <h3 className="mb-3 font-medium text-red-700">
+          <div className="rounded-lg border border-danger/40 bg-danger-soft p-4">
+            <h3 className="mb-3 font-medium text-danger-text">
               {locale === "de" ? "Objectives mit niedriger Mastery (< 60%)" : "Objectives with low mastery (< 60%)"}
             </h3>
-            <ul className="space-y-1 text-sm text-red-700">
+            <ul className="space-y-1 text-sm text-danger-text">
               {objectiveAnalytics.objectivesByMastery
                 .filter((o) => o.needsReview)
                 .slice(0, 10)

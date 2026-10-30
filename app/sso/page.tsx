@@ -45,7 +45,7 @@ function SsoForm() {
         <p className="mb-5 text-sm text-muted">Gib deine Firmen-E-Mail-Adresse ein. Du wirst zum Anmeldedienst deiner Firma weitergeleitet.</p>
         <form onSubmit={submit} className="flex flex-col gap-4">
           {error && (
-            <p role="alert" data-testid="sso-error" className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
+            <p role="alert" data-testid="sso-error" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
               {error}
             </p>
           )}

@@ -84,7 +84,7 @@ function DocumentImages({ documentId, count, de }: { documentId: string; count: 
             {images.map((img) => (
               <li key={img.id} className="flex items-center justify-between gap-2 py-1">
                 <span className="min-w-0 break-all">{img.filename} · {formatSize(img.sizeBytes)}</span>
-                <button type="button" onClick={() => void remove(img.id)} className="text-red-500 hover:underline">
+                <button type="button" onClick={() => void remove(img.id)} className="text-danger-text hover:underline">
                   {de ? "Entfernen" : "Remove"}
                 </button>
               </li>
@@ -107,7 +107,7 @@ function DocumentImages({ documentId, count, de }: { documentId: string; count: 
             </button>
           </div>
           {error && (
-            <p role="alert" className="text-red-500">
+            <p role="alert" className="text-danger-text">
               {error}
             </p>
           )}
@@ -217,7 +217,7 @@ export function DocumentsPanel({
       </form>
 
       {error && (
-        <div role="alert" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500" data-testid="upload-error">
+        <div role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text" data-testid="upload-error">
           <p>{error}</p>
           {findings.length > 0 && (
             <ul className="mt-2 list-disc pl-5" data-testid="upload-findings">
@@ -241,7 +241,7 @@ export function DocumentsPanel({
                     type="button"
                     onClick={(e) => void upload(e, [...new Set(findings.map((f) => f.kind))])}
                     disabled={pending}
-                    className="mt-2 rounded-md border border-red-500 px-3 py-1.5 text-sm font-medium text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                    className="mt-2 rounded-md border border-danger/40 px-3 py-1.5 text-sm font-medium text-danger-text hover:bg-danger-soft disabled:opacity-50"
                   >
                     {de ? "Als unkritisch bestätigen und hochladen" : "Confirm as harmless and upload"}
                   </button>
@@ -285,7 +285,7 @@ export function DocumentsPanel({
                 <a href={`/api/company/documents/${d.id}/download`} className="text-xs text-link hover:underline">
                   {de ? "Herunterladen" : "Download"}
                 </a>
-                <button type="button" onClick={() => void remove(d.id)} className="text-xs text-red-500 hover:underline">
+                <button type="button" onClick={() => void remove(d.id)} className="text-xs text-danger-text hover:underline">
                   {de ? "Löschen" : "Delete"}
                 </button>
               </span>

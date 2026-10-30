@@ -94,7 +94,7 @@ export function FileDropZone({
         />
       </div>
       {notice && (
-        <p role="alert" className="mt-2 text-sm text-red-600" data-testid={`${testId}-notice`}>
+        <p role="alert" className="mt-2 text-sm text-danger-text" data-testid={`${testId}-notice`}>
           {notice}
         </p>
       )}

@@ -183,7 +183,7 @@ export function ContentGenerationControl({
           erzeugte Inhalte bleiben unabhängig davon verfügbar. */}
       {budget && (
         <p
-          className={`mt-3 text-xs ${budget.exceeded ? "text-red-600 dark:text-red-400" : "text-subtle"}`}
+          className={`mt-3 text-xs ${budget.exceeded ? "text-danger-text dark:text-danger-text" : "text-subtle"}`}
         >
           {locale === "de"
             ? `KI-Budget: $${budget.spentUsd.toFixed(2)} von $${budget.limitUsd.toFixed(2)} verbraucht.`
@@ -197,7 +197,7 @@ export function ContentGenerationControl({
 
       {/* R4.4 (roadmap.md): "Generierung ... ausdrücklich nicht offline anbieten". */}
       {!online && (
-        <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+        <p className="mt-3 text-xs text-warning-text dark:text-warning-text">
           {locale === "de"
             ? "Die KI-Inhaltsgenerierung benötigt eine Verbindung."
             : "AI content generation requires a connection."}
@@ -250,7 +250,7 @@ export function ContentGenerationControl({
           )}
 
           {job.status === "succeeded" && (
-            <p className="mt-3 flex items-center gap-1.5 text-sm text-green-600">
+            <p className="mt-3 flex items-center gap-1.5 text-sm text-success-text">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               {locale === "de" ? "Die Lerninhalte sind bereit." : "Learning content is ready."}
             </p>
@@ -264,21 +264,21 @@ export function ContentGenerationControl({
                   undefined,
                 ];
             return (
-              <div className="mt-3 rounded-md bg-red-500/10 p-3 text-sm text-red-600">
+              <div className="mt-3 rounded-md bg-danger-soft p-3 text-sm text-danger-text">
                 <p className="flex items-center gap-1.5 font-medium">
                   <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                   {title}
                 </p>
-                {hint && <p className="mt-1 text-xs text-red-600/90">{hint}</p>}
+                {hint && <p className="mt-1 text-xs text-danger-text/90">{hint}</p>}
                 {job.error && (
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-xs text-red-600/70">
+                    <summary className="cursor-pointer text-xs text-danger-text/70">
                       {locale === "de" ? "Technische Details" : "Technical details"}
                     </summary>
                     <p className="mt-1 whitespace-pre-wrap text-xs">{job.error}</p>
                   </details>
                 )}
-                <p className="mt-2 text-xs text-red-600/70">
+                <p className="mt-2 text-xs text-danger-text/70">
                   {locale === "de"
                     ? "\"Erneut versuchen\" oben wiederholt nur das Fehlende - bereits erzeugte Lektionen und Fragen werden nicht neu generiert."
                     : "\"Try again\" above only redoes what's missing - lessons and questions already generated are not recreated."}
@@ -289,7 +289,7 @@ export function ContentGenerationControl({
         </div>
       )}
 
-      {requestError && <p className="mt-3 text-sm text-red-500">{requestError}</p>}
+      {requestError && <p className="mt-3 text-sm text-danger-text">{requestError}</p>}
     </section>
   );
 }

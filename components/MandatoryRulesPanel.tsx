@@ -116,7 +116,7 @@ export function MandatoryRulesPanel({
               <div className="min-w-0">
                 <p className="font-medium break-words">{r.learningPath}</p>
                 {r.pendingRelease && (
-                  <p className="mt-0.5 inline-block rounded bg-amber-500/15 px-2 py-0.5 text-xs" data-testid="mandatory-pending">
+                  <p className="mt-0.5 inline-block rounded bg-warning-soft px-2 py-0.5 text-xs" data-testid="mandatory-pending">
                     {de ? "Wartet auf Freischaltung durch uns – wird danach automatisch zugewiesen" : "Waiting for our release – assigned automatically afterwards"}
                   </p>
                 )}
@@ -137,7 +137,7 @@ export function MandatoryRulesPanel({
                 )}
                 <p className="mt-1">
                   {r.completed}/{r.assigned} {de ? "bestanden" : "passed"}
-                  {r.overdue > 0 && <span className="ml-2 text-red-600">{r.overdue} {de ? "überfällig" : "overdue"}</span>}
+                  {r.overdue > 0 && <span className="ml-2 text-danger-text">{r.overdue} {de ? "überfällig" : "overdue"}</span>}
                 </p>
               </div>
               {canEdit && (
@@ -232,7 +232,7 @@ export function MandatoryRulesPanel({
             </select>
           </label>
           {repeat !== null && (
-            <div role="note" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="repeat-warning">
+            <div role="note" className="rounded-md border border-warning/40 bg-warning-soft p-3 text-sm" data-testid="repeat-warning">
               <p className="font-medium">{de ? "Achtung: Der Status wird zurückgesetzt" : "Warning: the status will be reset"}</p>
               <p className="mt-1">
                 {de
@@ -262,7 +262,7 @@ export function MandatoryRulesPanel({
             </span>
           </label>
           {error && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-danger-text">
               {error}
             </p>
           )}

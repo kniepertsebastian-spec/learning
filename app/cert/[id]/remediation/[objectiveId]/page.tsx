@@ -73,8 +73,8 @@ export default async function RemediationPage({
         {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
       </Link>
 
-      <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
-        <p className="text-sm font-medium text-yellow-800">
+      <div className="mb-6 rounded-lg border border-warning/40 bg-warning-soft px-4 py-3">
+        <p className="text-sm font-medium text-warning-text">
           {locale === "de" ? "Wiederholung: " : "Review: "}
           <span className="font-mono text-xs">{objective.code}</span> {objective.title}
         </p>

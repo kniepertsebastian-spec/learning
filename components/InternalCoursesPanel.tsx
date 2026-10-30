@@ -122,10 +122,10 @@ export function InternalCoursesPanel({
           : "The AI drafts a course from your files (one or many). You review and approve it; only then can learners see and be assigned to it. We see neither the files nor the course."}
       </p>
 
-      {error && <p role="alert" data-testid="internal-error" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p>}
+      {error && <p role="alert" data-testid="internal-error" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>}
 
       {!aiConfigured && (
-        <p className="mt-3 rounded-md bg-amber-500/10 px-3 py-2 text-sm" data-testid="internal-ai-missing">
+        <p className="mt-3 rounded-md bg-warning-soft px-3 py-2 text-sm" data-testid="internal-ai-missing">
           {de ? "Zuerst muss der Firmen-Admin unten den KI-Zugang einrichten." : "A company admin must first set up the AI access below."}
         </p>
       )}
@@ -155,7 +155,7 @@ export function InternalCoursesPanel({
           </details>
         )}
         {fileProblems.length > 0 && (
-          <ul className="flex flex-col gap-1 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500" data-testid="internal-file-problems">
+          <ul className="flex flex-col gap-1 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text" data-testid="internal-file-problems">
             {fileProblems.map((p, i) => (
               <li key={i}>
                 <span className="font-medium">{p.filename}</span>: {p.message}

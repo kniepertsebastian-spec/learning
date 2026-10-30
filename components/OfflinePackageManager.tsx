@@ -235,7 +235,7 @@ export function OfflinePackageManager({
           <p className="text-sm text-subtle">{locale === "de" ? "Lädt…" : "Loading…"}</p>
         ) : record ? (
           <div className="flex flex-col gap-1 text-sm text-muted">
-            <p className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+            <p className="flex items-center gap-1.5 text-success-text dark:text-success-text">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               {locale === "de" ? "Für offline verfügbar" : "Available offline"}
             </p>
@@ -246,7 +246,7 @@ export function OfflinePackageManager({
               {locale === "de" ? "Heruntergeladen am" : "Downloaded"}: {formatDate(record.downloadedAt, locale)}
             </p>
             {hasUpdate && (
-              <p className="text-amber-600 dark:text-amber-400">
+              <p className="text-warning-text dark:text-warning-text">
                 {locale === "de"
                   ? "Es gibt eine aktuellere Version dieses Kurses."
                   : "A newer version of this course is available."}
@@ -297,7 +297,7 @@ export function OfflinePackageManager({
           </div>
         )}
 
-        {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="mt-2 text-sm text-danger-text dark:text-danger-text">{error}</p>}
 
         {showInstallStep && (
           <div role="region" aria-label={locale === "de" ? "Zuerst installieren" : "Install first"} data-testid="download-install-step" className="mt-3 rounded-md border border-border bg-surface-inset p-3 text-sm">

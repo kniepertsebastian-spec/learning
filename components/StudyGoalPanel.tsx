@@ -268,12 +268,12 @@ export function StudyGoalPanel({
           {locale === "de" ? "Lernziel speichern" : "Save study goal"}
         </button>
         {savedNote && (
-          <span className="flex items-center gap-1 text-xs text-green-600">
+          <span className="flex items-center gap-1 text-xs text-success-text">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
             {savedNote}
           </span>
         )}
-        {error && <span className="text-xs text-red-500">{error}</span>}
+        {error && <span className="text-xs text-danger-text">{error}</span>}
       </div>
     </div>
   );

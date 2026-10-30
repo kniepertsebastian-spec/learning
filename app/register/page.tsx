@@ -88,7 +88,7 @@ function RegisterForm() {
         <h1 className="mb-6 text-xl font-semibold">Create account</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {error && (
-            <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p>
+            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>
           )}
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-sm font-medium">I am registering as</legend>

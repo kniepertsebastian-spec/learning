@@ -31,12 +31,12 @@ const STATUS_LABEL: Record<string, { de: string; en: string }> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  uploaded: "bg-yellow-500/10 text-yellow-600",
-  parsed: "bg-green-500/10 text-green-600",
-  reviewed: "bg-blue-500/10 text-blue-600",
-  approved: "bg-green-500/10 text-green-600",
+  uploaded: "bg-warning-soft text-warning-text",
+  parsed: "bg-success-soft text-success-text",
+  reviewed: "bg-info-soft text-info-text",
+  approved: "bg-success-soft text-success-text",
   superseded: "bg-foreground/10 text-subtle",
-  failed: "bg-red-500/10 text-red-600",
+  failed: "bg-danger-soft text-danger-text",
 };
 
 function formatBytes(bytes: number): string {
@@ -270,13 +270,13 @@ export function SourcesManager({
         </form>}
         {/* R4.4 (roadmap.md): "Quellenimport ausdrücklich nicht offline anbieten". */}
         {!online && (
-          <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+          <p className="mt-3 text-xs text-warning-text dark:text-warning-text">
             {locale === "de"
               ? "Der Quellenimport benötigt eine Verbindung."
               : "Source import requires a connection."}
           </p>
         )}
-        {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+        {error && <p className="mt-3 text-sm text-danger-text">{error}</p>}
       </section>
 
       <section>
@@ -345,7 +345,7 @@ export function SourcesManager({
                   </div>
 
                   {source.status === "failed" && source.parseError && (
-                    <p className="mt-2 whitespace-pre-wrap rounded-md bg-red-500/10 p-2 text-xs text-red-600">
+                    <p className="mt-2 whitespace-pre-wrap rounded-md bg-danger-soft p-2 text-xs text-danger-text">
                       {source.parseError}
                     </p>
                   )}

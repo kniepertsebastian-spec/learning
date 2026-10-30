@@ -72,7 +72,7 @@ function PendingItem({ p, locale }: { p: PendingRowView; locale: "de" | "en" }) 
           {de ? "Zur Nacharbeit zurück" : "Send back for rework"}
         </button>
       </div>
-      {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-xs text-danger-text">{error}</p>}
     </li>
   );
 }
@@ -194,7 +194,7 @@ export function PracticeTasksPanel({
       ) : (
         <p className="mt-3 text-sm text-muted">{de ? "Es gibt noch keinen Lernpfad, zu dem sich Aufgaben anlegen lassen." : "There is no learning path yet to add tasks to."}</p>
       )}
-      {error && <p role="alert" className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p>}
+      {error && <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>}
 
       {pending.length > 0 && (
         <>
@@ -218,7 +218,7 @@ export function PracticeTasksPanel({
                     <span className="font-medium">{t.title}</span>
                     <span className="text-muted"> · {t.learningPath}</span>
                   </span>
-                  <button type="button" onClick={() => void archive(t.id)} className="text-xs text-subtle hover:text-red-500">
+                  <button type="button" onClick={() => void archive(t.id)} className="text-xs text-subtle hover:text-danger-text">
                     {de ? "Archivieren" : "Archive"}
                   </button>
                 </div>
