@@ -33,8 +33,8 @@ test("Prüfer: bearbeitet den zugewiesenen Kurs von Hand (Lektion anlegen, ände
   await expect(page.getByText(/Gespeichert|Saved/).first()).toBeVisible();
 
   // Löschen
-  page.once("dialog", (d) => void d.accept());
   await page.getByTestId("section-delete").click();
+  await page.getByTestId("confirm-accept").click();
   await expect(page.getByTestId("tree-section").filter({ hasText: title })).toHaveCount(0);
   expect(await getDb().select({ id: sections.id }).from(sections).where(eq(sections.orderNum, 1))).not.toHaveLength(0); // der Demo-Kurs behält seine Lektion
   const revisions = await getDb().select({ note: contentRevisions.note }).from(contentRevisions).where(eq(contentRevisions.origin, "manual"));

@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -118,6 +119,7 @@ function ModuleForm({
 }
 
 function ModuleItem({ m, paths, people, currentUserId, de }: { m: ModuleRowView; paths: { id: string; name: string }[]; people: PersonOption[]; currentUserId: string; de: boolean }) {
+  const [confirm, confirmDialog] = useConfirm();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [until, setUntil] = useState(plusDays(365));
@@ -135,12 +137,14 @@ function ModuleItem({ m, paths, people, currentUserId, de }: { m: ModuleRowView;
     router.refresh();
   }
   async function archive() {
-    if (!window.confirm(de ? "Modul archivieren? Es verschwindet für alle." : "Archive this module? It disappears for everyone.")) return;
+    if (!(await confirm(de ? "Modul archivieren? Es verschwindet für alle." : "Archive this module? It disappears for everyone."))) return;
     setError(await call(`/api/company/modules/${m.id}`, "DELETE"));
     router.refresh();
   }
 
   return (
+    <>
+    {confirmDialog}
     <li className="rounded-md border border-border bg-background p-3 text-sm" data-testid="module-item" data-state={m.state}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span>
@@ -169,6 +173,7 @@ function ModuleItem({ m, paths, people, currentUserId, de }: { m: ModuleRowView;
       )}
       {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
     </li>
+    </>
   );
 }
 

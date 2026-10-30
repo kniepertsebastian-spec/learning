@@ -932,6 +932,9 @@ export const uiStrings = {
       error: "Ein Fehler ist aufgetreten.",
       retry: "Erneut versuchen",
       close: "Schließen",
+      confirmTitle: "Bitte bestätigen",
+      confirmYes: "Bestätigen",
+      confirmNo: "Abbrechen",
     },
   },
   en: {
@@ -1866,6 +1869,9 @@ export const uiStrings = {
       error: "Something went wrong.",
       retry: "Retry",
       close: "Close",
+      confirmTitle: "Please confirm",
+      confirmYes: "Confirm",
+      confirmNo: "Cancel",
     },
   },
 } as const;

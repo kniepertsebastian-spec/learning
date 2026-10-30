@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CATALOG_STATUS_LABELS, REQUEST_STATUS_LABELS, SETTABLE_REQUEST_STATUSES } from "@/lib/course-requests";
@@ -39,6 +40,7 @@ export type EntitlementView = {
 };
 
 function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en" }) {
+  const [confirm, confirmDialog] = useConfirm();
   const router = useRouter();
   const de = locale === "de";
   const [note, setNote] = useState("");
@@ -47,12 +49,14 @@ function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en
     const hint = de
       ? `Freigabe „${e.courseName}“ für ${e.organizationName} entziehen? Bestehende Zuweisungen (${e.openAssignments} offen) bleiben bestehen, neue sind nicht mehr möglich.`
       : `Revoke release of "${e.courseName}" for ${e.organizationName}? Existing assignments (${e.openAssignments} open) stay, new ones are no longer possible.`;
-    if (!window.confirm(hint)) return;
+    if (!(await confirm(hint))) return;
     const err = await call("/api/admin/entitlements", "DELETE", { organizationId: e.organizationId, certificationId: e.certificationId, note: note || null });
     setError(err);
     if (!err) router.refresh();
   }
   return (
+    <>
+    {confirmDialog}
     <li className="rounded-md border border-border bg-background p-3 text-sm" data-testid="admin-entitlement-row">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span>
@@ -82,6 +86,7 @@ function EntitlementItem({ e, locale }: { e: EntitlementView; locale: "de" | "en
         </p>
       )}
     </li>
+    </>
   );
 }
 

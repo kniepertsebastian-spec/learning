@@ -49,8 +49,8 @@ test("Probe-Review: ohne Freischaltung kein Freigeben, Bestehen schaltet frei, E
   }
   await expect(page.getByTestId("probe-count")).toContainText(/4/);
 
-  page.once("dialog", (d) => void d.accept());
   await page.getByTestId("probe-submit").click();
+  await page.getByTestId("confirm-accept").click();
   await expect(page.getByTestId("probe-result")).toHaveAttribute("data-passed", "true");
 
   // Freigeschaltet: Hinweis auf der Startseite weg

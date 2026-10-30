@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { AlertTriangle, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,13 +27,14 @@ const DONE = new Set(["published", "package_ready", "cancelled", "failed", "pref
 
 /** Leiste über dem Katalog: laufende Generierungen mit Schritt, 5-teiligem Balken und Kosten (Werte aus dem bestehenden Auftrag). */
 export function JobBar() {
+  const [confirm, confirmDialog] = useConfirm();
   const { t } = useLocale();
   const [jobs, setJobs] = useState<Array<ListedJob & { fraction: number; idleMinutes: number }>>([]);
   const [cancelling, setCancelling] = useState<Set<string>>(new Set());
 
   const cancelJob = useCallback(
     async (job: ListedJob) => {
-      if (!window.confirm(fmt(t.admin_catalog.jobCancelConfirm, { name: job.courseTitle ?? "" }))) return;
+      if (!(await confirm(fmt(t.admin_catalog.jobCancelConfirm, { name: job.courseTitle ?? "" })))) return;
       setCancelling((prev) => new Set(prev).add(job.id));
       try {
         const res = await fetch(`/api/admin/course-generation/${job.id}/cancel`, { method: "POST" });
@@ -46,7 +48,7 @@ export function JobBar() {
         });
       }
     },
-    [t],
+    [t, confirm],
   );
 
   useEffect(() => {
@@ -93,6 +95,8 @@ export function JobBar() {
   if (jobs.length === 0) return null;
   const names = [t.admin_catalog.step1, t.admin_catalog.step2, t.admin_catalog.step3, t.admin_catalog.step4, t.admin_catalog.step5];
   return (
+    <>
+    {confirmDialog}
     <div className="mb-5 flex flex-col gap-2" data-testid="job-bar" aria-live="polite">
       {jobs.map((j) => {
         const step = jobStepIndex(j.status);
@@ -139,5 +143,6 @@ export function JobBar() {
         );
       })}
     </div>
+    </>
   );
 }

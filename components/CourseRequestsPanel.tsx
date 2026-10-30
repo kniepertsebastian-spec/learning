@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { REQUEST_STATUS_LABELS } from "@/lib/course-requests";
@@ -30,6 +31,7 @@ export function CourseRequestsPanel({
   catalog: { id: string; name: string }[];
   locale: "de" | "en";
 }) {
+  const [confirm, confirmDialog] = useConfirm();
   const router = useRouter();
   const de = locale === "de";
   const [mode, setMode] = useState<"catalog" | "wish">(catalog.length > 0 ? "catalog" : "wish");
@@ -60,7 +62,7 @@ export function CourseRequestsPanel({
   }
 
   async function withdraw(id: string) {
-    if (!window.confirm(de ? "Anfrage wirklich zurückziehen?" : "Really withdraw this request?")) return;
+    if (!(await confirm(de ? "Anfrage wirklich zurückziehen?" : "Really withdraw this request?"))) return;
     setError(null);
     const res = await fetch(`/api/company/course-requests/${id}/withdraw`, { method: "POST" });
     if (!res.ok) {
@@ -71,6 +73,8 @@ export function CourseRequestsPanel({
   }
 
   return (
+    <>
+    {confirmDialog}
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="requests-panel">
       <h2 className="text-lg font-medium">{de ? "Allgemeine Lernpfade anfragen" : "Request general learning paths"}</h2>
       <p className="mt-1 text-sm text-muted">
@@ -182,5 +186,6 @@ export function CourseRequestsPanel({
         </ul>
       )}
     </section>
+    </>
   );
 }

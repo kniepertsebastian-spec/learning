@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -95,6 +96,7 @@ export function PracticeTasksPanel({
   sectionsByPath: Record<string, Array<{ id: string; code: string; title: string }>>;
   locale: "de" | "en";
 }) {
+  const [confirm, confirmDialog] = useConfirm();
   const router = useRouter();
   const de = locale === "de";
   const [pathId, setPathId] = useState(paths[0]?.id ?? "");
@@ -118,12 +120,14 @@ export function PracticeTasksPanel({
     }
   }
   async function archive(id: string) {
-    if (!window.confirm(de ? "Aufgabe archivieren? Sie zählt dann nicht mehr, Abgaben bleiben erhalten." : "Archive this task? It no longer counts, submissions are kept.")) return;
+    if (!(await confirm(de ? "Aufgabe archivieren? Sie zählt dann nicht mehr, Abgaben bleiben erhalten." : "Archive this task? It no longer counts, submissions are kept."))) return;
     setError(await call(`/api/company/practice-tasks/${id}`, "DELETE"));
     router.refresh();
   }
 
   return (
+    <>
+    {confirmDialog}
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="practice-tasks">
       <h2 className="text-lg font-medium">{de ? "Praxisaufgaben" : "Practice tasks"}</h2>
       <p className="mt-1 text-sm text-muted">
@@ -230,5 +234,6 @@ export function PracticeTasksPanel({
         </>
       )}
     </section>
+    </>
   );
 }

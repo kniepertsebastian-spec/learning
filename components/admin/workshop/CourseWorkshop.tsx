@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ArrowDown, ArrowUp, BookOpen, Bookmark, ChevronDown, ClipboardList, FileText, Flag, HelpCircle, Plus, RotateCcw, SquareTerminal } from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ function toHash(s: Selection): string {
  * bearbeitet), rechts der Editor der gewählten Lektion, die Fragen eines Lernziels oder die gemerkten Kursstände.
  */
 export function CourseWorkshop({ certId, courseName, locale, reviewer = false }: { certId: string; courseName: string; locale: Lang; /** Prüfer-Ansicht: nur Lektionen und Fragen von Hand bearbeiten (kein KI-Zugriff, keine Kursverwaltung). */ reviewer?: boolean }) {
+  const [confirm, confirmDialog] = useConfirm();
   const tr = useTr(locale);
   const [tree, setTree] = React.useState<WorkshopTree | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -62,8 +64,8 @@ export function CourseWorkshop({ certId, courseName, locale, reviewer = false }:
     })();
   }, [loadTree]);
 
-  const select = (next: Selection) => {
-    if (dirty && !window.confirm(tr("Ungespeicherte Änderungen verwerfen?", "Discard unsaved changes?"))) return;
+  const select = async (next: Selection) => {
+    if (dirty && !(await confirm(tr("Ungespeicherte Änderungen verwerfen?", "Discard unsaved changes?")))) return;
     setDirty(false);
     setSelection(next);
     setOutlineOpen(false);
@@ -171,6 +173,8 @@ export function CourseWorkshop({ certId, courseName, locale, reviewer = false }:
   );
 
   return (
+    <>
+    {confirmDialog}
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]" data-testid="course-workshop">
       <aside className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
         {/* Mobil auf- und zuklappbar, ab lg immer sichtbar; nur einmal im DOM. */}
@@ -239,6 +243,7 @@ export function CourseWorkshop({ certId, courseName, locale, reviewer = false }:
         {!reviewer && selection?.kind === "checkpoints" && <Checkpoints certId={certId} locale={locale} onRestored={() => void loadTree()} />}
       </div>
     </div>
+    </>
   );
 }
 
@@ -246,6 +251,7 @@ type Checkpoint = { id: string; name: string; createdAt: string; author: string 
 
 /** Ganzen Kurs unter einem Namen merken und darauf zurücksetzen. */
 function Checkpoints({ certId, locale, onRestored }: { certId: string; locale: Lang; onRestored: () => void }) {
+  const [confirm, confirmDialog] = useConfirm();
   const tr = useTr(locale);
   const [list, setList] = React.useState<Checkpoint[] | null>(null);
   const [name, setName] = React.useState("");
@@ -275,7 +281,7 @@ function Checkpoints({ certId, locale, onRestored }: { certId: string; locale: L
   }
 
   async function restore(cp: Checkpoint) {
-    if (!window.confirm(tr(`Ganzen Kurs auf „${cp.name}“ zurücksetzen? Jede geänderte Lektion und Frage behält ihren jetzigen Stand in den Versionen.`, `Restore the whole course to “${cp.name}”? Every changed lesson and question keeps its current version in the history.`))) return;
+    if (!(await confirm(tr(`Ganzen Kurs auf „${cp.name}“ zurücksetzen? Jede geänderte Lektion und Frage behält ihren jetzigen Stand in den Versionen.`, `Restore the whole course to “${cp.name}”? Every changed lesson and question keeps its current version in the history.`)))) return;
     setBusy(true);
     const r = await api<{ restored: number; unchanged: number; missing: number }>(`/api/admin/certifications/${certId}/workshop/checkpoints/${cp.id}/restore`, { method: "POST" });
     setBusy(false);
@@ -286,6 +292,8 @@ function Checkpoints({ certId, locale, onRestored }: { certId: string; locale: L
   }
 
   return (
+    <>
+    {confirmDialog}
     <div className="flex flex-col gap-4" data-testid="checkpoints">
       <div>
         <h2 className="text-lg font-semibold">{tr("Gemerkte Stände", "Saved checkpoints")}</h2>
@@ -316,5 +324,6 @@ function Checkpoints({ certId, locale, onRestored }: { certId: string; locale: L
         ))}
       </ul>
     </div>
+    </>
   );
 }
