@@ -124,7 +124,10 @@ test("Lernprofil-PDF: nur mit hinterlegter Zertifikatsprüfung, mit Prüfseite u
   await page.goto(`${gateway.url}/profile`);
   await page.getByTestId("profile-job-title").fill("Cloud Engineer");
   await page.getByTestId("profile-target-role").fill("Site Reliability Engineer");
+  // Erst nach der gespeicherten Antwort weiter, sonst bricht der Seitenwechsel das Speichern ab.
+  const saved = page.waitForResponse((r) => r.url().endsWith("/api/profile") && r.request().method() !== "GET");
   await page.getByTestId("profile-save").click();
+  expect((await saved).ok()).toBe(true);
   await page.goto(`${gateway.url}/career`);
   await expect(page.getByTestId("career-roles")).toContainText("Cloud Engineer");
   await expect(page.getByTestId("career-roles")).toContainText("Site Reliability Engineer");
