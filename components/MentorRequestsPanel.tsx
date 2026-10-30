@@ -31,9 +31,9 @@ function Request({ r, locale }: { r: MentorRequestRow; locale: "de" | "en" }) {
     <li className="rounded-md border border-border bg-background p-3 text-sm" data-testid="mentor-request">
       <p className="font-medium">
         {r.learner} · {r.topic}
-        {r.learningPath && <span className="text-foreground/70"> · {r.learningPath}</span>}
+        {r.learningPath && <span className="text-muted"> · {r.learningPath}</span>}
       </p>
-      <p className="mt-1 whitespace-pre-wrap text-foreground/80">{r.message}</p>
+      <p className="mt-1 whitespace-pre-wrap text-text-2">{r.message}</p>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
@@ -61,7 +61,7 @@ export function MentorRequestsPanel({ requests, stats, locale }: { requests: Men
     <section className="rounded-lg border border-border bg-surface p-4" data-testid="mentor-requests-panel">
       <h3 className="mb-3 font-medium">{de ? "Hilfe-Anfragen" : "Help requests"}</h3>
       {requests.length === 0 ? (
-        <p className="text-sm text-foreground/60">{de ? "Keine offenen Anfragen." : "No open requests."}</p>
+        <p className="text-sm text-subtle">{de ? "Keine offenen Anfragen." : "No open requests."}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {requests.map((r) => (
@@ -70,7 +70,7 @@ export function MentorRequestsPanel({ requests, stats, locale }: { requests: Men
         </ul>
       )}
       {stats && (
-        <p className="mt-3 text-xs text-foreground/70" data-testid="mentor-stats">
+        <p className="mt-3 text-xs text-muted" data-testid="mentor-stats">
           {de
             ? `Insgesamt ${stats.requests} Anfragen, ${stats.answered} beantwortet${stats.medianHoursToAnswer !== null ? `, typische Antwortzeit ${stats.medianHoursToAnswer} Stunden` : ""}.`
             : `${stats.requests} requests in total, ${stats.answered} answered${stats.medianHoursToAnswer !== null ? `, typical response time ${stats.medianHoursToAnswer} hours` : ""}.`}

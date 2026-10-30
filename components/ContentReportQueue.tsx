@@ -69,9 +69,9 @@ export function ContentReportQueue({ certificationId, locale }: { certificationI
         {locale === "de" ? "Gemeldete Fragen" : "Reported questions"}
       </h3>
       {reports === null ? (
-        <p className="text-sm text-foreground/60">{locale === "de" ? "Lädt …" : "Loading …"}</p>
+        <p className="text-sm text-subtle">{locale === "de" ? "Lädt …" : "Loading …"}</p>
       ) : reports.length === 0 ? (
-        <p className="text-sm text-foreground/60">
+        <p className="text-sm text-subtle">
           {locale === "de" ? "Keine offenen Meldungen." : "No open reports."}
         </p>
       ) : (
@@ -83,11 +83,11 @@ export function ContentReportQueue({ certificationId, locale }: { certificationI
                   <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
                   {REASON_LABEL[report.reason][locale]}
                 </span>
-                <span className="font-mono text-xs text-foreground/40">{report.humanId}</span>
+                <span className="font-mono text-xs text-faint">{report.humanId}</span>
               </div>
               <p className="mb-2 text-sm">{report.question[locale]}</p>
               {report.detail && (
-                <p className="mb-2 text-xs text-foreground/70" data-testid="report-detail">
+                <p className="mb-2 text-xs text-muted" data-testid="report-detail">
                   {locale === "de"
                     ? `Konzept „${report.detail.conceptName}“: ${report.detail.struggling} von ${report.detail.learners} Lernenden im Verstehens-Modus.`
                     : `Concept "${report.detail.conceptName}": ${report.detail.struggling} of ${report.detail.learners} learners in understanding mode.`}

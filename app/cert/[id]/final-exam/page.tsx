@@ -32,7 +32,7 @@ export default async function FinalExamStartPage({
   if (!session?.user?.id) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
         </p>
         <Link href="/login" className="mt-4 text-link hover:underline">
@@ -46,7 +46,7 @@ export default async function FinalExamStartPage({
     <div className="flex flex-1 flex-col">
       <Link
         href={`/cert/${slug}`}
-        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
@@ -56,11 +56,11 @@ export default async function FinalExamStartPage({
         <h1 className="mb-2 text-2xl font-semibold">
           {locale === "de" ? "Abschlussprüfung" : "Final Practice Exam"}
         </h1>
-        <p className="mb-6 text-sm text-foreground/70">
+        <p className="mb-6 text-sm text-muted">
           {cert.name} ({cert.examName} {cert.examVersion})
         </p>
 
-        <div className="mb-8 w-full rounded-lg border border-border bg-surface p-5 text-left text-sm text-foreground/80">
+        <div className="mb-8 w-full rounded-lg border border-border bg-surface p-5 text-left text-sm text-text-2">
           <ul className="list-disc space-y-1.5 pl-5">
             <li>
               {cert.examQuestionCount

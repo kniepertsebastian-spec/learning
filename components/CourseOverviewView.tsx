@@ -65,7 +65,7 @@ export function CourseOverviewView({ overview, scope, locale }: { overview: Cour
           {overview.essentialWhen.map((e, i) => (
             <li key={i} className="rounded-lg border border-border-subtle bg-surface-2 p-3 text-sm">
               <p className="font-medium break-words">{e.title[locale]}</p>
-              <p className="mt-1 text-foreground/80 break-words">{e.why[locale]}</p>
+              <p className="mt-1 text-text-2 break-words">{e.why[locale]}</p>
             </li>
           ))}
         </ul>

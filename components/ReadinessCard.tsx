@@ -11,11 +11,11 @@ const LEVEL_LABEL: Record<ReadinessLevel, { de: string; en: string }> = {
 };
 
 const LEVEL_COLOR: Record<ReadinessLevel, string> = {
-  WELL_PREPARED: "text-green-600",
-  ADEQUATELY_PREPARED: "text-blue-600",
-  SOMEWHAT_PREPARED: "text-yellow-600",
-  NEEDS_PREPARATION: "text-red-600",
-  INSUFFICIENT_DATA: "text-foreground/50",
+  WELL_PREPARED: "text-success-text",
+  ADEQUATELY_PREPARED: "text-info-text",
+  SOMEWHAT_PREPARED: "text-warning-text",
+  NEEDS_PREPARATION: "text-danger-text",
+  INSUFFICIENT_DATA: "text-faint",
 };
 
 function confidenceLabel(confidence: number, locale: Locale): string {
@@ -33,13 +33,13 @@ export function ReadinessCard({ locale, readiness }: { locale: Locale; readiness
   const { score, level, confidence, breakdown } = readiness;
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-surface p-4">
+    <div className="rounded-2xl border border-border bg-surface p-5">
       <div className="mb-2 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-1.5 text-sm font-medium">
           <Gauge className="h-4 w-4" aria-hidden="true" />
           {locale === "de" ? "Prüfungsreife" : "Exam readiness"}
         </h2>
-        <span className="text-xs text-foreground/50">{confidenceLabel(confidence, locale)}</span>
+        <span className="text-xs text-faint">{confidenceLabel(confidence, locale)}</span>
       </div>
 
       <div className="mb-1 flex items-baseline gap-2">
@@ -50,14 +50,14 @@ export function ReadinessCard({ locale, readiness }: { locale: Locale; readiness
       </div>
 
       {level === "INSUFFICIENT_DATA" && (
-        <p className="mb-2 text-xs text-foreground/60">
+        <p className="mb-2 text-xs text-subtle">
           {locale === "de"
             ? "Übe weiter - eine verlässliche Einschätzung braucht mehr Daten (mehrere Objectives, wiederholte Übung, idealerweise eine Probeprüfung)."
             : "Keep practicing - a reliable estimate needs more data (several objectives, repeated practice, ideally a mock exam)."}
         </p>
       )}
 
-      <details className="text-xs text-foreground/70">
+      <details className="text-xs text-muted">
         <summary className="cursor-pointer select-none text-link hover:underline">
           {locale === "de" ? "Warum diese Einschätzung?" : "Why this estimate?"}
         </summary>

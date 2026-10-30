@@ -3,6 +3,15 @@ export const dynamic = "force-dynamic";
 import { CourseSeal } from "@/components/seal/CourseSeal";
 import { getCourseSeal } from "@/lib/server/approvals/seal";
 import Link from "next/link";
+import { Check, ChevronDown, Circle, CircleCheck, TriangleAlert } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { ProgressBar } from "@/components/ui/progress";
+import { cn } from "@/lib/cn";
+import { shortCodeOf } from "@/lib/dashboard/logic";
+import { uiStrings } from "@/lib/i18n-strings";
+import { fmt } from "@/lib/quiz/keys";
 import { notFound, redirect } from "next/navigation";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
@@ -257,28 +266,6 @@ export default async function CertDetailPage({
     domainMastery[domain.id] = { mastery, strong, ok, total };
   });
 
-  const getStatusColor = (status?: string): string => {
-    switch (status) {
-      case "STRONG":
-        return "bg-green-500";
-      case "OK":
-        return "bg-blue-500";
-      default:
-        return "bg-gray-300";
-    }
-  };
-
-  const getStatusLabel = (status?: string): string => {
-    switch (status) {
-      case "STRONG":
-        return locale === "de" ? "Stark" : "Strong";
-      case "OK":
-        return locale === "de" ? "Gut" : "Good";
-      default:
-        return locale === "de" ? "Lernen" : "Learning";
-    }
-  };
-
   // Firmenmodule: nur für Mitglieder der Firma, der sie gehören (siehe lib/server/company/modules.ts)
   const companyMembership = session?.user?.id ? await getCompanyMembership(session.user.id) : null;
   const companyModules = companyMembership
@@ -300,314 +287,268 @@ export default async function CertDetailPage({
   const weaknessRadar = session?.user?.id && quizzes ? await getWeaknessRadar(session.user.id, cert.id).catch(() => null) : null;
   const hasStarted = Object.keys(progressData).some((k) => allObjectives.some((o) => o.id === k));
 
-  return (
-    <div className="flex flex-1 flex-col">
-      <div className="mb-6 flex flex-col items-start gap-4 xl:flex-row xl:justify-between">
-        <div className="min-w-0 xl:flex-1">
-          <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
-          <p className="text-sm text-foreground/70">
-            {cert.examName} {cert.examVersion}
-          </p>
-          {seal && <CourseSeal seal={seal} locale={locale} field={cert.name} className="mt-3 max-w-xl" />}
-        </div>
-        {session && (
-          <div className="flex flex-wrap items-center gap-2 xl:max-w-[55%] xl:shrink-0 xl:justify-end">
-            {withCheatSheet && (
-              <Link
-                href={`/cert/${slug}/cheatsheets`}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
-                data-testid="cheatsheets-link"
-              >
-                {locale === "de" ? "Merkzettel" : "Cheat sheets"}
-              </Link>
-            )}
-            {withSimulations && (
-              <Link
-                href={`/cert/${slug}/simulations`}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
-                data-testid="simulations-link"
-              >
-                {locale === "de" ? "Simulationen" : "Simulations"}
-              </Link>
-            )}
-            {hasExam && (
-              <Link
-                href={`/cert/${slug}/history`}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
-              >
-                {locale === "de" ? "Meine Prüfungen" : "My exams"}
-              </Link>
-            )}
-            {weaknessRadar && <WeaknessRadar radar={weaknessRadar} slug={slug} locale={locale} />}
-            {quizzes && (
-              <Link
-                href={`/cert/${slug}/offline`}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-surface"
-              >
-                {locale === "de" ? "Offline verfügbar" : "Available offline"}
-              </Link>
-            )}
-            {hasExam && (
-              <Link
-                href={`/cert/${slug}/final-exam`}
-                className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-link hover:bg-accent/10"
-              >
-                {locale === "de" ? "Abschlussprüfung" : "Final practice exam"}
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
+  const c = uiStrings[locale].course_page;
+  const sideColumn = Boolean(session && quizzes);
+  const statusLabel = (status?: string) => (status === "STRONG" ? c.statusStrong : status === "OK" ? c.statusOk : c.statusLearning);
+  const statusTone = (status?: string) => (status === "STRONG" ? "success" : status === "OK" ? "info" : "neutral");
+  const tabClass = "-mb-px inline-flex h-11 shrink-0 items-center border-b-2 border-transparent px-1 text-sm font-medium whitespace-nowrap text-subtle hover:text-foreground";
 
-      {overview && (
-        <details open={!hasStarted} className="mb-6 rounded-2xl border border-border bg-surface p-4" data-testid="course-description">
-          <summary className="cursor-pointer text-sm font-semibold">{locale === "de" ? "Über diesen Kurs" : "About this course"}</summary>
-          <div className="mt-3">
-            <CourseOverviewView overview={overview} scope={overviewScope} locale={locale} />
+  return (
+    <div className="flex flex-1 flex-col gap-6">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
+          <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border-strong bg-accent-soft font-mono text-body font-semibold text-link sm:flex" aria-hidden="true">
+            {shortCodeOf(cert.name, cert.shortCode)}
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-2xl leading-tight font-semibold tracking-title break-words sm:text-title">{cert.name}</h1>
+            <p className="mt-1 text-sm text-subtle">
+              <span className="font-mono">{cert.examName} {cert.examVersion}</span>
+              {session && quizzes && allSections.length > 0 ? ` · ${fmt(c.lessonsDone, { x: completedSections.size, y: allSections.length })}` : ""}
+            </p>
+            {seal && <CourseSeal seal={seal} locale={locale} field={cert.name} className="mt-3 max-w-xl" />}
           </div>
-        </details>
+        </div>
+        {/* Hauptaktion ist die Tages-Session darunter; hier nur der Weg zur Abschlussprüfung. */}
+        {session && quizzes && hasExam && (
+          <Button asChild variant="secondary" className="shrink-0 self-start">
+            <Link href={`/cert/${slug}/final-exam`}>{c.finalExam}</Link>
+          </Button>
+        )}
+      </header>
+
+      {session && (withCheatSheet || withSimulations || hasExam || quizzes || weaknessRadar) && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border">
+          <nav aria-label={c.tabsLabel} className="-mb-px flex min-w-0 gap-5 overflow-x-auto">
+            <Link href={`/cert/${slug}`} aria-current="page" className={cn(tabClass, "border-accent text-foreground")}>{c.tabOverview}</Link>
+            {hasExam && <Link href={`/cert/${slug}/history`} className={tabClass}>{c.tabExams}</Link>}
+            {withCheatSheet && <Link href={`/cert/${slug}/cheatsheets`} className={tabClass} data-testid="cheatsheets-link">{c.tabCheatsheets}</Link>}
+            {withSimulations && <Link href={`/cert/${slug}/simulations`} className={tabClass} data-testid="simulations-link">{c.tabSimulations}</Link>}
+            {quizzes && <Link href={`/cert/${slug}/offline`} className={tabClass}>{c.tabOffline}</Link>}
+          </nav>
+          {weaknessRadar && <div className="pb-2"><WeaknessRadar radar={weaknessRadar} slug={slug} locale={locale} /></div>}
+        </div>
+      )}
+
+      {!session && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-5 py-4">
+          <p className="text-sm text-muted">{c.signInHint}</p>
+          <Button asChild size="sm"><Link href="/login">{c.signIn}</Link></Button>
+        </div>
       )}
 
       {companyMembership && companyModules.length > 0 && (
         <CompanyModulesSection modules={companyModules} companyName={companyMembership.organizationName} locale={locale} />
       )}
 
-      {!session && (
-        <div className="mb-6 flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">
-          <p className="text-sm text-foreground/70">
-            {locale === "de"
-              ? "Melde dich an, um deinen Fortschritt zu speichern."
-              : "Sign in to save your progress."}
-          </p>
-          <Link
-            href="/login"
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90"
-          >
-            {locale === "de" ? "Anmelden" : "Sign in"}
-          </Link>
-        </div>
-      )}
+      <div className={cn("grid items-start gap-6", sideColumn && "xl:grid-cols-3")}>
+        <div className={cn("flex min-w-0 flex-col gap-6", sideColumn && "xl:col-span-2")}>
+          {session && quizzes && todayDashboard && <TodayDashboard certSlug={slug} locale={locale} data={todayDashboard} />}
+          {session && quizzes && !todayDashboard && (
+            <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} intro={learningIntro} welcomeBack={learningWelcomeBack} energyModes={energyModesOn} deescalated={deescalatedNow} />
+          )}
 
-      {preAssessment?.status === "completed" && preAssessment.domainResults && (
-        <details className="mb-6 rounded-2xl border border-border bg-surface p-4" data-testid="pre-assessment-card">
-          <summary className="cursor-pointer text-sm font-semibold">
-            {locale === "de"
-              ? `Dein Einstufungstest: ${preAssessment.correctCount} von ${preAssessment.totalCount} richtig`
-              : `Your entry assessment: ${preAssessment.correctCount} of ${preAssessment.totalCount} correct`}
-          </summary>
-          <ul className="mt-3 flex flex-col gap-1.5 text-sm text-foreground/80">
-            {preAssessment.domainResults.map((d) => (
-              <li key={d.domainId} className="flex items-center justify-between gap-3">
-                <span className="min-w-0 truncate">{d.name}</span>
-                <span className="shrink-0 tabular-nums text-foreground/60">{d.correct} / {d.total}</span>
-              </li>
-            ))}
-          </ul>
+          {quizzes && needsRemediation.length > 0 && (
+            <section aria-labelledby="remediation-title" className="flex flex-col gap-3" data-testid="remediation-list">
+              <div>
+                <h2 id="remediation-title" className="text-lg font-semibold">{c.remediationTitle}</h2>
+                <p className="text-meta text-subtle">{fmt(c.remediationSub, { n: needsRemediation.length })}</p>
+              </div>
+              <ul className="overflow-hidden rounded-2xl border border-border bg-surface">
+                {needsRemediation.map((r) => (
+                  <li key={r.objectiveId} className="border-b border-border-subtle last:border-0">
+                    <Link href={`/cert/${slug}/remediation/${r.objectiveId}`} className="flex items-center justify-between gap-3 px-5 py-3.5 text-sm hover:bg-surface-2">
+                      <span className="flex min-w-0 items-center gap-3">
+                        <TriangleAlert className="h-4 w-4 shrink-0 text-warning-text" aria-hidden="true" />
+                        <span className="min-w-0 font-medium">{r.objectiveTitle}</span>
+                      </span>
+                      <span className="shrink-0 font-medium text-link">{c.practiceTarget} →</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {session && quizzes && progressView && <ProgressReviewCard review={progressView.review} outlook={progressView.outlook} series={progressView.series} locale={locale} certSlug={slug} />}
+
+          {preAssessment?.status === "completed" && preAssessment.domainResults && (
+            <details className="rounded-2xl border border-border bg-surface p-5" data-testid="pre-assessment-card">
+              <summary className="cursor-pointer text-sm font-semibold">
+                {locale === "de"
+                  ? `Dein Einstufungstest: ${preAssessment.correctCount} von ${preAssessment.totalCount} richtig`
+                  : `Your entry assessment: ${preAssessment.correctCount} of ${preAssessment.totalCount} correct`}
+              </summary>
+              <ul className="mt-3 flex flex-col gap-1.5 text-sm text-text-2">
+                {preAssessment.domainResults.map((d) => (
+                  <li key={d.domainId} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate">{d.name}</span>
+                    <span className="shrink-0 tabular-nums text-subtle">{d.correct} / {d.total}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          {allSections.length === 0 && (
+            <Callout tone="mistake" title={locale === "de" ? "Noch keine Lerninhalte" : "No learning content yet"}>
+              <p>
+                {locale === "de" ? "Für diesen Kurs wurden noch keine Lerninhalte erzeugt." : "Learning content has not been generated for this course yet."}{" "}
+                {locale === "de"
+                  ? "Im Adminbereich siehst du den Content-Status. Danach müssen Curriculum und Lektionen einmalig im App-Container erzeugt werden."
+                  : "Admin shows the content status. The curriculum and lessons then need to be generated once in the app container."}
+              </p>
+              {session && (
+                <Link href={`/admin/certifications/${slug}`} className="mt-2 inline-block text-sm font-medium text-link hover:underline">
+                  {locale === "de" ? "Zum Adminbereich" : "Open admin"}
+                </Link>
+              )}
+            </Callout>
+          )}
+
+          {session && !quizzes && allSections.length > 0 && (
+            <div className="rounded-2xl border border-border bg-surface px-5 py-4 text-sm" data-testid="lesson-progress">
+              <p className="font-medium">
+                {locale === "de"
+                  ? `${completedSections.size} von ${allSections.length} Lektionen durchgearbeitet`
+                  : `${completedSections.size} of ${allSections.length} lessons completed`}
+              </p>
+              <ProgressBar value={allSections.length ? (completedSections.size / allSections.length) * 100 : 0} className="mt-2" label={c.chapters} />
+              <p className="mt-2 text-xs text-muted">
+                {locale === "de"
+                  ? "Dieser Lernpfad hat keine Tests: Er gilt als abgeschlossen, sobald du alle Lektionen durchgearbeitet hast."
+                  : "This learning path has no tests: it counts as completed once you have worked through all lessons."}
+              </p>
+            </div>
+          )}
+
+          {allDomains.length > 0 && (
+            <section aria-labelledby="chapters-title" className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="chapters-title" className="text-lg font-semibold">{c.chapters}</h2>
+                {session && <p className="text-meta text-subtle">{fmt(c.chaptersSub, { done: completedSections.size, total: allSections.length })}</p>}
+              </div>
+              {allDomains.map((domain, di) => {
+                const domainObjectives = allObjectives.filter((o) => o.domainId === domain.id);
+                const domainSectionIds = allSections.filter((sec) => domainObjectives.some((o) => o.id === sec.objectiveId)).map((sec) => sec.id);
+                const domainDone = domainSectionIds.filter((id) => completedSections.has(id)).length;
+                const allDone = domainSectionIds.length > 0 && domainDone === domainSectionIds.length;
+                const { mastery } = domainMastery[domain.id] || { mastery: 0 };
+                const chapter = chapterByDomain.get(domain.id);
+                return (
+                  <details key={domain.id} open={!allDone} className="group overflow-hidden rounded-2xl border border-border bg-surface">
+                    <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 [&::-webkit-details-marker]:hidden">
+                      <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold", allDone ? "bg-success text-on-success" : domainDone > 0 ? "border-2 border-accent text-link" : "border-2 border-border-strong text-subtle")} aria-hidden="true">
+                        {allDone ? <Check className="h-4 w-4" /> : di + 1}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-semibold break-words">
+                          {domain.name}
+                          {domain.weightPercent && <span className="ml-2 text-sm font-normal text-subtle">({Number(domain.weightPercent).toLocaleString(locale === "de" ? "de-DE" : "en-GB")} %)</span>}
+                        </span>
+                        <span className="block text-xs text-subtle tabular-nums">
+                          {fmt(c.lessonsDone, { x: domainDone, y: domainSectionIds.length })}
+                          {session && quizzes ? ` · ${fmt(c.mastery, { n: mastery })}` : ""}
+                        </span>
+                      </span>
+                      {session && quizzes && <ProgressBar value={mastery} tone={mastery >= 70 ? "success" : "accent"} className="hidden w-24 sm:block" label={fmt(c.mastery, { n: mastery })} />}
+                      <ChevronDown className="h-4 w-4 shrink-0 text-faint transition-transform group-open:rotate-180" aria-hidden="true" />
+                    </summary>
+                    <div className="flex flex-col gap-4 border-t border-border-subtle px-5 py-4">
+                      {session && quizzes && (domainsWithQuestions.has(domain.id) || chapter?.poolSize) ? (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                          {domainsWithQuestions.has(domain.id) && (
+                            <Link href={`/cert/${slug}/placement/${domain.id}`} className="text-sm text-link hover:underline" data-testid="placement-entry">{c.placement}</Link>
+                          )}
+                          {chapter?.poolSize ? (
+                            <Link href={`/cert/${slug}/chapter/${domain.id}/quiz`} className={cn("inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium", chapter.quizPassed ? "border-success-border bg-success-soft text-success-text" : "border-accent-border bg-accent-soft text-link hover:border-accent")} data-testid="chapter-quiz-entry">
+                              {chapter.quizPassed ? fmt(c.chapterQuizPassed, { n: Math.round(chapter.bestScore ?? 0) }) : c.chapterQuiz}
+                            </Link>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {domainObjectives.map((obj) => {
+                        const objSections = allSections.filter((sec) => sec.objectiveId === obj.id);
+                        const progress = progressData[obj.id];
+                        return (
+                          <div key={obj.id} className="flex flex-col gap-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="text-sm font-medium">
+                                <span className="mr-2 font-mono text-xs text-faint">{obj.code}</span>
+                                {obj.title}
+                              </p>
+                              {session && quizzes && progress && (
+                                <Badge tone={statusTone(progress.status)} className="shrink-0 tabular-nums">{statusLabel(progress.status)} · {progress.masteryScore} %</Badge>
+                              )}
+                            </div>
+                            <ul className="flex flex-col gap-1.5">
+                              {objSections.map((section) => {
+                                const isReady = sectionsWithLessons.has(section.id);
+                                const done = completedSections.has(section.id);
+                                const content = (
+                                  <>
+                                    <span className="flex min-w-0 items-center gap-2.5">
+                                      {done ? (
+                                        <CircleCheck className="h-4 w-4 shrink-0 text-success-text" aria-label={c.completed} />
+                                      ) : (
+                                        <Circle className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
+                                      )}
+                                      <span className="min-w-0">{section.title[locale]}</span>
+                                      {skippedSections.has(section.id) && (
+                                        <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle" data-testid="skipped-badge">{c.skipped}</span>
+                                      )}
+                                    </span>
+                                    <span className="shrink-0 text-xs text-faint">
+                                      {isReady ? (section.estimatedMinutes ? fmt(c.minutes, { n: section.estimatedMinutes }) : null) : c.contentMissing}
+                                    </span>
+                                  </>
+                                );
+                                return (
+                                  <li key={section.id}>
+                                    {isReady ? (
+                                      <Link href={`/cert/${slug}/section/${section.id}`} className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-2 px-3 py-2 text-sm hover:border-accent-border">
+                                        {content}
+                                      </Link>
+                                    ) : (
+                                      <div className="flex min-h-11 cursor-not-allowed items-center justify-between gap-3 rounded-lg border border-border-subtle px-3 py-2 text-sm opacity-60">{content}</div>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
+                );
+              })}
+            </section>
+          )}
+        </div>
+
+        {sideColumn && (
+          <aside aria-label={c.yourProgress} className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-6">
+            <ExamDateInline certId={cert.id} locale={locale} goal={studyGoal} />
+            {readiness && <ReadinessCard locale={locale} readiness={readiness} />}
+            <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} neededMinutes={neededMinutes} />
+            <SelfAssessmentCard locale={locale} topics={selfAssessment} />
+          </aside>
+        )}
+      </div>
+
+      {overview && (
+        <details open={!hasStarted} className="rounded-2xl border border-border bg-surface p-5" data-testid="course-description">
+          <summary className="cursor-pointer text-sm font-semibold">{c.aboutCourse}</summary>
+          <div className="mt-3">
+            <CourseOverviewView overview={overview} scope={overviewScope} locale={locale} />
+          </div>
         </details>
       )}
 
-      {session && quizzes && <ExamDateInline certId={cert.id} locale={locale} goal={studyGoal} />}
-
-      {session && quizzes && todayDashboard && (
-        <TodayDashboard certSlug={slug} locale={locale} data={todayDashboard} />
-      )}
-
-      {session && quizzes && !todayDashboard && (
-        <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} intro={learningIntro} welcomeBack={learningWelcomeBack} energyModes={energyModesOn} deescalated={deescalatedNow} />
-      )}
-
-      {session && quizzes && progressView && <ProgressReviewCard review={progressView.review} outlook={progressView.outlook} series={progressView.series} locale={locale} certSlug={slug} />}
-
-      {session && quizzes && readiness && <ReadinessCard locale={locale} readiness={readiness} />}
-
-      {session && quizzes && <SelfAssessmentCard locale={locale} topics={selfAssessment} />}
-
-      {session && quizzes && <StudyGoalPanel certId={cert.id} locale={locale} initialGoal={studyGoal} neededMinutes={neededMinutes} />}
-
-      {quizzes && needsRemediation.length > 0 && (
-        <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
-          <p className="mb-2 text-sm font-medium text-yellow-800">
-            {locale === "de"
-              ? `${needsRemediation.length} Bereich(e) benötigen Wiederholung:`
-              : `${needsRemediation.length} area(s) need review:`}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {needsRemediation.map((r) => (
-              <Link
-                key={r.objectiveId}
-                href={`/cert/${slug}/remediation/${r.objectiveId}`}
-                className="rounded-md border border-yellow-300 bg-white px-3 py-1.5 text-sm text-yellow-800 hover:bg-yellow-100"
-              >
-                {r.objectiveTitle}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {allSections.length === 0 && (
-        <div className="mb-6 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
-          <p className="font-medium">
-            {locale === "de" ? "Für diesen Kurs wurden noch keine Lerninhalte erzeugt." : "Learning content has not been generated for this course yet."}
-          </p>
-          <p className="mt-1 text-sm text-foreground/70">
-            {locale === "de"
-              ? "Im Adminbereich siehst du den Content-Status. Danach müssen Curriculum und Lektionen einmalig im App-Container erzeugt werden."
-              : "Admin shows the content status. The curriculum and lessons then need to be generated once in the app container."}
-          </p>
-          {session && (
-            <Link href={`/admin/certifications/${slug}`} className="mt-3 inline-block text-sm font-medium text-link hover:underline">
-              {locale === "de" ? "Zum Adminbereich" : "Open admin"}
-            </Link>
-          )}
-        </div>
-      )}
-
-      {session && !quizzes && allSections.length > 0 && (
-        <div className="mb-6 rounded-lg border border-border bg-surface px-4 py-3 text-sm" data-testid="lesson-progress">
-          <p className="font-medium">
-            {locale === "de"
-              ? `${completedSections.size} von ${allSections.length} Lektionen durchgearbeitet`
-              : `${completedSections.size} of ${allSections.length} lessons completed`}
-          </p>
-          <p className="mt-1 text-xs text-foreground/70">
-            {locale === "de"
-              ? "Dieser Lernpfad hat keine Tests: Er gilt als abgeschlossen, sobald du alle Lektionen durchgearbeitet hast."
-              : "This learning path has no tests: it counts as completed once you have worked through all lessons."}
-          </p>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-8">
-        {allDomains.map((domain) => {
-          const domainObjectives = allObjectives.filter((o) => o.domainId === domain.id);
-          const { mastery } = domainMastery[domain.id] || { mastery: 0 };
-          return (
-            <div key={domain.id}>
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                <div className="min-w-0">
-                  <h2 className="text-lg font-semibold break-words">
-                    {domain.name}
-                    {domain.weightPercent && (
-                      <span className="ml-2 text-sm font-normal text-foreground/60">
-                        ({domain.weightPercent}%)
-                      </span>
-                    )}
-                  </h2>
-                </div>
-                {session && quizzes && domainsWithQuestions.has(domain.id) && (
-                  <Link href={`/cert/${slug}/placement/${domain.id}`} className="shrink-0 text-sm text-link hover:underline" data-testid="placement-entry">
-                    {locale === "de" ? "Kenne ich schon? Kapitel testen" : "Know this already? Test the chapter"}
-                  </Link>
-                )}
-                {session && quizzes && chapterByDomain.get(domain.id)?.poolSize ? (
-                  <Link
-                    href={`/cert/${slug}/chapter/${domain.id}/quiz`}
-                    className="shrink-0 rounded-md border border-accent px-2.5 py-1 text-sm font-medium text-link hover:bg-accent/10"
-                    data-testid="chapter-quiz-entry"
-                  >
-                    {chapterByDomain.get(domain.id)?.quizPassed
-                      ? (locale === "de" ? `Kapitelquiz bestanden (${Math.round(chapterByDomain.get(domain.id)?.bestScore ?? 0)} %)` : `Chapter quiz passed (${Math.round(chapterByDomain.get(domain.id)?.bestScore ?? 0)}%)`)
-                      : (locale === "de" ? "Kapitelquiz: Sitzt das?" : "Chapter quiz: does it stick?")}
-                  </Link>
-                ) : null}
-                {session && quizzes && (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <div className="h-2 w-24 rounded-full bg-gray-300">
-                      <div
-                        className="h-full rounded-full bg-accent transition-all"
-                        style={{ width: `${mastery}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-medium text-foreground/70">{mastery}%</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col gap-4">
-                {domainObjectives.map((obj) => {
-                  const objSections = allSections.filter((s) => s.objectiveId === obj.id);
-                  const progress = progressData[obj.id];
-                  return (
-                    <div key={obj.id} className="rounded-lg border border-border bg-surface p-4">
-                      <div className="mb-3 flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">
-                            <span className="mr-2 font-mono text-xs text-foreground/50">{obj.code}</span>
-                            {obj.title}
-                          </p>
-                        </div>
-                        {session && quizzes && progress && (
-                          <div className="ml-4 flex shrink-0 flex-col items-end gap-1">
-                            <div className="flex items-center gap-1.5">
-                              <div className={`h-2 w-12 rounded-full ${getStatusColor(progress.status)}`} />
-                              <span className="text-xs font-medium text-foreground/70">
-                                {progress.masteryScore}%
-                              </span>
-                            </div>
-                            <span className="text-xs text-foreground/60">{getStatusLabel(progress.status)}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        {objSections.map((section) => {
-                          const isReady = sectionsWithLessons.has(section.id);
-                          const content = (
-                            <>
-                              <span>
-                                {completedSections.has(section.id) && (
-                                  <span className="mr-2 text-emerald-500" aria-label={locale === "de" ? "durchgearbeitet" : "completed"}>
-                                    ✓
-                                  </span>
-                                )}
-                                {section.title[locale]}
-                                {skippedSections.has(section.id) && (
-                                  <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs text-foreground/60" data-testid="skipped-badge">
-                                    {locale === "de" ? "übersprungen" : "skipped"}
-                                  </span>
-                                )}
-                              </span>
-                              <span className="shrink-0 text-xs text-foreground/50">
-                                {isReady
-                                  ? section.estimatedMinutes && `${section.estimatedMinutes} min`
-                                  : locale === "de" ? "Inhalt fehlt" : "Content missing"}
-                              </span>
-                            </>
-                          );
-
-                          return isReady ? (
-                            <Link
-                              key={section.id}
-                              href={`/cert/${slug}/section/${section.id}`}
-                              className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:border-accent hover:bg-background"
-                            >
-                              {content}
-                            </Link>
-                          ) : (
-                            <div
-                              key={section.id}
-                              className="flex cursor-not-allowed items-center justify-between rounded-md border border-border px-3 py-2 text-sm opacity-60"
-                            >
-                              {content}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       <CourseSources sources={courseSources} locale={locale} />
 
-      {session && cert.kind === "general" && (
-        <div className="mt-6">
-          <FeedbackButton certificationId={cert.id} />
-        </div>
-      )}
+      {session && cert.kind === "general" && <FeedbackButton certificationId={cert.id} />}
     </div>
   );
 }

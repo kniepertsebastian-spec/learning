@@ -25,7 +25,7 @@ export function DomainActivityTrends({
         {domains.map((d) => (
           <div key={d.domainId} className="flex items-center justify-between text-sm">
             <span>{d.domainName}</span>
-            <span className="text-foreground/70">
+            <span className="text-muted">
               {d.avgAccuracy !== null ? `${d.avgAccuracy}%` : "–"} ·{" "}
               {d.activeDays} {locale === "de" ? "aktive Tage" : "active days"}
             </span>

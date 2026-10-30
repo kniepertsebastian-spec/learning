@@ -79,7 +79,7 @@ export function InvitationsPanel({
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="invitations-panel">
       <h2 className="text-lg font-medium">{de ? "Mitarbeiter einladen" : "Invite people"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {mailEnabled
           ? de
             ? "Die eingeladene Person bekommt eine E-Mail mit dem Link. Du siehst ihn zusätzlich hier und kannst ihn selbst weitergeben. Er gilt 7 Tage, einmal und nur für die eingegebene E-Mail-Adresse."
@@ -142,7 +142,7 @@ export function InvitationsPanel({
                   : "The email could not be sent. Pass the link on yourself."}
             </p>
           )}
-          <p className="mt-1 text-xs text-foreground/70">
+          <p className="mt-1 text-xs text-muted">
             {de
               ? "Dieser Link wird nur jetzt angezeigt. Danach ist er nicht mehr abrufbar."
               : "This link is shown only now. It cannot be retrieved later."}
@@ -163,7 +163,7 @@ export function InvitationsPanel({
 
       <h3 className="mt-6 text-sm font-medium">{de ? "Offene Einladungen" : "Open invitations"}</h3>
       {invitations.length === 0 ? (
-        <p className="mt-2 text-sm text-foreground/70" data-testid="no-invitations">
+        <p className="mt-2 text-sm text-muted" data-testid="no-invitations">
           {de ? "Keine offenen Einladungen." : "No open invitations."}
         </p>
       ) : (
@@ -172,7 +172,7 @@ export function InvitationsPanel({
             <li key={inv.id} className="flex items-center justify-between gap-3 py-2">
               <span>
                 {inv.email} · {ROLE_LABELS[inv.role][locale]} ·{" "}
-                <span className="text-foreground/60">
+                <span className="text-subtle">
                   {de ? "gültig bis " : "valid until "}
                   {new Date(inv.expiresAt).toLocaleDateString(locale)}
                 </span>

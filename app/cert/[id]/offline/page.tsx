@@ -24,7 +24,7 @@ export default async function OfflinePage({
   if (!session?.user?.id) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
         </p>
       </div>
@@ -43,7 +43,7 @@ export default async function OfflinePage({
     <div className="flex flex-1 flex-col">
       <Link
         href={`/cert/${slug}`}
-        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}

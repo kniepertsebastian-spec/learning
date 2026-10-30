@@ -48,11 +48,11 @@ function Task({ t, locale, canAskMentor }: { t: MyTaskRow; locale: "de" | "en"; 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span>
           <span className="font-medium">{t.title}</span>
-          <span className="text-foreground/70"> · {t.learningPath}</span>
+          <span className="text-muted"> · {t.learningPath}</span>
         </span>
-        <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-link" data-testid="my-practice-status">{LABELS[t.status][locale]}</span>
+        <span className="rounded bg-accent-soft px-2 py-0.5 text-xs font-medium text-link" data-testid="my-practice-status">{LABELS[t.status][locale]}</span>
       </div>
-      {t.description && <p className="mt-1 whitespace-pre-wrap text-foreground/70">{t.description}</p>}
+      {t.description && <p className="mt-1 whitespace-pre-wrap text-muted">{t.description}</p>}
       {t.status === "rework" && t.reviewerNote && <p className="mt-2 rounded bg-amber-500/10 px-2 py-1" data-testid="my-practice-reviewer-note">{t.reviewerNote}</p>}
       {t.status === "confirmed" && t.reviewerNote && <p className="mt-1 text-xs text-subtle">{t.reviewerNote}</p>}
       {canSubmit && (

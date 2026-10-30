@@ -169,7 +169,7 @@ export function OfflinePackageManager({
         <button
           type="button"
           onClick={() => setSelectedSectionId(null)}
-          className="mb-4 text-sm text-foreground/70 hover:text-foreground"
+          className="mb-4 text-sm text-muted hover:text-foreground"
         >
           {locale === "de" ? "← Zurück zur Offline-Übersicht" : "← Back to offline overview"}
         </button>
@@ -194,7 +194,7 @@ export function OfflinePackageManager({
         <button
           type="button"
           onClick={() => setShowSession(false)}
-          className="mb-4 text-sm text-foreground/70 hover:text-foreground"
+          className="mb-4 text-sm text-muted hover:text-foreground"
         >
           {locale === "de" ? "← Zurück zur Offline-Übersicht" : "← Back to offline overview"}
         </button>
@@ -232,9 +232,9 @@ export function OfflinePackageManager({
           </p>
         )}
         {loadingRecord ? (
-          <p className="text-sm text-foreground/60">{locale === "de" ? "Lädt…" : "Loading…"}</p>
+          <p className="text-sm text-subtle">{locale === "de" ? "Lädt…" : "Loading…"}</p>
         ) : record ? (
-          <div className="flex flex-col gap-1 text-sm text-foreground/70">
+          <div className="flex flex-col gap-1 text-sm text-muted">
             <p className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               {locale === "de" ? "Für offline verfügbar" : "Available offline"}
@@ -254,7 +254,7 @@ export function OfflinePackageManager({
             )}
           </div>
         ) : (
-          <p className="text-sm text-foreground/60">
+          <p className="text-sm text-subtle">
             {locale === "de"
               ? "Dieser Kurs ist noch nicht für offline gespeichert."
               : "This course is not yet saved for offline use."}
@@ -262,7 +262,7 @@ export function OfflinePackageManager({
         )}
 
         {record && storage && (storage.usageBytes !== null || storage.persisted !== null) && (
-          <div className="mt-2 flex flex-col gap-1 text-xs text-foreground/60" data-testid="offline-storage-status">
+          <div className="mt-2 flex flex-col gap-1 text-xs text-subtle" data-testid="offline-storage-status">
             {storage.usageBytes !== null && storage.quotaBytes !== null && (
               <p>
                 {locale === "de" ? "Speicher belegt" : "Storage used"}: {formatBytes(storage.usageBytes)}{" "}
@@ -290,7 +290,7 @@ export function OfflinePackageManager({
                 style={{ width: percent !== null ? `${percent}%` : "30%" }}
               />
             </div>
-            <p className="mt-1 text-xs text-foreground/60">
+            <p className="mt-1 text-xs text-subtle">
               {progress ? formatBytes(progress.loadedBytes) : ""}
               {percent !== null ? ` (${percent}%)` : ""}
             </p>
@@ -346,7 +346,7 @@ export function OfflinePackageManager({
             <button
               type="button"
               onClick={handleDelete}
-              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground/70 hover:bg-background"
+              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted hover:bg-background"
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               {locale === "de" ? "Offline-Daten löschen" : "Delete offline data"}
@@ -356,11 +356,11 @@ export function OfflinePackageManager({
       </div>
 
       {record?.data.session && (
-        <div className="rounded-lg border border-accent/40 bg-accent/5 p-4">
+        <div className="rounded-lg border border-accent-border bg-accent-soft p-4">
           <p className="mb-1 text-sm font-medium">
             {locale === "de" ? "Heutige Session verfügbar" : "Today's session available"}
           </p>
-          <p className="mb-3 text-xs text-foreground/60">
+          <p className="mb-3 text-xs text-subtle">
             {record.data.session.questionItems.length}{" "}
             {locale === "de" ? "Fragen, offline beantwortbar" : "questions, answerable offline"}
           </p>
@@ -382,7 +382,7 @@ export function OfflinePackageManager({
               <div className="flex flex-col gap-3">
                 {domain.objectives.map((objective) => (
                   <div key={objective.id} className="rounded-lg border border-border bg-surface p-3">
-                    <p className="mb-2 text-xs font-medium text-foreground/60">
+                    <p className="mb-2 text-xs font-medium text-subtle">
                       <span className="mr-1.5 font-mono">{objective.code}</span>
                       {objective.title}
                     </p>

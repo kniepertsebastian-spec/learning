@@ -9,5 +9,5 @@ export function ModuleStatusIcon({ status }: { status: ModuleStatus }) {
   if (status === "active") {
     return <Circle className="h-5 w-5 shrink-0 fill-accent text-link" aria-hidden="true" />;
   }
-  return <Lock className="h-5 w-5 shrink-0 text-foreground/30" aria-hidden="true" />;
+  return <Lock className="h-5 w-5 shrink-0 text-faint" aria-hidden="true" />;
 }

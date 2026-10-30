@@ -138,7 +138,7 @@ export function CareerProfile({ initial, courseNames }: { initial: ProfileData; 
     <section className="flex flex-col gap-5 rounded-xl border border-border bg-surface p-5" data-testid="career-profile">
       <div>
         <h2 className="font-semibold">{tr("Beruf und Skills", "Job and skills")}</h2>
-        <p className="mt-1 text-xs text-foreground/70">
+        <p className="mt-1 text-xs text-muted">
           {tr(
             "Freiwillig. Daraus entstehen später passende Karrierepfade mit Kursempfehlungen. Nur du siehst diese Angaben, deine Firma nicht.",
             "Optional. Later used for matching career paths with course recommendations. Only you see this, not your company.",

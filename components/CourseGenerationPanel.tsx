@@ -304,7 +304,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           {locale === "de" ? "Kurs automatisch generieren" : "Generate course automatically"}
         </h2>
       </div>
-      <p className="mb-4 text-sm text-foreground/60">
+      <p className="mb-4 text-sm text-subtle">
         {locale === "de"
           ? "Ein Klick erzeugt Blueprint, Lektionen und Fragen vollautomatisch aus offiziellen Quellen (course_generation.md)."
           : "One click generates the blueprint, lessons, and questions fully automatically from official sources (course_generation.md)."}
@@ -449,14 +449,14 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
             </span>
             {active && <Loader2 className="h-3.5 w-3.5 animate-spin text-link" aria-hidden="true" />}
           </div>
-          {job.message && <p className="text-xs text-foreground/60">{job.message}</p>}
+          {job.message && <p className="text-xs text-subtle">{job.message}</p>}
 
           {objectives.length > 0 && (
             <div>
               <button
                 type="button"
                 onClick={() => setShowObjectiveCosts((v) => !v)}
-                className="text-xs text-foreground/50 underline decoration-dotted hover:text-foreground/80"
+                className="text-xs text-faint underline decoration-dotted hover:text-text-2"
               >
                 {locale === "de"
                   ? `${validCount}/${objectives.length} Lernziel(e) fertig${failedCount > 0 ? `, ${failedCount} fehlgeschlagen` : ""}`
@@ -470,7 +470,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                 <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border">
                   <table className="w-full text-left text-xs">
                     <thead className="sticky top-0 bg-surface">
-                      <tr className="text-foreground/50">
+                      <tr className="text-faint">
                         <th className="px-2 py-1 font-medium">Code</th>
                         <th className="px-2 py-1 font-medium">{locale === "de" ? "Status" : "Status"}</th>
                         <th className="px-2 py-1 text-right font-medium">Tokens</th>
@@ -505,12 +505,12 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           {!active && job.status !== "published" && (
             <div className="rounded-md border border-border p-3 text-xs" data-testid="last-state">
               <p className="font-medium">{locale === "de" ? "Letzter Stand" : "Last state"}{job.courseTitle ? `: ${job.courseTitle}` : ""}</p>
-              <p className="mt-1 text-foreground/70">
+              <p className="mt-1 text-muted">
                 {locale === "de" ? "Zuletzt in Phase" : "Last in phase"} „{PHASE_LABEL[job.phase]?.[locale] ?? job.phase}“
                 {job.updatedAt ? ` · ${new Date(job.updatedAt).toLocaleString(locale === "de" ? "de-DE" : "en-GB")}` : ""}
               </p>
               {objectives.length > 0 && (
-                <p className="mt-1 text-foreground/70">
+                <p className="mt-1 text-muted">
                   {locale === "de"
                     ? `${validCount} von ${objectives.length} Lernzielen fertig und gespeichert${failedCount > 0 ? `, ${failedCount} fehlgeschlagen` : ""}.`
                     : `${validCount} of ${objectives.length} objectives done and saved${failedCount > 0 ? `, ${failedCount} failed` : ""}.`}
@@ -527,7 +527,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
                 </div>
               ))}
               {RETRYABLE_STATUSES.has(job.status) && job.status !== "package_ready" && (
-                <p className="mt-2 text-foreground/70">
+                <p className="mt-2 text-muted">
                   {locale === "de"
                     ? "Mit „Generierung neu starten“ geht es dort weiter: bereits fertige Lernziele bleiben erhalten, nur das Fehlende wird neu erzeugt."
                     : "“Restart generation” continues from there: finished objectives are kept, only what is missing is generated again."}
@@ -537,7 +537,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           )}
 
           {pricingConfigured ? (
-            <p className="text-xs text-foreground/50">
+            <p className="text-xs text-faint">
               {locale === "de" ? "Kosten" : "Cost"}: ~${Number(job.actualCostUsd).toFixed(4)}
               {job.estimatedCostUsd && ` (${locale === "de" ? "geschätzt" : "estimated"} ~$${Number(job.estimatedCostUsd).toFixed(4)})`}
               {" · "}
@@ -552,7 +552,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           )}
 
           {job.status === "package_ready" && (
-            <p className="rounded-md bg-accent/10 p-2 text-xs text-link">
+            <p className="rounded-md bg-accent-soft p-2 text-xs text-link">
               {locale === "de"
                 ? "Kurs vollständig generiert und validiert - wartet auf manuelle Freigabe."
                 : "Course fully generated and validated - waiting for manual approval."}

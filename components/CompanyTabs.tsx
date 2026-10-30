@@ -20,7 +20,7 @@ export function CompanyTabs({ tabs, active, ariaLabel }: { tabs: CompanyTab[]; a
                 aria-current={current ? "page" : undefined}
                 data-testid={`company-tab-${tab.id}`}
                 className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium -mb-px ${
-                  current ? "border-accent text-link" : "border-transparent text-foreground/70 hover:border-border hover:text-foreground"
+                  current ? "border-accent text-link" : "border-transparent text-muted hover:border-border hover:text-foreground"
                 }`}
               >
                 {tab.label}

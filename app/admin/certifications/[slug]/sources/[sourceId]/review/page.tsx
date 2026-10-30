@@ -32,11 +32,11 @@ export default async function BlueprintReviewPage({
   if (!cert) {
     return (
       <div className="flex flex-1 flex-col">
-        <Link href="/admin" className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground">
+        <Link href="/admin" className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
         </Link>
-        <p className="text-foreground/70">{locale === "de" ? "Zertifizierung nicht gefunden" : "Certification not found"}</p>
+        <p className="text-muted">{locale === "de" ? "Zertifizierung nicht gefunden" : "Certification not found"}</p>
       </div>
     );
   }
@@ -45,11 +45,11 @@ export default async function BlueprintReviewPage({
   if (!source || source.certificationId !== cert.id) {
     return (
       <div className="flex flex-1 flex-col">
-        <Link href={backLink} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground">
+        <Link href={backLink} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {locale === "de" ? "Zurück zu den Quellen" : "Back to sources"}
         </Link>
-        <p className="text-foreground/70">{locale === "de" ? "Quelle nicht gefunden" : "Source not found"}</p>
+        <p className="text-muted">{locale === "de" ? "Quelle nicht gefunden" : "Source not found"}</p>
       </div>
     );
   }
@@ -62,11 +62,11 @@ export default async function BlueprintReviewPage({
   if (!draft) {
     return (
       <div className="flex flex-1 flex-col">
-        <Link href={backLink} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground">
+        <Link href={backLink} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {locale === "de" ? "Zurück zu den Quellen" : "Back to sources"}
         </Link>
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {locale === "de"
             ? "Für diese Quelle liegt noch kein Blueprint-Vorschlag vor. Erst auf der Quellen-Seite extrahieren."
             : "No blueprint proposal for this source yet. Extract one on the sources page first."}
@@ -77,7 +77,7 @@ export default async function BlueprintReviewPage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <Link href={backLink} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground">
+      <Link href={backLink} className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {source.title}
       </Link>
@@ -85,7 +85,7 @@ export default async function BlueprintReviewPage({
       <h1 className="mb-1 text-2xl font-semibold">
         {locale === "de" ? "Blueprint prüfen und freigeben" : "Review and approve blueprint"}
       </h1>
-      <p className="mb-6 text-sm text-foreground/70">{cert.name}</p>
+      <p className="mb-6 text-sm text-muted">{cert.name}</p>
 
       <BlueprintReview
         sourceId={sourceId}

@@ -25,7 +25,7 @@ export default async function StudySessionPage({
   if (!session?.user?.id) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
         </p>
       </div>

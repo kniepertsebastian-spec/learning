@@ -145,11 +145,11 @@ function ModuleItem({ m, paths, people, currentUserId, de }: { m: ModuleRowView;
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span>
           <span className="font-medium">{m.title}</span>
-          <span className="text-foreground/70"> · {m.learningPath}</span>
+          <span className="text-muted"> · {m.learningPath}</span>
         </span>
         <span className={`rounded px-2 py-0.5 text-xs font-medium ${badge.cls}`} data-testid="module-state">{badge.text}</span>
       </div>
-      <p className="mt-1 text-xs text-foreground/70">
+      <p className="mt-1 text-xs text-muted">
         {de ? "Gültig bis" : "Valid until"} {fmt(m.validUntil, de)} ·{" "}
         {m.responsibleUserId ? (
           <span data-testid="module-owner">{de ? "Verantwortlich" : "Responsible"}: {m.responsibleName ?? m.responsibleEmail}{mine ? (de ? " (du)" : " (you)") : ""}</span>
@@ -164,7 +164,7 @@ function ModuleItem({ m, paths, people, currentUserId, de }: { m: ModuleRowView;
           <input type="date" value={until} min={plusDays(0)} onChange={(e) => setUntil(e.target.value)} aria-label={de ? "Neues Ablaufdatum" : "New expiry date"} data-testid="module-extend-date" className="rounded-md border border-border bg-surface px-2 py-1 text-xs" />
           <button type="button" onClick={() => void extend()} data-testid="module-extend" className={btn}>{de ? "Verlängern" : "Extend"}</button>
           <button type="button" onClick={() => setEditing(true)} className={btn}>{de ? "Bearbeiten" : "Edit"}</button>
-          <button type="button" onClick={() => void archive()} className="text-xs text-foreground/60 hover:text-red-500">{de ? "Archivieren" : "Archive"}</button>
+          <button type="button" onClick={() => void archive()} className="text-xs text-subtle hover:text-red-500">{de ? "Archivieren" : "Archive"}</button>
         </div>
       )}
       {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
@@ -198,7 +198,7 @@ export function CompanyModulesPanel({
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="company-modules-panel">
       <h2 className="text-lg font-medium">{de ? "Firmenmodule" : "Company modules"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Eigene Unterlagen zu euren Lernpfaden (z. B. „Unser Ticket-Prozess“). Wer den Lernpfad hat, liest sie dort. Jedes Modul hat eine verantwortliche Person und ein „Gültig bis“; danach sehen Lernende den Inhalt nicht mehr, bis verlängert wird."
           : "Your own material for your learning paths. People with the path read it there. Each module has a responsible person and a “valid until” date; afterwards learners no longer see the content until it is extended."}
@@ -223,7 +223,7 @@ export function CompanyModulesPanel({
           <ModuleForm paths={paths} people={people} de={de} submitLabel={de ? "Modul anlegen" : "Create module"} onDone={() => undefined} />
         </details>
       ) : (
-        <p className="mt-3 text-sm text-foreground/70">{de ? "Es gibt noch keinen Lernpfad, zu dem sich Module anlegen lassen." : "There is no learning path yet to add modules to."}</p>
+        <p className="mt-3 text-sm text-muted">{de ? "Es gibt noch keinen Lernpfad, zu dem sich Module anlegen lassen." : "There is no learning path yet to add modules to."}</p>
       )}
 
       {modules.length > 0 && (

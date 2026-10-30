@@ -121,7 +121,7 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
               {c.result.missing.length > 0 && <Badge tone="danger">{c.result.missing.length} {tr("fehlen", "missing")}</Badge>}
             </p>
             {c.result.missing.length > 0 && (
-              <ul className="mt-2 list-disc pl-5 text-foreground/80" data-testid="coverage-missing">
+              <ul className="mt-2 list-disc pl-5 text-text-2" data-testid="coverage-missing">
                 {c.result.missing.map((m) => (
                   <li key={m.code}><span className="font-mono text-xs">{m.code}</span> {m.title}</li>
                 ))}

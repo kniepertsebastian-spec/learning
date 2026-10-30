@@ -44,7 +44,7 @@ export default async function ExamHistoryPage({
   if (!session?.user?.id) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center">
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {locale === "de" ? "Bitte melde dich an." : "Please sign in."}
         </p>
       </div>
@@ -71,7 +71,7 @@ export default async function ExamHistoryPage({
     <div className="flex flex-1 flex-col">
       <Link
         href={`/cert/${slug}`}
-        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {locale === "de" ? "Zurück zur Zertifizierung" : "Back to certification"}
@@ -81,13 +81,13 @@ export default async function ExamHistoryPage({
         <ClipboardList className="h-5 w-5" aria-hidden="true" />
         {locale === "de" ? "Meine Prüfungen" : "My exams"}
       </h1>
-      <p className="mb-6 text-sm text-foreground/70">{cert.name}</p>
+      <p className="mb-6 text-sm text-muted">{cert.name}</p>
 
       <ActivityTrends certId={cert.id} locale={locale} trends={trends} calendar={calendar} streak={streak} />
       <DomainActivityTrends locale={locale} domains={domainTrends} />
 
       {attempts.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-foreground/60">
+        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-subtle">
           {locale === "de"
             ? "Noch keine Abschlussprüfung absolviert."
             : "No practice exam completed yet."}
@@ -95,7 +95,7 @@ export default async function ExamHistoryPage({
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-surface text-xs text-foreground/60">
+            <thead className="border-b border-border bg-surface text-xs text-subtle">
               <tr>
                 <th className="px-4 py-2.5 font-medium">{locale === "de" ? "Datum" : "Date"}</th>
                 <th className="px-4 py-2.5 font-medium">{locale === "de" ? "Ergebnis" : "Result"}</th>
@@ -115,7 +115,7 @@ export default async function ExamHistoryPage({
                         {attempt.completedAt.toLocaleDateString(locale === "de" ? "de-DE" : "en-US")}
                       </Link>
                     ) : (
-                      <span className="text-foreground/50">
+                      <span className="text-faint">
                         {locale === "de" ? "nicht abgeschlossen" : "not completed"}
                       </span>
                     )}
@@ -123,10 +123,10 @@ export default async function ExamHistoryPage({
                   <td className="px-4 py-2.5 font-medium">
                     {attempt.score !== null ? `${attempt.score}%` : "–"}
                   </td>
-                  <td className="px-4 py-2.5 text-foreground/70">
+                  <td className="px-4 py-2.5 text-muted">
                     {formatDuration(attempt.durationSeconds, locale)}
                   </td>
-                  <td className="px-4 py-2.5 text-foreground/70">
+                  <td className="px-4 py-2.5 text-muted">
                     {attempt.readiness && READINESS_LABEL[attempt.readiness]
                       ? READINESS_LABEL[attempt.readiness][locale]
                       : "–"}

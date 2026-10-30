@@ -30,12 +30,12 @@ export default async function AdminCertificationSourcesPage({
       <div className="flex flex-1 flex-col">
         <Link
           href="/admin"
-          className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+          className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
         </Link>
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {locale === "de" ? "Zertifizierung nicht gefunden" : "Certification not found"}
         </p>
       </div>
@@ -48,7 +48,7 @@ export default async function AdminCertificationSourcesPage({
     <div className="flex flex-1 flex-col">
       <Link
         href={`/admin/certifications/${slug}`}
-        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {cert.name}
@@ -57,7 +57,7 @@ export default async function AdminCertificationSourcesPage({
       <h1 className="mb-1 text-2xl font-semibold">
         {locale === "de" ? "Offizielle Quellen" : "Official sources"}
       </h1>
-      <p className="mb-6 text-sm text-foreground/70">
+      <p className="mb-6 text-sm text-muted">
         {locale === "de"
           ? "Offizielle Prüfungsunterlagen als PDF hochladen und ihren Text extrahieren. Quelle der Wahrheit für Domains, Objectives und Lernmaterial (R1)."
           : "Upload official exam documentation as PDF and extract its text. Source of truth for domains, objectives, and learning material (R1)."}

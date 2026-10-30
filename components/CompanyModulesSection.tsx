@@ -19,9 +19,9 @@ function formatDate(iso: string, locale: "de" | "en") {
 export function CompanyModulesSection({ modules, companyName, locale }: { modules: PathModuleView[]; companyName: string; locale: "de" | "en" }) {
   const de = locale === "de";
   return (
-    <section className="mb-6 rounded-xl border border-accent/40 bg-accent/5 p-5" data-testid="company-modules">
+    <section className="rounded-2xl border border-border bg-surface p-5" data-testid="company-modules">
       <h2 className="font-semibold">{de ? `Von ${companyName}` : `From ${companyName}`}</h2>
-      <p className="mt-1 text-xs text-foreground/70">
+      <p className="mt-1 text-xs text-muted">
         {de ? "Unterlagen deiner Firma zu diesem Lernpfad." : "Your company's material for this learning path."}
       </p>
       <ul className="mt-3 flex flex-col gap-3">
@@ -29,13 +29,13 @@ export function CompanyModulesSection({ modules, companyName, locale }: { module
           <li key={m.id} className="rounded-md border border-border bg-surface p-4" data-testid="company-module">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="font-medium">{m.title}</h3>
-              <span className={`text-xs ${m.state === "valid" ? "text-foreground/60" : m.state === "expiring" ? "text-amber-600" : "text-red-500"}`} data-testid="company-module-state">
+              <span className={`text-xs ${m.state === "valid" ? "text-subtle" : m.state === "expiring" ? "text-amber-600" : "text-red-500"}`} data-testid="company-module-state">
                 {STATE_LABEL[m.state][locale]} {formatDate(m.validUntil, locale)}
                 {m.responsible ? ` · ${de ? "Verantwortlich" : "Owner"}: ${m.responsible}` : ""}
               </span>
             </div>
             {m.body === null ? (
-              <p className="mt-2 text-sm text-foreground/70" data-testid="company-module-expired">
+              <p className="mt-2 text-sm text-muted" data-testid="company-module-expired">
                 {de
                   ? "Diese Unterlage ist abgelaufen und wird von der verantwortlichen Person überarbeitet. Bitte frage dort nach."
                   : "This material has expired and is being revised by the person responsible. Please ask them."}

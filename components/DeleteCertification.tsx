@@ -47,7 +47,7 @@ export function DeleteCertification({ certificationId, slug, name, locale }: { c
       <h2 className="font-medium text-red-600">{de ? "Kurs löschen" : "Delete course"}</h2>
       {!impact ? (
         <>
-          <p className="mt-1 text-sm text-foreground/70">
+          <p className="mt-1 text-sm text-muted">
             {de ? "Entfernt den Kurs mit allen Lernzielen, Lektionen, Fragen und Quellen, z. B. ein doppelt angelegter Kurs." : "Removes the course with all objectives, lessons, questions and sources, e.g. a duplicate."}
           </p>
           <button type="button" onClick={() => void open()} data-testid="delete-open" className="mt-3 rounded-md border border-red-500/40 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-500/10">
@@ -64,7 +64,7 @@ export function DeleteCertification({ certificationId, slug, name, locale }: { c
               {impact.mandatoryRules > 0 && <li>{de ? `${impact.mandatoryRules} Pflichtregel(n)` : `${impact.mandatoryRules} mandatory rule(s)`}</li>}
             </ul>
           ) : (
-            <p className="text-foreground/70" data-testid="delete-impact">{de ? "Am Kurs hängen keine Lerndaten oder Zuweisungen." : "No learner data or assignments are attached."}</p>
+            <p className="text-muted" data-testid="delete-impact">{de ? "Am Kurs hängen keine Lerndaten oder Zuweisungen." : "No learner data or assignments are attached."}</p>
           )}
           {withData && (
             <label className="flex items-start gap-2">

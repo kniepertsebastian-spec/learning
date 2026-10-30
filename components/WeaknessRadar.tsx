@@ -14,7 +14,7 @@ export function WeaknessRadar({ radar, slug, locale }: { radar: Radar_; slug: st
   return (
     <details className="group relative" data-testid="weakness-radar">
       <summary
-        className={`flex cursor-pointer list-none items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium hover:bg-surface ${count > 0 ? "text-warning-text" : "text-foreground/70"}`}
+        className={`flex cursor-pointer list-none items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium hover:bg-surface ${count > 0 ? "text-warning-text" : "text-muted"}`}
         data-testid="weakness-radar-toggle"
       >
         <Radar className="h-4 w-4" aria-hidden="true" />
@@ -23,7 +23,7 @@ export function WeaknessRadar({ radar, slug, locale }: { radar: Radar_; slug: st
       </summary>
       <div className="absolute right-0 z-20 mt-1 w-[min(22rem,90vw)] rounded-xl border border-border bg-surface p-3 text-sm shadow-overlay" data-testid="weakness-radar-panel">
         {count === 0 ? (
-          <p className="text-foreground/70" data-testid="weakness-radar-none">{de ? "Keine Schwachstellen erkannt: Deine letzten Antworten aus den Quizzes waren richtig." : "No weak spots found: your latest quiz answers were correct."}</p>
+          <p className="text-muted" data-testid="weakness-radar-none">{de ? "Keine Schwachstellen erkannt: Deine letzten Antworten aus den Quizzes waren richtig." : "No weak spots found: your latest quiz answers were correct."}</p>
         ) : (
           <>
             <p className="mb-2 font-medium">{de ? "Hier lohnt sich Nachbereitung" : "Worth reviewing"}</p>

@@ -42,7 +42,7 @@ function SsoForm() {
     <div className="flex flex-1 flex-col items-center justify-center">
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-8" data-testid="sso-page">
         <h1 className="mb-2 text-xl font-semibold">Mit Firmenkonto anmelden</h1>
-        <p className="mb-5 text-sm text-foreground/70">Gib deine Firmen-E-Mail-Adresse ein. Du wirst zum Anmeldedienst deiner Firma weitergeleitet.</p>
+        <p className="mb-5 text-sm text-muted">Gib deine Firmen-E-Mail-Adresse ein. Du wirst zum Anmeldedienst deiner Firma weitergeleitet.</p>
         <form onSubmit={submit} className="flex flex-col gap-4">
           {error && (
             <p role="alert" data-testid="sso-error" className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
@@ -57,7 +57,7 @@ function SsoForm() {
             {busy ? "Weiter …" : "Weiter zum Firmenkonto"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-foreground/60">
+        <p className="mt-4 text-center text-sm text-subtle">
           <Link href="/login" className="text-link hover:underline">Zurück zur Anmeldung mit Passwort</Link>
         </p>
       </div>

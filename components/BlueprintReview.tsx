@@ -225,7 +225,7 @@ export function BlueprintReview({
           diff.addedObjectives.length === 0 &&
           diff.removedObjectives.length === 0 &&
           diff.changedObjectives.length === 0 ? (
-            <p className="text-xs text-foreground/60">
+            <p className="text-xs text-subtle">
               {locale === "de" ? "Keine Unterschiede zum aktuellen Stand." : "No differences from the current state."}
             </p>
           ) : (
@@ -258,7 +258,7 @@ export function BlueprintReview({
             </ul>
           )}
           {(diff.changedObjectives.length > 0 || diff.removedObjectives.length > 0) && (
-            <p className="mt-2 text-xs text-foreground/50">
+            <p className="mt-2 text-xs text-faint">
               {locale === "de"
                 ? "Bei Freigabe werden Lessons/Fragen der geänderten oder entfernten Objectives als veraltet markiert."
                 : "Approving this will mark lessons/questions of changed or removed objectives as stale."}
@@ -307,16 +307,16 @@ export function BlueprintReview({
           <h2 className="mb-3 font-medium">{locale === "de" ? "Originalquelle" : "Original source"}</h2>
           <div className="max-h-[70vh] overflow-y-auto rounded-md bg-background p-3 text-xs">
             {pages.length === 0 ? (
-              <p className="text-foreground/60">
+              <p className="text-subtle">
                 {locale === "de" ? "Kein extrahierter Seitentext vorhanden." : "No extracted page text available."}
               </p>
             ) : (
               pages.map((page) => (
                 <div key={page.pageNumber} className="mb-4">
-                  <p className="mb-1 font-mono font-medium text-foreground/50">
+                  <p className="mb-1 font-mono font-medium text-faint">
                     {locale === "de" ? "Seite" : "Page"} {page.pageNumber}
                   </p>
-                  <p className="whitespace-pre-wrap text-foreground/80">{page.content}</p>
+                  <p className="whitespace-pre-wrap text-text-2">{page.content}</p>
                 </div>
               ))
             )}
@@ -330,7 +330,7 @@ export function BlueprintReview({
 
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Zertifizierung" : "Certification"}
               </span>
               <input
@@ -341,7 +341,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Anbieter" : "Provider"}
               </span>
               <input
@@ -352,7 +352,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Exam-Code" : "Exam code"}
               </span>
               <input
@@ -366,7 +366,7 @@ export function BlueprintReview({
 
           <div className="grid gap-3 sm:grid-cols-4">
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Fragenanzahl" : "Question count"}
               </span>
               <input
@@ -385,7 +385,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Zeitlimit (Min.)" : "Time limit (min)"}
               </span>
               <input
@@ -404,7 +404,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Bestehensgrenze" : "Passing score"}
               </span>
               <input
@@ -423,7 +423,7 @@ export function BlueprintReview({
               />
             </label>
             <label className="block text-xs">
-              <span className="mb-1 block font-medium text-foreground/70">
+              <span className="mb-1 block font-medium text-muted">
                 {locale === "de" ? "Skala" : "Scale"}
               </span>
               <input
@@ -439,7 +439,7 @@ export function BlueprintReview({
           </div>
 
           <label className="block text-xs">
-            <span className="mb-1 block font-medium text-foreground/70">
+            <span className="mb-1 block font-medium text-muted">
               {locale === "de" ? "Vorgeschlagener Slug" : "Suggested slug"}
             </span>
             <input
@@ -509,7 +509,7 @@ export function BlueprintReview({
                         >
                           {Math.round(objective.confidence * 100)}%
                         </span>
-                        <span className="text-[10px] text-foreground/50">{objective.locator}</span>
+                        <span className="text-[10px] text-faint">{objective.locator}</span>
                       </div>
                       <textarea
                         value={objective.description}

@@ -57,7 +57,7 @@ export function LearningProfileExport({ courses, issued, locale }: { courses: Ex
   return (
     <section className="rounded-lg border border-border bg-surface p-4" data-testid="profile-export">
       <h2 className="font-semibold">{de ? "Lernprofil als PDF-Nachweis" : "Learning profile as a PDF record"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Ein standardisierter, fälschungssicherer Nachweis über deinen Kenntnisstand, z. B. für Arbeitgeber. Aufgeführt werden nur Kurse, zu denen eine erfolgreiche Zertifikatsprüfung hinterlegt ist. Jedes PDF trägt einen Prüfcode und lässt sich online prüfen."
           : "A standardised, tamper-proof record of your knowledge, e.g. for employers. Only courses with a recorded, passed certification exam are listed. Every PDF carries a verification code and can be checked online."}

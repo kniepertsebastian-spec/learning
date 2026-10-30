@@ -34,7 +34,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
         <p className="text-lg font-semibold" data-testid="invite-invalid">
           {de ? "Einladung ungültig oder abgelaufen" : "Invitation invalid or expired"}
         </p>
-        <p className="text-foreground/70">
+        <p className="text-muted">
           {de ? "Bitte lass dir einen neuen Link schicken." : "Please ask for a new link."}
         </p>
         <Link href="/" className="mt-4 text-link hover:underline">
@@ -58,7 +58,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           {de ? " eingeladen, als " : " as "}
           <strong>{ROLE_LABELS[preview.role][locale]}</strong>.
         </p>
-        <p className="mt-1 text-sm text-foreground/70">
+        <p className="mt-1 text-sm text-muted">
           {de ? "Gilt für: " : "For: "}
           {preview.email}
         </p>
@@ -66,7 +66,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
         <div className="mt-6">
           {!user ? (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-foreground/70">
+              <p className="text-sm text-muted">
                 {de
                   ? "Melde dich mit dieser E-Mail-Adresse an oder registriere dich."
                   : "Sign in with this email address or register."}

@@ -74,7 +74,7 @@ export function EmailRequestForm({
         </p>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">
-          <p className="text-sm text-foreground/70">{intro[locale]}</p>
+          <p className="text-sm text-muted">{intro[locale]}</p>
           {error && <ErrorBox>{error}</ErrorBox>}
           <label className="text-sm font-medium">
             {locale === "de" ? "E-Mail-Adresse" : "Email address"}
@@ -85,7 +85,7 @@ export function EmailRequestForm({
           </button>
         </form>
       )}
-      <p className="mt-4 text-center text-sm text-foreground/60">
+      <p className="mt-4 text-center text-sm text-subtle">
         <Link href="/login" className="text-link hover:underline">
           {locale === "de" ? "Zurück zur Anmeldung" : "Back to sign in"}
         </Link>
@@ -183,7 +183,7 @@ export function VerifyEmailButton({ token }: { token: string }) {
       ) : (
         <div className="flex flex-col gap-4">
           {error && <ErrorBox>{error}</ErrorBox>}
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-muted">
             {de ? "Klicke, um deine E-Mail-Adresse zu bestätigen." : "Click to confirm your email address."}
           </p>
           <button type="button" onClick={verify} disabled={state === "pending"} className={buttonClass}>
@@ -236,7 +236,7 @@ export function ConfirmCompanyButton({ token }: { token: string }) {
       ) : (
         <div className="flex flex-col gap-4">
           {error && <ErrorBox>{error}</ErrorBox>}
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-muted">
             {de
               ? "Klicke, um zu bestätigen, dass diese Firmen-E-Mail-Adresse dir gehört. Danach wird das Unternehmen angelegt."
               : "Click to confirm that this company email address is yours. The company is created afterwards."}

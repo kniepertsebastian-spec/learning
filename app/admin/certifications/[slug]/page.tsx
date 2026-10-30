@@ -45,12 +45,12 @@ export default async function AdminCertificationPage({
       <div className="flex flex-1 flex-col">
         <Link
           href="/admin"
-          className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+          className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
         </Link>
-        <p className="text-foreground/70">{locale === "de" ? "Zertifizierung nicht gefunden" : "Certification not found"}</p>
+        <p className="text-muted">{locale === "de" ? "Zertifizierung nicht gefunden" : "Certification not found"}</p>
       </div>
     );
   }
@@ -87,7 +87,7 @@ export default async function AdminCertificationPage({
     <div className="flex flex-1 flex-col">
       <Link
         href="/admin"
-        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-foreground/70 hover:text-foreground"
+        className="mb-4 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {locale === "de" ? "Zurück zum Admin-Dashboard" : "Back to admin dashboard"}
@@ -96,7 +96,7 @@ export default async function AdminCertificationPage({
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="mb-1 text-2xl font-semibold">{cert.name}</h1>
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-muted">
             {cert.examName} {cert.examVersion}
           </p>
         </div>
@@ -150,7 +150,7 @@ export default async function AdminCertificationPage({
         {/* Validation Summary */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-lg border border-border bg-surface p-4">
-            <p className="text-xs text-foreground/60">{locale === "de" ? "Gesamt" : "Total"}</p>
+            <p className="text-xs text-subtle">{locale === "de" ? "Gesamt" : "Total"}</p>
             <p className="mt-1 text-xl font-semibold">{validation.totalContent}</p>
           </div>
           <div className="rounded-lg border border-green-200/50 bg-green-50 p-4">
@@ -277,7 +277,7 @@ export default async function AdminCertificationPage({
         <div className="rounded-lg border border-border bg-surface p-4">
           <h3 className="mb-3 font-medium">{locale === "de" ? "Domain-Mastery" : "Domain mastery"}</h3>
           {domainAnalytics.domains.length === 0 ? (
-            <p className="text-sm text-foreground/60">
+            <p className="text-sm text-subtle">
               {locale === "de" ? "Noch keine Lerndaten." : "No learner data yet."}
             </p>
           ) : (
@@ -285,7 +285,7 @@ export default async function AdminCertificationPage({
               {domainAnalytics.domains.map((d) => (
                 <div key={d.domainId} className="flex items-center justify-between text-sm">
                   <span>{d.domainName}</span>
-                  <span className="text-foreground/70">
+                  <span className="text-muted">
                     {d.avgMastery}% {locale === "de" ? "Ø Mastery" : "avg mastery"} · {d.completionRate}%{" "}
                     {locale === "de" ? "abgeschlossen" : "complete"}
                   </span>
@@ -319,13 +319,13 @@ export default async function AdminCertificationPage({
             {locale === "de" ? "Problematische Fragen" : "Problem questions"}
           </h3>
           {contentAnalytics.problemQuestions.length === 0 ? (
-            <p className="text-sm text-foreground/60">
+            <p className="text-sm text-subtle">
               {locale === "de"
                 ? `Keine Fragen mit niedriger Erfolgsquote (Ø ${contentAnalytics.avgSuccessRate}%, ${contentAnalytics.questionsWithEnoughData} Fragen mit genug Daten).`
                 : `No questions with a low success rate (avg ${contentAnalytics.avgSuccessRate}%, ${contentAnalytics.questionsWithEnoughData} questions with enough data).`}
             </p>
           ) : (
-            <ul className="space-y-1 text-sm text-foreground/70">
+            <ul className="space-y-1 text-sm text-muted">
               {contentAnalytics.problemQuestions.map((q) => (
                 <li key={q.questionId}>
                   <span className="font-mono text-xs">{q.humanId}</span> - {q.successRate}% (
@@ -344,14 +344,14 @@ export default async function AdminCertificationPage({
             {locale === "de" ? "Kosten je Objective" : "Cost per objective"}
           </h3>
           {objectiveCostsWithData.length === 0 ? (
-            <p className="text-sm text-foreground/60">
+            <p className="text-sm text-subtle">
               {locale === "de"
                 ? "Noch keine Kostendaten (werden bei der nächsten Generierung erfasst)."
                 : "No cost data yet (recorded on the next generation run)."}
             </p>
           ) : (
             <>
-              <p className="mb-3 text-sm text-foreground/70">
+              <p className="mb-3 text-sm text-muted">
                 {locale === "de"
                   ? `Insgesamt ${totalObjectiveCostUsd !== null ? `$${totalObjectiveCostUsd.toFixed(4)}` : "unbekannt (Preise nicht konfiguriert)"} für ${totalAcceptedLessons} Lesson(s) und ${totalAcceptedQuestions} Frage(n) über ${objectiveCostsWithData.length} Objective(s).`
                   : `$${totalObjectiveCostUsd !== null ? totalObjectiveCostUsd.toFixed(4) : "unknown (pricing not configured)"} total for ${totalAcceptedLessons} lesson(s) and ${totalAcceptedQuestions} question(s) across ${objectiveCostsWithData.length} objective(s).`}
@@ -359,7 +359,7 @@ export default async function AdminCertificationPage({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="text-xs text-foreground/50">
+                    <tr className="text-xs text-faint">
                       <th className="pb-2 pr-3 font-medium">{locale === "de" ? "Objective" : "Objective"}</th>
                       <th className="pb-2 pr-3 font-medium">{locale === "de" ? "Modell" : "Model"}</th>
                       <th className="pb-2 pr-3 text-right font-medium">Tokens</th>
@@ -380,7 +380,7 @@ export default async function AdminCertificationPage({
                         <td className="py-1.5 pr-3">
                           <span className="font-mono text-xs">{o.objectiveCode}</span> {o.objectiveTitle}
                         </td>
-                        <td className="py-1.5 pr-3 text-xs text-foreground/60">{o.model ?? "–"}</td>
+                        <td className="py-1.5 pr-3 text-xs text-subtle">{o.model ?? "–"}</td>
                         <td className="py-1.5 pr-3 text-right">{o.totalTokens.toLocaleString(locale)}</td>
                         <td className="py-1.5 pr-3 text-right">
                           {o.estimatedCostUsd !== null ? `$${o.estimatedCostUsd.toFixed(4)}` : "–"}
@@ -396,7 +396,7 @@ export default async function AdminCertificationPage({
                   </tbody>
                 </table>
                 {objectiveCostsWithData.length > 15 && (
-                  <p className="mt-2 text-xs text-foreground/50">
+                  <p className="mt-2 text-xs text-faint">
                     {locale === "de"
                       ? `Und ${objectiveCostsWithData.length - 15} weitere.`
                       : `And ${objectiveCostsWithData.length - 15} more.`}

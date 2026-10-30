@@ -55,7 +55,7 @@ export function CheatSheetBackfill({ courseId, initial, aiConfigured, locale }: 
   const run = status.run;
 
   return (
-    <div className="mt-2 text-foreground/70" data-testid="cheatsheet-backfill">
+    <div className="mt-2 text-muted" data-testid="cheatsheet-backfill">
       <span data-testid="cheatsheet-count">
         {de ? `Merkzettel: ${status.withCheatSheet} von ${status.lessons} Lektionen` : `Cheat sheets: ${status.withCheatSheet} of ${status.lessons} lessons`}
       </span>

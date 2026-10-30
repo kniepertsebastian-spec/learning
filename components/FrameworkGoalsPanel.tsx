@@ -54,7 +54,7 @@ export function FrameworkGoalsPanel({
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="framework-goals">
       <h2 className="text-lg font-medium">{de ? "Ausbildungsrahmenplan" : "Training framework"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Ordnet Lernzielen eure Einträge aus dem Ausbildungsrahmenplan zu. Wer die Lektion öffnet, sieht unter „Warum lerne ich das?“, welches Ziel eures Plans sie abdeckt."
           : "Assign your training framework entries to learning objectives. Learners see under “Why am I learning this?” which goal of your plan a lesson covers."}
@@ -83,7 +83,7 @@ export function FrameworkGoalsPanel({
           </button>
         </form>
       ) : (
-        <p className="mt-3 text-sm text-foreground/70">{de ? "Es gibt noch keinen Lernpfad, dem sich Einträge zuordnen lassen." : "There is no learning path yet."}</p>
+        <p className="mt-3 text-sm text-muted">{de ? "Es gibt noch keinen Lernpfad, dem sich Einträge zuordnen lassen." : "There is no learning path yet."}</p>
       )}
       {error && <p role="alert" className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>}
       {goals.length > 0 && (
@@ -92,9 +92,9 @@ export function FrameworkGoalsPanel({
             <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-background p-3 text-sm">
               <span>
                 <span className="font-medium">{g.code ? `${g.code} ` : ""}{g.title}</span>
-                <span className="text-foreground/70"> · {g.learningPath} · {g.objectiveCode} {g.objectiveTitle}</span>
+                <span className="text-muted"> · {g.learningPath} · {g.objectiveCode} {g.objectiveTitle}</span>
               </span>
-              <button type="button" onClick={() => void remove(g.id)} className="text-xs text-foreground/60 hover:text-danger-text">{de ? "Entfernen" : "Remove"}</button>
+              <button type="button" onClick={() => void remove(g.id)} className="text-xs text-subtle hover:text-danger-text">{de ? "Entfernen" : "Remove"}</button>
             </li>
           ))}
         </ul>

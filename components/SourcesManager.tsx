@@ -35,7 +35,7 @@ const STATUS_COLOR: Record<string, string> = {
   parsed: "bg-green-500/10 text-green-600",
   reviewed: "bg-blue-500/10 text-blue-600",
   approved: "bg-green-500/10 text-green-600",
-  superseded: "bg-foreground/10 text-foreground/60",
+  superseded: "bg-foreground/10 text-subtle",
   failed: "bg-red-500/10 text-red-600",
 };
 
@@ -248,7 +248,7 @@ export function SourcesManager({
                   </option>
                 ))}
               </select>
-              <span className="mt-1 block text-xs text-foreground/50">
+              <span className="mt-1 block text-xs text-faint">
                 {locale === "de"
                   ? "Markiert dies als neue Ausgabe - beim Freigeben werden betroffene Lessons/Fragen als veraltet markiert (R1.5)."
                   : "Marks this as a new edition - approving it flags affected lessons/questions as stale (R1.5)."}
@@ -299,7 +299,7 @@ export function SourcesManager({
         </div>
         {sources.length === 0 ? (
           <div className="rounded-lg border border-border bg-surface px-4 py-8 text-center">
-            <p className="text-sm text-foreground/70">
+            <p className="text-sm text-muted">
               {locale === "de" ? "Noch keine Quellen hochgeladen." : "No sources uploaded yet."}
             </p>
           </div>
@@ -307,7 +307,7 @@ export function SourcesManager({
           <div className="flex flex-col gap-3">
             {sources.map((source) => {
               const statusLabel = STATUS_LABEL[source.status]?.[locale] ?? source.status;
-              const statusColor = STATUS_COLOR[source.status] ?? "bg-foreground/10 text-foreground/60";
+              const statusColor = STATUS_COLOR[source.status] ?? "bg-foreground/10 text-subtle";
               const isParsing = parsingId === source.id;
               const textExtracted = ["parsed", "reviewed", "approved"].includes(source.status);
               return (
@@ -315,13 +315,13 @@ export function SourcesManager({
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-start gap-2">
                       {source.sourceType === "url" ? (
-                        <LinkIcon className="mt-0.5 h-4 w-4 shrink-0 text-foreground/40" aria-hidden="true" />
+                        <LinkIcon className="mt-0.5 h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
                       ) : (
-                        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-foreground/40" aria-hidden="true" />
+                        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
                       )}
                       <div>
                         <p className="font-medium">{source.title}</p>
-                        <p className="text-xs text-foreground/60">
+                        <p className="text-xs text-subtle">
                           {source.provider} · {formatBytes(source.fileSizeBytes)}
                           {textExtracted
                             ? ` · ${source.chunkCount} ${locale === "de" ? "Seiten extrahiert" : "pages extracted"}`

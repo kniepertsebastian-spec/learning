@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, Flame, Loader2, Sparkles, Target, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { Locale } from "@/lib/types";
@@ -158,7 +159,7 @@ export function TodayDashboard({
 
   if (data.sessionStatus === "completed") {
     return (
-      <div className="mb-6 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+      <div className="flex items-center gap-2 rounded-2xl border border-success-border bg-success-soft px-4 py-3 text-sm text-success-text">
         <span>{locale === "de" ? "Heute schon erledigt - stark!" : "Already done for today - nice work!"}</span>
         {data.weekly && (
           <span className="flex items-center gap-1 font-medium" data-testid="weekly-goal">
@@ -176,7 +177,7 @@ export function TodayDashboard({
           type="button"
           onClick={() => void handleMore()}
           disabled={startingMore}
-          className="ml-auto flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1 text-xs font-medium text-foreground hover:bg-background disabled:opacity-60"
+          className="ml-auto flex h-9 items-center gap-1.5 rounded-md border border-border-strong bg-surface px-3 text-xs font-medium text-foreground hover:bg-surface-2 disabled:opacity-60"
         >
           {startingMore && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
           {locale === "de" ? "Mehr lernen" : "Study more"}
@@ -187,7 +188,7 @@ export function TodayDashboard({
 
   if (data.sessionStatus === "skipped") {
     return (
-      <div className="mb-6 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground/70">
+      <div className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted">
         {locale === "de" ? "Heute pausiert - morgen geht's weiter." : "Paused for today - back tomorrow."}
       </div>
     );
@@ -196,20 +197,20 @@ export function TodayDashboard({
   if (dismissed) return null;
 
   return (
-    <div className="mb-6 rounded-lg border border-accent/30 bg-accent/5 p-4">
+    <div className="hero-surface rounded-2xl border p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 text-sm font-medium">
-          <Sparkles className="h-4 w-4 text-link" aria-hidden="true" />
+        <h2 className="flex items-center gap-1.5 text-2xs font-semibold tracking-overline text-link uppercase">
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
           {data.welcomeBack ? (locale === "de" ? "Willkommen zurück – heute nur 5 Minuten" : "Welcome back – just 5 minutes today") : locale === "de" ? "Heute lernen" : "Today's session"}
         </h2>
         {data.weekly && (
-          <span className="flex items-center gap-1 text-xs font-medium text-foreground/70" data-testid="weekly-goal">
+          <span className="flex items-center gap-1 text-xs font-medium text-muted" data-testid="weekly-goal">
             <CalendarCheck className="h-3.5 w-3.5" aria-hidden="true" />
             {locale === "de" ? `${data.weekly.days} von ${data.weekly.goal} Lerntagen diese Woche` : `${data.weekly.days} of ${data.weekly.goal} study days this week`}
           </span>
         )}
         {data.streak > 0 && (
-          <span className="flex items-center gap-1 text-xs font-medium text-orange-600">
+          <span className="flex items-center gap-1 text-xs font-medium text-warning-text">
             <Flame className="h-3.5 w-3.5" aria-hidden="true" />
             {data.streak} {locale === "de" ? "Tage in Folge" : "day streak"}
           </span>
@@ -217,14 +218,18 @@ export function TodayDashboard({
       </div>
 
       {data.isComeback && (
-        <p className="mb-3 text-xs text-foreground/70">
+        <p className="mb-3 text-xs text-muted">
           {locale === "de"
             ? "Schön, dass du wieder da bist! Wir starten sanft mit mehr Wiederholung statt neuem Stoff."
             : "Welcome back! We're starting gently with more review instead of new material."}
         </p>
       )}
 
-      <div className="mb-3 flex flex-wrap gap-4 text-xs text-foreground/70">
+      <p className="mb-3 text-xl font-semibold tracking-tight">
+        {locale === "de" ? `Etwa ${data.estimatedMinutes} Minuten für heute` : `About ${data.estimatedMinutes} minutes for today`}
+      </p>
+
+      <div className="mb-3 flex flex-wrap gap-4 text-xs text-muted">
         <span className="flex items-center gap-1">
           <CalendarCheck className="h-3.5 w-3.5" aria-hidden="true" />
           {data.welcomeBack
@@ -250,14 +255,14 @@ export function TodayDashboard({
         const reasoning = buildReasoningText(locale, data.categoryBreakdown);
         return reasoning ? (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-foreground/60">{reasoning}</p>
+            <p className="text-xs text-subtle">{reasoning}</p>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => void handleFeedback(true)}
                 aria-pressed={feedback === true}
                 aria-label={locale === "de" ? "Empfehlung hilfreich" : "Recommendation helpful"}
-                className={`rounded-md p-1 hover:bg-background ${feedback === true ? "text-link" : "text-foreground/40"}`}
+                className={`flex h-9 w-9 items-center justify-center rounded-md hover:bg-surface-2 ${feedback === true ? "text-link" : "text-faint"}`}
               >
                 <ThumbsUp className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
@@ -266,7 +271,7 @@ export function TodayDashboard({
                 onClick={() => void handleFeedback(false)}
                 aria-pressed={feedback === false}
                 aria-label={locale === "de" ? "Empfehlung nicht hilfreich" : "Recommendation not helpful"}
-                className={`rounded-md p-1 hover:bg-background ${feedback === false ? "text-link" : "text-foreground/40"}`}
+                className={`flex h-9 w-9 items-center justify-center rounded-md hover:bg-surface-2 ${feedback === false ? "text-link" : "text-faint"}`}
               >
                 <ThumbsDown className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
@@ -277,18 +282,18 @@ export function TodayDashboard({
 
       {data.weakObjectives.length > 0 && (
         <div className="mb-3">
-          <p className="mb-1.5 text-xs font-medium text-foreground/70">
+          <p className="mb-1.5 text-xs font-medium text-muted">
             {locale === "de" ? "Schwerpunkte heute:" : "Focus areas today:"}
           </p>
           <ul className="flex flex-col gap-1">
             {data.weakObjectives.map((objective) => (
-              <li key={objective.objectiveId} className="text-xs text-foreground/70">
+              <li key={objective.objectiveId} className="text-xs text-muted">
                 <span className="font-medium text-foreground">{objective.objectiveTitle}</span>
                 {" - "}
                 {locale === "de"
                   ? `${objective.masteryScore}% gefestigt, noch Übung nötig`
                   : `${objective.masteryScore}% mastered, needs more practice`}{" "}
-                <span className="text-foreground/50">({objective.domainName})</span>
+                <span className="text-faint">({objective.domainName})</span>
               </li>
             ))}
           </ul>
@@ -298,7 +303,7 @@ export function TodayDashboard({
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href={`/cert/${certSlug}/session`}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
+          className={buttonVariants({ size: "md" })}
         >
           {data.paused
             ? locale === "de"
@@ -311,7 +316,7 @@ export function TodayDashboard({
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="text-xs text-foreground/50 hover:text-foreground/80"
+          className="text-xs text-faint hover:text-text-2"
         >
           {locale === "de" ? "Später" : "Later"}
         </button>
@@ -319,7 +324,7 @@ export function TodayDashboard({
           type="button"
           onClick={() => void handleSkip()}
           disabled={skipping}
-          className="flex items-center gap-1 text-xs text-foreground/50 hover:text-foreground/80 disabled:opacity-50"
+          className="flex items-center gap-1 text-xs text-faint hover:text-text-2 disabled:opacity-50"
         >
           {skipping && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
           {locale === "de" ? "Heute aussetzen" : "Skip today"}

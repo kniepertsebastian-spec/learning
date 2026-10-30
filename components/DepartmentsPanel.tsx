@@ -40,7 +40,7 @@ export function DepartmentsPanel({ departments, members, locale }: { departments
   return (
     <section className="rounded-lg border border-border bg-surface p-6" data-testid="departments-panel">
       <h2 className="text-lg font-medium">{de ? "Abteilungen" : "Departments"}</h2>
-      <p className="mt-1 text-sm text-foreground/70">
+      <p className="mt-1 text-sm text-muted">
         {de
           ? "Ordne Mitglieder Abteilungen zu. Pflichtschulungen lassen sich dann auf bestimmte Abteilungen einschränken. Wechselt jemand die Abteilung, greifen Regeln, die das vorsehen, sofort."
           : "Assign members to departments. Mandatory training can then be limited to certain departments. When someone changes department, rules that allow it apply immediately."}

@@ -103,14 +103,14 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
         className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm font-medium hover:bg-background"
       >
         {!online ? (
-          <WifiOff className="h-4 w-4 text-foreground/60" aria-hidden="true" />
+          <WifiOff className="h-4 w-4 text-subtle" aria-hidden="true" />
         ) : syncing ? (
           <RefreshCw className="h-4 w-4 animate-spin text-link" aria-hidden="true" />
         ) : (
           <CloudOff className="h-4 w-4 text-amber-500" aria-hidden="true" />
         )}
         {pendingTotal > 0 && (
-          <span className="rounded-full bg-accent/10 px-1.5 text-xs font-medium text-link">
+          <span className="rounded-full bg-accent-soft px-1.5 text-xs font-medium text-link">
             {pendingTotal}
           </span>
         )}
@@ -127,7 +127,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
                 ? "Offline"
                 : "Offline"}
           </p>
-          <p className="mb-1 text-foreground/70">
+          <p className="mb-1 text-muted">
             {locale === "de" ? "Ausstehend" : "Pending"}: {summary?.pendingCount ?? 0}
           </p>
           {summary?.authRequired && (
@@ -141,12 +141,12 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
             </p>
           )}
           {summary?.partialApplied ? (
-            <p className="mb-1 text-foreground/70" data-testid="sync-partial-note">
+            <p className="mb-1 text-muted" data-testid="sync-partial-note">
               {locale === "de" ? "Session war schon abgeschlossen, deine Antworten wurden trotzdem gezählt." : "Session was already completed, your answers were counted anyway."}
             </p>
           ) : null}
           {summary?.skippedAnswers ? (
-            <p className="mb-1 text-foreground/70" data-testid="sync-skipped-note">
+            <p className="mb-1 text-muted" data-testid="sync-skipped-note">
               {locale === "de" ? `${summary.skippedAnswers} Antwort(en) betrafen Fragen, die es nicht mehr gibt, und wurden übersprungen.` : `${summary.skippedAnswers} answer(s) were for questions that no longer exist and were skipped.`}
             </p>
           ) : null}
@@ -160,7 +160,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
                 <button type="button" onClick={() => void discardRejected().then(() => getSyncQueueSummary(userId).then(setSummary))} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-background" data-testid="sync-rejected-discard">{locale === "de" ? "Verwerfen" : "Discard"}</button>
               </div>
               {rejected && (
-                <ul className="mt-2 flex flex-col gap-1 text-xs text-foreground/70" data-testid="sync-rejected-list">
+                <ul className="mt-2 flex flex-col gap-1 text-xs text-muted" data-testid="sync-rejected-list">
                   {rejected.map((e) => (
                     <li key={e.clientEventId}>{e.label} · {formatTime(e.createdAt, locale)}{e.lastError ? ` · ${e.lastError}` : ""}</li>
                   ))}
@@ -173,7 +173,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
               {locale === "de" ? "Konflikte" : "Conflicts"}: {summary.conflictCount}
             </p>
           )}
-          <p className="mb-3 text-xs text-foreground/50">
+          <p className="mb-3 text-xs text-faint">
             {locale === "de" ? "Zuletzt synchronisiert" : "Last synced"}:{" "}
             {formatTime(summary?.lastSyncedAt ?? null, locale)}
           </p>

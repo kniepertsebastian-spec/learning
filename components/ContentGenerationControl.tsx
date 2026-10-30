@@ -154,7 +154,7 @@ export function ContentGenerationControl({
           <h2 className="font-medium">
             {locale === "de" ? "KI-Inhaltsgenerierung" : "AI content generation"}
           </h2>
-          <p className="mt-1 text-sm text-foreground/60">
+          <p className="mt-1 text-sm text-subtle">
             {locale === "de"
               ? "Erzeugt fehlendes Curriculum, Lektionen und Quizfragen. Vorhandene Inhalte werden übersprungen."
               : "Generates missing curriculum, lessons, and quiz questions. Existing content is skipped."}
@@ -183,7 +183,7 @@ export function ContentGenerationControl({
           erzeugte Inhalte bleiben unabhängig davon verfügbar. */}
       {budget && (
         <p
-          className={`mt-3 text-xs ${budget.exceeded ? "text-red-600 dark:text-red-400" : "text-foreground/60"}`}
+          className={`mt-3 text-xs ${budget.exceeded ? "text-red-600 dark:text-red-400" : "text-subtle"}`}
         >
           {locale === "de"
             ? `KI-Budget: $${budget.spentUsd.toFixed(2)} von $${budget.limitUsd.toFixed(2)} verbraucht.`
@@ -205,14 +205,14 @@ export function ContentGenerationControl({
       )}
 
       {!active && estimate.estimatedAiCalls > 0 && (
-        <p className="mt-3 text-xs text-foreground/60">
+        <p className="mt-3 text-xs text-subtle">
           {locale === "de"
             ? `${estimate.domainsPending} Domain(s) ohne Curriculum, ${estimate.objectivesPending} Objective(s) ohne vollständige Lektionen/Fragen – geschätzt ${estimate.estimatedAiCalls} KI-Aufrufe.`
             : `${estimate.domainsPending} domain(s) without curriculum, ${estimate.objectivesPending} objective(s) without complete lessons/questions – estimated ${estimate.estimatedAiCalls} AI calls.`}
         </p>
       )}
       {!active && estimate.estimatedAiCalls === 0 && job?.status !== "failed" && (
-        <p className="mt-3 text-xs text-foreground/60">
+        <p className="mt-3 text-xs text-subtle">
           {locale === "de"
             ? "Alle Domains und Objectives haben bereits Inhalte."
             : "All domains and objectives already have content."}
@@ -237,10 +237,10 @@ export function ContentGenerationControl({
               style={{ width: `${job.progress}%` }}
             />
           </div>
-          {job.message && <p className="mt-2 text-xs text-foreground/60">{job.message}</p>}
+          {job.message && <p className="mt-2 text-xs text-subtle">{job.message}</p>}
 
           {job.totalTokens > 0 && (
-            <p className="mt-1 text-xs text-foreground/50">
+            <p className="mt-1 text-xs text-faint">
               {job.model && <span className="font-mono">{job.model}</span>}
               {job.model && " · "}
               {job.totalTokens.toLocaleString(locale)} {locale === "de" ? "Tokens" : "tokens"}

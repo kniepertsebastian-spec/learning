@@ -63,7 +63,7 @@ export function ChangePasswordForm({ userId, locale }: { userId: string; locale:
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" data-testid="change-password-form">
-      <p className="text-sm text-foreground/70">
+      <p className="text-sm text-muted">
         {de
           ? "Nach dem Ändern wirst du auf allen Geräten abgemeldet und meldest dich neu an."
           : "After changing it you are signed out on all devices and sign in again."}
@@ -122,7 +122,7 @@ export function DeleteAccountForm({ userId, locale }: { userId: string; locale: 
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" data-testid="delete-account-form">
-      <p className="text-sm text-foreground/70">
+      <p className="text-sm text-muted">
         {de
           ? "Dein Konto und alle deine Lern- und Mitgliedsdaten werden unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen. Exportiere vorher deine Daten, wenn du sie behalten willst."
           : "Your account and all your learning and membership data are deleted permanently. This cannot be undone. Export your data first if you want to keep it."}

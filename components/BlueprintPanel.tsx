@@ -73,7 +73,7 @@ export function BlueprintPanel({
   return (
     <div className="mt-3 border-t border-border pt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+        <h3 className="text-xs font-medium uppercase tracking-wide text-faint">
           {locale === "de" ? "Blueprint-Vorschlag (R1.2/R1.3)" : "Blueprint proposal (R1.2/R1.3)"}
         </h3>
         {locked ? (
@@ -104,7 +104,7 @@ export function BlueprintPanel({
 
       {draft && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-xs text-foreground/60">
+          <div className="text-xs text-subtle">
             <span>
               {draft.content.certificationName} · {draft.content.provider} · {draft.content.examCode}
             </span>

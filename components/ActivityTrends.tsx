@@ -67,13 +67,13 @@ export function ActivityTrends({
       <div className="mb-4 grid grid-cols-3 gap-3">
         {trends.map((t) => (
           <div key={t.windowDays} className="rounded-md border border-border p-3 text-center">
-            <p className="text-xs text-foreground/60">
+            <p className="text-xs text-subtle">
               {t.windowDays} {locale === "de" ? "Tage" : "days"}
             </p>
             <p className="text-lg font-semibold">
               {t.avgAccuracy !== null ? `${t.avgAccuracy}%` : "–"}
             </p>
-            <p className="text-2xs text-foreground/50">
+            <p className="text-2xs text-faint">
               {t.activeDays} {locale === "de" ? "aktive Tage" : "active days"}
             </p>
           </div>
