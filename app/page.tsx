@@ -84,7 +84,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     week: dash.week,
     learningMinutesWeek: dash.learningMinutesWeek,
     activeDays: dash.activeDays,
-    recent: dash.recent.map((r) => ({ ...r, atIso: r.at.toISOString(), at: undefined })),
+    recent: dash.recent.map(({ at, ...r }) => ({ ...r, atIso: at.toISOString() })),
     events,
     open: [
       ...assignments.filter((a) => a.status !== "completed").map((a) => ({ kind: "assignment" as const, name: a.learningPath, slug: a.slug, dueIso: a.dueAt ? a.dueAt.toISOString() : null })),
