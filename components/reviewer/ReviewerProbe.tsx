@@ -94,6 +94,7 @@ export function ReviewerProbe({ overview, attempt, locale }: { overview: ProbeOv
     const reportOf = (id: string) => attempt.reports.find((r) => r.itemId === id) ?? null;
     return (
       <div className="flex flex-col gap-4" data-testid="probe-attempt">
+        {confirmDialog}
         <div>
           <h2 className="text-lg font-semibold">{attempt.title}</h2>
           <p className="text-sm text-subtle">
