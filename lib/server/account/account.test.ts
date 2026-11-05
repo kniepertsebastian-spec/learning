@@ -53,7 +53,7 @@ import { exportAccountData } from "./export";
 import { isSessionTokenValid } from "@/lib/server/session-validity";
 
 const run = TEST_DB ? describe : describe.skip;
-const PASSWORD = "altes-passwort-1";
+const PASSWORD = "Altes-passwort-1";
 
 function signInAs(userId: string | null) {
   authMock.mockResolvedValue(userId ? { user: { id: userId } } : null);

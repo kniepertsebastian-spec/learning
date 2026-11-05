@@ -46,7 +46,7 @@ import {
 } from "./tokens";
 
 const run = TEST_DB ? describe : describe.skip;
-const PASSWORD = "altes-passwort-1";
+const PASSWORD = "Altes-passwort-1";
 
 const post = (data: unknown, ip = `10.0.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`) =>
   new Request("http://x/api", {
