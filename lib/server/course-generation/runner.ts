@@ -5,11 +5,12 @@ import { getCourseGenerationJob, isTerminalCourseGenerationStatus, nextSplitPart
 import { executeCourseGenerationJob, publishPreparedCourseGenerationPackage } from "./worker";
 
 /**
- * In-Prozess-Jobtracking, exakt das Muster von `activeJobs` in
- * lib/server/admin/content-generation.ts (siehe course_generation.md
- * Abschnitt 0: bewusst kein separater Worker-Container für diese
- * Größenordnung). `globalThis`, damit Next.js' Modul-Hot-Reload in der
- * Entwicklung keine zweite, unabhängige Map erzeugt.
+ * In-Prozess-Jobtracking (siehe course_generation.md Abschnitt 0: bewusst
+ * kein separater Worker-Container für diese Größenordnung). Das setzt genau eine
+ * App-Instanz voraus: Der Watchdog hält einen Job für verwaist, der in SEINEM
+ * Prozess nicht aktiv ist (siehe DOCKER_DEPLOYMENT.md "Exactly one app instance").
+ * `globalThis`, damit Next.js' Modul-Hot-Reload in der Entwicklung keine zweite,
+ * unabhängige Map erzeugt.
  */
 const globalForCourseJobs = globalThis as unknown as {
   courseGenerationProcesses?: Map<string, Promise<void>>;

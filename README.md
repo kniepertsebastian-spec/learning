@@ -53,6 +53,9 @@ automatisch. Admin-Skripte (Nutzerrollen, Organisationen, Zertifizierungen, Inha
 `package.json` unter `user:*`, `company:*`, `cert:*` und `content:*` und laufen im Container mit
 `docker compose exec app npm run …`.
 
+Die App läuft als **genau eine** Instanz: Rate-Limits und laufende Generierungsaufträge liegen im Speicher des Prozesses
+(Begründung und Umgang damit: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md), Abschnitt „Exactly one app instance“).
+
 ### Organisationen (Firmenbereich)
 
 Solange es keine Oberfläche dafür gibt, legt der Betreiber Organisationen per Skript an. Ein Nutzer

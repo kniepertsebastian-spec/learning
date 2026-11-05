@@ -168,6 +168,24 @@ docker-compose config | grep -A 20 "environment:"
 
 ---
 
+## Exactly one app instance
+
+Knowvia must run as **one** app container at any time. This is a decision, not a gap: several things live in the memory of the
+app process and would work against each other with a second copy.
+
+- **Rate limits** (login, registration, password recovery and the costly AI actions) are counted in memory. Two copies would
+  each count on their own, so every limit effectively doubles; a restart resets the counters.
+- **Background jobs** (course generation, translation, AI batches in the course workshop) run inside the app process and are
+  tracked in memory. A watchdog resumes jobs that show no sign of life and are not active *in its own process*. A second copy
+  would take a job that the first one is still working on for abandoned and process it again.
+
+How it is held to one: `container_name: learning-app` in `docker-compose.yml` makes `docker compose up --scale app=2` fail, so
+keep that line. A deploy that recreates the container is fine (the old one stops first, the watchdog picks up what it left).
+Do not run a second copy next to it for a "zero downtime" switch, and do not put a load balancer in front of several copies.
+
+If you ever need more than one instance, the rate limits move to a shared store (the database or Redis) and the job runner to a
+claim per job in the database. Until then: one container.
+
 ## Production Checklist
 
 ### Security
