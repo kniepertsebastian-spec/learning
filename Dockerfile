@@ -22,15 +22,15 @@ WORKDIR /app
 # Skia canvas binary that raised SIGILL on older x86 hosts during `next build`.
 RUN apk add --no-cache dumb-init poppler-utils
 
-# Copy package files (full install: drizzle-kit/tsx are used at runtime for
-# db:migrate/db:seed/cert:add/content:* via `docker compose exec app npm run ...`)
+# Only the production dependencies. drizzle-kit (db:migrate at every start), tsx and dotenv (the admin
+# scripts: `docker compose exec app npm run ...`) are regular dependencies for exactly that reason; the
+# test, lint and build tools (vitest, eslint, playwright, tailwind, types) stay in the builder stage.
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built app from builder
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
 
 # Source needed by the admin scripts (not part of the Next.js build output)
 COPY --from=builder /app/lib ./lib
