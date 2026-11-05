@@ -31,6 +31,15 @@ export function withAiCost<T>(context: AiCostContext, fn: () => T): T {
 }
 
 /**
+ * Setzt im laufenden Kontext nur den Schritt (`detail`, z. B. „tagging“): Quelle, Kurs und Auftrag bleiben. Ohne Kontext
+ * passiert nichts (es wird kein Kontext erfunden); der Aufruf landet dann wie bisher als „other“ im Buch.
+ */
+export function withAiCostDetail<T>(detail: string, fn: () => T): T {
+  const current = storage.getStore();
+  return current ? storage.run({ ...current, detail }, fn) : fn();
+}
+
+/**
  * Wie `withAiCost`, aber ein schon gesetzter Kontext gewinnt: Die Werkstatt-Funktion „KI-Vorschlag“ ist Teil von Sammelläufen und
  * soll deren Quelle nicht überschreiben, bringt aber als Vorgabe den Kurs mit, wenn sie allein aufgerufen wird.
  */
@@ -100,7 +109,19 @@ export interface AiCostReport {
   /** Aufrufe, für deren Modell kein Preis hinterlegt ist: sie zählen als 0 USD und sind hier nur gezählt. */
   unpricedCalls: number;
   bySource: Array<{ source: AiCostSource; costUsd: number }>;
+  /** Aufteilung nach Schritt (Quelle + `detail`), teuerste zuerst; `detail` null = Aufrufe ohne Schrittangabe. Token ohne BYOK und ohne übernommene Summen. */
+  bySteps: AiCostStepRow[];
   courses: AiCostCourseRow[];
+}
+
+export interface AiCostStepRow {
+  source: AiCostSource;
+  detail: string | null;
+  costUsd: number;
+  calls: number;
+  promptTokens: number;
+  completionTokens: number;
+  cachedTokens: number;
 }
 
 const num = (value: string | null | undefined) => Number(value ?? 0);
@@ -114,7 +135,7 @@ export async function getAiCostReport(): Promise<AiCostReport> {
   const db = getDb();
   const course = sql<string | null>`coalesce(${aiCostEntries.certificationId}, ${courseGenerationJobs.resultCertificationId})`;
 
-  const [perCourse, perSource, [flags]] = await Promise.all([
+  const [perCourse, perSource, perStep, [flags]] = await Promise.all([
     db
       .select({
         certificationId: course,
@@ -130,6 +151,19 @@ export async function getAiCostReport(): Promise<AiCostReport> {
       .from(aiCostEntries)
       .where(eq(aiCostEntries.byok, false))
       .groupBy(aiCostEntries.source),
+    db
+      .select({
+        source: aiCostEntries.source,
+        detail: aiCostEntries.detail,
+        costUsd: sql<string>`coalesce(sum(${aiCostEntries.costUsd}), 0)`,
+        calls: sql<string>`count(*) filter (where not ${aiCostEntries.historic})`,
+        promptTokens: sql<string>`coalesce(sum(${aiCostEntries.promptTokens}), 0)`,
+        completionTokens: sql<string>`coalesce(sum(${aiCostEntries.completionTokens}), 0)`,
+        cachedTokens: sql<string>`coalesce(sum(${aiCostEntries.cachedTokens}), 0)`,
+      })
+      .from(aiCostEntries)
+      .where(eq(aiCostEntries.byok, false))
+      .groupBy(aiCostEntries.source, aiCostEntries.detail),
     db
       .select({
         historic: sql<string>`coalesce(sum(${aiCostEntries.costUsd}) filter (where ${aiCostEntries.historic} and not ${aiCostEntries.byok}), 0)`,
@@ -170,6 +204,17 @@ export async function getAiCostReport(): Promise<AiCostReport> {
     byokUsd: num(flags?.byok),
     unpricedCalls: num(flags?.unpriced),
     bySource: perSource.map((row) => ({ source: row.source, costUsd: num(row.costUsd) })).sort((a, b) => b.costUsd - a.costUsd),
+    bySteps: perStep
+      .map((row) => ({
+        source: row.source,
+        detail: row.detail,
+        costUsd: num(row.costUsd),
+        calls: num(row.calls),
+        promptTokens: num(row.promptTokens),
+        completionTokens: num(row.completionTokens),
+        cachedTokens: num(row.cachedTokens),
+      }))
+      .sort((a, b) => b.costUsd - a.costUsd),
     courses: rows,
   };
 }

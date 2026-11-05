@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTaggingPlan, similarity, validateVariant, type TaggingInput, type TaggingResponse } from "./concepts";
+import { buildTaggingPlan, itemPrompt, MAX_VARIANTS_PER_CONCEPT, similarity, validateVariant, type TaggingInput, type TaggingResponse } from "./concepts";
 import { chooseProbes, interleaveProbes, probeBudget, type ProbeCandidate } from "./probes";
 
 const NOW = new Date("2026-05-10T12:00:00Z");
@@ -113,5 +113,36 @@ describe("Tagging-Plan", () => {
     });
     expect(plan.variants.map((v) => v.conceptName)).toEqual(["Routing", "Routing"]);
     expect(plan.rejected).toHaveLength(1);
+  });
+
+  it(`behält je Konzept höchstens ${MAX_VARIANTS_PER_CONCEPT} Varianten (die ersten), andere Konzepte bleiben unberührt`, () => {
+    const texts = ["Szenario mit Servern und Kabeln", "Szenario in einer Firma mit Filialen", "Szenario im Rechenzentrum nachts", "Szenario bei einem Provider vor Ort", "Szenario in der Cloud mit Regionen"];
+    const plan = buildTaggingPlan(input, {
+      concepts: [{ name: "Routing", items: [1] }, { name: "Switching", items: [1] }],
+      variants: [
+        ...texts.map((t) => variant("Routing", t)),
+        variant("Switching", "Erster Fall mit Ports und VLANs im Büro"),
+        variant("Switching", "Zweiter Fall mit Trunks zwischen Etagen"),
+      ],
+    });
+    const routing = plan.variants.filter((v) => v.conceptName === "Routing");
+    expect(routing).toHaveLength(MAX_VARIANTS_PER_CONCEPT);
+    expect(routing.map((v) => v.question.de)).toEqual(texts.slice(0, MAX_VARIANTS_PER_CONCEPT));
+    expect(plan.variants.filter((v) => v.conceptName === "Switching")).toHaveLength(2);
+  });
+});
+
+describe("Item-Text für die Anfrage", () => {
+  const item = { id: "i1", humanId: "H1", explanation: { de: "Weil Router Netze verbinden.", en: "Because routers connect networks." }, correctOption: { de: "Router", en: "Router" } };
+
+  it("schickt eine Frage, die in beiden Sprachen gleich ist, nur einmal", () => {
+    const text = itemPrompt({ ...item, question: { de: "Was verbindet Netze?", en: "Was verbindet Netze?" } }, 0);
+    expect(text).toBe("Item 1\nFrage: Was verbindet Netze?\nRichtige Antwort: Router\nErklärung: Weil Router Netze verbinden.");
+    expect(text).not.toContain("Englisch");
+  });
+
+  it("schickt beide Sprachen, wenn sie sich unterscheiden", () => {
+    const text = itemPrompt({ ...item, question: { de: "Was verbindet Netze?", en: "What connects networks?" } }, 2);
+    expect(text).toContain("Item 3\nFrage (Deutsch): Was verbindet Netze?\nFrage (Englisch): What connects networks?");
   });
 });

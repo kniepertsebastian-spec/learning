@@ -135,8 +135,39 @@ run("Kostenbuch (echte DB)", () => {
     expect(await getDb().select({ id: aiCostEntries.id }).from(aiCostEntries).where(eq(aiCostEntries.model, MODEL)).limit(1)).toHaveLength(1);
   });
 
+  it("Aufteilung nach Schritt: Aufrufe, Token und Kosten je Quelle und Schritt, Summe wie die Gesamtkosten", async () => {
+    const certId = await course();
+    const step = (report: Awaited<ReturnType<typeof getAiCostReport>>, source: string, detail: string | null) =>
+      report.bySteps.find((s) => s.source === source && s.detail === detail);
+    const before = await getAiCostReport();
+
+    await withAiCost({ source: "translation", detail: "schritt-test-a", certificationId: certId }, async () => {
+      await recordAiUsage(INPUT_1M);
+      await recordAiUsage(OUTPUT_1M);
+    });
+    await withAiCost({ source: "translation", detail: "schritt-test-b", certificationId: certId }, () => recordAiUsage(OUTPUT_1M));
+    await withAiCost({ source: "translation", detail: "schritt-test-b", certificationId: certId }, () => recordAiUsage(OUTPUT_1M, { byok: true }));
+
+    const after = await getAiCostReport();
+    const a = step(after, "translation", "schritt-test-a");
+    const b = step(after, "translation", "schritt-test-b");
+    expect(a?.calls).toBe(2);
+    expect(a?.costUsd).toBeCloseTo(0.75 + 3.75, 6);
+    expect(a?.promptTokens).toBe(INPUT_1M.promptTokens + OUTPUT_1M.promptTokens);
+    expect(a?.completionTokens).toBe(INPUT_1M.completionTokens + OUTPUT_1M.completionTokens);
+    // BYOK steht nicht in der Aufteilung, genau wie nicht in der Summe
+    expect(b?.calls).toBe(1);
+    expect(b?.costUsd).toBeCloseTo(3.75, 6);
+    // teuerste zuerst, und die Summe über alle Schritte ist die Gesamtsumme
+    const costs = after.bySteps.map((s) => s.costUsd);
+    expect(costs).toEqual([...costs].sort((x, y) => y - x));
+    expect(after.bySteps.reduce((sum, s) => sum + s.costUsd, 0)).toBeCloseTo(after.totalUsd, 6);
+    expect(after.totalUsd - before.totalUsd).toBeCloseTo(0.75 + 3.75 + 3.75, 6);
+  });
+
   it("Aufrufe ohne Kontext stehen als „Ohne Kurs“ und „other“ im Buch", async () => {
-    const tokens = 10_000_000 + Math.floor(Math.random() * 1_000_000);
+    // Vielfaches von 4: dann ist tokens × 0,75 / 1 Mio. auf 6 Stellen genau und die Kosten-Rundung des Kostenbuchs fällt nicht ins Gewicht.
+    const tokens = 10_000_000 + Math.floor(Math.random() * 250_000) * 4;
     loneTokens.push(tokens);
     const before = await getAiCostReport();
     await recordAiUsage({ model: MODEL, promptTokens: tokens, completionTokens: 0 });
