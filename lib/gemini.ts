@@ -8,6 +8,12 @@ export const CURRICULUM_MODEL = process.env.GEMINI_CURRICULUM_MODEL || process.e
 export const LESSONS_MODEL =
   process.env.GEMINI_LESSONS_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
+/**
+ * Mechanische Folgeschritte nach der Kursgenerierung (Konzept-Tagging, Abfragevarianten, Voraussetzungen): kurze Eingaben, strenges
+ * Schema, danach fachlich geprüft. Ohne eigene Angabe dasselbe Modell wie die Lektionen, es ändert sich also nichts.
+ */
+export const TAGGING_MODEL = process.env.GEMINI_TAGGING_MODEL || LESSONS_MODEL;
+
 /** Übersetzung fertiger Kurse in die zweite Sprache: reine Textarbeit ohne Quellen, dafür reicht ein schlankes Modell. */
 export const TRANSLATION_MODEL = process.env.GEMINI_TRANSLATION_MODEL || "gemini-flash-lite-latest";
 

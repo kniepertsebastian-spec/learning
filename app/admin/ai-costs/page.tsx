@@ -52,6 +52,7 @@ export default async function AdminAiCostsPage() {
     repair: t.stepRepair,
     questions_top_up: t.stepQuestionsTopUp,
     tagging: t.stepTagging,
+    tagging_batch: t.stepTaggingBatch,
     prerequisites: t.stepPrerequisites,
     cheat_sheets: t.stepCheatSheets,
     remediation: t.stepRemediation,

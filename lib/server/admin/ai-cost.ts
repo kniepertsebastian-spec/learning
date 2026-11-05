@@ -1,4 +1,4 @@
-import { CURRICULUM_MODEL, LESSONS_MODEL, TRANSLATION_MODEL } from "@/lib/gemini";
+import { CURRICULUM_MODEL, LESSONS_MODEL, TAGGING_MODEL, TRANSLATION_MODEL } from "@/lib/gemini";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { aiCostEntries } from "@/lib/server/db/schema";
@@ -34,6 +34,10 @@ function pricesFor(model: string): { prompt: number; completion: number } | null
   } else if (model === LESSONS_MODEL) {
     prompt = num("GEMINI_LESSONS_PRICE_PER_MILLION_PROMPT_TOKENS_USD");
     completion = num("GEMINI_LESSONS_PRICE_PER_MILLION_COMPLETION_TOKENS_USD");
+  } else if (model === TAGGING_MODEL) {
+    // Greift nur, wenn das Tagging-Modell ein eigenes ist: sonst ist es das Lektionsmodell und der Zweig darüber hat gegriffen.
+    prompt = num("GEMINI_TAGGING_PRICE_PER_MILLION_PROMPT_TOKENS_USD");
+    completion = num("GEMINI_TAGGING_PRICE_PER_MILLION_COMPLETION_TOKENS_USD");
   } else if (model === TRANSLATION_MODEL) {
     prompt = num("GEMINI_TRANSLATION_PRICE_PER_MILLION_PROMPT_TOKENS_USD");
     completion = num("GEMINI_TRANSLATION_PRICE_PER_MILLION_COMPLETION_TOKENS_USD");
@@ -48,29 +52,47 @@ function pricesFor(model: string): { prompt: number; completion: number } | null
 
 /** Sind für die verwendeten Modelle Preise hinterlegt? Sonst bleiben Kosten und Kostenlimit wirkungslos (Anzeige „nicht berechnet“). */
 export function isPricingConfigured(): boolean {
-  return pricesFor(CURRICULUM_MODEL) !== null && pricesFor(LESSONS_MODEL) !== null;
+  return pricesFor(CURRICULUM_MODEL) !== null && pricesFor(LESSONS_MODEL) !== null && pricesFor(TAGGING_MODEL) !== null;
+}
+
+/**
+ * Preis eines Batch-Aufrufs im Verhältnis zum normalen Preis. Google nennt etwa die Hälfte (Stand der Umsetzung nur aus
+ * Suchtreffern, nicht gegen ai.google.dev geprüft): nach dem ersten echten Lauf gegen die Rechnung abgleichen und bei
+ * Abweichung GEMINI_BATCH_PRICE_FACTOR setzen.
+ */
+export function batchPriceFactor(): number {
+  const raw = process.env.GEMINI_BATCH_PRICE_FACTOR;
+  const value = Number(raw);
+  return raw !== undefined && raw !== "" && Number.isFinite(value) && value > 0 && value <= 1 ? value : 0.5;
 }
 
 function cachedPriceFactor(): number {
-  const value = Number(process.env.GEMINI_CACHED_PROMPT_PRICE_FACTOR);
-  return Number.isFinite(value) && value >= 0 && value <= 1 && process.env.GEMINI_CACHED_PROMPT_PRICE_FACTOR !== undefined ? value : 0.1;
+  const raw = process.env.GEMINI_CACHED_PROMPT_PRICE_FACTOR;
+  // Leer zählt als nicht gesetzt (docker-compose reicht die Variable leer durch); Number("") wäre 0 und machte Cache-Token gratis.
+  if (raw === undefined || raw.trim() === "") return 0.1;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0.1;
 }
 
-/** `cachedTokens` ist der Teil der `promptTokens`, den Gemini aus dem Kontext-Cache gelesen hat. */
+/**
+ * `cachedTokens` ist der Teil der `promptTokens`, den Gemini aus dem Kontext-Cache gelesen hat. `batch`: Aufruf über die
+ * Batch-API, der Gesamtbetrag wird mit `batchPriceFactor()` multipliziert.
+ */
 export function estimateCostUsd(
   promptTokens: number,
   completionTokens: number,
   model: string,
   cachedTokens = 0,
+  options: { batch?: boolean } = {},
 ): number | null {
   const prices = pricesFor(model);
   if (!prices) return null;
   const cached = Math.min(Math.max(cachedTokens, 0), promptTokens);
-  return (
+  const cost =
     ((promptTokens - cached) / 1_000_000) * prices.prompt +
     (cached / 1_000_000) * prices.prompt * cachedPriceFactor() +
-    (completionTokens / 1_000_000) * prices.completion
-  );
+    (completionTokens / 1_000_000) * prices.completion;
+  return options.batch ? cost * batchPriceFactor() : cost;
 }
 
 export interface AiBudgetStatus {

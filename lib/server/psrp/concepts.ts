@@ -8,9 +8,10 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
-import { generateStructured } from "@/lib/ai/generate";
+import { isBatchEnabled } from "@/lib/ai/batch";
+import { generateStructured, toGeminiJsonSchema } from "@/lib/ai/generate";
 import { localizedStringSchema } from "@/lib/ai/schemas";
-import { LESSONS_MODEL } from "@/lib/gemini";
+import { TAGGING_MODEL } from "@/lib/gemini";
 import { withAiCostDetail } from "@/lib/server/admin/ai-ledger";
 import { getDb } from "@/lib/server/db/client";
 import {
@@ -92,15 +93,21 @@ export function itemPrompt(item: TaggingItem, index: number): string {
   return `Item ${index + 1}\n${question}\nRichtige Antwort: ${item.correctOption.de}\nErklärung: ${item.explanation.de}`;
 }
 
+/** Die Anfrage für ein Lernobjekt: Live-Aufruf (`createConceptTagger`) und Batch (lib/server/ai-batch) schicken genau dasselbe. */
+export function taggingPrompt(input: TaggingInput): { system: string; user: string; jsonSchema: Record<string, unknown> | undefined } {
+  const user = [
+    `Themengebiet: ${input.topicArea}`,
+    `Lernziel: ${input.objectiveTitle}`,
+    input.requiredConcepts.length ? `Vorgegebene Konzepte: ${input.requiredConcepts.join("; ")}` : "",
+    ...input.items.map(itemPrompt),
+  ].filter(Boolean).join("\n\n");
+  return { system: SYSTEM_PROMPT, user, jsonSchema: toGeminiJsonSchema(taggingResponseSchema) };
+}
+
 export function createConceptTagger(client?: GoogleGenAI): ConceptTagger {
   return async (input) => {
-    const user = [
-      `Themengebiet: ${input.topicArea}`,
-      `Lernziel: ${input.objectiveTitle}`,
-      input.requiredConcepts.length ? `Vorgegebene Konzepte: ${input.requiredConcepts.join("; ")}` : "",
-      ...input.items.map(itemPrompt),
-    ].filter(Boolean).join("\n\n");
-    return generateStructured(SYSTEM_PROMPT, user, taggingResponseSchema, LESSONS_MODEL, undefined, client);
+    const { system, user } = taggingPrompt(input);
+    return generateStructured(system, user, taggingResponseSchema, TAGGING_MODEL, undefined, client);
   };
 }
 
@@ -344,11 +351,20 @@ export async function conceptsWithoutProbes(certificationId: string): Promise<st
  */
 export function tagConceptsAfterGeneration(certificationId: string, organizationId: string | null): void {
   if (organizationId || process.env.PSRP_TAG_CONCEPTS === "0" || !process.env.GEMINI_API_KEY) return;
-  void withAiCostDetail("tagging", () => tagCourseConcepts(certificationId, createConceptTagger()))
-    .then(async () => {
-      // Voraussetzungen zwischen den Konzepten als Entwurf vorschlagen (Freigabe in der Werkstatt)
-      const { backfillPrerequisites, createPrerequisiteGenerator } = await import("@/lib/server/prerequisites/generate");
-      await withAiCostDetail("prerequisites", () => backfillPrerequisites(certificationId, createPrerequisiteGenerator()));
-    })
-    .catch((error) => console.error("Konzept-Tagging nach der Kursgenerierung fehlgeschlagen:", error));
+  void (async () => {
+    // Mit GEMINI_BATCH=1 als Batch einreichen (halber Preis, Antwort später): Antworten und Voraussetzungen übernimmt dann der
+    // Hintergrundlauf (lib/server/ai-batch/service.ts). Lehnt Google die Einreichung ab, läuft alles wie bisher einzeln.
+    if (isBatchEnabled()) {
+      try {
+        const { submitTaggingBatch } = await import("@/lib/server/ai-batch/tagging");
+        if ((await submitTaggingBatch(certificationId)) > 0) return;
+      } catch (error) {
+        console.warn("Konzept-Tagging als Batch nicht möglich, weiter mit einzelnen Aufrufen:", error instanceof Error ? error.message : error);
+      }
+    }
+    await withAiCostDetail("tagging", () => tagCourseConcepts(certificationId, createConceptTagger()));
+    // Voraussetzungen zwischen den Konzepten als Entwurf vorschlagen (Freigabe in der Werkstatt)
+    const { backfillPrerequisites, createPrerequisiteGenerator } = await import("@/lib/server/prerequisites/generate");
+    await withAiCostDetail("prerequisites", () => backfillPrerequisites(certificationId, createPrerequisiteGenerator()));
+  })().catch((error) => console.error("Konzept-Tagging nach der Kursgenerierung fehlgeschlagen:", error));
 }
