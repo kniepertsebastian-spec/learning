@@ -2,6 +2,7 @@
  * Fachliche Prüfer (roadmap_pruefer Phase 1): Rolle `reviewer`, Einladung durch einen Admin, Zuweisung je allgemeinem Kurs.
  * Ein Prüfer sieht nur seine zugewiesenen allgemeinen Kurse (nie interne Lernpfade, nie Lerndaten) und ist an keine Firma gebunden.
  */
+import { assignUnassignedSamples } from "./second-review";
 import { createHash, randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
@@ -80,6 +81,7 @@ export async function assignReviewer(input: { certificationId: string; userId: s
   const [existing] = await getDb().select({ certificationId: courseReviewers.certificationId }).from(courseReviewers).where(eq(courseReviewers.userId, input.userId)).limit(1);
   if (existing && existing.certificationId !== input.certificationId) throw new ReviewerAlreadyAssignedError();
   await getDb().insert(courseReviewers).values({ certificationId: input.certificationId, userId: input.userId, assignedByUserId: input.assignedByUserId }).onConflictDoNothing();
+  await assignUnassignedSamples(input.certificationId, input.userId).catch((error) => console.error("Offene Zweitprüfungen konnten nicht zugewiesen werden:", error));
   await recordAuditEvent({ actorUserId: input.assignedByUserId, action: "reviewer.assigned", targetType: "certification", targetId: input.certificationId, metadata: { reviewerUserId: input.userId } }).catch(logAuditFailure);
 }
 

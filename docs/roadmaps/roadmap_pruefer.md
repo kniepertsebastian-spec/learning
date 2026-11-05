@@ -116,10 +116,10 @@ Ziel: Prüfen, ob jemand gut **prüfen** kann, nicht nur Fragen beantworten. Kei
 
 ## Phase 6 – Qualität im Betrieb (Priorität: mittel)
 
-- [ ] Kennzahlen je Prüfer und Freigabe (nur Admin): Meldungen von Lernenden je 100 Fragen nach Freigabe, auffällige Varianten, Konzepte mit Häufung im Verstehens-Modus (`roadmap_didaktik.md`, Phase 9), jeweils im Vergleich zum Durchschnitt.
-- [ ] Zweitprüfung als Stichprobe: Bei jeder Freigabe wird ein Anteil der Fragen (siehe Platzhalter) einem zweiten Prüfer vorgelegt; Abweichungen landen beim Admin.
-- [ ] Hinweis an Admin, wenn ein Prüfer deutlich über dem Durchschnitt liegt (Schwelle konfigurierbar); keine automatische Sanktion.
-- [ ] Wiedervorlage: Bei neuer Prüfungsversion bzw. neuer Quellenausgabe (`supersedesSourceId`) werden betroffene Freigaben als „Prüfung empfohlen“ markiert.
+- [x] Kennzahlen je Prüfer und Freigabe (nur Admin): Meldungen von Lernenden je 100 Fragen nach Freigabe, auffällige Varianten, Konzepte mit Häufung im Verstehens-Modus (`roadmap_didaktik.md`, Phase 9), jeweils im Vergleich zum Durchschnitt. *(Umgesetzt: Admin-Seite `/admin/reviewers`, Abschnitt „Qualität im Betrieb“; `lib/server/reviewers/quality.ts`. Gezählt werden Meldungen zu den freigegebenen Fragen ab der Freigabe bis zur nächsten Freigabe desselben Kurses, getrennt nach Meldungen (falsch, unklar, veraltet), auffälligen Varianten und Verstehens-Häufung (`content_reports`), je 100 Fragen, im Vergleich zum Durchschnitt aller Freigaben. Nur Admins.)*
+- [x] Zweitprüfung als Stichprobe: Bei jeder Freigabe wird ein Anteil der Fragen (siehe Platzhalter) einem zweiten Prüfer vorgelegt; Abweichungen landen beim Admin. *(Umgesetzt: bei jeder Freigabe legt `createSecondReviewSample` eine Stichprobe an (`SECOND_REVIEW_SHARE`, Standard 10 %, mindestens 3, höchstens 25 Fragen, deterministisch nach Hash). Der zweite Prüfer ist ein anderer Prüfer des Kurses; ohne ihn bleibt die Stichprobe offen, bis jemand zugewiesen wird. Urteil unter `/reviewer/second-review`, Abweichungen stehen im Admin-Abschnitt „Zweitprüfung als Stichprobe“.)*
+- [x] Hinweis an Admin, wenn ein Prüfer deutlich über dem Durchschnitt liegt (Schwelle konfigurierbar); keine automatische Sanktion. *(Umgesetzt als Hinweis in der Tabelle: ab dem `REVIEWER_QUALITY_FACTOR`-Fachen (Standard 2) des Durchschnitts, nur mit mindestens 5 Ereignissen bei mindestens 20 Fragen; keine Sanktion, keine Mail.)*
+- [x] Wiedervorlage: Bei neuer Prüfungsversion bzw. neuer Quellenausgabe (`supersedesSourceId`) werden betroffene Freigaben als „Prüfung empfohlen“ markiert. *(Umgesetzt: `listRecheckRecommended`; „Prüfung empfohlen“ im Admin-Abschnitt und auf der Startseite der Prüfer, wenn nach der letzten Freigabe eine neue Ausgabe einer Quelle (`supersedesSourceId`) erfasst wurde; die Freigabe bleibt gültig, eine neue Freigabe hebt die Empfehlung auf.)*
 
 **Akzeptanzkriterium:** Admins sehen je Prüfer die Kennzahlen seit der jeweiligen Freigabe; Prüfer und Öffentlichkeit sehen sie nicht.
 
@@ -129,8 +129,8 @@ Ziel: Prüfen, ob jemand gut **prüfen** kann, nicht nur Fragen beantworten. Kei
 
 - [ ] Expertenvertrag: Nutzungsrechte, Verschwiegenheit, Haftung für fachliche Fehler, Einwilligung zur Veröffentlichung des Profils (je Feld), Widerruf.
 - [ ] Datenschutzerklärung um öffentliche Prüferprofile ergänzen.
-- [ ] Hinweistext am Siegel: „Geprüft“ bezieht sich auf die fachliche Richtigkeit zum angegebenen Stand, keine Garantie für das Bestehen der Prüfung.
-- [ ] Marken: Herstellerlogos nur gemäß deren Richtlinien verwenden; im Zweifel nur Text.
+- [x] Hinweistext am Siegel: „Geprüft“ bezieht sich auf die fachliche Richtigkeit zum angegebenen Stand, keine Garantie für das Bestehen der Prüfung. *(Der Hinweis stand schon unter „Was bedeutet geprüft?“ (`SEAL_DISCLAIMER`); ergänzt um „Es ist keine Garantie, die Prüfung zu bestehen.“ Die Formulierung ist keine Rechtsprüfung.)*
+- [x] Marken: Herstellerlogos nur gemäß deren Richtlinien verwenden; im Zweifel nur Text. *(Geprüft: im Repository gibt es keine Herstellerlogos, die Oberfläche nennt Hersteller nur als Text.)*
 
 ---
 

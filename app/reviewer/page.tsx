@@ -7,13 +7,18 @@ import { getServerLocale } from "@/lib/server/locale";
 import { requireReviewerPage } from "@/lib/server/reviewers/guard";
 import { listAssignedCourses } from "@/lib/server/reviewers/service";
 import { isQualified } from "@/lib/server/reviewers/probe-service";
+import { countPendingSecondReviews } from "@/lib/server/reviewers/second-review";
+import { c_reviewerQuality } from "@/lib/i18n/components/reviewerQuality";
+import { fill } from "@/lib/i18n/fill";
+import { listRecheckRecommended } from "@/lib/server/reviewers/quality";
 
 /** Fachliche Prüfer: die ihnen zugewiesenen allgemeinen Kurse mit Stand der Freigabe. */
 export default async function ReviewerHome() {
   const user = await requireReviewerPage("/reviewer");
   const locale = await getServerLocale();
   const de = locale === "de";
-  const [courses, qualified] = await Promise.all([listAssignedCourses(user.id), isQualified(user.id)]);
+  const [courses, qualified, pendingSecond] = await Promise.all([listAssignedCourses(user.id), isQualified(user.id), countPendingSecondReviews(user.id)]);
+  const recheck = await listRecheckRecommended(courses.map((c) => c.id));
   const statuses = await Promise.all(courses.map((c) => getApprovalStatus(c.id)));
   return (
     <div className="flex flex-col gap-4" data-testid="reviewer-home">
@@ -26,6 +31,9 @@ export default async function ReviewerHome() {
         </p>
       )}
       <p className="text-sm">
+        <Link href="/reviewer/second-review" className="text-link hover:underline" data-testid="reviewer-second-review-link">{pendingSecond > 0 ? fill(c_reviewerQuality(de).openLink, pendingSecond) : c_reviewerQuality(de).openLinkNone}</Link>
+      </p>
+      <p className="text-sm">
         <Link href="/reviewer/profile" className="text-link hover:underline" data-testid="reviewer-profile-link">{c_reviewerPage(de).manageMyExpertProfile}</Link>
       </p>
       {courses.length === 0 ? (
@@ -37,6 +45,7 @@ export default async function ReviewerHome() {
             return (
               <li key={c.id} className="rounded-2xl border border-border bg-surface p-5 text-sm" data-testid="reviewer-course">
                 <Link href={`/reviewer/${c.slug}`} className="font-medium text-link hover:underline">{c.name}</Link>
+                {recheck.some((r) => r.certificationId === c.id) && <p className="mt-1 text-warning-text" data-testid="reviewer-recheck">{c_reviewerQuality(de).recheckNotice}</p>}
                 <p className="mt-1 text-subtle">
                   {s.state === "none" && (c_reviewerPage(de).notApprovedYet)}
                   {s.state === "current" && s.approval && `${c_reviewerPage(de).approvedBy} ${s.approval.reviewerDisplayName} · ${c_reviewerPage(de).version} ${s.approval.versionLabel}`}

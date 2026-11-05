@@ -11,16 +11,21 @@ import { getReviewerOverview, listOpenReviewerComments } from "@/lib/server/revi
 import { listCertificationsForAdmin } from "@/lib/server/reviewers/profile-service";
 import { ReviewerCertVerification } from "@/components/admin/ReviewerCertVerification";
 import { ReviewersPanel } from "@/components/admin/ReviewersPanel";
+import { ReviewerQualityPanel } from "@/components/admin/ReviewerQualityPanel";
+import { getQualityReport } from "@/lib/server/reviewers/quality";
+import { getSecondReviewOverview } from "@/lib/server/reviewers/second-review";
 
 /** Betreiber: fachliche Prüfer einladen, Kursen zuweisen und ihre Kommentare abarbeiten. */
 export default async function AdminReviewersPage() {
   await requireAdminPage("/admin/reviewers");
   const locale = await getServerLocale();
-  const [courses, overview, comments, certs] = await Promise.all([
+  const [courses, overview, comments, certs, quality, second] = await Promise.all([
     getDb().select({ id: certifications.id, name: certifications.name }).from(certifications).where(eq(certifications.kind, "general")).orderBy(asc(certifications.name)),
     getReviewerOverview(),
     listOpenReviewerComments(),
     listCertificationsForAdmin(),
+    getQualityReport(),
+    getSecondReviewOverview(),
   ]);
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -35,6 +40,7 @@ export default async function AdminReviewersPage() {
         invitations={overview.invitations.map((i) => ({ ...i, expiresAt: i.expiresAt.toISOString() }))}
         comments={comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() }))}
       />
+      <ReviewerQualityPanel report={quality} second={second} locale={locale} />
       <ReviewerCertVerification locale={locale} certs={certs.map((c) => ({ id: c.id, reviewerName: c.reviewerName, vendor: c.vendor, name: c.name, earnedOn: c.earnedOn, validUntil: c.validUntil, verificationUrl: c.verificationUrl, verifiedAt: c.verifiedAt ? c.verifiedAt.toISOString() : null }))} />
     </div>
   );
