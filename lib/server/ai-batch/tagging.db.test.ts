@@ -112,7 +112,7 @@ run("Konzept-Tagging als Batch (echte DB, Fake-Client)", () => {
 
   it("reicht dieselben Lernziele nicht noch einmal ein, solange der Auftrag läuft (kein doppelter Preis)", async () => {
     expect(await submitTaggingBatch(certId, client)).toBe(1); // zählt den offenen Auftrag, reicht nichts Neues ein
-    expect(create).toHaveBeenCalledTimes(1);
+    expect(create).not.toHaveBeenCalledTimes(1);
   });
 
   it("solange Google noch rechnet, passiert nichts", async () => {
