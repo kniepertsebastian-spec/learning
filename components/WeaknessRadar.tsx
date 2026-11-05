@@ -39,6 +39,9 @@ export function WeaknessRadar({ radar, slug, locale }: { radar: Radar_; slug: st
                 </li>
               ))}
             </ol>
+            <Link href={`/cert/${slug}/weaknesses`} className="mt-3 block font-medium text-link hover:underline" data-testid="weakness-radar-all">
+              {c_weaknessRadar(de).viewAll}
+            </Link>
             <p className="mt-2 text-xs text-subtle">{c_weaknessRadar(de).fromYourDoesItStick}</p>
           </>
         )}
