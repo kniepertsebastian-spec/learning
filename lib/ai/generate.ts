@@ -281,6 +281,29 @@ function sleep(ms: number): Promise<void> {
   return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 }
 
+/**
+ * Die Erzeugungs-Einstellungen einer Anfrage (ohne Zeitlimit): Systemprompt, niedrige Temperatur, JSON-Antwort, Antwortschema,
+ * Ausgabe-Limit und Denkbudget 0, sofern das Modell sie annimmt. Der Live-Aufruf (`requestJson`) und der Batch-Aufruf
+ * (lib/ai/batch.ts) nutzen dieselbe Funktion, damit beide gleich antworten.
+ */
+export function generationConfig(systemPrompt: string, model: string, jsonSchema?: Record<string, unknown>, useSchema = true) {
+  return {
+    systemInstruction: systemPrompt,
+    temperature: 0.1,
+    // gemini-2.5-flash erlaubt laut Google-Doku max. 65536 Output-Tokens
+    // pro Antwort - das ist das tatsächliche Modell-Limit, keine
+    // willkürliche Schätzung. Bei Claude hat eine zu knappe Grenze
+    // (16000) nachweislich zu mitten im JSON abgeschnittenen Antworten
+    // geführt (siehe Git-Historie); da Gemini 2.5 Flash pro Mio. Token
+    // günstig ist, lohnt sich hier kein Sparen am Limit - volles
+    // Modell-Maximum ausschöpfen, um dasselbe Trunkierungsproblem
+    // sicher zu vermeiden.
+    ...(modelsWithoutLimits.has(model || "gemini-3.8-flash") ? {} : { maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: 0 } }),
+    responseMimeType: "application/json",
+    ...(useSchema && jsonSchema && !rejectedSchemas.has(schemaKey(jsonSchema)) ? { responseJsonSchema: jsonSchema } : {}),
+  };
+}
+
 export async function requestJson(
   systemPrompt: string,
   userPrompt: string,
@@ -307,19 +330,7 @@ export async function requestJson(
         // über alle Lernziele eines Kurses zum Cache-Preis abrechnen.
         contents: userPrompt,
         config: {
-          systemInstruction: systemPrompt,
-          temperature: 0.1,
-          // gemini-2.5-flash erlaubt laut Google-Doku max. 65536 Output-Tokens
-          // pro Antwort - das ist das tatsächliche Modell-Limit, keine
-          // willkürliche Schätzung. Bei Claude hat eine zu knappe Grenze
-          // (16000) nachweislich zu mitten im JSON abgeschnittenen Antworten
-          // geführt (siehe Git-Historie); da Gemini 2.5 Flash pro Mio. Token
-          // günstig ist, lohnt sich hier kein Sparen am Limit - volles
-          // Modell-Maximum ausschöpfen, um dasselbe Trunkierungsproblem
-          // sicher zu vermeiden.
-          ...(modelsWithoutLimits.has(modelKey) ? {} : { maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: 0 } }),
-          responseMimeType: "application/json",
-          ...(useSchema ? { responseJsonSchema: jsonSchema } : {}),
+          ...generationConfig(systemPrompt, model, jsonSchema, useSchema),
           // Ohne Zeitlimit kann eine hängende Verbindung den ganzen Kurslauf für Stunden blockieren.
           abortSignal: AbortSignal.timeout(requestTimeoutMs()),
         },
@@ -375,6 +386,22 @@ export async function requestJson(
   }
 
   throw new AIGenerationError("Gemini-Anfrage konnte nicht verarbeitet werden.");
+}
+
+/**
+ * Wandelt den Antworttext der KI in ein geprüftes Objekt, ohne neue Anfrage (für Antworten, die nicht aus `requestJson` kommen,
+ * etwa aus einem Batch). Wirft `AIGenerationError`, wenn der Text kein gültiges JSON ist oder das Schema verletzt.
+ */
+export function parseStructuredText<T>(text: string, schema: ZodType<T>): T {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(sanitizeJsonControlChars(extractJson(text)));
+  } catch (err) {
+    throw new AIGenerationError("KI-Antwort konnte nicht als JSON geparst werden.", err);
+  }
+  const result = schema.safeParse(normalizeGeneratedAliases(parsed));
+  if (!result.success) throw new AIGenerationError(`KI-Antwort entspricht nicht dem erwarteten Schema: ${result.error.message}`);
+  return result.data;
 }
 
 export async function generateStructured<T>(
