@@ -1,6 +1,6 @@
 # Neue Funktionen vom 5. November 2026
 
-Alles, was in den Sitzungen dieses Tages dazugekommen ist, nach Projekt und nach Stand. **„In `main`“** heißt: der Pull Request ist gemerged. **„Offen“** heißt: Draft-PR, noch nicht in `main`, nicht live. Zahlen und Aussagen stammen aus den Beschreibungen der Pull Requests; was dort „nicht geprüft“ steht, steht auch hier.
+Alles, was in den Sitzungen dieses Tages dazugekommen ist, nach Projekt und nach Stand. **„In `main`“** heißt: der Pull Request ist gemerged. **„Offen“** hieße: Draft-PR, noch nicht in `main`. Stand am Abend des 5. November 2026: alle Pull Requests dieses Tages (#186 bis #191) sind gemergt, es ist nichts mehr offen. Gemergt heißt nicht „im Betrieb“: die Einrichtung steht am Ende. Zahlen und Aussagen stammen aus den Beschreibungen der Pull Requests; was dort „nicht geprüft“ steht, steht auch hier.
 
 Eine echte Zustellung über Push-Dienste, die echte Gemini-Batch-API und die Oberfläche im Firmenbereich sind bisher nur mit Fakes oder gar nicht ausprobiert (siehe Abschnitt „Noch nicht ausprobiert“).
 
@@ -29,12 +29,12 @@ Eine echte Zustellung über Push-Dienste, die echte Gemini-Batch-API und die Obe
 - **Genau eine App-Instanz** ist jetzt dokumentiert und im Code begründet (#167).
 - **Abhängigkeiten:** `ts-fsrs` 6 mit weiterhin FSRS-6 (1599 Referenzwerte unverändert; Gewichtsvektoren mit falscher Länge fallen wie bisher auf die Standardwerte zurück statt zu werfen, #182), **Node 26 (LTS)** in CI, Dockerfile und README (#185), `postgres` 4, `vitest` 5, `eslint` 10, `dotenv` 18, `@types/node` 26 (Dependabot, vom Betreiber gemerged).
 
-### Neue Funktionen, **in Pull Requests** (#186 gemerged, die übrigen noch nicht in `main`)
+### Neue Funktionen aus den Pull Requests #186 bis #190, **in `main`**
 
 | PR | Funktion | Stand |
 |---|---|---|
-| [#186](https://github.com/kniepertsebastian-spec/learning/pull/186) | **Command-Palette** (⌘K bzw. Strg+K): Suche über Kurse, Abschnitte und Befehle aus Merkzetteln, dazu die Seiten der Navigation; nur Sichtbares. **„Meine Schwachstellen“** (`/cert/[id]/weaknesses`): alle Themen mit zuletzt falscher Quiz-Antwort, je mit „Gezielt üben“. | gemerged; Tests, E2E 4/4 |
-| [#187](https://github.com/kniepertsebastian-spec/learning/pull/187) | **Web Push** (VAPID): Opt-in unter `/account`, drei Arten einzeln abschaltbar, Testnachricht, höchstens eine Nachricht am Tag zur üblichen Lernzeit, Prüfungstermine tagsüber; Adress-Allowlist gegen SSRF; Migration 0114. | Tests, E2E, nur mit Fake-Sender; ein CI-Fehler des E2E-Tests (Startwert der Berechtigung) ist behoben |
+| [#186](https://github.com/kniepertsebastian-spec/learning/pull/186) | **Command-Palette** (⌘K bzw. Strg+K): Suche über Kurse, Abschnitte und Befehle aus Merkzetteln, dazu die Seiten der Navigation; nur Sichtbares. **„Meine Schwachstellen“** (`/cert/[id]/weaknesses`): alle Themen mit zuletzt falscher Quiz-Antwort, je mit „Gezielt üben“. | Tests, E2E 4/4 |
+| [#187](https://github.com/kniepertsebastian-spec/learning/pull/187) | **Web Push** (VAPID): Opt-in unter `/account`, drei Arten einzeln abschaltbar, Testnachricht, höchstens eine Nachricht am Tag zur üblichen Lernzeit, Prüfungstermine tagsüber; Adress-Allowlist gegen SSRF; Migration 0114. | Tests, E2E, nur mit Fake-Sender; ein CI-Fehler des E2E-Tests (Startwert der Berechtigung) wurde vor dem Merge behoben |
 | [#188](https://github.com/kniepertsebastian-spec/learning/pull/188) | **Prüfer-Qualität** (nur Admin): Kennzahlen je Prüfer und Freigabe im Vergleich zum Durchschnitt mit Hinweis ab dem 2-Fachen; **Zweitprüfung als Stichprobe** (10 %, mindestens 3, höchstens 25 Fragen, ein anderer Prüfer des Kurses, Abweichungen beim Admin); **Wiedervorlage** („Prüfung empfohlen“ nach neuer Quellenausgabe); Siegel-Hinweis „keine Garantie fürs Bestehen“. Migration 0115, enthält die Commits von #187. | Tests, E2E 4/4 |
 | [#189](https://github.com/kniepertsebastian-spec/learning/pull/189) | **Wirkungsbericht** (`/admin/impact`, nur Admin, beschreibend): Bereitschaftswert gegen das echte Prüfungsergebnis, Rückblick (Abstand, Tagesform, Tageszeit gegen die Standard-Vorhersage), Behaltensquote je Feature-Flag, Verstehens-Modus. | Tests, E2E 1/1 |
 | [#190](https://github.com/kniepertsebastian-spec/learning/pull/190) | **Firmen:** Katalog-Gruppen als Vorlage für Kursgruppen; **Skill-Abdeckung je Team** („x von y“, nur freigegebene gültige Zertifikate der eigenen Firma, Teams ab 3 Mitgliedern, keine Namen, keine Rangfolge). | Tests, Oberfläche nicht angesehen |
@@ -70,9 +70,9 @@ Die Ergebnisseite nach Prüfung und Simulation (Ring, Bestehensmarke, Balken je 
 - **Übersetzung im Batch** und **Konzepte je Lernziel begrenzen**: erst nach den ersten echten Kostenzahlen.
 - **FSRS-7 und Binding 0.6:** anderes Gedächtnismodell mit 34 Gewichten, bräuchte neue Gewichte und einen Neuaufbau des Lernstands aus dem Review-Log; die Umstellung ist eine eigene Entscheidung.
 
-## Noch zu erledigen nach dem Merge
+## Noch zu erledigen (Betrieb)
 
-- Roadmap-Tabelle (`docs/roadmaps/README.md`) und einige Häkchen, die zwischen den PRs sonst Konflikte gäben: `ROADMAP-UI.md` (Web-Push-Zeile), `umsetzungsplan.md` (Web Push, Prüfer-Qualität, Wirkung messen), Zähler der Roadmap-Dateien.
-- Migrationen **0114** (Push) und **0115** (Zweitprüfung) laufen beim Start; **0111 bis 0113** sind schon in `main`.
+- Die Roadmap-Zähler und die Häkchen für Web Push und Prüfer-Qualität sind nachgetragen (Roadmap-Tabelle, `ROADMAP-UI.md`, `umsetzungsplan.md`). „Wirkung messen, restliche Punkte“ bleibt offen: Bestehens- und Abbruchquote je Flag fehlen.
+- Migrationen **0114** (Push) und **0115** (Zweitprüfung) laufen beim nächsten Start der App; **0111 bis 0113** liefen schon.
 - Einstellungen: `VAPID_*` (Schlüssel mit `npm run push:keys`), stündlicher Cron für `npm run push:remind`; optional `GEMINI_BATCH=1`, `GEMINI_TAGGING_MODEL`, `REVIEWER_QUALITY_FACTOR`, `SECOND_REVIEW_SHARE`.
 - Der Commit `a3c94a80` („fix pr“) hat `node_modules` (über 41.000 Dateien) sowie `next-env.d.ts` und `public/sw.js` in `main` gebracht. Ein PR, der sie aus dem Index nimmt, ist nicht angelegt.
