@@ -1,6 +1,7 @@
-import { assertPublicHttpUrl } from "./ssrf-guard";
+import { guardedRequest, ResponseTooLargeError, UrlFetchError, type GuardedRequestDeps } from "./guarded-request";
+import { UnsafeUrlError } from "./ssrf-guard";
 
-export class UrlFetchError extends Error {}
+export { UrlFetchError };
 
 export interface FetchedUrlContent {
   buffer: Buffer;
@@ -11,28 +12,24 @@ export interface FetchedUrlContent {
  * Gemeinsam genutzt von der R1.1-URL-Quellenregistrierung
  * (lib/server/admin/sources.ts) und dem Blueprint-Preflight
  * (lib/server/course-generation/sources.ts::fetchSource()) - ein Admin gibt
- * eine URL an, der Server ruft sie ab. `redirect: "manual"` statt
- * automatisch zu folgen: ein Redirect-Ziel würde sonst den SSRF-Schutz
- * umgehen (Check läuft nur gegen die ursprünglich angegebene URL). Wer auf
- * eine Weiterleitung trifft, bekommt eine klare Fehlermeldung und kann die
- * Ziel-URL direkt angeben.
+ * eine URL an, der Server ruft sie ab. Die Prüfung auf interne Ziele, das
+ * Nicht-Folgen von Weiterleitungen und die Größen- und Zeitgrenzen stehen in
+ * guarded-request.ts. Wer auf eine Weiterleitung trifft, bekommt eine klare
+ * Fehlermeldung und kann die Ziel-URL direkt angeben.
  */
 export async function fetchUrlSafely(
   url: string,
   opts: { timeoutMs: number; maxBytes: number },
+  deps?: GuardedRequestDeps,
 ): Promise<FetchedUrlContent> {
-  await assertPublicHttpUrl(url);
-
-  let response: Response;
+  let response;
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), opts.timeoutMs);
-    try {
-      response = await fetch(url, { signal: controller.signal, redirect: "manual" });
-    } finally {
-      clearTimeout(timeout);
-    }
+    response = await guardedRequest(url, { timeoutMs: opts.timeoutMs, maxBytes: opts.maxBytes }, deps);
   } catch (error) {
+    if (error instanceof UnsafeUrlError) throw error;
+    if (error instanceof ResponseTooLargeError) {
+      throw new UrlFetchError(`Quelle "${url}" ist größer als ${opts.maxBytes / (1024 * 1024)} MB.`);
+    }
     throw new UrlFetchError(`Quelle "${url}" nicht erreichbar: ${(error as Error).message}`);
   }
 
@@ -41,18 +38,12 @@ export async function fetchUrlSafely(
       `Quelle "${url}" antwortet mit einer Weiterleitung (Status ${response.status}) - bitte die Ziel-URL direkt angeben.`,
     );
   }
-  if (!response.ok) {
+  if (response.status < 200 || response.status >= 300) {
     throw new UrlFetchError(`Quelle "${url}" antwortete mit Status ${response.status}.`);
   }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (buffer.byteLength > opts.maxBytes) {
-    throw new UrlFetchError(`Quelle "${url}" ist größer als ${opts.maxBytes / (1024 * 1024)} MB.`);
-  }
-  if (buffer.byteLength === 0) {
+  if (response.body.byteLength === 0) {
     throw new UrlFetchError(`Quelle "${url}" lieferte keinen Inhalt.`);
   }
 
-  return { buffer, contentType };
+  return { buffer: response.body, contentType: String(response.headers["content-type"] ?? "") };
 }

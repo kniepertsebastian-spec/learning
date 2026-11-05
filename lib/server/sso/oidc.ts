@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createLocalJWKSet, jwtVerify, type JWTPayload } from "jose";
-import { assertPublicHttpUrl } from "@/lib/server/network/ssrf-guard";
+import { guardedRequest, ResponseTooLargeError } from "@/lib/server/network/guarded-request";
 
 /**
  * OpenID Connect (Authorization-Code-Fluss mit PKCE) gegen den IdP einer Firma. Alle Abrufe laufen über `Fetcher`
@@ -17,21 +17,20 @@ const MAX_BYTES = 512 * 1024;
 
 export const safeFetcher: Fetcher = async (url, init) => {
   if (!url.startsWith("https://")) throw new OidcError("Der IdP muss über https erreichbar sein.");
-  // Ein IdP im eigenen Netz (z. B. Keycloak auf einem Firmenserver) ist nur erlaubt, wenn der Betreiber es ausdrücklich einschaltet.
-  if (process.env.SSO_ALLOW_PRIVATE_IDP !== "true") await assertPublicHttpUrl(url);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await fetch(url, { ...init, signal: controller.signal, redirect: "manual" });
+    const response = await guardedRequest(
+      url,
+      { method: init?.method, headers: init?.headers, body: init?.body, timeoutMs: TIMEOUT_MS, maxBytes: MAX_BYTES },
+      // Ein IdP im eigenen Netz (z. B. Keycloak auf einem Firmenserver) ist nur erlaubt, wenn der Betreiber es ausdrücklich einschaltet.
+      { allowPrivateNetwork: process.env.SSO_ALLOW_PRIVATE_IDP === "true" },
+    );
     if (response.status >= 300 && response.status < 400) throw new OidcError("Der IdP antwortet mit einer Weiterleitung; bitte die endgültige Adresse angeben.");
-    const text = await response.text();
-    if (text.length > MAX_BYTES) throw new OidcError("Die Antwort des IdP ist zu groß.");
-    return { ok: response.ok, status: response.status, json: async () => JSON.parse(text) as unknown };
+    const text = response.body.toString("utf8");
+    return { ok: response.status >= 200 && response.status < 300, status: response.status, json: async () => JSON.parse(text) as unknown };
   } catch (error) {
     if (error instanceof OidcError) throw error;
+    if (error instanceof ResponseTooLargeError) throw new OidcError("Die Antwort des IdP ist zu groß.");
     throw new OidcError(`IdP nicht erreichbar: ${(error as Error).message}`);
-  } finally {
-    clearTimeout(timer);
   }
 };
 
