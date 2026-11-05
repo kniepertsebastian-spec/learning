@@ -1,5 +1,5 @@
 /**
- * Kontexte der App-Shell (docs/ROADMAP-UI.md U2). Der Kontext folgt dem Pfad; welche Kontexte eine Person
+ * Kontexte der App-Shell (docs/roadmaps/ROADMAP-UI.md U2). Der Kontext folgt dem Pfad; welche Kontexte eine Person
  * überhaupt sehen darf, entscheidet der Server (app/layout.tsx) – die Seiten prüfen ihre Rechte weiterhin selbst.
  */
 export type ShellContext = "personal" | "company" | "admin";

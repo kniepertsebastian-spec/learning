@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { CURRICULUM_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import { blueprintDrafts, certificationSources, sourceChunks } from "@/lib/server/db/schema";
 import { generateBlueprintDraft, type BlueprintExtraction } from "@/lib/server/ai/service";

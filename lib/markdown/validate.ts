@@ -1,7 +1,7 @@
 import { parseSimulation, SIMULATION_LANG } from "./simulation";
 
 /**
- * Qualitätsprüfung der Lernblöcke in generiertem Lernstoff (docs/ROADMAP-UI.md U5): Direktiven müssen geschlossen sein,
+ * Qualitätsprüfung der Lernblöcke in generiertem Lernstoff (docs/roadmaps/ROADMAP-UI.md U5): Direktiven müssen geschlossen sein,
  * `:::practice` braucht alle vier Teile, `:::tabs` mindestens zwei `::tab[…]`, Hinweise nur mit bekannten Markern, Codeblöcke
  * geschlossen, ```simulation enthält eine gültige Simulation (lib/markdown/simulation.ts). Fehlende Blöcke sind kein Fehler (der Prompt verlangt sie, die Quelle entscheidet). Liefert Fehlertexte.
  */

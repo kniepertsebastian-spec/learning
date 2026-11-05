@@ -1,7 +1,7 @@
 import { and, asc, eq, gt, inArray, like, sql } from "drizzle-orm";
 import { z, type ZodType } from "zod";
 import { generateStructured, type AIUsage } from "@/lib/ai/generate";
-import { CURRICULUM_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL } from "@/lib/gemini";
 import { extractSimulationSources } from "@/lib/markdown/simulation";
 import { repairLearningBlocks, validateLearningBlocks } from "@/lib/markdown/validate";
 import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/content-generation";

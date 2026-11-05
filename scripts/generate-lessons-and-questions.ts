@@ -21,7 +21,7 @@ import {
   generateGroundedLessonsAndQuestionsForObjective,
   generateLessonsAndQuestionsForObjective,
 } from "../lib/server/ai/service";
-import { LESSONS_MODEL } from "../lib/claude";
+import { LESSONS_MODEL } from "../lib/gemini";
 import { getObjectiveSourceExcerpts } from "../lib/server/admin/objective-sources";
 import { QualityCheckService } from "../lib/server/admin/quality-checks";
 import { recordObjectiveGenerationCost } from "../lib/server/admin/objective-costs";

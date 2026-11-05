@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { CURRICULUM_MODEL, LESSONS_MODEL, TRANSLATION_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL, LESSONS_MODEL, TRANSLATION_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import {
   contentGenerationJobs,

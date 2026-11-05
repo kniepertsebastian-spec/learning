@@ -1,4 +1,4 @@
-import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/gemini";
 import type { CourseBlueprintV1, ObjectiveContentResponse } from "./schemas";
 import type { BlueprintProvider, CourseContentProvider } from "./providers";
 

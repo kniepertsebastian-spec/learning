@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CURRICULUM_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL } from "@/lib/gemini";
 import { classifyGenerationError, estimateCostUsd } from "./content-generation";
 
 /**
  * CURRICULUM_MODEL und LESSONS_MODEL fallen beide auf dasselbe reale
  * Gemini-Modell zurück, solange niemand GEMINI_LESSONS_MODEL abweichend
- * konfiguriert (siehe lib/claude.ts) - für die "unabhängige Bepreisung"-Tests
+ * konfiguriert (siehe lib/gemini.ts) - für die "unabhängige Bepreisung"-Tests
  * unten müssen sie deshalb künstlich auseinandergezogen werden, genau wie
  * ein Admin es per Env-Var täte, der Lessons- und Curriculum-Kosten
  * getrennt tracken will.
@@ -21,7 +21,7 @@ async function withDistinctLessonsModel<T>(
   vi.stubEnv("GEMINI_LESSONS_MODEL", "gemini-test-lessons-model");
   try {
     const { CURRICULUM_MODEL: curriculumModel, LESSONS_MODEL: lessonsModel } = await import(
-      "@/lib/claude"
+      "@/lib/gemini"
     );
     const { estimateCostUsd: freshEstimateCostUsd } = await import("./content-generation");
     return await fn({ curriculumModel, lessonsModel, estimateCostUsd: freshEstimateCostUsd });
@@ -93,7 +93,7 @@ describe("classifyGenerationError", () => {
       "internal",
     );
     expect(
-      classifyGenerationError("ClaudeConfigError: ANTHROPIC_API_KEY ist nicht gesetzt"),
+      classifyGenerationError("GeminiConfigError: GEMINI_API_KEY ist nicht gesetzt"),
     ).toBe("internal");
   });
 });

@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured, type AIUsage } from "@/lib/ai/generate";
 import { localizedStringSchema } from "@/lib/ai/schemas";
-import { LESSONS_MODEL } from "@/lib/claude";
+import { LESSONS_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import { domains, lessons, objectives, sections } from "@/lib/server/db/schema";
 import { LEARNING_BLOCKS_PROMPT } from "@/lib/server/course-generation/providers";

@@ -1,6 +1,6 @@
 import { z, type ZodType } from "zod";
 import { GoogleGenAI } from "@google/genai";
-import { getGeminiClient } from "@/lib/claude";
+import { getGeminiClient } from "@/lib/gemini";
 
 export class AIGenerationError extends Error {
   constructor(

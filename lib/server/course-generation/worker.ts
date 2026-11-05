@@ -15,7 +15,7 @@ import {
 import { tagConceptsAfterGeneration } from "@/lib/server/psrp/concepts";
 import { importCoursePackage, suggestCourseSlug } from "./importer";
 import { AiAccessUnavailableError, clientForOrganization } from "@/lib/server/internal-courses/ai-client";
-import { LESSONS_MODEL } from "@/lib/claude";
+import { LESSONS_MODEL } from "@/lib/gemini";
 import { createImageDescriber, type ImageDescriber } from "@/lib/server/internal-courses/vision";
 import { DocumentSourceError, loadJobSources } from "@/lib/server/internal-courses/document-sources";
 import {

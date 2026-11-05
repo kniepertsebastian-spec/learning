@@ -39,7 +39,7 @@ export type GenerationErrorClass =
   | "provider_outage"
   | "internal";
 
-/** Phase 1 (docs/ROADMAP-TECHNISCH.md): Rolle eines Nutzers INNERHALB einer
+/** Phase 1 (docs/roadmaps/ROADMAP-TECHNISCH.md): Rolle eines Nutzers INNERHALB einer
  * Organisation. Bewusst getrennt von UserRole (Plattform-Admin): ein
  * Plattform-Admin hat dadurch keinen Zugriff auf Firmendaten. */
 export type CompanyRole = "company_admin" | "mentor" | "learner";
@@ -117,7 +117,7 @@ export const users = pgTable(
     examRemindersOptOut: boolean("exam_reminders_opt_out").notNull().default(false),
     /** Motivation Phase 6: keine E-Mails „Schön, dass du da bist“ nach längerer Pause (Konto oder Abmeldelink in der Mail). */
     reactivationOptOut: boolean("reactivation_opt_out").notNull().default(false),
-    /** PSRP-HR (docs/roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
+    /** PSRP-HR (docs/roadmaps/roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
     ageRange: text("age_range").$type<AgeRange>(),
     /** IANA-Zeitzone für die lokale Tageszeit (Chronotyp) und Tagesgrenzen der Planung. */
     timezone: text("timezone").notNull().default("Europe/Berlin"),
@@ -1542,7 +1542,7 @@ export const contentGenerationJobs = pgTable(
      * bis dahin tatsächlich verbrauchte Verbrauch erhalten (jede
      * `USAGE`-Zeile aus lib/ai/generate.ts aktualisiert die Zeile sofort).
      * Curriculum- und Lessons-Phase nutzen unterschiedliche Claude-Modelle
-     * (siehe lib/claude.ts) - `model` listet alle in diesem Job tatsächlich
+     * (siehe lib/gemini.ts) - `model` listet alle in diesem Job tatsächlich
      * verwendeten Modelle kommagetrennt, siehe trackUsageLine() in
      * content-generation.ts. */
     model: text("model"),
@@ -3324,7 +3324,7 @@ export const careerSuggestions = pgTable("career_suggestions", {
 });
 
 // ---------------------------------------------------------------------------
-// PSRP-HR (docs/roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
+// PSRP-HR (docs/roadmaps/roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
 // Engine und Kalibrierung. „Item“ der Roadmap = Frage (`questions`), „Kurs“ =
 // Zertifizierung (`certifications`), `course_enrollment` = `study_profiles`
 // (dort liegen Prüfungsdatum und leichte Tage bereits je Nutzer und Kurs).

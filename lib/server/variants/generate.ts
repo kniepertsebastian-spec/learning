@@ -10,7 +10,7 @@ import type { GoogleGenAI } from "@google/genai";
 import { FEEDBACK_TONE_PROMPT } from "@/lib/server/ai/feedback-tone";
 import { generateStructured } from "@/lib/ai/generate";
 import { localizedStringSchema } from "@/lib/ai/schemas";
-import { LESSONS_MODEL } from "@/lib/claude";
+import { LESSONS_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import { estimateCostUsd } from "@/lib/server/admin/content-generation";
 import { domains, itemVariants, objectives, probeVariants, questionOptions, questions } from "@/lib/server/db/schema";

@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured, type AIUsage } from "@/lib/ai/generate";
-import { CURRICULUM_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import { careerSuggestions, certifications, domains, examAttempts, exams, userCertificates } from "@/lib/server/db/schema";
 import { getProfile } from "@/lib/server/profile/service";

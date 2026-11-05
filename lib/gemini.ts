@@ -12,7 +12,6 @@ export const LESSONS_MODEL =
 export const TRANSLATION_MODEL = process.env.GEMINI_TRANSLATION_MODEL || "gemini-flash-lite-latest";
 
 export class GeminiConfigError extends Error {}
-export const ClaudeConfigError = GeminiConfigError;
 
 let client: GoogleGenAI | null = null;
 
@@ -29,5 +28,3 @@ export function getGeminiClient(): GoogleGenAI {
   }
   return client;
 }
-
-export const getClaudeClient = getGeminiClient;

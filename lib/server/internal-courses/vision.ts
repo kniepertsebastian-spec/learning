@@ -1,5 +1,5 @@
 import type { GoogleGenAI } from "@google/genai";
-import { getGeminiClient } from "@/lib/claude";
+import { getGeminiClient } from "@/lib/gemini";
 import type { AIUsage } from "@/lib/ai/generate";
 
 /** Beschreibt einen Screenshot als Text (Bild + MIME-Typ rein, Text raus). */

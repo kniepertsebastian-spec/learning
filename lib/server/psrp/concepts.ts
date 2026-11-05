@@ -10,7 +10,7 @@ import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured } from "@/lib/ai/generate";
 import { localizedStringSchema } from "@/lib/ai/schemas";
-import { LESSONS_MODEL } from "@/lib/claude";
+import { LESSONS_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import {
   concepts,

@@ -1,5 +1,5 @@
 import { generateStructured, type AIUsage } from "@/lib/ai/generate";
-import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/gemini";
 import {
   blueprintExtractionSchema,
   curriculumDraftForDomainResponseSchema,

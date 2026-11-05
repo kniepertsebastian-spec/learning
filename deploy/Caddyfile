@@ -9,16 +9,16 @@
 # (siehe docker-compose.yml).
 
 learning.pwa-tree.de {
+	# Rate-Limits: Die App liest die Client-Adresse zuerst aus CF-Connecting-IP (lib/server/auth-rate-limit.ts).
+	# Das stimmt nur, solange Caddy ausschließlich über den Cloudflare-Tunnel (cloudflared) erreichbar ist und keinen
+	# eigenen öffentlichen Port hat: Cloudflare überschreibt den Header, ein Client kann ihn nicht fälschen. Wird Caddy
+	# jemals direkt ins Netz gestellt, muss in reverse_proxy "header_up -CF-Connecting-IP" ergänzt werden, sonst
+	# lassen sich alle Begrenzungen je IP mit einem erfundenen Header umgehen.
 	reverse_proxy 127.0.0.1:3000 {
 		# Header für Server-Sent Events / Streaming-Antworten durchreichen.
 		flush_interval -1
 		header_up Host {host}
 		header_up X-Real-IP {remote_host}
-		# Die App liest die Client-Adresse für ihre Rate-Limits zuerst aus CF-Connecting-IP (so setzt sie
-		# Cloudflare). Dieser Server steht direkt im Netz (Let's Encrypt), nicht hinter Cloudflare: ein vom
-		# Client mitgeschickter Header wäre erfunden und würde jede Begrenzung je IP aushebeln. Stünde Caddy
-		# hinter dem Cloudflare-Proxy, diese Zeile entfernen.
-		header_up -CF-Connecting-IP
 	}
 
 	encode gzip zstd

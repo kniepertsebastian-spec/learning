@@ -15,7 +15,7 @@ Heute vorhanden:
 - Rollen: `users.role` = `learner` | `admin`; eine Prüfer-Rolle gibt es nicht.
 - Kurs-Werkstatt (`lib/server/course-editor/`) mit Snapshots und `fingerprint()` je Abschnitt und Frage. Änderungen nach einer Freigabe werden nicht erkannt; der Name des Prüfers bleibt stehen.
 - Meldungen von Lernenden (`content_reports`, `ContentReportQueue`) und auffällige Varianten (`lib/server/variants/outliers.ts`).
-- Offener Punkt in `docs/ROADMAP-TECHNISCH.md`: „Freigabe-Metadaten pro Inhalt: Name, Datum, Version“, „Versionierung von Kursen“, „Rolle Externer Prüfer“. Diese Roadmap setzt sie um.
+- Offener Punkt in `docs/roadmaps/ROADMAP-TECHNISCH.md`: „Freigabe-Metadaten pro Inhalt: Name, Datum, Version“, „Versionierung von Kursen“, „Rolle Externer Prüfer“. Diese Roadmap setzt sie um.
 
 **Hinweis:** Vor Änderungen an Next.js-Routen die passende Anleitung in `node_modules/next/dist/docs/` lesen (siehe `AGENTS.md`).
 

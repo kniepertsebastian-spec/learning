@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, like, sql } from "drizzle-orm";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured } from "@/lib/ai/generate";
-import { CURRICULUM_MODEL, TRANSLATION_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL, TRANSLATION_MODEL } from "@/lib/gemini";
 import {
   courseOverviewSchema,
   overviewDraftOf,

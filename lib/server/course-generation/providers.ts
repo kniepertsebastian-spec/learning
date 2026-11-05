@@ -1,7 +1,7 @@
 import type { GoogleGenAI } from "@google/genai";
 import type { ZodType } from "zod";
 import { generateStructured, type AIUsage } from "@/lib/ai/generate";
-import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/gemini";
 import {
   courseBlueprintAiResponseSchema,
   objectiveContentAiResponseSchema,
@@ -136,7 +136,7 @@ function blueprintSystemPrompt(outline: boolean | undefined, custom?: boolean): 
 /**
  * Erste, sofort nutzbare Implementierung von `BlueprintProvider` - nutzt den
  * bestehenden, bereits getesteten Claude-API-Pfad (CURRICULUM_MODEL =
- * claude-sonnet-5, siehe lib/claude.ts) statt einer Claude-Pro-Routine.
+ * claude-sonnet-5, siehe lib/gemini.ts) statt einer Claude-Pro-Routine.
  * Funktional vollständig, aber NICHT der in course_generation.md Abschnitt 12
  * beschriebene kostenlose Pfad - siehe RoutineBlueprintProvider für den
  * eigentlichen Kosteneinsparungs-Hebel dieses Dokuments, der eine
@@ -446,7 +446,7 @@ function createContentProvider(name: string, model: string, escalation: boolean,
 }
 
 /**
- * Abschnitt 3.5/9: die günstige Massengenerierung (LESSONS_MODEL, siehe lib/claude.ts). Reine Weiterleitung an
+ * Abschnitt 3.5/9: die günstige Massengenerierung (LESSONS_MODEL, siehe lib/gemini.ts). Reine Weiterleitung an
  * generateStructured() - keine zweite Request-/Retry-Pipeline. Der historische Name ("haiku") bleibt, damit
  * gespeicherte Aufträge (courseGenerationObjectives.provider) ihn weiter erkennen.
  */
