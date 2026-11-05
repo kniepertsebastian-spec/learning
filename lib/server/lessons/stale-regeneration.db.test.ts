@@ -6,9 +6,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 const TEST_DB = process.env.TEST_DATABASE_URL;
 if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 
+import { recordAiUsage } from "@/lib/server/admin/ai-ledger";
 import { awaitBatch, BatchNothingToDoError, estimateBatch, getBatchStatus, startBatch } from "@/lib/server/course-editor/batch";
 import { getDb } from "@/lib/server/db/client";
 import {
+  aiCostEntries,
   certificationSources,
   certifications,
   contentRevisions,
@@ -124,6 +126,7 @@ run("Veraltete Inhalte neu erzeugen (echte DB, gefälschte KI)", () => {
   });
 
   afterAll(async () => {
+    await getDb().delete(aiCostEntries).where(eq(aiCostEntries.certificationId, certId));
     await getDb().delete(certifications).where(eq(certifications.id, certId));
     await getDb().delete(users).where(eq(users.id, userId));
   });
@@ -152,8 +155,17 @@ run("Veraltete Inhalte neu erzeugen (echte DB, gefälschte KI)", () => {
     const before2 = await lessonOf(secA2);
     const before1 = await lessonOf(secA1);
 
-    const { runId } = await startBatch({ kind: "stale", certificationId: certId, userId }, { regenerationGenerator: generator });
+    // Der gefälschte Generator bucht wie der echte KI-Aufruf (lib/ai/generate.ts) einen Aufruf; wem er im Kostenbuch gehört, bestimmt der Lauf.
+    const metered: RegenerationGenerator = async (...args) => {
+      await recordAiUsage({ model: "gemini-3.8-flash", promptTokens: 1_000_000, completionTokens: 0 });
+      return generator(...args);
+    };
+    const { runId } = await startBatch({ kind: "stale", certificationId: certId, userId }, { regenerationGenerator: metered });
     await awaitBatch(runId);
+    const booked = await getDb().select().from(aiCostEntries).where(eq(aiCostEntries.certificationId, certId));
+    expect(booked).toHaveLength(1);
+    expect(booked[0]).toMatchObject({ source: "batch", detail: "stale", byok: false, historic: false });
+    expect(Number(booked[0].costUsd)).toBeCloseTo(0.75, 6);
     const status = await getBatchStatus("stale", certId);
     // Eins übernommen (Lernziel A); B hat keine Quelle und zählt als übersprungen; C war aktuell.
     expect(status).toMatchObject({ status: "done", total: 1, applied: 1, skipped: 1, failed: 0 });

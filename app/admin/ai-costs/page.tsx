@@ -30,7 +30,12 @@ export default async function AdminAiCostsPage() {
       minimumFractionDigits: 2,
       maximumFractionDigits: value > 0 && value < 0.01 ? 4 : 2,
     });
-  const percent = (value: number) => (report.totalUsd > 0 ? `${((value / report.totalUsd) * 100).toLocaleString(de ? "de-DE" : "en-US", { maximumFractionDigits: 1 })} %` : "–");
+  const percent = (value: number) => {
+    if (report.totalUsd <= 0) return "–";
+    const share = (value / report.totalUsd) * 100;
+    if (share > 0 && share < 0.1) return `< ${(0.1).toLocaleString(de ? "de-DE" : "en-US")} %`;
+    return `${share.toLocaleString(de ? "de-DE" : "en-US", { maximumFractionDigits: 1 })} %`;
+  };
   const sourceLabel: Record<AiCostSource, string> = {
     course_generation: t.sourceCourseGeneration,
     translation: t.sourceTranslation,
@@ -40,7 +45,8 @@ export default async function AdminAiCostsPage() {
     legacy_script: t.sourceLegacyScript,
     other: t.sourceOther,
   };
-  const withCosts = report.courses.filter((c) => c.certificationId !== null && c.costUsd > 0).length;
+  const real = report.courses.filter((c) => c.certificationId !== null && c.costUsd > 0);
+  const costliest = real[0];
 
   return (
     <div className="flex flex-1 flex-col gap-6" data-testid="admin-ai-costs">
@@ -50,27 +56,27 @@ export default async function AdminAiCostsPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label={t.total} value={<span data-testid="ai-costs-total">{usd(report.totalUsd)}</span>} sub={t.totalSub} />
-        <StatTile label={t.courses} value={withCosts} sub={report.historicUsd > 0 ? `${t.historic}: ${usd(report.historicUsd)}` : undefined} />
+        <StatTile label={t.total} value={<span data-testid="ai-costs-total">{usd(report.totalUsd)}</span>} sub={report.historicUsd > 0 ? `${t.totalSub} · ${t.historic}: ${usd(report.historicUsd)}` : t.totalSub} />
+        <StatTile label={t.costliest} value={costliest ? usd(costliest.costUsd) : "–"} sub={costliest ? `${costliest.name} · ${fill(t.ofCourses, real.length)}` : t.empty} />
         <StatTile
           label={t.budget}
           value={budget ? usd(budget.limitUsd) : "–"}
           sub={budget ? fill(t.budgetSub, usd(budget.spentUsd), usd(budget.limitUsd)) : t.noBudget}
           subTone={budget?.exceeded ? "danger" : "default"}
         />
-        <StatTile label={t.bySource} value={report.bySource.length} sub={report.bySource[0] ? `${sourceLabel[report.bySource[0].source]}: ${usd(report.bySource[0].costUsd)}` : undefined} />
+        <StatTile label={t.largestOrigin} value={report.bySource[0] ? usd(report.bySource[0].costUsd) : "–"} sub={report.bySource[0] ? sourceLabel[report.bySource[0].source] : undefined} />
       </div>
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[640px] text-left text-sm" data-testid="ai-costs-table">
+      <Card className="p-0">
+        <table className="w-full text-left text-sm" data-testid="ai-costs-table">
           <caption className="sr-only">{t.byCourse}</caption>
           <thead>
             <tr className="border-b border-border text-xs text-subtle">
               <th className="px-4 py-2">{t.course}</th>
-              <th className="px-4 py-2">{t.kind}</th>
+              <th className="hidden px-4 py-2 sm:table-cell">{t.kind}</th>
               <th className="px-4 py-2 text-right">{t.cost}</th>
-              <th className="px-4 py-2 text-right">{t.share}</th>
-              <th className="px-4 py-2 text-right">{t.calls}</th>
+              <th className="hidden px-4 py-2 text-right sm:table-cell">{t.share}</th>
+              <th className="hidden px-4 py-2 text-right sm:table-cell">{t.calls}</th>
             </tr>
           </thead>
           <tbody>
@@ -93,20 +99,21 @@ export default async function AdminAiCostsPage() {
                     row.name
                   )}
                 </td>
-                <td className="px-4 py-2 text-subtle">{row.kind === null ? "–" : row.kind === "internal" ? t.internal : t.general}</td>
-                <td className="px-4 py-2 text-right font-medium tabular-nums">{usd(row.costUsd)}</td>
-                <td className="px-4 py-2 text-right tabular-nums text-subtle">{percent(row.costUsd)}</td>
-                <td className="px-4 py-2 text-right tabular-nums text-subtle">{row.calls.toLocaleString(de ? "de-DE" : "en-US")}</td>
+                <td className="hidden px-4 py-2 text-subtle sm:table-cell">{row.kind === null ? "–" : row.kind === "internal" ? t.internal : t.general}</td>
+                <td className="px-4 py-2 text-right font-medium tabular-nums whitespace-nowrap">{usd(row.costUsd)}</td>
+                <td className="hidden px-4 py-2 text-right tabular-nums whitespace-nowrap text-subtle sm:table-cell">{percent(row.costUsd)}</td>
+                <td className="hidden px-4 py-2 text-right tabular-nums text-subtle sm:table-cell">{row.calls.toLocaleString(de ? "de-DE" : "en-US")}</td>
               </tr>
             ))}
           </tbody>
           {report.courses.length > 0 && (
             <tfoot>
               <tr className="border-t border-border font-semibold">
-                <td className="px-4 py-2" colSpan={2}>{t.total}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{usd(report.totalUsd)}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{percent(report.totalUsd)}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{report.courses.reduce((sum, c) => sum + c.calls, 0).toLocaleString(de ? "de-DE" : "en-US")}</td>
+                <td className="px-4 py-2">{t.total}</td>
+                <td className="hidden px-4 py-2 sm:table-cell" />
+                <td className="px-4 py-2 text-right tabular-nums whitespace-nowrap">{usd(report.totalUsd)}</td>
+                <td className="hidden px-4 py-2 text-right tabular-nums whitespace-nowrap sm:table-cell">{percent(report.totalUsd)}</td>
+                <td className="hidden px-4 py-2 text-right tabular-nums sm:table-cell">{report.courses.reduce((sum, c) => sum + c.calls, 0).toLocaleString(de ? "de-DE" : "en-US")}</td>
               </tr>
             </tfoot>
           )}
