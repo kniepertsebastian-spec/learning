@@ -29,7 +29,7 @@ Lernabbrüche sind selten fehlende Disziplin, sondern Schutzreaktionen gegen Üb
 
 ## Architektur-Regeln (verbindlich)
 
-1. **Es gelten alle Regeln aus `docs/roadmap_psrp_hr.md`:** FSRS bekommt das rohe Rating; jede Deeskalation sitzt ausschließlich in der Planungsschicht; `review_log` ist unveränderlich.
+1. **Es gelten alle Regeln aus `docs/roadmaps/roadmap_psrp_hr.md`:** FSRS bekommt das rohe Rating; jede Deeskalation sitzt ausschließlich in der Planungsschicht; `review_log` ist unveränderlich.
 2. **Der Arbeitgeber sieht nur Status, Datum und Frist.** Keine Abbruch-Signale, keine Risikowerte, keine Prognosen über eine Person im Firmenbereich. Prognosen wie „es wird knapp“ sieht nur der Lernende selbst; mehr gibt es nur, wenn der Lernende es ausdrücklich freigibt.
 3. **Keine erfundenen Zahlen in Rückmeldungen.** Statistiken nur aus echten Plattformdaten mit Mindestanzahl; sonst allgemeine Formulierung ohne Zahl.
 4. **Signale wirken erst als Muster.** Einzelne Ereignisse (ein übersprungener Check-in, eine abgebrochene Session) lösen nichts aus.

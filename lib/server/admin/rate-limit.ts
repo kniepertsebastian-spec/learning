@@ -11,9 +11,9 @@ export type RateLimitResult =
 
 /**
  * Generisches In-Process-Rate-Limit je (Bucket, Nutzer) - bewusst nicht in
- * DB/Redis (siehe R0.3): die App läuft laut docker-compose.yml als eine
- * einzelne App-Instanz; ein Multi-Instanz-Deployment bräuchte stattdessen
- * einen geteilten Store. Ein Bucket pro kostenpflichtiger Admin-Aktion (statt
+ * DB/Redis (siehe R0.3): die App läuft als genau eine Instanz (so festgelegt,
+ * siehe DOCKER_DEPLOYMENT.md "Exactly one app instance"); ein Multi-Instanz-Deployment
+ * bräuchte stattdessen einen geteilten Store. Ein Bucket pro kostenpflichtiger Admin-Aktion (statt
  * eines geteilten globalen Limits), damit z. B. viele Content-Generierungen
  * nicht die Blueprint-Extraktion blockieren und umgekehrt.
  */
@@ -38,19 +38,6 @@ export function checkRateLimit(
   recentAttempts.push(now);
   attemptsByBucketAndUser.set(key, recentAttempts);
   return { allowed: true };
-}
-
-const CONTENT_GENERATION_WINDOW_MS = 60 * 60 * 1000;
-const CONTENT_GENERATION_MAX_PER_WINDOW = 5;
-
-/** R0.3: Rate Limit für den (mehrstufigen, teuren) Content-Generierungsstart. */
-export function checkContentGenerationRateLimit(userId: string): RateLimitResult {
-  return checkRateLimit(
-    "content-generation",
-    userId,
-    CONTENT_GENERATION_WINDOW_MS,
-    CONTENT_GENERATION_MAX_PER_WINDOW,
-  );
 }
 
 const BLUEPRINT_EXTRACTION_WINDOW_MS = 60 * 60 * 1000;

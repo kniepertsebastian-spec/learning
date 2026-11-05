@@ -1,10 +1,7 @@
-import { eq, inArray, and, desc } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
-  quizAttempts,
   quizAnswers,
-  examAttempts,
-  remediationSessions,
   objectiveProgress,
   questions,
   domains,
@@ -20,62 +17,6 @@ export function needsMasteryReview(learnerCount: number, avgMastery: number): bo
 }
 
 export class AnalyticsService {
-  /**
-   * Gets learner analytics for a user
-   */
-  static async getLearnerAnalytics(userId: string) {
-    const db = getDb();
-
-    const quizzes = await db
-      .select()
-      .from(quizAttempts)
-      .where(eq(quizAttempts.userId, userId));
-
-    const exams = await db
-      .select()
-      .from(examAttempts)
-      .where(eq(examAttempts.userId, userId));
-
-    const remediations = await db
-      .select()
-      .from(remediationSessions)
-      .where(eq(remediationSessions.userId, userId));
-
-    const completionRate = quizzes.length > 0 ? Math.round((quizzes.length / 100) * 100) : 0;
-    const avgQuizScore =
-      quizzes.length > 0
-        ? Math.round(
-            quizzes.reduce((sum, q) => sum + (Number(q.score) || 0), 0) / quizzes.length,
-          )
-        : 0;
-
-    const avgExamScore =
-      exams.length > 0
-        ? Math.round(
-            exams.reduce((sum, e) => sum + (Number(e.score) || 0), 0) / exams.length,
-          )
-        : 0;
-
-    const remediationRate =
-      quizzes.length > 0 ? Math.round((remediations.length / quizzes.length) * 100) : 0;
-
-    const improvedRemediations = remediations.filter((r) => r.improved).length;
-    const remediationSuccessRate =
-      remediations.length > 0 ? Math.round((improvedRemediations / remediations.length) * 100) : 0;
-
-    return {
-      quizzesCompleted: quizzes.length,
-      examsCompleted: exams.length,
-      remediationsSessions: remediations.length,
-      completionRate,
-      avgQuizScore,
-      avgExamScore,
-      remediationRate,
-      remediationSuccessRate,
-      totalStudyTime: 0, // TODO: Track in database
-    };
-  }
-
   /**
    * Gets content analytics - questions that are frequently answered incorrectly
    */

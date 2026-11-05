@@ -57,10 +57,10 @@ docker-compose ps
 # Seed initial data (Security+ certification + domain skeleton)
 docker-compose exec app npm run db:seed
 
-# Generate the curriculum, lessons and questions.
-# Without these two steps the dashboard only shows an empty course shell.
-docker-compose exec app npm run content:draft-curriculum -- security-plus-sy0-701
-docker-compose exec app npm run content:draft-lessons -- security-plus-sy0-701
+# The course shell has no lessons or questions yet (the dashboard shows an empty course).
+# Create the content in the admin area, not on the command line: upload an official source, approve its
+# blueprint, then run "Regenerate outdated and missing content" in the course workshop (quality report).
+# A whole new course comes from "Course generation" in the admin catalog.
 ```
 
 ### 4. Access Application
@@ -119,12 +119,8 @@ docker-compose exec -T postgres psql -U postgres learning_pwa < backup.sql
 # Execute command in app container
 docker-compose exec app npm run db:seed
 
-# Regenerate lessons (from step 6)
-docker-compose exec app npm run content:draft-curriculum
-docker-compose exec app npm run content:draft-lessons
-
-# Validate content (admin)
-docker-compose exec app npm run content:validate
+# Regenerate outdated or missing lessons and questions: admin area, course workshop, quality report
+# ("Regenerate outdated and missing content"). There is no command-line script for it any more.
 
 # Get shell access
 docker-compose exec app sh
@@ -167,6 +163,24 @@ docker-compose config | grep -A 20 "environment:"
 ```
 
 ---
+
+## Exactly one app instance
+
+Knowvia must run as **one** app container at any time. This is a decision, not a gap: several things live in the memory of the
+app process and would work against each other with a second copy.
+
+- **Rate limits** (login, registration, password recovery and the costly AI actions) are counted in memory. Two copies would
+  each count on their own, so every limit effectively doubles; a restart resets the counters.
+- **Background jobs** (course generation, translation, AI batches in the course workshop) run inside the app process and are
+  tracked in memory. A watchdog resumes jobs that show no sign of life and are not active *in its own process*. A second copy
+  would take a job that the first one is still working on for abandoned and process it again.
+
+How it is held to one: `container_name: learning-app` in `docker-compose.yml` makes `docker compose up --scale app=2` fail, so
+keep that line. A deploy that recreates the container is fine (the old one stops first, the watchdog picks up what it left).
+Do not run a second copy next to it for a "zero downtime" switch, and do not put a load balancer in front of several copies.
+
+If you ever need more than one instance, the rate limits move to a shared store (the database or Redis) and the job runner to a
+claim per job in the database. Until then: one container.
 
 ## Production Checklist
 

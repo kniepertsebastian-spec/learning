@@ -11,13 +11,14 @@ import bcrypt from "bcryptjs";
 import { getDb } from "../lib/server/db/client";
 import { users } from "../lib/server/db/schema";
 import { recordAuditEvent } from "../lib/server/audit/service";
+import { passwordProblems } from "../lib/server/password-policy";
 
 /**
  * Es gibt bewusst keinen Self-Service-"Passwort vergessen"-Flow (keine
  * E-Mail-Infrastruktur, siehe app/api/register/route.ts) - Passwort-Resets
  * laufen daher wie Rollenänderungen (siehe set-user-role.ts) über den
- * Betreiber mit direktem DB-Zugriff. Dieselbe Mindestlänge wie /api/register
- * (min. 8 Zeichen), derselbe bcrypt-Cost-Faktor wie dort.
+ * Betreiber mit direktem DB-Zugriff. Dieselbe Passwortregel wie /api/register
+ * (lib/server/password-policy.ts), derselbe bcrypt-Cost-Faktor wie dort.
  *
  * Usage: npm run user:reset-password -- <email> <neues-passwort>
  */
@@ -26,8 +27,13 @@ async function main() {
   const email = emailArg?.trim().toLowerCase();
   const password = passwordArg;
 
-  if (!email || !password || password.length < 8) {
-    console.error("Usage: npm run user:reset-password -- <email> <neues-passwort (min. 8 Zeichen)>");
+  if (!email || !password) {
+    console.error("Usage: npm run user:reset-password -- <email> <neues-passwort>");
+    process.exit(1);
+  }
+  const problems = passwordProblems(password);
+  if (problems.length > 0) {
+    console.error(`Das Passwort erfüllt die Regel nicht (wie in der App):\n- ${problems.join("\n- ")}`);
     process.exit(1);
   }
 

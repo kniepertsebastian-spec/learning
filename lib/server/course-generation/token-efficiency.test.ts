@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { GoogleGenAI } from "@google/genai";
-import { estimateCostUsd } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import { createHaikuContentProvider, createSonnetRepairProvider } from "./providers";
 import {
   objectiveContentAiResponseSchema,

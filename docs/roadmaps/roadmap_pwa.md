@@ -106,7 +106,7 @@ Die Plattform ist eine Next.js-16-App mit Serwist (`@serwist/next`). Vorhanden s
 ## Phase 6 – Erinnerungen per Push (optional)
 
 - [ ] Web Push (VAPID) für Prüfungs- und Wiederholungserinnerungen als Ergänzung zu `exams:remind` (E-Mail). Abo-Tabelle pro Gerät, Opt-in in den Einstellungen, Abmeldung beim Logout.
-- [ ] Erinnerungszeitpunkte aus der PSRP-HR-Planungsschicht ableiten (Tageszeit, Arbeitstag), siehe `docs/roadmap_psrp_hr.md`
+- [ ] Erinnerungszeitpunkte aus der PSRP-HR-Planungsschicht ableiten (Tageszeit, Arbeitstag), siehe `docs/roadmaps/roadmap_psrp_hr.md`
 - [ ] Hinweis: Auf iOS nur für installierte PWAs (ab iOS 16.4) verfügbar
 - [ ] CSP prüfen (`connect-src` für Push-Dienste ist nicht nötig, der SW nutzt `PushManager`)
 

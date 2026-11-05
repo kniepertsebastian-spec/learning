@@ -211,8 +211,8 @@ export class ContentValidationService {
    * R1.5 (roadmap.md): Anzahl Lessons/Fragen, die durch eine neue
    * Quellenversion als veraltet markiert wurden ("Betroffene Lessons und
    * Fragen als stale markieren") - damit ein Admin sieht, wie viel gezielte
-   * Neugenerierung noch aussteht (npm run content:draft-lessons regeneriert
-   * nur genau diese, siehe scripts/generate-lessons-and-questions.ts).
+   * Neugenerierung noch aussteht (der Sammellauf "stale" der KI-Nachbesserung
+   * regeneriert nur genau diese, siehe lib/server/lessons/stale-regeneration.ts).
    */
   static async getStaleContentCounts(
     certificationId: string,

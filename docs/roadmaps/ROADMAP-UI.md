@@ -1,6 +1,6 @@
 # UI-/UX-Roadmap – Learning-Plattform (Knowvia)
 
-> **Geltungsbereich:** Oberfläche, Bedienung und die dafür nötigen Daten- und API-Erweiterungen. Infrastruktur, Sicherheit und Betrieb stehen in [`docs/ROADMAP-TECHNISCH.md`](ROADMAP-TECHNISCH.md); deren **Leitplanken gelten hier unverändert** und gehen bei jedem Konflikt vor.
+> **Geltungsbereich:** Oberfläche, Bedienung und die dafür nötigen Daten- und API-Erweiterungen. Infrastruktur, Sicherheit und Betrieb stehen in [`docs/roadmaps/ROADMAP-TECHNISCH.md`](ROADMAP-TECHNISCH.md); deren **Leitplanken gelten hier unverändert** und gehen bei jedem Konflikt vor.
 >
 > **Referenz:** Design-Entwurf „Knowvia – UI Redesign“ (damals noch unter dem Namen CertStudy AI) (claude.ai, Design-Canvas) mit 7 Screens. Jede Phase nennt den Screen, dem das Ergebnis entsprechen soll. Wo Entwurf und dieses Dokument abweichen, gilt dieses Dokument. Alle Zahlen und Namen in den Screens sind Beispieldaten.
 >
@@ -151,7 +151,7 @@ Basis: **shadcn/ui** (MIT, Code liegt im Repo, Radix-Primitives darunter) – nu
 
 ### Gate U1
 
-**Stand: erfüllt (geprüft).** Geprüft: `tsc`, `eslint`, 605 Tests, `next build`; `/admin/ui` in Dunkel/Hell bei 1280 und 390 px ohne horizontales Scrollen, Fokusring per Tab sichtbar, Dialog/Sheet/Menü/Toast öffnen unter der CSP ohne Konsolenfehler; Kontrast: `npm run check:contrast` (68 Paare, Ergebnis in [UI-KONTRAST.md](UI-KONTRAST.md)); Rohfarben-Ratchet: `npm run lint:ui` (Bestand 315 Treffer in 56 Dateien, darf nur sinken, Abbau mit U2–U9). Nicht geprüft: echte Screenreader.
+**Stand: erfüllt (geprüft).** Geprüft: `tsc`, `eslint`, 605 Tests, `next build`; `/admin/ui` in Dunkel/Hell bei 1280 und 390 px ohne horizontales Scrollen, Fokusring per Tab sichtbar, Dialog/Sheet/Menü/Toast öffnen unter der CSP ohne Konsolenfehler; Kontrast: `npm run check:contrast` (68 Paare, Ergebnis in [UI-KONTRAST.md](../UI-KONTRAST.md)); Rohfarben-Ratchet: `npm run lint:ui` (Bestand 315 Treffer in 56 Dateien, darf nur sinken, Abbau mit U2–U9). Nicht geprüft: echte Screenreader.
 
 - Alle Komponenten existieren, nutzen nur Tokens und sind auf der Übersichtsseite in hell/dunkel geprüft.
 - Kontrast aller Textstufen auf `bg`, `surface`, `surface-2` gemessen und dokumentiert.

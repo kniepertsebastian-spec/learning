@@ -3,36 +3,6 @@ import { localizedStringArraySchema, localizedStringSchema } from "@/lib/ai/sche
 import { lenientDifficultySchema, lenientQuestionTypeSchema } from "@/lib/ai/generate";
 
 /**
- * Struktur für einen KI-Entwurf von Objectives + Sections EINER Domain
- * (roadmap2.md Dev-Order Schritt 3-5). Objective-Code/Titel/Beschreibung bleiben
- * bewusst einsprachig (Englisch) - das ist Referenzdaten-Fachsprache aus dem
- * offiziellen Exam, keine lernerseitige Prosa. Section-Titel sind bilingual wie
- * der Rest der lernerseitigen Inhalte.
- *
- * WICHTIG: Dies ist ein KI-Entwurf, KEINE offiziellen CompTIA-Objectives -
- * siehe roadmap2.md Phase 2/28 und den offenen Follow-up in Schritt 1 des
- * Trackers. certifications.lastVerifiedDate bleibt entsprechend NULL, bis ein
- * echter Abgleich mit dem offiziellen Dokument stattgefunden hat.
- */
-export const draftSectionSchema = z.object({
-  title: localizedStringSchema,
-  estimatedMinutes: z.number().int().min(5).max(120),
-  difficulty: lenientDifficultySchema,
-});
-
-export const draftObjectiveSchema = z.object({
-  /** Objective-Code im Stil der offiziellen Objectives, z. B. "1.2". */
-  code: z.string().min(1),
-  title: z.string().min(1),
-  description: z.string().min(1),
-  sections: z.array(draftSectionSchema).min(1).max(6),
-});
-
-export const curriculumDraftForDomainResponseSchema = z.object({
-  objectives: z.array(draftObjectiveSchema).min(1).max(10),
-});
-
-/**
  * Lesson- und Question-Generierung (roadmap2.md Dev-Order Schritt 6-7), gebatcht
  * pro Objective (alle Sections dieses Objectives in einem Call) statt pro
  * einzelner Section - weniger API-Calls, robuster gegenüber Free-Tier-Rate-Limits,
@@ -57,10 +27,8 @@ const exactlyOneCorrectOption = (q: { options: { isCorrect: boolean }[] }) =>
   q.options.filter((o) => o.isCorrect).length === 1;
 const exactlyOneCorrectOptionMessage = { message: "Exakt eine Option muss isCorrect=true sein." };
 
-/** Ungeprüfte Basisform, damit sowohl draftQuestionSchema (frei generiert)
- * als auch groundedDraftQuestionSchema (R1.4, mit Quellenbezug) sie per
- * `.extend()` erweitern können - ein `.refine()`-Ergebnis (ZodEffects) hat
- * kein `.extend()` mehr, daher hier getrennt von der Validierung. */
+/** Ungeprüfte Basisform der generierten Frage; groundedDraftQuestionSchema (R1.4, mit Quellenbezug) erweitert sie per
+ * `.extend()` - ein `.refine()`-Ergebnis (ZodEffects) hat kein `.extend()` mehr, daher getrennt von der Validierung. */
 const draftQuestionBaseSchema = z.object({
   difficulty: lenientDifficultySchema,
   type: lenientQuestionTypeSchema,
@@ -69,22 +37,8 @@ const draftQuestionBaseSchema = z.object({
   explanation: localizedStringSchema,
 });
 
-export const draftQuestionSchema = draftQuestionBaseSchema.refine(
-  exactlyOneCorrectOption,
-  exactlyOneCorrectOptionMessage,
-);
-
-/**
- * Lessons + Questions in EINEM Call statt zwei (Dev-Order Schritt 6+7 kombiniert)
- * - ursprünglich um Geminis (dem ursprünglichen KI-Anbieter, siehe
- * roadmap2.md) hartes Free-Tier-Limit von 20 Requests/Tag pro Modell zu
- * umgehen. Nach dem Wechsel zur Anthropic Claude API weiterhin so kombiniert,
- * da es die Anzahl nötiger Calls halbiert (23 statt 46 für alle Objectives).
- */
-export const lessonsAndQuestionsForObjectiveResponseSchema = z.object({
-  lessons: z.array(draftLessonSchema).min(1),
-  questions: z.array(draftQuestionSchema).min(5).max(10),
-});
+/** Frage mit genau einer richtigen Option (Remediation-Übungsfragen; die quellengebundenen Fragen unten erweitern die Basisform). */
+const draftQuestionSchema = draftQuestionBaseSchema.refine(exactlyOneCorrectOption, exactlyOneCorrectOptionMessage);
 
 /**
  * R1.4 (roadmap.md): quellengebundene Variante - "Aussagen ohne ausreichende
@@ -92,7 +46,7 @@ export const lessonsAndQuestionsForObjectiveResponseSchema = z.object({
  * Lesson/Frage, ob der Inhalt durch die mitgelieferten Quellenausschnitte
  * belegt ist; `sourceLocator` bei Fragen zitiert den konkret genutzten
  * Ausschnitt (oder `null`, wenn keiner passt). Der Aufrufer (siehe
- * scripts/generate-lessons-and-questions.ts) verwirft ungegroundete Fragen
+ * lib/server/lessons/stale-regeneration.ts) verwirft ungegroundete Fragen
  * und markiert ungegroundete Lessons als reviewStatus "needs_review" statt
  * sie unmarkiert zu übernehmen.
  */
@@ -132,7 +86,7 @@ export const remediationResponseSchema = z.object({
 
 /**
  * R1.2 (roadmap.md): strukturierte Extraktion aus einer hochgeladenen
- * offiziellen Quelle (R1.1) - im Unterschied zu draftObjectiveSchema oben
+ * offiziellen Quelle (R1.1) - im Unterschied zu einem freien KI-Entwurf
  * MUSS jedes Feld aus dem gelieferten Quelltext stammen (kein freier
  * KI-Entwurf), daher `locator` (Seitenbezug) und `confidence` pro Objective.
  * Bewusst kein bilinguales `Localized<T>` hier - das sind Referenzdaten aus

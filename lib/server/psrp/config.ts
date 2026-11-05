@@ -1,5 +1,5 @@
 /**
- * PSRP-HR (docs/roadmap_psrp_hr.md): alle Gewichte und Schwellen an einer Stelle (Architektur-Regel 4).
+ * PSRP-HR (docs/roadmaps/roadmap_psrp_hr.md): alle Gewichte und Schwellen an einer Stelle (Architektur-Regel 4).
  * Jeder Wert ist ein Standardwert; Funktionen nehmen eine (teilweise) abweichende Konfiguration entgegen.
  */
 import type { AgeRange } from "@/lib/server/db/schema";

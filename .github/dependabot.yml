@@ -1,0 +1,70 @@
+# Dependabot öffnet Pull Requests, wenn es neue Versionen oder Sicherheitsupdates gibt. Er ändert nichts von selbst:
+# jeder Vorschlag läuft durch die CI (inklusive Audit) und wird erst nach einem Merge wirksam.
+#
+# Was Dependabot nicht kann: die Einträge unter "overrides" in package.json (zod, katex, postcss-selector-parser)
+# aktualisieren. Sie halten Pakete auf gepatchten Versionen, die andere Pakete exakt pinnen. Wird ein Override
+# überflüssig (das pinnende Paket zieht nach), fällt das beim Aktualisieren auf und er kann raus.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      # Beides ist in package.json exakt gepinnt und muss zusammen auf dieselbe Version.
+      next:
+        patterns: ["next", "eslint-config-next"]
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      # Alles Übrige ohne Major-Sprung in einem Vorschlag pro Woche. Major-Updates kommen einzeln.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: "docker"
+    ignore:
+      # Den Node-Major hebt man zusammen mit der CI (node-version) und der README an, nicht allein im Dockerfile.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: docker-compose
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: "docker"
+    ignore:
+      # Ein Major-Wechsel von Postgres braucht Dump und Restore, nie ein automatisches Image-Update.
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
+      # cloudflared steht bewusst auf "latest" (kein Versionsvergleich möglich), hier gibt es nichts vorzuschlagen.

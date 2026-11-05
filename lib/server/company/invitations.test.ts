@@ -291,7 +291,7 @@ run("Einladungen per Link (echte DB)", () => {
       const register = async (email: string) => {
         const res = await registerRoute(
           new Request("http://x/api/register", {
-            ...json({ email, password: "password123" }),
+            ...json({ email, password: "Password-123" }),
             headers: { "content-type": "application/json", "cf-connecting-ip": `10.7.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` },
           }),
         );

@@ -30,8 +30,8 @@ export type AgeRange = (typeof AGE_RANGES)[number];
 export const EVALUATION_GROUPS = ["vanilla", "planning", "planning_state"] as const;
 export type EvaluationGroup = (typeof EVALUATION_GROUPS)[number];
 
-/** R0.1 (roadmap.md): Fehlerklassen für content_generation_jobs, siehe
- * classifyGenerationError() in lib/server/admin/content-generation.ts. */
+/** R0.1 (roadmap.md): Fehlerklassen für content_generation_jobs. Vergeben hat sie classifyGenerationError() der früheren
+ * Skript-Generierung (entfernt); die Spalte bleibt für die alten Zeilen. */
 export type GenerationErrorClass =
   | "schema"
   | "rate_limit"
@@ -39,7 +39,7 @@ export type GenerationErrorClass =
   | "provider_outage"
   | "internal";
 
-/** Phase 1 (docs/ROADMAP-TECHNISCH.md): Rolle eines Nutzers INNERHALB einer
+/** Phase 1 (docs/roadmaps/ROADMAP-TECHNISCH.md): Rolle eines Nutzers INNERHALB einer
  * Organisation. Bewusst getrennt von UserRole (Plattform-Admin): ein
  * Plattform-Admin hat dadurch keinen Zugriff auf Firmendaten. */
 export type CompanyRole = "company_admin" | "mentor" | "learner";
@@ -117,7 +117,7 @@ export const users = pgTable(
     examRemindersOptOut: boolean("exam_reminders_opt_out").notNull().default(false),
     /** Motivation Phase 6: keine E-Mails „Schön, dass du da bist“ nach längerer Pause (Konto oder Abmeldelink in der Mail). */
     reactivationOptOut: boolean("reactivation_opt_out").notNull().default(false),
-    /** PSRP-HR (docs/roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
+    /** PSRP-HR (docs/roadmaps/roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
     ageRange: text("age_range").$type<AgeRange>(),
     /** IANA-Zeitzone für die lokale Tageszeit (Chronotyp) und Tagesgrenzen der Planung. */
     timezone: text("timezone").notNull().default("Europe/Berlin"),
@@ -470,10 +470,9 @@ export const questionOptions = pgTable("question_options", {
 /**
  * R6 (roadmap.md): "Kosten je veröffentlichter Lesson, Mission und
  * akzeptierter Frage" - ein Snapshot statt einer Historie: das erzeugende
- * Skript (scripts/generate-lessons-and-questions.ts) kennt keine
- * content_generation_jobs-ID (läuft auch völlig eigenständig per CLI, ohne
- * Job-Kontext - siehe runNpmScript() in lib/server/admin/content-generation.ts,
- * das keine Job-ID an den Kindprozess weiterreicht), daher Zuordnung über
+ * Lauf (lib/server/lessons/stale-regeneration.ts, früher ein Skript) kennt
+ * keine content_generation_jobs-ID (die Tabelle ist die Historie der früheren
+ * Skript-Generierung und wird nicht mehr beschrieben), daher Zuordnung über
  * objectiveId statt jobId. Ein erneuter Lauf überschreibt den Snapshot
  * (ON CONFLICT), passend dazu, dass eine Regenerierung den vorherigen
  * Lernstoff der Section/des Objectives ohnehin ersetzt (siehe R1.5). Die
@@ -1516,6 +1515,58 @@ export const recallChecks = pgTable(
   ],
 );
 
+export type AiCostSource =
+  | "course_generation"
+  | "translation"
+  | "workshop"
+  | "batch"
+  | "overview"
+  | "legacy_script"
+  | "other";
+
+/**
+ * Das Kostenbuch: eine Zeile je KI-Aufruf (lib/ai/generate.ts schreibt sie), dazu Zeilen aus der Zeit vor dem Buch
+ * (`historic`, aus den früheren Summenfeldern übernommen, ohne Token). Einzige Quelle für „was hat die KI insgesamt
+ * gekostet“ und „was hat welcher Kurs gekostet“ (lib/server/admin/ai-ledger.ts) sowie für das Budget GEMINI_BUDGET_USD.
+ *
+ * Bewusst ohne Kaskade am Kurs: Wird ein Kurs gelöscht, bleibt das ausgegebene Geld in der Summe (`certification_id` wird
+ * NULL). Aufrufe der Kursgenerierung tragen zusätzlich die Auftrags-ID; der Kurs ergibt sich dann aus dem Auftrag
+ * (`result_certification_id`), denn beim Generieren gibt es den Kurs noch nicht.
+ */
+export const aiCostEntries = pgTable(
+  "ai_cost_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    source: text("source").$type<AiCostSource>().notNull(),
+    /** Feinere Angabe zur Quelle, z. B. die Art des Sammellaufs („stale“). */
+    detail: text("detail"),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    generationJobId: uuid("generation_job_id").references(() => courseGenerationJobs.id, { onDelete: "set null" }),
+    model: text("model"),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    cachedTokens: integer("cached_tokens").notNull().default(0),
+    /** Geschätzt aus Token und Preis (estimateCostUsd). NULL = für das Modell ist kein Preis hinterlegt: zählt als 0, wird aber gemeldet. */
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6 }),
+    /** Aufruf mit dem eigenen Schlüssel einer Firma (BYOK): kostet die Firma, nicht die Plattform, und zählt nicht ins Budget. */
+    byok: boolean("byok").notNull().default(false),
+    /** Aus einem früheren Summenfeld übernommen (Migration 0112), nicht aus einem einzelnen Aufruf. */
+    historic: boolean("historic").notNull().default(false),
+  },
+  (table) => [
+    index("ai_cost_entries_certification_idx").on(table.certificationId),
+    index("ai_cost_entries_generation_job_idx").on(table.generationJobId),
+    index("ai_cost_entries_created_idx").on(table.createdAt),
+    check("ai_cost_entries_source_check", sql`${table.source} in ('course_generation', 'translation', 'workshop', 'batch', 'overview', 'legacy_script', 'other')`),
+  ],
+);
+
+/**
+ * Historie der früheren Skript-Generierung (die Admin-Oberfläche startete `npm run content:draft-*` als Kindprozess).
+ * Dieser Weg ist abgebaut, es schreibt niemand mehr in die Tabelle. Die Kosten der alten Zeilen stehen seit Migration 0112
+ * zusätzlich in `ai_cost_entries` (historic = true); die Tabelle selbst bleibt, weil die Zeilen zum Kurs gehören (Löschen eines Kurses).
+ */
 export const contentGenerationJobs = pgTable(
   "content_generation_jobs",
   {
@@ -1532,19 +1583,16 @@ export const contentGenerationJobs = pgTable(
     progress: integer("progress").notNull().default(0),
     message: text("message"),
     error: text("error"),
-    /** R0.1 (roadmap.md): grobe Fehlerklasse für die Admin-UI, siehe
-     * classifyGenerationError() in content-generation.ts. */
+    /** R0.1 (roadmap.md): grobe Fehlerklasse für die Admin-UI (früher von classifyGenerationError() vergeben). */
     errorClass: text("error_class").$type<GenerationErrorClass>(),
     /** R6 (roadmap.md): "Modell, Tokenverbrauch und geschätzte Kosten pro
-     * Job" - läuft über den kompletten Job (curriculum + lessons Skript,
-     * beide als Kindprozess, siehe runNpmScript() in content-generation.ts)
-     * hoch, nicht erst am Ende: bei einem Absturz mitten im Job bleibt der
+     * Job" - lief über den kompletten Job (curriculum + lessons Skript,
+     * beide als Kindprozess der Admin-Oberfläche) hoch, nicht erst am Ende: bei einem Absturz mitten im Job bleibt der
      * bis dahin tatsächlich verbrauchte Verbrauch erhalten (jede
      * `USAGE`-Zeile aus lib/ai/generate.ts aktualisiert die Zeile sofort).
      * Curriculum- und Lessons-Phase nutzen unterschiedliche Claude-Modelle
-     * (siehe lib/claude.ts) - `model` listet alle in diesem Job tatsächlich
-     * verwendeten Modelle kommagetrennt, siehe trackUsageLine() in
-     * content-generation.ts. */
+     * (siehe lib/gemini.ts) - `model` listet alle in diesem Job tatsächlich
+     * verwendeten Modelle kommagetrennt. */
     model: text("model"),
     promptTokens: integer("prompt_tokens").notNull().default(0),
     completionTokens: integer("completion_tokens").notNull().default(0),
@@ -2116,10 +2164,8 @@ export const courseGenerationJobs = pgTable(
     phase: text("phase").notNull().default("queued"),
     message: text("message"),
     blueprintProvider: text("blueprint_provider").notNull(),
-    /** Abschnitt 6: "routineSessionUrl" - erst befüllt, sobald ein
-     * BlueprintProvider tatsächlich eine Claude-Code-Cloud-Routine auslöst
-     * (siehe providers.ts::routineBlueprintProvider) - bleibt NULL beim
-     * aktuell aktiven anthropic-sonnet-Provider. */
+    /** Abschnitt 6: "routineSessionUrl" - war für einen Blueprint-Provider gedacht, der eine Claude-Code-Cloud-Routine auslöst.
+     * Den gibt es nicht mehr (der Platzhalter wurde entfernt); die Spalte bleibt, immer NULL. */
     routineSessionUrl: text("routine_session_url"),
     blueprintJson: jsonb("blueprint_json").$type<Record<string, unknown>>(),
     packageJson: jsonb("package_json").$type<Record<string, unknown>>(),
@@ -3324,7 +3370,7 @@ export const careerSuggestions = pgTable("career_suggestions", {
 });
 
 // ---------------------------------------------------------------------------
-// PSRP-HR (docs/roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
+// PSRP-HR (docs/roadmaps/roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
 // Engine und Kalibrierung. „Item“ der Roadmap = Frage (`questions`), „Kurs“ =
 // Zertifizierung (`certifications`), `course_enrollment` = `study_profiles`
 // (dort liegen Prüfungsdatum und leichte Tage bereits je Nutzer und Kurs).
@@ -3647,7 +3693,7 @@ export const taskItems = pgTable(
   ],
 );
 
-export type AiBatchKind = "quality" | "simulations" | "concepts" | "variants" | "explanations" | "prerequisites" | "formats" | "rationales" | "blocks" | "possible";
+export type AiBatchKind = "quality" | "simulations" | "concepts" | "variants" | "explanations" | "prerequisites" | "formats" | "rationales" | "blocks" | "possible" | "stale";
 export type AiBatchStatus = "running" | "done" | "failed" | "cancelled";
 
 /**
@@ -3681,7 +3727,7 @@ export const aiBatchRuns = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (table) => [
-    check("ai_batch_runs_kind_check", sql`${table.kind} in ('quality', 'simulations', 'concepts', 'variants', 'explanations', 'prerequisites', 'formats', 'rationales', 'blocks', 'possible')`),
+    check("ai_batch_runs_kind_check", sql`${table.kind} in ('quality', 'simulations', 'concepts', 'variants', 'explanations', 'prerequisites', 'formats', 'rationales', 'blocks', 'possible', 'stale')`),
     check("ai_batch_runs_status_check", sql`${table.status} in ('running', 'done', 'failed', 'cancelled')`),
     index("ai_batch_runs_kind_idx").on(table.kind, table.startedAt),
     // Höchstens ein laufender Lauf je Art und Kurs, und einer je Art für „alle Kurse“.

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured, type AIUsage } from "@/lib/ai/generate";
-import { TRANSLATION_MODEL } from "@/lib/claude";
+import { TRANSLATION_MODEL } from "@/lib/gemini";
 import type { Locale } from "@/lib/types";
 import { extractSimulationSources, parseSimulation, simulationSkeleton } from "@/lib/markdown/simulation";
 

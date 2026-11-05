@@ -6,9 +6,9 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured } from "@/lib/ai/generate";
-import { LESSONS_MODEL } from "@/lib/claude";
+import { LESSONS_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
-import { estimateCostUsd } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import { conceptPrerequisites, concepts } from "@/lib/server/db/schema";
 import { acceptEdges, MAX_PREREQUISITES } from "./rules";
 

@@ -25,6 +25,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # Genau eine App-Instanz (siehe DOCKER_DEPLOYMENT.md, "Exactly one app instance"): Rate-Limits und Job-Tracking liegen im
+    # Speicher des Prozesses. Der feste container_name verhindert `docker compose up --scale app=2`; bitte nicht entfernen.
     container_name: learning-app
     restart: always
     environment:
@@ -40,7 +42,7 @@ services:
       # Google Gemini API
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
-      # lib/claude.ts liest diese beiden zusätzlich (CURRICULUM_MODEL und
+      # lib/gemini.ts liest diese beiden zusätzlich (CURRICULUM_MODEL und
       # LESSONS_MODEL fallen beide auf GEMINI_MODEL zurück, wenn nicht
       # gesetzt) - ohne Weiterleitung hier lässt sich das Lessons-Modell
       # nicht unabhängig testen, nur per .env zu setzen reicht nicht.
@@ -48,7 +50,7 @@ services:
       GEMINI_LESSONS_MODEL: ${GEMINI_LESSONS_MODEL:-}
 
       # KI-Kosten: Preise pro 1 Mio. Token in USD und globales Budget
-      # (lib/server/admin/content-generation.ts). Leer = keine Schätzung/kein Limit.
+      # (lib/server/admin/ai-cost.ts). Leer = keine Schätzung/kein Limit.
       GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD: ${GEMINI_PRICE_PER_MILLION_PROMPT_TOKENS_USD:-}
       GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD: ${GEMINI_PRICE_PER_MILLION_COMPLETION_TOKENS_USD:-}
       GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD: ${GEMINI_CURRICULUM_PRICE_PER_MILLION_PROMPT_TOKENS_USD:-}
@@ -84,8 +86,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Kein Bind-Mount für ./public: er überdeckt das im Image gebaute public/ samt sw.js und swe-worker*.js
+    # (stehen in .gitignore, entstehen erst im Build) - ohne sie gäbe es in Produktion keinen Service Worker.
     volumes:
-      - ./public:/app/public
       - source_uploads_data:/app/data/sources
     networks:
       - learning_network

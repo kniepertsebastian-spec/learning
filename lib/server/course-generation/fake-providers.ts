@@ -1,4 +1,4 @@
-import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL, LESSONS_MODEL } from "@/lib/gemini";
 import type { CourseBlueprintV1, ObjectiveContentResponse } from "./schemas";
 import type { BlueprintProvider, CourseContentProvider } from "./providers";
 
@@ -9,7 +9,7 @@ import type { BlueprintProvider, CourseContentProvider } from "./providers";
  *
  * `onUsage` wird bewusst mit CURRICULUM_MODEL/LESSONS_MODEL (nicht einem
  * erfundenen "fake-..."-Namen) gemeldet: estimateCostUsd() (siehe
- * lib/server/admin/content-generation.ts) kennt nur diese beiden Modelle und
+ * lib/server/admin/ai-cost.ts) kennt nur diese beiden Modelle und
  * würde bei einem Fake-Namen immer `null` liefern - das würde
  * Budget-/Kostenlogik im E2E-Test unbeaufsichtigt lassen. `.name`/`.model`
  * bleiben trotzdem als "fake-..."-Kennung sichtbar (courseGenerationObjectives.model),

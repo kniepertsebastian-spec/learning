@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
-import { CURRICULUM_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import { blueprintDrafts, certificationSources, sourceChunks } from "@/lib/server/db/schema";
 import { generateBlueprintDraft, type BlueprintExtraction } from "@/lib/server/ai/service";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 export type BlueprintDraft = typeof blueprintDrafts.$inferSelect;
 
@@ -239,7 +240,7 @@ export async function generateAndStoreBlueprintDraft(
   }
 
   const { text, truncated } = buildSourceText(chunks);
-  const content = await generateBlueprintDraft(text);
+  const content = await withAiCost({ source: "other", detail: "blueprint" }, () => generateBlueprintDraft(text));
   const { errors, warnings } = validateBlueprintDraft(content);
   const suggestedSlug = suggestSlug(content.certificationName, content.examCode);
 

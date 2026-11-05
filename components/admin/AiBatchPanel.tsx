@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/ui/progress";
 import { api, useTr, type Lang } from "@/components/admin/workshop/shared";
 
-type Kind = "quality" | "simulations" | "concepts" | "variants" | "explanations" | "prerequisites" | "formats" | "rationales" | "blocks" | "possible";
+type Kind = "quality" | "simulations" | "concepts" | "variants" | "explanations" | "prerequisites" | "formats" | "rationales" | "blocks" | "possible" | "stale";
 type Run = {
   id: string;
   status: "running" | "done" | "failed" | "cancelled";

@@ -6,7 +6,7 @@ import { recordQuestionRevision, recordSectionRevision } from "@/lib/server/cour
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, questionOptions, questions, sections } from "@/lib/server/db/schema";
 import { translatableAnswerTexts, withTranslatedAnswerTexts, type AnswerData } from "@/lib/questions/answer-formats";
-import { estimateCostUsd } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import { AiAccessUnavailableError, clientForOrganization } from "@/lib/server/internal-courses/ai-client";
 import type { Locale, Localized } from "@/lib/types";
 import {
@@ -19,6 +19,7 @@ import {
   type TranslationChunk,
   type TranslationResponse,
 } from "./translate";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 /** Gleichzeitige KI-Aufrufe je Kurs. */
 const PARALLEL = 3;
@@ -182,7 +183,11 @@ async function updateStatus(certificationId: string, values: PgUpdateSetSource<t
  * fest. Wiederholbar: ein zweiter Lauf übersetzt nur, was noch fehlt (z. B. nach einem Abbruch oder neu erzeugten
  * Lektionen). `translator` ersetzt in Tests den KI-Aufruf.
  */
-export async function translateCourse(certificationId: string, translator?: ChunkTranslator): Promise<TranslationCounts> {
+export function translateCourse(certificationId: string, translator?: ChunkTranslator): Promise<TranslationCounts> {
+  return withAiCost({ source: "translation", certificationId }, () => translateCourseRun(certificationId, translator));
+}
+
+async function translateCourseRun(certificationId: string, translator?: ChunkTranslator): Promise<TranslationCounts> {
   const [cert] = await getDb()
     .select({ id: certifications.id, kind: certifications.kind, ownerOrganizationId: certifications.ownerOrganizationId, contentLocale: certifications.contentLocale, translationCostUsd: certifications.translationCostUsd })
     .from(certifications)

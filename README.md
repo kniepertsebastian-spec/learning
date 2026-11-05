@@ -7,18 +7,18 @@ Auth.js, Inhaltsgenerierung mit Google Gemini.
 
 ## Dokumentation
 
-- Roadmap (rein technisch, mit Prüfnachweisen je Punkt): [docs/ROADMAP-TECHNISCH.md](docs/ROADMAP-TECHNISCH.md)
+- Roadmap (rein technisch, mit Prüfnachweisen je Punkt): [docs/roadmaps/ROADMAP-TECHNISCH.md](docs/roadmaps/ROADMAP-TECHNISCH.md)
 - Deployment mit Docker Compose: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
 - Backup und Wiederanlauf: [docs/BACKUP.md](docs/BACKUP.md)
 - Überwachung per E-Mail: [docs/MONITORING.md](docs/MONITORING.md)
 - Server von alter Compose-Datei absichern und aktualisieren: [docs/DEPLOY-UPDATE.md](docs/DEPLOY-UPDATE.md)
   (Prüfskript: `scripts/check-server.sh`)
-- Historische Design-Referenz: `roadmap.md` und `roadmap2.md` (bleiben liegen, weil viele
-  Code-Kommentare auf sie verweisen)
+- Alle Pläne und Roadmaps mit Stand je Datei: [docs/roadmaps/README.md](docs/roadmaps/README.md). Die Dateinamen
+  bleiben stabil, weil viele Code-Kommentare sie zitieren (`roadmap.md`, `roadmap2.md`, `roadmap3.md`)
 
 ## Lokal entwickeln
 
-Voraussetzungen: Node.js 20, eine PostgreSQL-Instanz, `poppler-utils` (liefert `pdftotext` für die
+Voraussetzungen: Node.js 22, eine PostgreSQL-Instanz, `poppler-utils` (liefert `pdftotext` für die
 PDF-Extraktion).
 
 ```bash
@@ -49,9 +49,12 @@ Dieselben Schritte führt die CI (`.github/workflows/ci.yml`) bei jedem Push und
 
 Die App läuft per `docker compose up -d` (Next.js, Postgres, Cloudflare Tunnel). `DB_PASSWORD` und
 `AUTH_SECRET` sind Pflicht, sonst startet Compose nicht. Migrationen laufen bei jedem Start der App
-automatisch. Admin-Skripte (Nutzerrollen, Organisationen, Zertifizierungen, Inhaltsentwürfe) stehen in
-`package.json` unter `user:*`, `company:*`, `cert:*` und `content:*` und laufen im Container mit
+automatisch. Admin-Skripte (Nutzerrollen, Organisationen, Zertifizierungen) stehen in
+`package.json` unter `user:*`, `company:*` und `cert:*` und laufen im Container mit
 `docker compose exec app npm run …`.
+
+Die App läuft als **genau eine** Instanz: Rate-Limits und laufende Generierungsaufträge liegen im Speicher des Prozesses
+(Begründung und Umgang damit: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md), Abschnitt „Exactly one app instance“).
 
 ### Organisationen (Firmenbereich)
 

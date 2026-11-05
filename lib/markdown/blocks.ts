@@ -4,7 +4,7 @@ import { visit, SKIP } from "unist-util-visit";
 import { parseSimulation, SIMULATION_LANG } from "./simulation";
 
 /**
- * Remark-Plugin für die Inhaltsblöcke der Lernmaterialien (docs/ROADMAP-UI.md U5). Läuft nach `remark-directive` und
+ * Remark-Plugin für die Inhaltsblöcke der Lernmaterialien (docs/roadmaps/ROADMAP-UI.md U5). Läuft nach `remark-directive` und
  * übersetzt in mdast-Knoten mit `data.hName`/`hProperties`, die RichText in Komponenten abbildet:
  *
  *  - `> [!EXAM]` / `[!MISTAKE]` / `[!MEMO]` / `[!NOTE]` / `[!POSSIBLE]`  → div[data-callout]

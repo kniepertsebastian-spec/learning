@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isPricingConfigured } from "@/lib/server/admin/content-generation";
+import { isPricingConfigured } from "@/lib/server/admin/ai-cost";
 import { requireAdminApi } from "@/lib/server/auth-guards";
 import {
   getCourseGenerationJob,
@@ -13,8 +13,8 @@ export const runtime = "nodejs";
 /**
  * course_generation.md Abschnitt 7: Status-Endpunkt - die PWA pollt diesen
  * (siehe course_generation.md Abschnitt 3.1: "Fortschritt wird über Polling
- * oder Server-Sent Events angezeigt", hier per Polling wie beim bestehenden
- * ContentGenerationControl-Muster).
+ * oder Server-Sent Events angezeigt", hier per Polling, so wie auch die
+ * Sammelläufe der KI-Nachbesserung (AiBatchPanel).
  */
 export async function GET(
   _request: Request,

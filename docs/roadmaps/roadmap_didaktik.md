@@ -8,7 +8,7 @@ Technischer Umsetzungsplan, um die Lernwirkung der Plattform zu erhöhen. Das Do
 
 Die Plattform bereitet auf IT-Zertifikate vor. Bereits vorhanden:
 
-- **Wiederholungsplanung PSRP-HR** (`lib/server/psrp/`, siehe `docs/roadmap_psrp_hr.md`): FSRS über `ts-fsrs`, Planungsschicht mit Tageslimit, Rückstau-Abbau, Prüfungsmodus, Tagesform (Φ), Evaluationsgruppen `vanilla` / `planning` / `planning_state`.
+- **Wiederholungsplanung PSRP-HR** (`lib/server/psrp/`, siehe `docs/roadmaps/roadmap_psrp_hr.md`): FSRS über `ts-fsrs`, Planungsschicht mit Tageslimit, Rückstau-Abbau, Prüfungsmodus, Tagesform (Φ), Evaluationsgruppen `vanilla` / `planning` / `planning_state`.
 - **Item = Frage:** Der FSRS-Zustand (`item_state`, `review_items`) hängt an `questions.id`. Fragen haben ein Lernziel (`objectiveId`), eine Schwierigkeit und einen Typ (`knowledge`, `comprehension`, `application`, `scenario`, `troubleshooting`). Beantwortet werden alle über Antwortoptionen (Single/Multiple Choice).
 - **Rating:** `ratingFromOutcome(isCorrect, confidence)` in `lib/server/psrp/service.ts`: falsch → 1, richtig + geraten → 2, richtig ohne Angabe/unsicher → 3, richtig + sicher → 4.
 - **Konzepte und Abfragevarianten** (`concepts`, `item_concept`, `probe_variant`, `questions.probe_only`): heute nur für die Kalibrierung (`selectProbes`, `user_calibration`).
@@ -24,7 +24,7 @@ Die Plattform bereitet auf IT-Zertifikate vor. Bereits vorhanden:
 
 ## Architektur-Regeln (verbindlich)
 
-1. **Es gelten weiter alle Regeln aus `docs/roadmap_psrp_hr.md`:** FSRS bekommt das rohe Rating, Burnout-Schutz nur in der Planungsschicht, `review_log` ist unveränderlich, Gewichte und Schwellen sind Konfiguration.
+1. **Es gelten weiter alle Regeln aus `docs/roadmaps/roadmap_psrp_hr.md`:** FSRS bekommt das rohe Rating, Burnout-Schutz nur in der Planungsschicht, `review_log` ist unveränderlich, Gewichte und Schwellen sind Konfiguration.
 2. **Wissen wird geprüft, nicht der Wortlaut einer Frage.** Eine Wiederholung soll dasselbe Wissen in anderer Form abfragen, wo immer Varianten vorhanden sind.
 3. **Bewertung bleibt regelbasiert.** KI erzeugt Inhalte und Varianten, entscheidet aber nie über Richtigkeit einer Antwort zur Laufzeit. Ausnahme ist nur, was ausdrücklich als „nicht gewertet“ markiert ist (siehe Phase 3, Selbsterklärung).
 4. **Pausen werden nicht bestraft.** Keine Mechanik darf einen Nutzer für einen freien Tag sichtbar zurückwerfen.

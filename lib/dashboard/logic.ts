@@ -1,4 +1,4 @@
-/** Reine Rechenlogik des Lern-Dashboards (docs/ROADMAP-UI.md U3), ohne Datenbankzugriff. */
+/** Reine Rechenlogik des Lern-Dashboards (docs/roadmaps/ROADMAP-UI.md U3), ohne Datenbankzugriff. */
 
 export type GreetingPart = "morning" | "day" | "evening";
 

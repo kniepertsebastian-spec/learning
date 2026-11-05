@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, like, sql } from "drizzle-orm";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured } from "@/lib/ai/generate";
-import { CURRICULUM_MODEL, TRANSLATION_MODEL } from "@/lib/claude";
+import { CURRICULUM_MODEL, TRANSLATION_MODEL } from "@/lib/gemini";
 import {
   courseOverviewSchema,
   overviewDraftOf,
@@ -18,6 +18,7 @@ import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, questions, sections } from "@/lib/server/db/schema";
 import type { Locale } from "@/lib/types";
 import { overviewSystemPrompt, overviewTranslationSystemPrompt, overviewUserPrompt, type OverviewFacts } from "./prompt";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 /** Umfang des Kurses, live gezählt (nicht in der Beschreibung gespeichert, damit er nie veraltet). */
 export type CourseScope = { lessons: number; simulations: number; questions: number; minutes: number | null };
@@ -106,7 +107,7 @@ export async function generateOverviewDraft(certificationId: string, deps: { gen
   const user = overviewUserPrompt(facts);
   const draft = deps.generate
     ? await deps.generate(system, user, locale)
-    : await generateStructured(system, user, overviewDraftSchema, CURRICULUM_MODEL, undefined, await clientFor(cert));
+    : await withAiCost({ source: "overview", certificationId }, async () => generateStructured(system, user, overviewDraftSchema, CURRICULUM_MODEL, undefined, await clientFor(cert)));
   return overviewFromDraft(overviewDraftSchema.parse(draft));
 }
 
@@ -134,7 +135,7 @@ export async function translateCourseOverview(certificationId: string, translato
   const { locale, cert } = await loadFacts(certificationId);
   const { source, target } = translationDirection(locale);
   const translate = translator ?? createOverviewTranslator(await clientFor(cert));
-  const translated = overviewDraftSchema.parse(await translate(overviewDraftOf(overview, source), source, target));
+  const translated = overviewDraftSchema.parse(await withAiCost({ source: "overview", certificationId }, () => translate(overviewDraftOf(overview, source), source, target)));
   if (translated.essentialWhen.length !== overview.essentialWhen.length) throw new Error("Übersetzung der Kursbeschreibung unvollständig.");
   // Nur die Zielsprache wird gesetzt; wurde die Beschreibung inzwischen bearbeitet, gewinnt deren Stand.
   const current = (await getCourseOverview(certificationId)) ?? overview;

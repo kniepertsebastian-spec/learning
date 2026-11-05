@@ -13,7 +13,6 @@ import { certifications } from "@/lib/server/db/schema";
 import { getServerLocale } from "@/lib/server/locale";
 import { ContentValidationService } from "@/lib/server/admin/validation";
 import { AnalyticsService } from "@/lib/server/analytics/service";
-import { ContentGenerationControl } from "@/components/ContentGenerationControl";
 import { ExamInfoForm } from "@/components/admin/ExamInfoForm";
 import { DeleteCertification } from "@/components/DeleteCertification";
 import { ContentReportQueue } from "@/components/ContentReportQueue";
@@ -21,11 +20,6 @@ import { FeedbackQueue } from "@/components/FeedbackQueue";
 import { listOpenFeedback } from "@/lib/server/feedback/service";
 import { PrerequisiteReviewQueue } from "@/components/PrerequisiteReviewQueue";
 import { ExplanationReviewQueue } from "@/components/ExplanationReviewQueue";
-import {
-  estimateGenerationWork,
-  getAiBudgetStatus,
-  getLatestContentGenerationJob,
-} from "@/lib/server/admin/content-generation";
 import { getObjectiveCostsForCertification } from "@/lib/server/admin/objective-costs";
 
 export default async function AdminCertificationPage({
@@ -60,12 +54,6 @@ export default async function AdminCertificationPage({
   }
 
   const cert = certRows[0];
-  const [initialGenerationJob, initialEstimate, initialBudget] = await Promise.all([
-    getLatestContentGenerationJob(cert.id),
-    estimateGenerationWork(cert.id),
-    getAiBudgetStatus(),
-  ]);
-
   // Run validation
   const validation = await ContentValidationService.validateCertificationContent(cert.id);
 
@@ -113,7 +101,6 @@ export default async function AdminCertificationPage({
 
       <nav aria-label={c_adminCertificationsSlugPage(locale).sections} className="sticky top-14 z-10 -mx-1 mb-6 flex gap-1 overflow-x-auto bg-background px-1 py-2 md:top-10">
         {[
-          ["generation", c_adminCertificationsSlugPage(locale).generateContent],
           ["exam-info", c_adminCertificationsSlugPage(locale).examData],
           ["quality", c_adminCertificationsSlugPage(locale).quality],
           ["feedback", c_adminCertificationsSlugPage(locale).reports],
@@ -124,31 +111,6 @@ export default async function AdminCertificationPage({
           </a>
         ))}
       </nav>
-
-      <div id="generation" className="scroll-mt-28">
-      <ContentGenerationControl
-        certificationId={cert.id}
-        locale={locale}
-        initialJob={
-          initialGenerationJob
-            ? {
-                id: initialGenerationJob.id,
-                status: initialGenerationJob.status,
-                phase: initialGenerationJob.phase,
-                progress: initialGenerationJob.progress,
-                message: initialGenerationJob.message,
-                error: initialGenerationJob.error,
-                errorClass: initialGenerationJob.errorClass,
-                model: initialGenerationJob.model,
-                totalTokens: initialGenerationJob.totalTokens,
-                estimatedCostUsd: initialGenerationJob.estimatedCostUsd,
-              }
-            : null
-        }
-        initialEstimate={initialEstimate}
-        initialBudget={initialBudget}
-      />
-      </div>
 
       <div id="exam-info" className="mb-6 scroll-mt-28">
         <ExamInfoForm
@@ -255,8 +217,8 @@ export default async function AdminCertificationPage({
         )}
 
         {/* R1.5: veraltete Inhalte nach dem Freigeben einer neuen
-            Quellenversion - Neugenerierung (Button oben) erzeugt gezielt
-            nur diese neu. */}
+            Quellenversion - der Sammellauf "stale" im Qualitätsbericht der
+            Kurs-Werkstatt erzeugt gezielt nur diese neu. */}
         {(validation.staleContent.staleLessons > 0 || validation.staleContent.staleQuestions > 0) && (
           <div className="rounded-lg border border-warning/40 bg-warning-soft p-4">
             <h3 className="mb-1 font-medium text-warning-text">

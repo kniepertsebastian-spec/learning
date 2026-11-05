@@ -290,6 +290,14 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
 
       <section className="grid gap-3 lg:grid-cols-2" data-testid="batch-backfills">
         <AiBatchPanel
+          kind="stale"
+          certificationId={certId}
+          locale={locale}
+          title={tr("Veraltete und fehlende Inhalte neu erzeugen", "Regenerate outdated and missing content")}
+          description={tr("Nach einer neuen Quellenversion sind betroffene Lektionen und Fragen veraltet, neue Lernziele haben noch keine Inhalte. Erzeugt sie aus den Quellenausschnitten des Lernziels neu: Veraltete Lektionen werden ersetzt (der alte Text bleibt als Version), veraltete Fragen bleiben stehen und neue kommen dazu, Fragen ohne belegte Quelle werden verworfen. Lernziele ohne Quelle werden übersprungen. Vorher wird der Kursstand gemerkt.", "After a new source version, the affected lessons and questions are outdated, and new objectives have no content yet. Regenerates them from the objective's source excerpts: outdated lessons are replaced (the old text stays as a version), outdated questions stay and new ones are added, questions without a cited source are discarded. Objectives without a source are skipped. A course snapshot is saved first.")}
+          startLabel={tr("Schätzen und starten …", "Estimate and start …")}
+        />
+        <AiBatchPanel
           kind="simulations"
           certificationId={certId}
           locale={locale}

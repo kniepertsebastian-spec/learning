@@ -99,7 +99,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-3 px-4 pt-4 sm:px-6 lg:px-8">
             <BackBar pathname={pathname} ctx={ctx} />
-            {/* Suchfeld erst, wenn es eine echte Suche gibt (docs/ROADMAP-UI.md, Später: Command-Palette) */}
+            {/* Suchfeld erst, wenn es eine echte Suche gibt (docs/roadmaps/ROADMAP-UI.md, Später: Command-Palette) */}
             <div className="flex-1" />
             <div className="ml-auto flex items-center gap-2">
               {ctx === "personal" && weekly && (

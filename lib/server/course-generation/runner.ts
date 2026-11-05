@@ -3,13 +3,15 @@ import { isAutoTranslateEnabled, startCourseTranslation } from "@/lib/server/cou
 import { ensureCourseOverview } from "@/lib/server/course-overview/service";
 import { getCourseGenerationJob, isTerminalCourseGenerationStatus, nextSplitPartJob } from "./job-service";
 import { executeCourseGenerationJob, publishPreparedCourseGenerationPackage } from "./worker";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 /**
- * In-Prozess-Jobtracking, exakt das Muster von `activeJobs` in
- * lib/server/admin/content-generation.ts (siehe course_generation.md
- * Abschnitt 0: bewusst kein separater Worker-Container für diese
- * Größenordnung). `globalThis`, damit Next.js' Modul-Hot-Reload in der
- * Entwicklung keine zweite, unabhängige Map erzeugt.
+ * In-Prozess-Jobtracking (siehe course_generation.md Abschnitt 0: bewusst
+ * kein separater Worker-Container für diese Größenordnung). Das setzt genau eine
+ * App-Instanz voraus: Der Watchdog hält einen Job für verwaist, der in SEINEM
+ * Prozess nicht aktiv ist (siehe DOCKER_DEPLOYMENT.md "Exactly one app instance").
+ * `globalThis`, damit Next.js' Modul-Hot-Reload in der Entwicklung keine zweite,
+ * unabhängige Map erzeugt.
  */
 const globalForCourseJobs = globalThis as unknown as {
   courseGenerationProcesses?: Map<string, Promise<void>>;
@@ -53,7 +55,7 @@ async function startNextSplitPart(jobId: string): Promise<void> {
 
 export function startCourseGenerationJob(jobId: string): void {
   if (activeJobs.has(jobId)) return;
-  const processPromise = executeCourseGenerationJob(jobId)
+  const processPromise = withAiCost({ source: "course_generation", generationJobId: jobId }, () => executeCourseGenerationJob(jobId))
     .catch((error) => {
       // executeCourseGenerationJob() fängt und protokolliert eigene Fehler
       // bereits im Job-Datensatz (siehe handleJobFailure) - dieser Catch ist
@@ -79,7 +81,7 @@ export function startCourseGenerationJob(jobId: string): void {
  * fertige Paket, ohne die Generierung erneut zu durchlaufen. */
 export function startCourseGenerationPublish(jobId: string): void {
   if (activeJobs.has(jobId)) return;
-  const processPromise = publishPreparedCourseGenerationPackage(jobId)
+  const processPromise = withAiCost({ source: "course_generation", generationJobId: jobId }, () => publishPreparedCourseGenerationPackage(jobId))
     .catch((error) => {
       console.error(`Course generation publish ${jobId} failed outside its own error handling:`, error);
     })

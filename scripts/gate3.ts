@@ -31,10 +31,10 @@ import { getCourseGenerationJob } from "../lib/server/course-generation/job-serv
 import { createFakeBlueprintProvider, createFakeContentProvider } from "../lib/server/course-generation/fake-providers";
 import type { CourseBlueprintV1, ObjectiveContentResponse } from "../lib/server/course-generation/schemas";
 import { syncAssignmentStatus } from "../lib/server/assignments/sync";
-import { CURRICULUM_MODEL } from "../lib/claude";
+import { CURRICULUM_MODEL } from "../lib/gemini";
 
 /**
- * Gate 3 (docs/ROADMAP-TECHNISCH.md): die Testfirma durchläuft einmal alles.
+ * Gate 3 (docs/roadmaps/ROADMAP-TECHNISCH.md): die Testfirma durchläuft einmal alles.
  *   Firma → einladen → Dokument hochladen → interner Lernpfad (KI) → Freigabe → zuweisen → Praxisaufgabe →
  *   durcharbeiten → Onboarding → Statusansicht
  *

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
 import { resolveContentTarget } from "@/lib/server/catalog/access";
 import { ensureQuestionRationales } from "@/lib/server/questions/rationales";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,7 +28,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   if (target === "missing" || target === "hidden") return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   try {
-    return NextResponse.json({ options: await ensureQuestionRationales(id) });
+    return NextResponse.json({ options: await withAiCost({ source: "other", detail: "rationales" }, () => ensureQuestionRationales(id)) });
   } catch (error) {
     console.error("Begründungen konnten nicht erzeugt werden:", (error as Error).message);
     return NextResponse.json({ options: null });

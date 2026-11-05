@@ -1,7 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { domains, objectiveGenerationCosts, objectives } from "@/lib/server/db/schema";
-import { estimateCostUsd } from "./content-generation";
+import { estimateCostUsd } from "./ai-cost";
 
 export interface ObjectiveGenerationUsage {
   model: string;
@@ -18,11 +18,10 @@ export interface ObjectiveGenerationUsage {
  * akzeptierter Frage" - Snapshot je Objective, siehe Kommentar auf
  * objectiveGenerationCosts in lib/server/db/schema.ts für die
  * Zuordnungs-Entscheidung (objectiveId statt jobId). Aufgerufen vom
- * generierenden Skript selbst (scripts/generate-lessons-and-questions.ts),
- * NICHT über einen stdout-USAGE-Zeilen-Parser wie das Job-Level-Tracking in
- * content-generation.ts - das Skript hat ohnehin direkten DB-Zugriff und
- * kennt die akzeptierten Lesson-/Fragen-Zahlen erst NACH den
- * Qualitätsprüfungen, die im selben Prozess laufen.
+ * Lauf selbst (lib/server/lessons/stale-regeneration.ts): Er kennt die
+ * akzeptierten Lesson-/Fragen-Zahlen erst NACH den Qualitätsprüfungen, die im
+ * selben Prozess laufen. (Früher war es ein Skript, das die Admin-Oberfläche als
+ * Kindprozess startete und von dem sie nur die USAGE-Zeilen mitlas.)
  */
 export async function recordObjectiveGenerationCost(
   objectiveId: string,

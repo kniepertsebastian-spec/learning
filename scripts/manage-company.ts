@@ -15,7 +15,7 @@ import { applyRulesForMember } from "../lib/server/company/mandatory";
 import { recordAuditEvent } from "../lib/server/audit/service";
 
 /**
- * Betreiber-Skript für Organisationen (Phase 1 in docs/ROADMAP-TECHNISCH.md),
+ * Betreiber-Skript für Organisationen (Phase 1 in docs/roadmaps/ROADMAP-TECHNISCH.md),
  * solange es keine Oberfläche dafür gibt (Einladungen per E-Mail kommen in Phase 2).
  *
  * Usage:

@@ -53,7 +53,7 @@ import { exportAccountData } from "./export";
 import { isSessionTokenValid } from "@/lib/server/session-validity";
 
 const run = TEST_DB ? describe : describe.skip;
-const PASSWORD = "altes-passwort-1";
+const PASSWORD = "Altes-passwort-1";
 
 function signInAs(userId: string | null) {
   authMock.mockResolvedValue(userId ? { user: { id: userId } } : null);
@@ -228,15 +228,15 @@ run("Self-Service: Passwort, Löschen, Export (echte DB)", () => {
         passwordRoute(new Request("http://x/api/account/password", body(data)));
 
       signInAs(null);
-      expect((await call({ currentPassword: PASSWORD, newPassword: "irgendwas-123" })).status).toBe(401);
+      expect((await call({ currentPassword: PASSWORD, newPassword: "Irgendwas-123" })).status).toBe(401);
 
       signInAs(id);
       expect((await call({ currentPassword: PASSWORD, newPassword: "kurz" })).status).toBe(400);
       expect((await call({ currentPassword: PASSWORD, newPassword: "ä".repeat(40) })).status).toBe(400); // > 72 Byte
       expect((await call({ currentPassword: PASSWORD, newPassword: PASSWORD })).status).toBe(400);
-      expect((await call({ currentPassword: "falsch", newPassword: "irgendwas-123" })).status).toBe(403);
-      expect((await call({ newPassword: "irgendwas-123" })).status).toBe(400);
-      expect((await call({ currentPassword: PASSWORD, newPassword: "irgendwas-123" })).status).toBe(200);
+      expect((await call({ currentPassword: "falsch", newPassword: "Irgendwas-123" })).status).toBe(403);
+      expect((await call({ newPassword: "Irgendwas-123" })).status).toBe(400);
+      expect((await call({ currentPassword: PASSWORD, newPassword: "Irgendwas-123" })).status).toBe(200);
     });
 
     it("API: nach 10 Versuchen sperrt das Limit (auch bei Fehlversuchen)", async () => {
@@ -245,7 +245,7 @@ run("Self-Service: Passwort, Löschen, Export (echte DB)", () => {
       const statuses: number[] = [];
       for (let i = 0; i < 11; i++) {
         const res = await passwordRoute(
-          new Request("http://x/api/account/password", body({ currentPassword: "falsch", newPassword: "irgendwas-123" })),
+          new Request("http://x/api/account/password", body({ currentPassword: "falsch", newPassword: "Irgendwas-123" })),
         );
         statuses.push(res.status);
       }

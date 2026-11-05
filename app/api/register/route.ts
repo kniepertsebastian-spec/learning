@@ -125,11 +125,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ user, verificationRequired }, { status: 201 });
   } catch (error) {
     if (error instanceof ZodError) {
+      // Die Passwortregel muss die Person lesen können, alles andere bleibt allgemein.
+      const passwordIssue = error.issues.find((issue) => issue.path[0] === "password");
       return NextResponse.json(
-        { error: "Ungültige Anfrage.", details: error.issues },
+        { error: passwordIssue?.message ?? "Ungültige Anfrage.", details: error.issues },
         { status: 400 },
       );
     }
+    console.error("Registrierung fehlgeschlagen:", error);
     return NextResponse.json({ error: "Unerwarteter Serverfehler." }, { status: 500 });
   }
 }

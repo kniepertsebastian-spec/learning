@@ -3,12 +3,13 @@ import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured } from "@/lib/ai/generate";
 import { localizedStringSchema } from "@/lib/ai/schemas";
-import { LESSONS_MODEL } from "@/lib/claude";
+import { LESSONS_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import { cheatSheetRuns, certifications, domains, lessons, objectives, sections } from "@/lib/server/db/schema";
 import { CHEAT_SHEET_PROMPT } from "@/lib/server/course-generation/providers";
 import { safeCheatSheet } from "@/lib/server/course-generation/importer";
 import { clientForOrganization } from "./ai-client";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 /**
  * Merkzettel nachträglich erzeugen: für Lektionen ohne Merkzettel (Kurse, die vor dieser Funktion erstellt wurden).
@@ -211,7 +212,7 @@ export async function startCheatSheetBackfill(
     throw error;
   }
 
-  const work = (async () => {
+  const work = withAiCost({ source: "other", detail: "cheat_sheets", certificationId: cert.id }, async () => {
     try {
       const result = await backfillLessons(cert.id, generate, {
         limit: todo,
@@ -239,7 +240,7 @@ export async function startCheatSheetBackfill(
       console.error("Merkzettel-Lauf fehlgeschlagen:", error instanceof Error ? error.message : error);
       await db.update(cheatSheetRuns).set({ status: "failed", message: "Der Lauf ist unerwartet fehlgeschlagen.", finishedAt: new Date() }).where(eq(cheatSheetRuns.id, run.id)).catch(() => undefined);
     }
-  })();
+  });
   if (deps.wait) await work;
   else void work;
   return { runId: run.id, total: todo };

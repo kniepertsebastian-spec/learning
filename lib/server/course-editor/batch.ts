@@ -10,6 +10,7 @@
  *  - blocks:      Lernblöcke (Hinweise, Terminal, Praxisbeispiel) in Lektionen ohne Blöcke einfügen
  *  - possible:    „Was damit möglich ist“ und Textverweise in Simulationen ergänzen
  *  - formats:     Formatfragen (Reihenfolge, Kurzantwort, Zuordnung) für Lernziele ergänzen, die nur Auswahlfragen haben
+ *  - stale:       veraltete (nach einer neuen Quellenversion) und fehlende Lektionen und Fragen aus der aktuellen Quelle neu erzeugen
  *
  * Die KI-Aktionen sind dieselben wie in der Kurs-Werkstatt; hier werden die Vorschläge ohne Einzelprüfung übernommen. Das
  * Sicherheitsnetz bleibt: vor dem Lauf ein automatisch gemerkter Kursstand, jede Änderung als Version mit Herkunft „KI“ bzw.
@@ -17,8 +18,8 @@
  */
 import { and, asc, desc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
-import { LESSONS_MODEL } from "@/lib/claude";
-import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/content-generation";
+import { LESSONS_MODEL } from "@/lib/gemini";
+import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/ai-cost";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { clientFor } from "@/lib/server/course-translation/service";
 import { getDb } from "@/lib/server/db/client";
@@ -42,11 +43,13 @@ import {
   type AiRequest,
   type Generate,
 } from "./ai";
+import { createRegenerationGenerator, estimateObjectiveTokens, regenerateStaleContent, regenerationTodo, type RegenerationGenerator } from "@/lib/server/lessons/stale-regeneration";
 import { backfillPossible, lessonsNeedingPossible } from "./possible-backfill";
 import { getCourseReport, type Improvement, type ImprovementKind } from "./report";
 import { createQuestion, editableCourse, saveQuestion, saveSection } from "./service";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
-export const BATCH_KINDS = ["quality", "simulations", "concepts", "variants", "explanations", "prerequisites", "formats", "rationales", "blocks", "possible"] as const;
+export const BATCH_KINDS = ["quality", "simulations", "concepts", "variants", "explanations", "prerequisites", "formats", "rationales", "blocks", "possible", "stale"] as const;
 
 /** Formatfragen je Lernziel, wenn der Sammellauf sie ergänzt. */
 export const FORMAT_QUESTIONS_PER_OBJECTIVE = 2;
@@ -317,6 +320,22 @@ export async function estimateBatch(kind: AiBatchKind, certId: string | null, pa
     }, 0);
     return { kind, items: todo.length, usd, courses: new Set(todo.map((l) => l.certId)).size };
   }
+  if (kind === "stale") {
+    // Nur Lernziele mit Quelle: ohne Quellenausschnitte gibt es keine Grundlage (siehe lib/server/lessons/stale-regeneration.ts).
+    let items = 0, withWork = 0;
+    let usd: number | null = 0;
+    for (const c of courses) {
+      const { todo } = await regenerationTodo(c.id);
+      if (todo.length) withWork++;
+      items += todo.length;
+      for (const work of todo) {
+        const t = estimateObjectiveTokens(work);
+        const cost = estimateCostUsd(SYSTEM_TOKENS + t.prompt, t.completion, LESSONS_MODEL);
+        usd = usd !== null && cost !== null ? usd + cost : null;
+      }
+    }
+    return { kind, items, usd: items ? usd : 0, courses: withWork };
+  }
   if (kind === "possible") {
     let items = 0, withWork = 0;
     for (const c of courses) {
@@ -418,6 +437,7 @@ export type BatchDeps = {
   prerequisiteGenerator?: PrerequisiteGenerator;
   rationaleGenerator?: RationaleGenerator;
   blocksGenerator?: BlocksGenerator;
+  regenerationGenerator?: RegenerationGenerator;
 };
 
 function isUniqueViolation(error: unknown): boolean {
@@ -482,6 +502,7 @@ async function execute(run: Row, userId: string | null, params: unknown, deps: B
   if (run.kind === "rationales") return executeRationales(run, userId, deps);
   if (run.kind === "blocks") return executeBlocks(run, userId, deps);
   if (run.kind === "possible") return executePossible(run, userId, deps);
+  if (run.kind === "stale") return executeStale(run, userId, deps);
   return executeConcepts(run, userId, deps);
 }
 
@@ -505,7 +526,7 @@ async function executeQuality(run: Row, userId: string | null, params: QualityPa
       if (budget?.exceeded) { aborted = true; break; }
     }
     try {
-      const proposal = await proposeAi(certId, task.request, { generate: deps.generate });
+      const proposal = await withAiCost({ source: "batch", detail: run.kind, certificationId: certId }, () => proposeAi(certId, task.request, { generate: deps.generate }));
       counts.costUsd = (counts.costUsd ?? 0) + (proposal.costUsd ?? 0);
       const applied = await applyProposal(certId, proposal, userId);
       streak = 0;
@@ -544,7 +565,7 @@ async function executeSimulations(run: Row, userId: string | null, deps: BatchDe
     const usage = { prompt: 0, completion: 0 };
     const generator = deps.simulationGenerator ?? createSimulationGenerator(await clientFor(course), (u) => { usage.prompt += u.promptTokens; usage.completion += u.completionTokens; });
     const base = { ...counts };
-    const result = await backfillSimulations(course.id, generator, {
+    const result = await withAiCost({ source: "batch", detail: run.kind, certificationId: course.id }, () => backfillSimulations(course.id, generator, {
       usage,
       shouldStop: () => cancelled(run.id),
       onProgress: (c) => {
@@ -556,7 +577,7 @@ async function executeSimulations(run: Row, userId: string | null, deps: BatchDe
           costUsd: String((base.costUsd ?? 0) + (c.costUsd ?? 0)),
         });
       },
-    });
+    }));
     counts.processed += result.added + result.unsuitable + result.failed;
     counts.applied += result.added;
     counts.skipped += result.unsuitable;
@@ -581,10 +602,10 @@ async function executeConcepts(run: Row, userId: string | null, deps: BatchDeps)
     }
     const tagger = deps.conceptTagger ?? createConceptTagger(await clientFor(course));
     const base = { ...counts };
-    const result = await tagCourseConcepts(course.id, tagger, {
+    const result = await withAiCost({ source: "batch", detail: run.kind, certificationId: course.id }, () => tagCourseConcepts(course.id, tagger, {
       shouldStop: () => cancelled(run.id),
       onProgress: (c) => void patch(run.id, { processed: base.processed + c.objectives + c.failed, applied: base.applied + c.objectives, failed: base.failed + c.failed }),
-    });
+    }));
     counts.processed += result.objectives + result.failed;
     counts.applied += result.objectives;
     counts.failed += result.failed;
@@ -610,11 +631,11 @@ async function perCourse(
       if (budget?.exceeded) { aborted = true; break; }
     }
     const base = { ...counts };
-    const result = await work(
+    const result = await withAiCost({ source: "batch", detail: run.kind, certificationId: course.id }, () => work(
       course,
       (c) => void patch(run.id, { processed: base.processed + c.processed, applied: base.applied + c.applied, skipped: base.skipped + (c.skipped ?? 0), failed: base.failed + c.failed }),
       () => cancelled(run.id),
-    );
+    ));
     counts.processed += result.processed;
     counts.applied += result.applied;
     counts.skipped += result.skipped ?? 0;
@@ -674,7 +695,7 @@ async function executeFormats(run: Row, userId: string | null, deps: BatchDeps) 
         await ensureAiCheckpoint(task.certId, userId);
         checkpointed.add(task.certId);
       }
-      const proposal = await proposeAi(task.certId, { target: "objective", id: task.objectiveId, action: "add_format_questions", count: FORMAT_QUESTIONS_PER_OBJECTIVE }, { generate: deps.generate });
+      const proposal = await withAiCost({ source: "batch", detail: run.kind, certificationId: task.certId }, () => proposeAi(task.certId, { target: "objective", id: task.objectiveId, action: "add_format_questions", count: FORMAT_QUESTIONS_PER_OBJECTIVE }, { generate: deps.generate }));
       counts.costUsd = (counts.costUsd ?? 0) + (proposal.costUsd ?? 0);
       const applied = await applyProposal(task.certId, proposal, userId);
       streak = 0;
@@ -710,6 +731,21 @@ async function executeBlocks(run: Row, userId: string | null, deps: BatchDeps) {
     // „übersprungen“ des Nachtrags enthält auch Lektionen, die schon Blöcke hatten; hier zählt nur, was zwischenzeitlich geändert wurde.
     const r = await backfillBlocks(course.id, generator, { shouldStop, onProgress: (c) => report({ processed: c.updated + c.failed, applied: c.updated, failed: c.failed }) });
     return { processed: r.updated + r.failed, applied: r.updated, failed: r.failed, aborted: r.aborted };
+  });
+}
+
+async function executeStale(run: Row, userId: string | null, deps: BatchDeps) {
+  await perCourse(run, userId, Boolean(deps.regenerationGenerator), async (course, report, shouldStop) => {
+    if ((await regenerationTodo(course.id)).todo.length === 0) return { processed: 0, applied: 0, failed: 0, aborted: false };
+    // Veraltete Lektionen werden ersetzt: vorher einen Kursstand merken (wie bei der Qualitätsverbesserung); der alte Text bleibt zusätzlich als Revision.
+    await ensureAiCheckpoint(course.id, userId);
+    const generator = deps.regenerationGenerator ?? createRegenerationGenerator(await clientFor(course));
+    const r = await regenerateStaleContent({ id: course.id, name: course.name }, generator, {
+      actor: { userId, origin: "ai", note: "Veraltete oder fehlende Inhalte aus der aktuellen Quelle neu erzeugt" },
+      shouldStop,
+      onProgress: (c) => report({ processed: c.objectives + c.failed, applied: c.objectives, skipped: c.skipped, failed: c.failed }),
+    });
+    return { processed: r.objectives + r.failed, applied: r.objectives, skipped: r.skipped, failed: r.failed, aborted: r.aborted };
   });
 }
 
