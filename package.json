@@ -26,6 +26,8 @@
     "explanations:backfill": "tsx scripts/backfill-explanations.ts",
     "prerequisites:backfill": "tsx scripts/backfill-prerequisites.ts",
     "exams:remind": "tsx scripts/exam-reminders.ts",
+    "push:remind": "tsx scripts/push-reminders.ts",
+    "push:keys": "tsx scripts/push-keys.ts",
     "reviewers:remind": "tsx scripts/reviewer-cert-reminders.ts",
     "reactivation:run": "tsx scripts/reactivation.ts",
     "approvals:backfill": "tsx scripts/backfill-course-approvals.ts",
@@ -86,6 +88,7 @@
     "ts-fsrs": "^6.0.0",
     "tsx": "^4.23.15",
     "unist-util-visit": "^5.2.0",
+    "web-push": "^3.6.7",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -98,6 +101,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/smtp-server": "^3.5.13",
+    "@types/web-push": "^3.6.4",
     "eslint": "^10",
     "eslint-config-next": "16.4.5",
     "mailparser": "^3.9.36",

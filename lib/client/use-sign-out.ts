@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { logoutAction } from "@/app/actions/auth";
 import { clearLocalUserData } from "@/lib/client/clear-local-data";
+import { removePushOnSignOut } from "@/lib/client/push";
 import { countUnsyncedBeforeLogout } from "@/lib/client/logout-guard";
 import { useLocale } from "@/lib/i18n";
 
@@ -24,6 +25,8 @@ export function useSignOut(userId: string) {
             : `${unsynced} study result(s) have not been synced yet and will be lost if you sign out. Sign out anyway?`;
         if (!window.confirm(message)) return;
       }
+      // Das Gerät gehört nach dem Abmelden nicht mehr dieser Person: Push-Abo beenden, solange die Sitzung noch gilt.
+      await removePushOnSignOut();
       await clearLocalUserData(userId);
       await logoutAction();
     });

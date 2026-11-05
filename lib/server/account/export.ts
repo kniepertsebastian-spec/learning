@@ -15,6 +15,7 @@ import {
   engagementStates,
   learningExits,
   learningPreferences,
+  pushPreferences,
   learningActivities,
   energyModeEvents,
   reactivationMessages,
@@ -79,6 +80,7 @@ export const EXPORTED_USER_REFERENCES: readonly string[] = [
   "engagement_state.user_id",
   "learning_exit.user_id",
   "learning_preferences.user_id",
+  "push_preferences.user_id",
   "learning_activity.user_id",
   "energy_mode_event.user_id",
   "reactivation_message.user_id",
@@ -128,6 +130,10 @@ const OPERATIONAL_REASON =
   "Betriebsdaten der Plattform (Verwaltungsvorgang), kein persönliches Lernprofil; bei Kontolöschung anonymisiert (SET NULL)";
 
 export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
+  "push_subscriptions.user_id":
+    "Geräte-Abos für Web Push: Adresse des Push-Dienstes und Geräteschlüssel (Geheimnisse des Browsers), kein Inhalt der Person; die Person sieht und beendet sie in den Einstellungen, beim Abmelden und mit dem Konto (CASCADE) entfallen sie",
+  "push_deliveries.user_id":
+    "Technisches Protokoll gesendeter Push-Erinnerungen (Art, Bezug, Zeitpunkt) gegen Doppelte und für die Tagesgrenze; wird mit dem Konto gelöscht (CASCADE)",
   "account_tokens.user_id":
     "Sicherheits-Token (nur Hash, kein Inhalt) für Bestätigung und Reset; wird mit dem Konto gelöscht (CASCADE)",
   "user_identities.user_id":
@@ -301,6 +307,7 @@ export async function exportAccountData(userId: string) {
       reactivationMessages: await db.select().from(reactivationMessages).where(eq(reactivationMessages.userId, userId)),
       objectiveSnapshots: await db.select().from(objectiveSnapshots).where(eq(objectiveSnapshots.userId, userId)),
       learningPreferences: await db.select().from(learningPreferences).where(eq(learningPreferences.userId, userId)),
+      pushPreferences: await db.select().from(pushPreferences).where(eq(pushPreferences.userId, userId)),
       learningExits: await db.select().from(learningExits).where(eq(learningExits.userId, userId)),
       engagementState: await db.select().from(engagementStates).where(eq(engagementStates.userId, userId)),
       conceptStruggles: await db.select().from(conceptStruggles).where(eq(conceptStruggles.userId, userId)),

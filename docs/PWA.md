@@ -59,6 +59,19 @@ Plan: `roadmap_datenintegritaet.md`. Offline erbrachte Lernleistung soll auch na
 
 `skipWaiting` ist aus. Nach einem Deploy installiert sich der neue Service Worker und **wartet**. `ServiceWorkerManager` zeigt den Toast „Neue Version verfügbar“. Erst der Klick auf „Neu laden“ sendet `SKIP_WAITING`; beim `controllerchange` lädt die Seite neu. Ohne Klick läuft die alte Version weiter, es gibt keinen erzwungenen Reload. Fehlende Skript-Chunks eines alten Tabs (`ChunkLoadError`) fängt `app/error.tsx` ab: einmal neu laden, dann Fehlerseite.
 
+## Web Push
+
+Erinnerungen als Push-Nachricht (Prüfungstermin, fällige Wiederholungen, Lernserie in Gefahr), zusätzlich zur E-Mail (`npm run exams:remind`).
+
+- **Opt-in.** Das Abo entsteht nur, wenn die Person unter `/account` auf „Auf diesem Gerät benachrichtigen“ klickt; erst dann fragt der Browser nach der Berechtigung. Ohne Klick wird nie gefragt. Die drei Arten sind einzeln abschaltbar (gilt für alle Geräte), „Test senden“ zeigt, dass es ankommt. Beim Abmelden wird das Abo des Geräts beendet (`lib/client/use-sign-out.ts`), mit dem Konto verschwinden alle (CASCADE).
+- **Einrichtung.** `npm run push:keys` erzeugt ein VAPID-Schlüsselpaar; `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` und `VAPID_SUBJECT` (eine Adresse des Betreibers) in die `.env`, `docker-compose.yml` reicht sie durch. Der private Schlüssel ist geheim und gehört nicht ins Repository. Ohne Schlüssel sagt die Karte „nicht eingerichtet“, die Schnittstellen antworten 503.
+- **Versand.** Stündlich per Cron: `npm run push:remind` (z. B. `0 * * * * cd /pfad/zur/app && npm run push:remind`; in Docker `docker compose exec app npm run push:remind`). Ein verpasster Lauf holt sich im Zeitfenster von drei Stunden nach; Doppelte verhindert die Tabelle `push_deliveries`.
+- **Wann.** Prüfungstermin, Voucher und Wiederholungsversuch: dieselben Anlässe wie bei der E-Mail, einmal je Plan und Art, nur tagsüber (9 bis 20 Uhr Ortszeit). Fällige Wiederholungen (ab 3 Fragen) und gefährdete Lernserie (ab 3 Tagen, nur wenn die Serie unter „Wie ich lerne“ eingeschaltet ist): höchstens **eine** Nachricht am Tag, nur wenn heute noch nicht gelernt wurde, die Serie hat Vorrang. Die Uhrzeit und die Lerntage kommen aus der Wiederholungsplanung (PSRP-HR): Median der lokalen Stunde der Reviews der letzten 60 Tage (ins Fenster 8 bis 21 Uhr geschoben, ohne Daten 18 Uhr), Wochentage mit mindestens zwei Lerntagen (bei wenig Daten jeder Tag), in der Zeitzone der Person (`users.timezone`).
+- **Sicherheit.** Der Server schickt nur an Adressen von Push-Diensten der Browser (Allowlist in `lib/server/push/config.ts`, nur https, Port 443, keine Zugangsdaten; weitere über `PUSH_ALLOWED_HOSTS`), damit niemand den Server zu internen Adressen lenken kann. Die Nachrichten sind nach RFC 8291 verschlüsselt, ihr Inhalt ist knapp gehalten (Kursname, Zahlen). Der Service Worker prüft den Inhalt und öffnet nur Pfade der eigenen App (`lib/pwa/push-payload.ts`). Schnittstellen verlangen Anmeldung und sind je Person begrenzt.
+- **CSP.** Geprüft: `connect-src 'self'` genügt (der Service Worker nutzt `PushManager`; nur die eigenen Schnittstellen unter `/api/push` werden aufgerufen), `worker-src 'self' blob:` deckt den Service Worker ab. Es war keine Änderung nötig.
+- **iOS.** Push gibt es nur für zum Home-Bildschirm hinzugefügte Apps (ab iOS 16.4); die Einstellungen zeigen den Hinweis.
+- **Nicht in der Pipeline getestet:** die Zustellung über einen echten Push-Dienst (FCM, Mozilla, Apple). Tests laufen mit einem Fake-Sender; der Weg bis zum Gerät braucht einen Versuch auf einem echten Gerät.
+
 ## Tests
 
 - **Unit**: `npm test` (Vitest) deckt die reinen Teile ab (`lib/pwa`, `lib/client/*.test.ts`).
@@ -77,5 +90,5 @@ Plan: `roadmap_datenintegritaet.md`. Offline erbrachte Lernleistung soll auch na
 
 - Safari kann IndexedDB und Caches einer Website nach etwa sieben Tagen ohne Nutzung löschen, außer die App ist zum Home-Bildschirm hinzugefügt. Deshalb zeigt der Offline-Manager den Speicherstatus und empfiehlt die Installation.
 - `navigator.storage.persist()` wird auf iOS oft verweigert oder ignoriert; die Anzeige „Speicher dauerhaft gesichert“ erscheint dann nicht.
-- Background Sync und Web Push gibt es dort nur eingeschränkt oder gar nicht (siehe `roadmap_pwa.md`, Phase 6). Die Synchronisation läuft beim Öffnen der App.
+- Background Sync gibt es dort nicht; Web Push nur für zum Home-Bildschirm hinzugefügte Apps ab iOS 16.4 (siehe Abschnitt „Web Push“). Die Synchronisation läuft beim Öffnen der App.
 - Der Install-Hinweis (`beforeinstallprompt`) existiert nur auf Chromium; auf iOS gibt es nur den manuellen Weg über „Teilen → Zum Home-Bildschirm“. `components/InstallBanner.tsx` zeigt dort in Safari die Anleitung; „Nicht jetzt“ pausiert den Hinweis 30 Tage (`lib/pwa/install.ts`), `appinstalled` wird lokal festgehalten.

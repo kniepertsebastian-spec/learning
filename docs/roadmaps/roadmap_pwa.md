@@ -105,12 +105,14 @@ Die Plattform ist eine Next.js-16-App mit Serwist (`@serwist/next`). Vorhanden s
 
 ## Phase 6 – Erinnerungen per Push (optional)
 
-- [ ] Web Push (VAPID) für Prüfungs- und Wiederholungserinnerungen als Ergänzung zu `exams:remind` (E-Mail). Abo-Tabelle pro Gerät, Opt-in in den Einstellungen, Abmeldung beim Logout.
-- [ ] Erinnerungszeitpunkte aus der PSRP-HR-Planungsschicht ableiten (Tageszeit, Arbeitstag), siehe `docs/roadmaps/roadmap_psrp_hr.md`
-- [ ] Hinweis: Auf iOS nur für installierte PWAs (ab iOS 16.4) verfügbar
-- [ ] CSP prüfen (`connect-src` für Push-Dienste ist nicht nötig, der SW nutzt `PushManager`)
+- [x] Web Push (VAPID) für Prüfungs- und Wiederholungserinnerungen als Ergänzung zu `exams:remind` (E-Mail). Abo-Tabelle pro Gerät, Opt-in in den Einstellungen, Abmeldung beim Logout.
+- [x] Erinnerungszeitpunkte aus der PSRP-HR-Planungsschicht ableiten (Tageszeit, Arbeitstag), siehe `docs/roadmaps/roadmap_psrp_hr.md`
+- [x] Hinweis: Auf iOS nur für installierte PWAs (ab iOS 16.4) verfügbar
+- [x] CSP prüfen (`connect-src` für Push-Dienste ist nicht nötig, der SW nutzt `PushManager`) *(geprüft: `connect-src 'self'` und `worker-src 'self' blob:` genügen, keine Änderung)*
 
 **Akzeptanzkriterium:** Nutzer mit Opt-in erhält eine Erinnerung zur geplanten Zeit; ohne Opt-in wird keine Push-Berechtigung angefragt.
+
+**Stand Phase 6: umgesetzt (geprüft mit Fake-Sender), Zustellung über echte Push-Dienste nicht geprüft.** Siehe `docs/PWA.md`, Abschnitt „Web Push“. Tabellen `push_subscriptions`, `push_preferences`, `push_deliveries` (Migration 0114), Lauf `npm run push:remind`, Einstellungen unter `/account`. Tests: `lib/push/logic.test.ts`, `lib/server/push/*.test.ts` (echte DB), `lib/pwa/push-payload.test.ts`, `e2e/push.spec.ts`.
 
 ---
 
