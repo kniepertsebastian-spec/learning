@@ -462,9 +462,9 @@ Bewusst nach U9; jeweils erst mit eigenem kurzem Konzept.
 - [ ] **Command-Palette (`⌘K`)** – Suche über Kurse, Sektionen, Befehle in Merkzetteln, Seiten.
 - [ ] **„Meine Schwachstellen“** – Seite mit wiederholt falsch beantworteten Fragen/Objectives, ein Klick → gezielte Sitzung.
 - [ ] **Web-Push über die PWA** – fällige Karten, Serie in Gefahr, Prüfung morgen. Dosiert, alles einzeln abschaltbar.
-- [ ] **Katalog-Gruppen als Vorlage für Firmen** – „Security-Paket aus Katalog übernehmen“ legt eine Firmen-Kursgruppe mit den freigegebenen Kursen an.
+- [x] **Katalog-Gruppen als Vorlage für Firmen** – „Security-Paket aus Katalog übernehmen“ legt eine Firmen-Kursgruppe mit den freigegebenen Kursen an. *(Umgesetzt im Dialog „Kursgruppe“: „Aus einer Katalog-Gruppe übernehmen“ füllt Name, Farbe und Kurse (nur, was die Firma zuweisen darf, höchstens 30); die Firma ändert danach frei und speichert selbst. `lib/company/catalog-templates.ts`.)*
 - [ ] **Automatisches Onboarding** – Person kommt in Team X → bekommt Kursgruppe X (mit Abgleich zu Phase 5/Onboarding der technischen Roadmap).
-- [ ] **Skill-Abdeckung je Team** – nur **aggregiert** (z. B. „3 von 5 im Plattform-Team haben CKA“), nie als Raster einzelner Personen und nie als Vergleich (Leitplanke „kein Talent-Score“). Vor dem Bau gegen die Leitplanken prüfen.
+- [x] **Skill-Abdeckung je Team** – nur **aggregiert** (z. B. „3 von 5 im Plattform-Team haben CKA“), nie als Raster einzelner Personen und nie als Vergleich (Leitplanke „kein Talent-Score“). Vor dem Bau gegen die Leitplanken prüfen. *(Umgesetzt unter `/company/certificates`: „x von y“ je Team und Zertifikat, nur freigegebene und gültige Zertifikate der eigenen Firma, Teams unter 3 Mitgliedern ausgeblendet, alphabetisch statt nach Zahl, keine Namen. Gegen die Leitplanken geprüft, `lib/server/company/team-coverage.db.test.ts`.)*
 - [ ] **Praxis-Labs** (z. B. Kubernetes-Aufgaben mit Prüfskript) – erst Kosten/Betrieb klären; bis dahin Verweis auf externe Sandboxes.
 
 ---

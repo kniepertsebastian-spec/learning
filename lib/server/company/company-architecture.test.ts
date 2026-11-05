@@ -89,6 +89,8 @@ const ALLOWED_SERVER_MODULES = new Set([
   "internal-courses",
   // Anmeldung über das Firmenkonto: OIDC-Abruf und Adresse der Rückkehr (Identität und Rolle, keine Lerndaten)
   "sso",
+  // Katalog-Gruppen als Vorlage für Kursgruppen: welche allgemeinen Kurse zu welcher Katalog-Gruppe gehören (Kursstruktur, keine Lerndaten)
+  "catalog/categories",
 ]);
 
 function sourceFiles(dir: string): string[] {

@@ -9,6 +9,8 @@ import { AiSettingsPanel } from "@/components/AiSettingsPanel";
 import { CompanyOverview } from "@/components/company/CompanyOverview";
 import { daysSince, overviewTotals as computeOverviewTotals } from "@/lib/company/overview";
 import { listCourseGroups } from "@/lib/server/company/course-groups";
+import { categoryIdsByCertification, listCategories } from "@/lib/server/catalog/categories";
+import { buildCatalogTemplates } from "@/lib/company/catalog-templates";
 import { CourseRequestsPanel } from "@/components/CourseRequestsPanel";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { CompanyModulesPanel } from "@/components/CompanyModulesPanel";
@@ -83,6 +85,14 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
     listCheatSheetStatus(membership.organizationId),
     canAssign ? listCatalogCoursesForRules(membership.organizationId) : [],
   ]);
+  // Katalog-Gruppen als Vorlage für neue Kursgruppen: nur die Kurse, die diese Firma auch zuweisen darf (`paths`).
+  const catalogTemplates = canAssign
+    ? buildCatalogTemplates(
+        await listCategories(),
+        await categoryIdsByCertification(),
+        paths.filter((p) => p.kind !== "internal").map((p) => p.id),
+      )
+    : [];
   const objectivesByPath = await listObjectivesForPaths(paths.map((p) => p.id));
   const sectionsByPath = await listSectionsForPaths(paths.map((p) => p.id));
   const frameworkGoalRows = canAssign ? await listFrameworkGoalsForOrg(membership.organizationId) : [];
@@ -196,6 +206,7 @@ export default async function CompanyPage({ searchParams }: { searchParams: Prom
           rows={rows}
           members={members.map((m) => ({ userId: m.userId, name: m.name, email: m.email }))}
           paths={paths}
+          templates={catalogTemplates}
           groups={courseGroups.map((g) => ({
             id: g.id,
             name: g.name,
