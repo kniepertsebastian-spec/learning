@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { BackBar } from "@/components/shell/BackBar";
+import { CommandPalette } from "@/components/shell/CommandPalette";
 import { LogoMark } from "@/components/shell/Logo";
 import { SidebarContent, type ShellData } from "@/components/shell/Sidebar";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -16,7 +17,7 @@ import { cn } from "@/lib/cn";
 import { useLocale } from "@/lib/i18n";
 import { fmt } from "@/lib/quiz/keys";
 import { useSwitchLocale } from "@/lib/client/use-switch-locale";
-import { contextForPath, isPublicPath } from "@/lib/shell/nav";
+import { contextForPath, isPublicPath, navItems } from "@/lib/shell/nav";
 import { useTheme } from "@/lib/theme";
 
 /** Seiten ohne Anmeldung (Login, Einladung, …): schlanke Leiste mit Sprache und Theme, keine Navigation. */
@@ -99,7 +100,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-3 px-4 pt-4 sm:px-6 lg:px-8">
             <BackBar pathname={pathname} ctx={ctx} />
-            {/* Suchfeld erst, wenn es eine echte Suche gibt (docs/roadmaps/ROADMAP-UI.md, Später: Command-Palette) */}
+            <CommandPalette pages={navItems(ctx, shell.nav).map((item) => ({ href: item.href, label: t.shell[item.label] }))} />
             <div className="flex-1" />
             <div className="ml-auto flex items-center gap-2">
               {ctx === "personal" && weekly && (
