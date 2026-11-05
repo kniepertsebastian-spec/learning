@@ -1,6 +1,7 @@
 import { raiseQuestionTargets } from "@/lib/chapters/logic";
 import { isRetryableError, type AIUsage } from "@/lib/ai/generate";
 import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
+import { withAiCostDetail } from "@/lib/server/admin/ai-ledger";
 import {
   createSplitPartJobs,
   getCourseGenerationJob,
@@ -251,7 +252,7 @@ async function generateAndValidateObjective(
 
   let result: ObjectiveContentResponse;
   try {
-    result = await deps.contentProvider.generateObjective(input, trackUsage);
+    result = await withAiCostDetail("objective", () => deps.contentProvider.generateObjective(input, trackUsage));
   } catch (error) {
     await updateCourseGenerationObjective(objectiveRowId, {
       status: "failed",
@@ -276,12 +277,13 @@ async function generateAndValidateObjective(
    */
   const topUpQuestions = async (provider: CourseContentProvider): Promise<boolean> => {
     const need = missingQuestionsOnly(entry.objective, result, errors);
-    if (!need || !provider.generateQuestions) return false;
-    const extra = await provider.generateQuestions(
+    const generateQuestions = provider.generateQuestions?.bind(provider);
+    if (!need || !generateQuestions) return false;
+    const extra = await withAiCostDetail("questions_top_up", () => generateQuestions(
       input,
       { ...need, existingQuestions: result.questions.map((q) => q.question[input.language]) },
       trackUsage,
-    );
+    ));
     result = autoFix({ ...result, questions: [...result.questions, ...extra] });
     errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
     return true;
@@ -295,7 +297,7 @@ async function generateAndValidateObjective(
     });
     try {
       if (!(await topUpQuestions(usedProvider))) {
-        result = autoFix(await usedProvider.repairObjective(input, result, errors, trackUsage));
+        result = autoFix(await withAiCostDetail("repair", () => usedProvider.repairObjective(input, result, errors, trackUsage)));
         errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
       }
     } catch (error) {
@@ -319,7 +321,7 @@ async function generateAndValidateObjective(
     try {
       usedProvider = deps.repairProvider;
       if (!(await topUpQuestions(usedProvider))) {
-        result = autoFix(await usedProvider.repairObjective(input, result, errors, trackUsage));
+        result = autoFix(await withAiCostDetail("repair", () => usedProvider.repairObjective(input, result, errors, trackUsage)));
         errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
       }
       attempts++;
@@ -569,7 +571,7 @@ export async function executeCourseGenerationJob(
       // rejection enden (derselbe Grund, aus dem generateAndValidateObjective
       // die Kosten zurückgibt statt sie selbst zu verbuchen).
       let blueprintCostUsd = 0;
-      const blueprintResult = await deps.blueprintProvider.generateBlueprint(
+      const blueprintResult = await withAiCostDetail("blueprint", () => deps.blueprintProvider.generateBlueprint(
         {
           courseTitle: job.courseTitle,
           courseDescription: job.courseDescription,
@@ -585,7 +587,7 @@ export async function executeCourseGenerationJob(
           if (cost !== null) blueprintCostUsd += cost;
           void touchCourseGenerationJob(jobId).catch(() => undefined);
         },
-      );
+      ));
       await recordSpend(blueprintCostUsd);
       blueprint = { ...blueprintResult, requestId: jobId };
     }

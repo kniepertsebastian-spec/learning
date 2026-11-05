@@ -45,6 +45,19 @@ export default async function AdminAiCostsPage() {
     legacy_script: t.sourceLegacyScript,
     other: t.sourceOther,
   };
+  const tokens = (value: number) => (value === 0 ? "–" : value.toLocaleString(de ? "de-DE" : "en-US"));
+  const stepLabel: Record<string, string> = {
+    blueprint: t.stepBlueprint,
+    objective: t.stepObjective,
+    repair: t.stepRepair,
+    questions_top_up: t.stepQuestionsTopUp,
+    tagging: t.stepTagging,
+    prerequisites: t.stepPrerequisites,
+    cheat_sheets: t.stepCheatSheets,
+    remediation: t.stepRemediation,
+    career: t.stepCareer,
+    rationales: t.stepRationales,
+  };
   const real = report.courses.filter((c) => c.certificationId !== null && c.costUsd > 0);
   const costliest = real[0];
 
@@ -120,17 +133,42 @@ export default async function AdminAiCostsPage() {
         </table>
       </Card>
 
-      {report.bySource.length > 0 && (
-        <Card>
-          <h2 className="text-sm font-semibold">{t.bySource}</h2>
-          <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2" data-testid="ai-costs-sources">
-            {report.bySource.map((row) => (
-              <div key={row.source} className="flex items-baseline justify-between gap-4 border-b border-border-subtle pb-1">
-                <dt className="text-subtle">{sourceLabel[row.source]}</dt>
-                <dd className="tabular-nums">{usd(row.costUsd)}</dd>
-              </div>
-            ))}
-          </dl>
+      {report.bySteps.length > 0 && (
+        <Card className="p-0">
+          <table className="w-full text-left text-sm" data-testid="ai-costs-steps">
+            <caption className="px-4 pt-4 text-left text-sm font-semibold">{t.bySteps}</caption>
+            <thead>
+              <tr className="border-b border-border text-xs text-subtle">
+                <th className="px-4 py-2">{t.step}</th>
+                <th className="px-4 py-2 text-right">{t.cost}</th>
+                <th className="hidden px-4 py-2 text-right sm:table-cell">{t.share}</th>
+                <th className="hidden px-4 py-2 text-right sm:table-cell">{t.calls}</th>
+                <th className="hidden px-4 py-2 text-right md:table-cell">{t.perCall}</th>
+                <th className="hidden px-4 py-2 text-right md:table-cell">{t.promptTokens}</th>
+                <th className="hidden px-4 py-2 text-right md:table-cell">{t.completionTokens}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.bySteps.map((row) => (
+                <tr key={`${row.source}/${row.detail ?? ""}`} className="border-t border-border-subtle" data-testid="ai-costs-step">
+                  <td className="px-4 py-2">
+                    {sourceLabel[row.source]}
+                    {row.detail && <span className="block text-xs text-subtle">{stepLabel[row.detail] ?? row.detail}</span>}
+                  </td>
+                  <td className="px-4 py-2 text-right font-medium tabular-nums whitespace-nowrap">{usd(row.costUsd)}</td>
+                  <td className="hidden px-4 py-2 text-right tabular-nums whitespace-nowrap text-subtle sm:table-cell">{percent(row.costUsd)}</td>
+                  <td className="hidden px-4 py-2 text-right tabular-nums text-subtle sm:table-cell">{row.calls.toLocaleString(de ? "de-DE" : "en-US")}</td>
+                  <td className="hidden px-4 py-2 text-right tabular-nums whitespace-nowrap text-subtle md:table-cell">{row.calls > 0 ? usd(row.costUsd / row.calls) : "–"}</td>
+                  <td className="hidden px-4 py-2 text-right tabular-nums whitespace-nowrap text-subtle md:table-cell">
+                    {tokens(row.promptTokens)}
+                    {row.cachedTokens > 0 && <span className="block text-xs text-faint">{fill(t.cached, tokens(row.cachedTokens))}</span>}
+                  </td>
+                  <td className="hidden px-4 py-2 text-right tabular-nums whitespace-nowrap text-subtle md:table-cell">{tokens(row.completionTokens)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="px-4 pb-4 pt-2 text-xs text-faint">{t.stepsHint}</p>
         </Card>
       )}
 

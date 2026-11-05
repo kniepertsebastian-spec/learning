@@ -14,7 +14,7 @@ vi.mock("@/lib/server/db/client", () => ({
   }),
 }));
 
-import { recordAiUsage, withAiCost, withAiCostDefaults } from "./ai-ledger";
+import { recordAiUsage, withAiCost, withAiCostDefaults, withAiCostDetail } from "./ai-ledger";
 
 const USAGE = { model: "gemini-3.8-flash", promptTokens: 1_000_000, completionTokens: 1_000_000 };
 
@@ -92,5 +92,28 @@ describe("withAiCostDefaults", () => {
   it("ein äußerer Kurs wird nicht überschrieben", async () => {
     await withAiCost({ source: "batch", detail: "formats", certificationId: "cert-outer" }, () => withAiCostDefaults({ source: "workshop", certificationId: "cert-inner" }, () => recordAiUsage(USAGE)));
     expect(inserted[0]).toMatchObject({ certificationId: "cert-outer" });
+  });
+});
+
+describe("withAiCostDetail", () => {
+  it("setzt nur den Schritt: Quelle, Kurs und Auftrag des äußeren Kontexts bleiben", async () => {
+    await withAiCost({ source: "course_generation", generationJobId: "job-1" }, () => withAiCostDetail("tagging", () => recordAiUsage(USAGE)));
+    expect(inserted[0]).toMatchObject({ source: "course_generation", detail: "tagging", generationJobId: "job-1", certificationId: null });
+  });
+
+  it("gilt auch für Hintergrundarbeit, die der Schritt startet, und endet danach", async () => {
+    await withAiCost({ source: "course_generation", generationJobId: "job-1" }, async () => {
+      await withAiCostDetail("repair", async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        await recordAiUsage(USAGE);
+      });
+      await recordAiUsage(USAGE);
+    });
+    expect(inserted.map((row) => row.detail)).toEqual(["repair", null]);
+  });
+
+  it("ohne Kontext wird keiner erfunden: der Aufruf bleibt „other“", async () => {
+    await withAiCostDetail("tagging", () => recordAiUsage(USAGE));
+    expect(inserted[0]).toMatchObject({ source: "other", detail: null });
   });
 });
