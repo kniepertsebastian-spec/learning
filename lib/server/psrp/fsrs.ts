@@ -4,6 +4,7 @@
  * Burnout-Schutz wirkt nur über die Ziel-Retention `rTarget`, die die Planungsschicht übergibt.
  */
 import { createEmptyCard, fsrs, generatorParameters, State, type Card, type Grade } from "ts-fsrs";
+import { FSRS6_MODEL_BOUNDS, FSRS6Algorithm, forgettingCurve } from "ts-fsrs/models/fsrs-6";
 import { DEFAULT_PSRP_CONFIG } from "./config";
 
 export type RawRating = 1 | 2 | 3 | 4;
@@ -26,17 +27,33 @@ export interface ScheduleOptions {
 
 const DAY_MS = 86_400_000;
 
+/**
+ * Gewichtsvektoren, die FSRS-6 annimmt (17 und 19 werden von der Bibliothek auf 21 hochgesetzt). ts-fsrs 5 fiel bei jeder
+ * anderen Länge still auf die Standardwerte zurück, ts-fsrs 6 wirft stattdessen: ein falscher Vektor in der Datenbank
+ * (z. B. die 34 Werte von FSRS-7 aus Binding 0.6) würde jede Wiederholung dieses Nutzers abbrechen. Darum bleibt es beim
+ * Rückfall auf die Standardwerte.
+ */
+const ACCEPTED_WEIGHT_LENGTHS = [17, 19, 21];
+
+function makeParameters(rTarget: number, options: ScheduleOptions) {
+  const weights = options.weights && ACCEPTED_WEIGHT_LENGTHS.includes(options.weights.length) ? options.weights : null;
+  return generatorParameters({
+    request_retention: rTarget,
+    // Ohne Fuzz und ohne Kurzzeit-Schritte: deterministisch, Intervalle sind volle Tage ≥ 1.
+    // Die Streuung übernimmt das Load Balancing der Planungsschicht.
+    enable_fuzz: false,
+    enable_short_term: false,
+    ...(weights ? { w: weights } : {}),
+  });
+}
+
+/**
+ * Der Planer der Bibliothek (veraltete Schnittstelle `fsrs()`, ab ts-fsrs 6 nur noch FSRS-6): sein `next()` rechnet die
+ * Wiederholung. Die Kurve und das Intervall holen wir aus dem FSRS-6-Modell der Bibliothek, weil die Methoden
+ * `forgetting_curve` und `next_interval` am Planer seit ts-fsrs 6 fehlen.
+ */
 function makeScheduler(rTarget: number, options: ScheduleOptions) {
-  return fsrs(
-    generatorParameters({
-      request_retention: rTarget,
-      // Ohne Fuzz und ohne Kurzzeit-Schritte: deterministisch, Intervalle sind volle Tage ≥ 1.
-      // Die Streuung übernimmt das Load Balancing der Planungsschicht.
-      enable_fuzz: false,
-      enable_short_term: false,
-      ...(options.weights ? { w: options.weights } : {}),
-    }),
-  );
+  return fsrs(makeParameters(rTarget, options));
 }
 
 function toCard(state: ItemState | null, now: Date): Card {
@@ -45,7 +62,6 @@ function toCard(state: ItemState | null, now: Date): Card {
     due: state.due,
     stability: state.stability,
     difficulty: state.difficulty,
-    elapsed_days: Math.max(0, Math.round((now.getTime() - state.lastReview.getTime()) / DAY_MS)),
     scheduled_days: Math.max(0, Math.round((state.due.getTime() - state.lastReview.getTime()) / DAY_MS)),
     learning_steps: 0,
     reps: state.reps,
@@ -59,7 +75,9 @@ function toCard(state: ItemState | null, now: Date): Card {
 export function retrievability(state: ItemState | null, now: Date, options: ScheduleOptions = {}): number | null {
   if (!state || !state.lastReview || state.stability <= 0) return null;
   const elapsedDays = Math.max(0, (now.getTime() - state.lastReview.getTime()) / DAY_MS);
-  return makeScheduler(DEFAULT_PSRP_CONFIG.fsrs.rMax, options).forgetting_curve(elapsedDays, state.stability);
+  // Dieselben Gewichte wie beim Planen (ungültige Vektoren fallen dort auf die Standardwerte zurück).
+  const { w } = makeParameters(DEFAULT_PSRP_CONFIG.fsrs.rMax, options);
+  return forgettingCurve(w, elapsedDays, state.stability);
 }
 
 export interface ScheduleResult {
@@ -101,6 +119,8 @@ export function scheduleReview(
 
 /** Intervall in Tagen für Stabilität und Ziel-Retention (Bibliotheksfunktion, mindestens 1 Tag). */
 export function intervalForStability(stability: number, rTarget: number, options: ScheduleOptions = {}): number {
-  const scheduler = makeScheduler(rTarget, options);
-  return Math.max(1, scheduler.next_interval(stability, 0));
+  const params = makeParameters(rTarget, options);
+  const interval = new FSRS6Algorithm([...params.w], false, FSRS6_MODEL_BOUNDS).next_interval(stability, rTarget);
+  // Wie der bisherige Planer: ganze Tage, mindestens 1, höchstens das Maximalintervall der Bibliothek.
+  return Math.min(Math.max(1, interval), params.maximum_interval);
 }

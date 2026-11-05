@@ -21,6 +21,10 @@ Auth.js, Inhaltsgenerierung mit Google Gemini.
 Voraussetzungen: Node.js 22, eine PostgreSQL-Instanz, `poppler-utils` (liefert `pdftotext` für die
 PDF-Extraktion).
 
+`npm ci` meldet unter Node 22 eine `EBADENGINE`-Warnung für `ts-fsrs`: Die Bibliothek (ab 6.0.0) deklariert Node 24,
+das Projekt bleibt bewusst bei Node 22 (CI, `Dockerfile`). Alle Tests laufen darauf; die Warnung bricht nichts ab.
+Der Wechsel auf Node 24 wäre ein eigener Schritt (CI, `Dockerfile`, diese Datei).
+
 ```bash
 npm ci
 cp .env.example .env.local      # DATABASE_URL, AUTH_SECRET, GEMINI_API_KEY eintragen
