@@ -37,9 +37,10 @@ jobs:
       # pdftotext für die PDF-Extraktions-Tests (Dockerfile installiert dasselbe Paket).
       - run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: npm ci
-      # Nur Warnung: ein Fund ohne verfügbare Korrektur (oder nur über ein Major-Update) soll nicht jeden Push blockieren.
-      - name: Abhängigkeiten prüfen (Warnung)
-        continue-on-error: true
+      # Blockiert ab „hoch“ (Laufzeit-Abhängigkeiten). Ein neu veröffentlichter Fund macht die CI rot, bis er behoben
+      # ist: Abhängigkeit aktualisieren oder, wenn es keine Korrektur gibt, in package.json unter "overrides" festnageln.
+      # Moderate Funde im Build-Werkzeug (serwist) bleiben erlaubt.
+      - name: Abhängigkeiten prüfen
         run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run lint:ui
