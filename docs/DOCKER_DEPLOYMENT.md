@@ -57,10 +57,10 @@ docker-compose ps
 # Seed initial data (Security+ certification + domain skeleton)
 docker-compose exec app npm run db:seed
 
-# Generate the curriculum, lessons and questions.
-# Without these two steps the dashboard only shows an empty course shell.
-docker-compose exec app npm run content:draft-curriculum -- security-plus-sy0-701
-docker-compose exec app npm run content:draft-lessons -- security-plus-sy0-701
+# The course shell has no lessons or questions yet (the dashboard shows an empty course).
+# Create the content in the admin area, not on the command line: upload an official source, approve its
+# blueprint, then run "Regenerate outdated and missing content" in the course workshop (quality report).
+# A whole new course comes from "Course generation" in the admin catalog.
 ```
 
 ### 4. Access Application
@@ -119,12 +119,8 @@ docker-compose exec -T postgres psql -U postgres learning_pwa < backup.sql
 # Execute command in app container
 docker-compose exec app npm run db:seed
 
-# Regenerate lessons (from step 6)
-docker-compose exec app npm run content:draft-curriculum
-docker-compose exec app npm run content:draft-lessons
-
-# Validate content (admin)
-docker-compose exec app npm run content:validate
+# Regenerate outdated or missing lessons and questions: admin area, course workshop, quality report
+# ("Regenerate outdated and missing content"). There is no command-line script for it any more.
 
 # Get shell access
 docker-compose exec app sh

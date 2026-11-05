@@ -149,7 +149,7 @@ describe("isRetryableError", () => {
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured, isSchemaRejection, toGeminiJsonSchema } from "./generate";
-import { groundedLessonsAndQuestionsResponseSchema, lessonsAndQuestionsForObjectiveResponseSchema, curriculumDraftForDomainResponseSchema } from "@/lib/server/ai/schemas";
+import { groundedLessonsAndQuestionsResponseSchema } from "@/lib/server/ai/schemas";
 import { courseBlueprintAiResponseSchema, objectiveContentAiResponseSchema, objectiveContentNoQuestionsAiResponseSchema, objectiveContentNoQuestionsResponseSchema, objectiveContentResponseSchema, questionsOnlyAiResponseSchema } from "@/lib/server/course-generation/schemas";
 
 const ALLOWED = new Set(["type", "properties", "required", "items", "enum", "minItems", "maxItems", "minimum", "maximum", "anyOf", "description"]);
@@ -175,8 +175,6 @@ describe("Antwortschema für Gemini (strukturierte Ausgabe)", () => {
       objectiveContentNoQuestionsAiResponseSchema,
       questionsOnlyAiResponseSchema,
       groundedLessonsAndQuestionsResponseSchema,
-      lessonsAndQuestionsForObjectiveResponseSchema,
-      curriculumDraftForDomainResponseSchema,
     })) {
       const json = toGeminiJsonSchema(schema as never);
       expect(json, name).toBeDefined();

@@ -5,7 +5,7 @@ describe("ObjectiveProgressService.calculateDifficultyWeight", () => {
   it("weights the actual difficulty values used by generated questions", () => {
     // Regression test for the bug documented in the code: this previously
     // checked for "hard"/"medium"/"easy", which never matched the real
-    // beginner/intermediate/advanced values (draftQuestionSchema in
+    // beginner/intermediate/advanced values (groundedDraftQuestionSchema in
     // lib/server/ai/schemas.ts), silently making difficulty weighting a
     // no-op since step 10 of roadmap2.md.
     expect(ObjectiveProgressService.calculateDifficultyWeight("advanced")).toBe(1.15);

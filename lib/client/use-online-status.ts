@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 /**
  * R4.4 (roadmap.md): "Funktionen, die online bleiben müssen, verständlich
  * deaktivieren" - genutzt von den Admin-Generierungs-/Quellenimport-
- * Steuerelementen (SourcesManager, ContentGenerationControl), die ohne
+ * Steuerelementen (SourcesManager, AiBatchPanel), die ohne
  * Verbindung ohnehin nur mit einem Netzwerkfehler scheitern würden.
  */
 export function useOnlineStatus(): boolean {

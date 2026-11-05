@@ -18,11 +18,10 @@ export interface ObjectiveGenerationUsage {
  * akzeptierter Frage" - Snapshot je Objective, siehe Kommentar auf
  * objectiveGenerationCosts in lib/server/db/schema.ts für die
  * Zuordnungs-Entscheidung (objectiveId statt jobId). Aufgerufen vom
- * generierenden Skript selbst (scripts/generate-lessons-and-questions.ts):
- * Es hat direkten DB-Zugriff und kennt die akzeptierten Lesson-/Fragen-Zahlen
- * erst NACH den Qualitätsprüfungen, die im selben Prozess laufen. (Früher
- * startete die Admin-Oberfläche das Skript als Kindprozess und las nur dessen
- * USAGE-Zeilen mit; das gibt es nicht mehr, das Skript läuft nur noch von Hand.)
+ * Lauf selbst (lib/server/lessons/stale-regeneration.ts): Er kennt die
+ * akzeptierten Lesson-/Fragen-Zahlen erst NACH den Qualitätsprüfungen, die im
+ * selben Prozess laufen. (Früher war es ein Skript, das die Admin-Oberfläche als
+ * Kindprozess startete und von dem sie nur die USAGE-Zeilen mitlas.)
  */
 export async function recordObjectiveGenerationCost(
   objectiveId: string,

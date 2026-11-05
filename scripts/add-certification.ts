@@ -14,8 +14,10 @@ import { recordAuditEvent } from "../lib/server/audit/service";
  * Schritt 20). Only creates the certification + domain skeleton (names +
  * weights) - matches the same "objectives come later, from an official
  * source, not from LLM memory" rule as scripts/seed.ts. After running this,
- * use content:draft-curriculum / content:draft-lessons for the new cert's
- * objectives (once real domain weights + objective text are sourced).
+ * upload the official source in the admin area, approve its blueprint (that
+ * creates the objectives with their source excerpts) and run "Regenerate
+ * outdated and missing content" in the course workshop for the lessons and
+ * questions.
  *
  * Usage: npm run cert:add -- network-plus
  */

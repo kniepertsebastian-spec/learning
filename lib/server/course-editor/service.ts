@@ -366,14 +366,17 @@ export async function nextHumanId(tx: Tx, certId: string, objectiveId: string, c
   return `${prefix}-Q${Date.now()}`;
 }
 
-export async function createQuestion(certId: string, objectiveId: string, q: NewQuestion) {
+/** Herkunft einer quellengebundenen Frage: der Locator („S. 4“) und der Textausschnitt, der sie belegt. */
+export type QuestionProvenance = { sourceReference: string | null; sourceChunkId: string | null };
+
+export async function createQuestion(certId: string, objectiveId: string, q: NewQuestion, provenance?: QuestionProvenance) {
   return getDb().transaction(async (tx) => {
     const owner = await objectiveCert(tx, objectiveId);
     if (!owner || owner.certId !== certId) throw new EditorNotFoundError("Lernziel nicht gefunden.");
     const humanId = await nextHumanId(tx, certId, objectiveId, owner.code);
     const [row] = await tx
       .insert(questions)
-      .values({ humanId, objectiveId, difficulty: q.difficulty, type: q.type, question: q.question, explanation: q.explanation, ...(q.format ? { answerFormat: q.format, answerData: q.answerData } : {}) })
+      .values({ humanId, objectiveId, difficulty: q.difficulty, type: q.type, question: q.question, explanation: q.explanation, ...(provenance ? { sourceReference: provenance.sourceReference, sourceChunkId: provenance.sourceChunkId } : {}), ...(q.format ? { answerFormat: q.format, answerData: q.answerData } : {}) })
       .returning({ id: questions.id });
     if (q.options.length > 0) await tx.insert(questionOptions).values(q.options.map((o, i) => ({ questionId: row.id, orderNum: i + 1, text: o.text, isCorrect: o.isCorrect, rationale: o.rationale })));
     const snapshot = (await readQuestion(tx, row.id))!;

@@ -470,10 +470,9 @@ export const questionOptions = pgTable("question_options", {
 /**
  * R6 (roadmap.md): "Kosten je veröffentlichter Lesson, Mission und
  * akzeptierter Frage" - ein Snapshot statt einer Historie: das erzeugende
- * Skript (scripts/generate-lessons-and-questions.ts) kennt keine
- * content_generation_jobs-ID (läuft auch völlig eigenständig per CLI, ohne
- * Job-Kontext; auch als die Admin-Oberfläche es noch als Kindprozess
- * startete, bekam das Skript keine Job-ID), daher Zuordnung über
+ * Lauf (lib/server/lessons/stale-regeneration.ts, früher ein Skript) kennt
+ * keine content_generation_jobs-ID (die Tabelle ist die Historie der früheren
+ * Skript-Generierung und wird nicht mehr beschrieben), daher Zuordnung über
  * objectiveId statt jobId. Ein erneuter Lauf überschreibt den Snapshot
  * (ON CONFLICT), passend dazu, dass eine Regenerierung den vorherigen
  * Lernstoff der Section/des Objectives ohnehin ersetzt (siehe R1.5). Die
@@ -3647,7 +3646,7 @@ export const taskItems = pgTable(
   ],
 );
 
-export type AiBatchKind = "quality" | "simulations" | "concepts" | "variants" | "explanations" | "prerequisites" | "formats" | "rationales" | "blocks" | "possible";
+export type AiBatchKind = "quality" | "simulations" | "concepts" | "variants" | "explanations" | "prerequisites" | "formats" | "rationales" | "blocks" | "possible" | "stale";
 export type AiBatchStatus = "running" | "done" | "failed" | "cancelled";
 
 /**
@@ -3681,7 +3680,7 @@ export const aiBatchRuns = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (table) => [
-    check("ai_batch_runs_kind_check", sql`${table.kind} in ('quality', 'simulations', 'concepts', 'variants', 'explanations', 'prerequisites', 'formats', 'rationales', 'blocks', 'possible')`),
+    check("ai_batch_runs_kind_check", sql`${table.kind} in ('quality', 'simulations', 'concepts', 'variants', 'explanations', 'prerequisites', 'formats', 'rationales', 'blocks', 'possible', 'stale')`),
     check("ai_batch_runs_status_check", sql`${table.status} in ('running', 'done', 'failed', 'cancelled')`),
     index("ai_batch_runs_kind_idx").on(table.kind, table.startedAt),
     // Höchstens ein laufender Lauf je Art und Kurs, und einer je Art für „alle Kurse“.

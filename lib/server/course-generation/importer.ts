@@ -43,7 +43,7 @@ export function suggestCourseSlug(title: string, certificationVersion?: string):
 }
 
 /**
- * Wie humanIdPrefix() in scripts/generate-lessons-and-questions.ts. Gilt für allgemeine Lernpfade (Slugs sind dort
+ * Wie früher humanIdPrefix() im (entfernten) Skript zur Lektionserzeugung. Gilt für allgemeine Lernpfade (Slugs sind dort
  * eindeutig und sprechend). Interne Lernpfade der Firmen bekommen stattdessen ein Kürzel aus der eigenen ID, denn
  * ihre Titel und Lernziel-Codes („1.1“) wiederholen sich zwischen Firmen und Kursen, die Frage-ID ist aber eindeutig.
  */

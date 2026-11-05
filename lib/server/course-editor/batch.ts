@@ -10,6 +10,7 @@
  *  - blocks:      Lernblöcke (Hinweise, Terminal, Praxisbeispiel) in Lektionen ohne Blöcke einfügen
  *  - possible:    „Was damit möglich ist“ und Textverweise in Simulationen ergänzen
  *  - formats:     Formatfragen (Reihenfolge, Kurzantwort, Zuordnung) für Lernziele ergänzen, die nur Auswahlfragen haben
+ *  - stale:       veraltete (nach einer neuen Quellenversion) und fehlende Lektionen und Fragen aus der aktuellen Quelle neu erzeugen
  *
  * Die KI-Aktionen sind dieselben wie in der Kurs-Werkstatt; hier werden die Vorschläge ohne Einzelprüfung übernommen. Das
  * Sicherheitsnetz bleibt: vor dem Lauf ein automatisch gemerkter Kursstand, jede Änderung als Version mit Herkunft „KI“ bzw.
@@ -42,11 +43,12 @@ import {
   type AiRequest,
   type Generate,
 } from "./ai";
+import { createRegenerationGenerator, estimateObjectiveTokens, regenerateStaleContent, regenerationTodo, type RegenerationGenerator } from "@/lib/server/lessons/stale-regeneration";
 import { backfillPossible, lessonsNeedingPossible } from "./possible-backfill";
 import { getCourseReport, type Improvement, type ImprovementKind } from "./report";
 import { createQuestion, editableCourse, saveQuestion, saveSection } from "./service";
 
-export const BATCH_KINDS = ["quality", "simulations", "concepts", "variants", "explanations", "prerequisites", "formats", "rationales", "blocks", "possible"] as const;
+export const BATCH_KINDS = ["quality", "simulations", "concepts", "variants", "explanations", "prerequisites", "formats", "rationales", "blocks", "possible", "stale"] as const;
 
 /** Formatfragen je Lernziel, wenn der Sammellauf sie ergänzt. */
 export const FORMAT_QUESTIONS_PER_OBJECTIVE = 2;
@@ -317,6 +319,22 @@ export async function estimateBatch(kind: AiBatchKind, certId: string | null, pa
     }, 0);
     return { kind, items: todo.length, usd, courses: new Set(todo.map((l) => l.certId)).size };
   }
+  if (kind === "stale") {
+    // Nur Lernziele mit Quelle: ohne Quellenausschnitte gibt es keine Grundlage (siehe lib/server/lessons/stale-regeneration.ts).
+    let items = 0, withWork = 0;
+    let usd: number | null = 0;
+    for (const c of courses) {
+      const { todo } = await regenerationTodo(c.id);
+      if (todo.length) withWork++;
+      items += todo.length;
+      for (const work of todo) {
+        const t = estimateObjectiveTokens(work);
+        const cost = estimateCostUsd(SYSTEM_TOKENS + t.prompt, t.completion, LESSONS_MODEL);
+        usd = usd !== null && cost !== null ? usd + cost : null;
+      }
+    }
+    return { kind, items, usd: items ? usd : 0, courses: withWork };
+  }
   if (kind === "possible") {
     let items = 0, withWork = 0;
     for (const c of courses) {
@@ -418,6 +436,7 @@ export type BatchDeps = {
   prerequisiteGenerator?: PrerequisiteGenerator;
   rationaleGenerator?: RationaleGenerator;
   blocksGenerator?: BlocksGenerator;
+  regenerationGenerator?: RegenerationGenerator;
 };
 
 function isUniqueViolation(error: unknown): boolean {
@@ -482,6 +501,7 @@ async function execute(run: Row, userId: string | null, params: unknown, deps: B
   if (run.kind === "rationales") return executeRationales(run, userId, deps);
   if (run.kind === "blocks") return executeBlocks(run, userId, deps);
   if (run.kind === "possible") return executePossible(run, userId, deps);
+  if (run.kind === "stale") return executeStale(run, userId, deps);
   return executeConcepts(run, userId, deps);
 }
 
@@ -710,6 +730,21 @@ async function executeBlocks(run: Row, userId: string | null, deps: BatchDeps) {
     // „übersprungen“ des Nachtrags enthält auch Lektionen, die schon Blöcke hatten; hier zählt nur, was zwischenzeitlich geändert wurde.
     const r = await backfillBlocks(course.id, generator, { shouldStop, onProgress: (c) => report({ processed: c.updated + c.failed, applied: c.updated, failed: c.failed }) });
     return { processed: r.updated + r.failed, applied: r.updated, failed: r.failed, aborted: r.aborted };
+  });
+}
+
+async function executeStale(run: Row, userId: string | null, deps: BatchDeps) {
+  await perCourse(run, userId, Boolean(deps.regenerationGenerator), async (course, report, shouldStop) => {
+    if ((await regenerationTodo(course.id)).todo.length === 0) return { processed: 0, applied: 0, failed: 0, aborted: false };
+    // Veraltete Lektionen werden ersetzt: vorher einen Kursstand merken (wie bei der Qualitätsverbesserung); der alte Text bleibt zusätzlich als Revision.
+    await ensureAiCheckpoint(course.id, userId);
+    const generator = deps.regenerationGenerator ?? createRegenerationGenerator(await clientFor(course));
+    const r = await regenerateStaleContent({ id: course.id, name: course.name }, generator, {
+      actor: { userId, origin: "ai", note: "Veraltete oder fehlende Inhalte aus der aktuellen Quelle neu erzeugt" },
+      shouldStop,
+      onProgress: (c) => report({ processed: c.objectives + c.failed, applied: c.objectives, skipped: c.skipped, failed: c.failed }),
+    });
+    return { processed: r.objectives + r.failed, applied: r.objectives, skipped: r.skipped, failed: r.failed, aborted: r.aborted };
   });
 }
 

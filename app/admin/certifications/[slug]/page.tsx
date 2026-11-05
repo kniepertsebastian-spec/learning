@@ -217,8 +217,8 @@ export default async function AdminCertificationPage({
         )}
 
         {/* R1.5: veraltete Inhalte nach dem Freigeben einer neuen
-            Quellenversion - Neugenerierung (Button oben) erzeugt gezielt
-            nur diese neu. */}
+            Quellenversion - der Sammellauf "stale" im Qualitätsbericht der
+            Kurs-Werkstatt erzeugt gezielt nur diese neu. */}
         {(validation.staleContent.staleLessons > 0 || validation.staleContent.staleQuestions > 0) && (
           <div className="rounded-lg border border-warning/40 bg-warning-soft p-4">
             <h3 className="mb-1 font-medium text-warning-text">

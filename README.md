@@ -49,8 +49,8 @@ Dieselben Schritte führt die CI (`.github/workflows/ci.yml`) bei jedem Push und
 
 Die App läuft per `docker compose up -d` (Next.js, Postgres, Cloudflare Tunnel). `DB_PASSWORD` und
 `AUTH_SECRET` sind Pflicht, sonst startet Compose nicht. Migrationen laufen bei jedem Start der App
-automatisch. Admin-Skripte (Nutzerrollen, Organisationen, Zertifizierungen, Inhaltsentwürfe) stehen in
-`package.json` unter `user:*`, `company:*`, `cert:*` und `content:*` und laufen im Container mit
+automatisch. Admin-Skripte (Nutzerrollen, Organisationen, Zertifizierungen) stehen in
+`package.json` unter `user:*`, `company:*` und `cert:*` und laufen im Container mit
 `docker compose exec app npm run …`.
 
 Die App läuft als **genau eine** Instanz: Rate-Limits und laufende Generierungsaufträge liegen im Speicher des Prozesses
