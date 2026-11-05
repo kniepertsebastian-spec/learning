@@ -172,7 +172,7 @@ function RegisterForm() {
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
             />
             <p id="password-rule" className="mt-1 text-xs text-subtle">
-              At least 8 characters, with upper and lower case letters and a special character.
+              At least 8 characters, with upper and lower case letters, a digit and a special character.
             </p>
           </div>
           <button
