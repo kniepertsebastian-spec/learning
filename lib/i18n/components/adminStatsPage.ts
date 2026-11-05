@@ -1,6 +1,7 @@
 // Texte von app/admin/stats/page.tsx (de/en). Neue Texte hier ergänzen, nicht als `de ? … : …` ins JSX.
 const texts = {
   de: {
+    impactReport: "Wirkung messen (beschreibender Bericht) →",
     week: "Woche",
     month: "Monat",
     year: "Jahr",
@@ -31,6 +32,7 @@ const texts = {
     n0Measured: "{0} gemessen",
   },
   en: {
+    impactReport: "Measuring impact (descriptive report) →",
     week: "Week",
     month: "Month",
     year: "Year",

@@ -44,6 +44,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
     <div className="flex flex-1 flex-col gap-6" data-testid="admin-stats">
       <div>
         <h1 className="text-2xl font-semibold tracking-title sm:text-title">{c_adminStatsPage(de).completionStatistics}</h1>
+        <p className="mt-1 text-sm"><Link href="/admin/impact" className="text-link hover:underline" data-testid="admin-impact-link">{c_adminStatsPage(de).impactReport}</Link></p>
         <p className="mt-1 max-w-3xl text-sm text-subtle">
           {fill(c_adminStatsPage(de).anonymousPerCompletionOnlyCourse, MIN_GROUP)}
         </p>
