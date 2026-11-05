@@ -17,6 +17,12 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps"
+    ignore:
+      # typescript-eslint unterstützt TypeScript 7 noch nicht: der Lint-Schritt bricht mit "typescript-eslint does not
+      # support TS 7.0" ab (PR #172). Die Regel gilt für jeden Major-Sprung; sie kann raus, sobald typescript-eslint
+      # die neue Version unterstützt und das Projekt sie bewusst übernimmt.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       # Beides ist in package.json exakt gepinnt und muss zusammen auf dieselbe Version.
       next:
