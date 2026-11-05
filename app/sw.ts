@@ -7,6 +7,7 @@ import {
   StaleWhileRevalidate,
 } from "serwist";
 import { OFFLINE_FALLBACK_PATH } from "../lib/pwa/offline-routes";
+import { parsePush, safeAppPath } from "../lib/pwa/push-payload";
 import { userIdFromSyncTag } from "../lib/pwa/sync-tag";
 import { deletePendingSyncEvent, listPendingSyncEvents, savePendingSyncEvent } from "../lib/client/offline-db";
 import { transferPendingEvents } from "../lib/client/sync-core";
@@ -132,3 +133,36 @@ self.addEventListener("sync", ((event: SyncLikeEvent) => {
     })(),
   );
 }) as EventListener);
+
+// Web Push (docs/roadmaps/roadmap_pwa.md, Phase 6): Nachrichten des Servers anzeigen und beim Antippen die App öffnen. Ein Abo gibt es
+// nur, wenn die Person es in den Einstellungen selbst eingeschaltet hat (components/PushSettings.tsx). Der Inhalt wird geprüft
+// (lib/pwa/push-payload.ts); das Ziel ist immer ein Pfad der eigenen App.
+self.addEventListener("push", (event) => {
+  const shown = parsePush(event.data ? event.data.text() : null);
+  event.waitUntil(
+    self.registration.showNotification(shown.title, {
+      body: shown.body,
+      tag: shown.tag,
+      icon: "/icons/icon-192x192.png",
+      badge: "/icons/icon-192x192.png",
+      data: { url: shown.url },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL(safeAppPath((event.notification.data as { url?: unknown } | null)?.url), self.location.origin).href;
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const existing = windows.find((w) => new URL(w.url).origin === self.location.origin);
+      if (existing) {
+        await existing.focus();
+        await existing.navigate(target).catch(() => undefined);
+      } else {
+        await self.clients.openWindow(target);
+      }
+    })(),
+  );
+});

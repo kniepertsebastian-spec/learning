@@ -10,7 +10,7 @@ Der Stand je Datei ist aus den Abhak-Listen (`- [x]` / `- [ ]`) im Dokument gez�
 |---|---|---|
 | [ROADMAP-TECHNISCH.md](ROADMAP-TECHNISCH.md) | Technik: Infrastruktur, Sicherheit, Datenmodell, Backend, Frontend, Qualität, Betrieb, mit Prüfnachweis je Punkt. | 70/119, 49 offen |
 | [ROADMAP-UI.md](ROADMAP-UI.md) | Oberfläche und Bedienung samt nötiger Daten- und API-Erweiterungen. | 108/126, 18 offen |
-| [roadmap_pwa.md](roadmap_pwa.md) | PWA-Härtung (Installierbarkeit, Offline, Update, Sicherheit). | 32/36, 4 offen |
+| [roadmap_pwa.md](roadmap_pwa.md) | PWA-Härtung (Installierbarkeit, Offline, Update, Sicherheit). | alles erledigt (36/36) |
 | [roadmap_didaktik.md](roadmap_didaktik.md) | Didaktik für Endnutzer. | 68/77, 9 offen |
 | [roadmap_pruefer.md](roadmap_pruefer.md) | Fachliche Prüfer und Freigabe von Kursen. | 30/38, 8 offen |
 | [roadmap_motivation.md](roadmap_motivation.md) | Motivation und Schutz vor Lernabbruch. | 45/46, 1 offen |

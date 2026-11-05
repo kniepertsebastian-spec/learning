@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { AutoSkillsToggle } from "@/components/AutoSkillsToggle";
 import { AgeRangeSelect } from "@/components/AgeRangeSelect";
 import { ExamRemindersToggle } from "@/components/ExamRemindersToggle";
+import { PushSettings } from "@/components/PushSettings";
 import { ReactivationToggle } from "@/components/ReactivationToggle";
 import { getDb } from "@/lib/server/db/client";
 import { userProfiles, users } from "@/lib/server/db/schema";
@@ -29,6 +30,7 @@ export default async function AccountPage() {
         company={membership ? { name: membership.organizationName, role: membership.role } : null}
       />
       <ExamRemindersToggle initialOptOut={prefs?.optOut ?? false} />
+      <PushSettings />
       <ReactivationToggle initialOptOut={prefs?.reactivationOptOut ?? false} />
       <AgeRangeSelect initial={prefs?.ageRange ?? null} />
       <AutoSkillsToggle initialEnabled={profile?.autoSkills ?? false} />

@@ -3772,3 +3772,66 @@ export const geminiBatchJobs = pgTable(
     check("gemini_batch_jobs_status_check", sql`${table.status} in ('submitted', 'applying', 'done', 'failed')`),
   ],
 );
+
+export type PushKind = "exam_soon" | "voucher_expiring" | "retake_included" | "reviews_due" | "streak_risk";
+
+/**
+ * Web Push (docs/roadmaps/roadmap_pwa.md, Phase 6): ein Eintrag je Gerät und Browser. Er entsteht erst, wenn die Person in den
+ * Einstellungen selbst „Auf diesem Gerät benachrichtigen“ wählt und der Browser zustimmt (kein Abo ohne Opt-in); beim Abmelden und
+ * auf Wunsch wird er gelöscht. `auth_key` und `p256dh` sind die Schlüssel des Geräts für die Verschlüsselung (RFC 8291), sie
+ * verlassen den Server nie. `locale` ist die Sprache der Oberfläche beim Anmelden des Geräts, in ihr kommt der Text.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    authKey: text("auth_key").notNull(),
+    locale: text("locale").$type<"de" | "en">().notNull().default("de"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+    /** Fehlversuche in Folge (nicht 404/410): ab 5 wird das Abo gelöscht. */
+    failureCount: integer("failure_count").notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex("push_subscriptions_endpoint_unique").on(table.endpoint),
+    index("push_subscriptions_user_idx").on(table.userId),
+    check("push_subscriptions_locale_check", sql`${table.locale} in ('de', 'en')`),
+    check("push_subscriptions_failure_check", sql`${table.failureCount} >= 0`),
+  ],
+);
+
+/** Welche Erinnerungen per Push kommen, je Person (gilt für alle Geräte). Ohne Zeile gelten die Standardwerte: alles an. */
+export const pushPreferences = pgTable("push_preferences", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  examReminders: boolean("exam_reminders").notNull().default(true),
+  reviewsDue: boolean("reviews_due").notNull().default(true),
+  streakRisk: boolean("streak_risk").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Was bereits per Push ging: verhindert Doppelte (je Person, Art und Bezug höchstens eine) und begrenzt die Menge („dosiert“:
+ * Wiederholungen und Serie zusammen höchstens eine Nachricht je Tag). `ref` ist „plan:<id>“ bei Prüfungs-Erinnerungen und „day:<Datum>“
+ * (lokales Datum der Person) bei den täglichen.
+ */
+export const pushDeliveries = pgTable(
+  "push_deliveries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<PushKind>().notNull(),
+    ref: text("ref").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("push_deliveries_unique").on(table.userId, table.kind, table.ref),
+    index("push_deliveries_user_idx").on(table.userId, table.sentAt),
+    check("push_deliveries_kind_check", sql`${table.kind} in ('exam_soon', 'voucher_expiring', 'retake_included', 'reviews_due', 'streak_risk')`),
+  ],
+);

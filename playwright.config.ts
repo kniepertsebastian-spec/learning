@@ -31,6 +31,10 @@ export default defineConfig({
       AUTH_TRUST_HOST: "true",
       // Die Tests melden sich pro Lauf dutzendfach an (siehe lib/server/auth-rate-limit.ts).
       LOGIN_RATE_LIMIT_FACTOR: "50",
+      // Nur für die Tests erzeugtes Schlüsselpaar (kein Geheimnis): schaltet Web Push im Test-Server ein, geschickt wird nichts.
+      VAPID_PUBLIC_KEY: "BA50T__sWx9ravCcUBr6OR6RRlXDONtyYj5ltd2TIk8B4blm53kFGsQOG1wPDT5_dTdxys59VBXSB8kAxRemxoU",
+      VAPID_PRIVATE_KEY: "lnBUcPgrbG5s3Y3fxBMxabKGXFRs2UDsM8_4SZIjqO4",
+      VAPID_SUBJECT: "mailto:e2e@test.example",
     },
   },
 });
