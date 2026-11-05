@@ -1,7 +1,8 @@
+import { aggregateSkillCoverage, type SkillCoverage } from "@/lib/company/skill-coverage";
 import { and, asc, eq, gte, isNotNull, type SQL } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
-import { certifications, examPlans, examVouchers, organizationMemberships, userCertificates, users } from "@/lib/server/db/schema";
+import { certifications, examPlans, examVouchers, organizationMemberships, userCertificates, users, departments } from "@/lib/server/db/schema";
 import { encryptSecret, EncryptionNotConfiguredError, isEncryptionConfigured } from "@/lib/server/crypto/secret-box";
 import { certStatus, expiryByMonth, toCsv, VOUCHER_SOON_DAYS, type CertStatus } from "@/lib/certificates/logic";
 import { listMandatoryRules } from "@/lib/server/company/mandatory";
@@ -137,6 +138,25 @@ export async function getRegisterOverview(organizationId: string, now: Date = ne
 }
 
 const STATUS_DE: Record<CertStatus, string> = { valid: "Gültig", expiring: "Läuft bald ab", expired: "Abgelaufen" };
+/**
+ * Skill-Abdeckung je Team (nur aggregiert, siehe lib/company/skill-coverage.ts): zählt ausschließlich Zertifikate, die die Person der Firma selbst
+ * freigegeben hat und die noch gelten. Gelesen werden Abteilungen, Mitgliedschaften und freigegebene Zertifikate der EIGENEN Firma; Personen, Namen und
+ * Adressen verlassen diese Funktion nicht.
+ */
+export async function getTeamSkillCoverage(organizationId: string, now: Date = new Date()): Promise<SkillCoverage> {
+  const db = getDb();
+  const [deps, members, certs] = await Promise.all([
+    db.select({ id: departments.id, name: departments.name }).from(departments).where(eq(departments.organizationId, organizationId)),
+    db.select({ userId: organizationMemberships.userId, departmentId: organizationMemberships.departmentId }).from(organizationMemberships).where(eq(organizationMemberships.organizationId, organizationId)),
+    db
+      .select({ userId: userCertificates.userId, title: userCertificates.title, vendor: userCertificates.vendor, expiresAt: userCertificates.expiresAt })
+      .from(userCertificates)
+      .innerJoin(organizationMemberships, and(eq(organizationMemberships.userId, userCertificates.userId), eq(organizationMemberships.organizationId, organizationId)))
+      .where(SHARED_CERTIFICATE),
+  ]);
+  return aggregateSkillCoverage({ departments: deps, members, certificates: certs.filter((c) => !c.expiresAt || c.expiresAt > now) });
+}
+
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "unbegrenzt");
 
 /** Audit-Export: nur freigegebene Zertifikate + Pflichtschulungs-Status zum Stichtag. Protokolliert den Export. */

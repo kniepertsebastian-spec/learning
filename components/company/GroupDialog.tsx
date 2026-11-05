@@ -8,6 +8,9 @@ import { cn } from "@/lib/cn";
 import { useLocale } from "@/lib/i18n";
 import type { CourseCategoryColor } from "@/lib/server/db/schema";
 import type { AssignPath } from "@/components/company/AssignDialog";
+import { c_companyCatalogTemplate } from "@/lib/i18n/components/companyCatalogTemplate";
+import { fill } from "@/lib/i18n/fill";
+import type { CatalogTemplate } from "@/lib/company/catalog-templates";
 
 const COLORS: CourseCategoryColor[] = ["info", "mint", "warning", "danger", "violet"];
 export const GROUP_DOT: Record<CourseCategoryColor, string> = { info: "bg-info", mint: "bg-mint", warning: "bg-warning", danger: "bg-danger", violet: "bg-violet" };
@@ -16,9 +19,21 @@ const fieldClass = "w-full rounded-md border border-border-strong bg-control px-
 export type EditableGroup = { id: string; name: { de: string; en: string }; color: CourseCategoryColor; certificationIds: string[] };
 
 /** Kursgruppe anlegen, bearbeiten oder löschen (Firmen-Admin und Mentor). */
-export function GroupDialog({ open, onOpenChange, group, paths }: { open: boolean; onOpenChange: (o: boolean) => void; group: EditableGroup | null; paths: AssignPath[] }) {
-  const { t } = useLocale();
+export function GroupDialog({ open, onOpenChange, group, paths, templates = [] }: { open: boolean; onOpenChange: (o: boolean) => void; group: EditableGroup | null; paths: AssignPath[]; templates?: CatalogTemplate[] }) {
+  const { t, locale } = useLocale();
   const o = t.company_overview;
+  const tpl = c_companyCatalogTemplate(locale);
+  const [templateId, setTemplateId] = useState("");
+  const template = templates.find((x) => x.id === templateId) ?? null;
+  const applyTemplate = (id: string) => {
+    setTemplateId(id);
+    const next = templates.find((x) => x.id === id);
+    if (!next) return;
+    setName(next.name.de);
+    setNameEn(next.name.en);
+    if (COLORS.includes(next.color as CourseCategoryColor)) setColor(next.color as CourseCategoryColor);
+    setIds(next.certificationIds);
+  };
   const router = useRouter();
   const [name, setName] = useState(group?.name.de ?? "");
   const [nameEn, setNameEn] = useState(group?.name.en ?? "");
@@ -64,6 +79,19 @@ export function GroupDialog({ open, onOpenChange, group, paths }: { open: boolea
         <DialogTitle>{group ? o.editGroup : o.newGroup}</DialogTitle>
         <DialogDescription>{o.newGroupHint}</DialogDescription>
         <div className="mt-4 space-y-3">
+          {!group && templates.length > 0 && (
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">{tpl.label}</span>
+              <select value={templateId} onChange={(e) => applyTemplate(e.target.value)} className={fieldClass} data-testid="cgroup-template">
+                <option value="">{tpl.none}</option>
+                {templates.map((x) => (
+                  <option key={x.id} value={x.id}>{x.name.de} ({fill(tpl.count, x.certificationIds.length)})</option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-subtle">{tpl.hint}</span>
+              {template && template.omitted > 0 && <span className="mt-1 block text-xs text-warning-text">{fill(tpl.omitted, template.omitted)}</span>}
+            </label>
+          )}
           <label className="block text-sm"><span className="mb-1 block font-medium">{o.gName}</span><input value={name} onChange={(e) => setName(e.target.value)} className={fieldClass} data-testid="cgroup-name" /></label>
           <label className="block text-sm"><span className="mb-1 block font-medium">{o.gNameEn}</span><input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className={fieldClass} /></label>
           <fieldset>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AssignDialog, type AssignGroup, type AssignMember, type AssignPath } from "@/components/company/AssignDialog";
 import { GroupDialog, GROUP_DOT, type EditableGroup } from "@/components/company/GroupDialog";
+import type { CatalogTemplate } from "@/lib/company/catalog-templates";
 import { Avatar, AvatarStack } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export function CompanyOverview({
   members,
   paths,
   groups,
+  templates = [],
   rules,
   invites,
   heading,
@@ -57,6 +59,8 @@ export function CompanyOverview({
   members: AssignMember[];
   paths: AssignPath[];
   groups: OverviewGroup[];
+  /** Katalog-Gruppen als Vorlage für neue Kursgruppen. */
+  templates?: CatalogTemplate[];
   rules: OverviewRule[];
   /** null für Rollen ohne Einladungsrechte */
   invites: OverviewInvite[] | null;
@@ -237,7 +241,7 @@ export function CompanyOverview({
       </div>
 
       {assignOpen && <AssignDialog key={assignOpen.groupId ?? "none"} open onOpenChange={(v) => !v && setAssignOpen(null)} members={members} paths={paths} groups={assignGroups} initialGroupId={assignOpen.groupId} />}
-      {groupEdit && <GroupDialog key={groupEdit.group?.id ?? "new"} open onOpenChange={(v) => !v && setGroupEdit(null)} group={groupEdit.group} paths={paths} />}
+      {groupEdit && <GroupDialog key={groupEdit.group?.id ?? "new"} open onOpenChange={(v) => !v && setGroupEdit(null)} group={groupEdit.group} paths={paths} templates={templates} />}
 
       <Dialog open={manage !== null} onOpenChange={(v) => !v && setManage(null)}>
         <DialogContent closeLabel={o.close}>
