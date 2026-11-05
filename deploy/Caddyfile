@@ -14,6 +14,11 @@ learning.pwa-tree.de {
 		flush_interval -1
 		header_up Host {host}
 		header_up X-Real-IP {remote_host}
+		# Die App liest die Client-Adresse für ihre Rate-Limits zuerst aus CF-Connecting-IP (so setzt sie
+		# Cloudflare). Dieser Server steht direkt im Netz (Let's Encrypt), nicht hinter Cloudflare: ein vom
+		# Client mitgeschickter Header wäre erfunden und würde jede Begrenzung je IP aushebeln. Stünde Caddy
+		# hinter dem Cloudflare-Proxy, diese Zeile entfernen.
+		header_up -CF-Connecting-IP
 	}
 
 	encode gzip zstd

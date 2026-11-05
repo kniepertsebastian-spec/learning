@@ -32,11 +32,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       # pdftotext für die PDF-Extraktions-Tests (Dockerfile installiert dasselbe Paket).
       - run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: npm ci
+      # Nur Warnung: ein Fund ohne verfügbare Korrektur (oder nur über ein Major-Update) soll nicht jeden Push blockieren.
+      - name: Abhängigkeiten prüfen (Warnung)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run lint:ui
       - run: npm run check:contrast

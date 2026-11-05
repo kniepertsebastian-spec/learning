@@ -18,7 +18,7 @@ Auth.js, Inhaltsgenerierung mit Google Gemini.
 
 ## Lokal entwickeln
 
-Voraussetzungen: Node.js 20, eine PostgreSQL-Instanz, `poppler-utils` (liefert `pdftotext` für die
+Voraussetzungen: Node.js 22, eine PostgreSQL-Instanz, `poppler-utils` (liefert `pdftotext` für die
 PDF-Extraktion).
 
 ```bash

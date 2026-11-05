@@ -130,6 +130,7 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    console.error("Registrierung fehlgeschlagen:", error);
     return NextResponse.json({ error: "Unerwarteter Serverfehler." }, { status: 500 });
   }
 }

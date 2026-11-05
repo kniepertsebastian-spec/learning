@@ -84,8 +84,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Kein Bind-Mount für ./public: er überdeckt das im Image gebaute public/ samt sw.js und swe-worker*.js
+    # (stehen in .gitignore, entstehen erst im Build) - ohne sie gäbe es in Produktion keinen Service Worker.
     volumes:
-      - ./public:/app/public
       - source_uploads_data:/app/data/sources
     networks:
       - learning_network
