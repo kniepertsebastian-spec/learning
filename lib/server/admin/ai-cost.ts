@@ -1,11 +1,11 @@
 import { CURRICULUM_MODEL, LESSONS_MODEL, TRANSLATION_MODEL } from "@/lib/gemini";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { contentGenerationJobs } from "@/lib/server/db/schema";
+import { aiCostEntries } from "@/lib/server/db/schema";
 
 /**
- * KI-Kosten: Preise je Modell, Kostenschätzung aus Token und das globale Budget (GEMINI_BUDGET_USD). Früher stand das in
- * content-generation.ts neben der Skript-Generierung (Kindprozess `npm run content:draft-*`); die gibt es nicht mehr,
- * Preise und Budget werden aber von der Kursgenerierung, der Werkstatt und den Übersetzungen weiter gebraucht.
+ * KI-Kosten: Preise je Modell, Kostenschätzung aus Token und das globale Budget (GEMINI_BUDGET_USD). Die einzelnen Aufrufe
+ * stehen im Kostenbuch (ai-ledger.ts); das Budget summiert es.
  */
 
 /**
@@ -80,18 +80,20 @@ export interface AiBudgetStatus {
 }
 
 /**
- * Das Budget zählt die Kosten aus `content_generation_jobs`, also die der früheren Skript-Generierung. Die Tabelle bleibt
- * als Historie bestehen, neue Zeilen kommen nicht mehr dazu: Die Summe ist seit dem Abbau konstant. Die Kosten der Kursgenerierung
- * (course_generation_jobs), der Werkstatt-Läufe und der Übersetzung fließen hier nicht ein, das war schon vorher so.
+ * Das Budget zählt alles, was die Plattform bisher für KI ausgegeben hat: das ganze Kostenbuch (alle Aufrufe aller Funktionen,
+ * dazu die aus früheren Summenfeldern übernommenen Beträge), ohne Aufrufe mit dem eigenen Schlüssel einer Firma. Es gibt kein
+ * Zeitfenster: Das Limit gilt für die Summe seit Beginn der Aufzeichnung, nicht je Monat. Aufrufe für Modelle ohne hinterlegten
+ * Preis zählen als 0 (siehe isPricingConfigured).
  */
 export async function getAiBudgetStatus(): Promise<AiBudgetStatus | null> {
   const limitUsd = Number(process.env.GEMINI_BUDGET_USD) || 0;
   if (limitUsd <= 0) return null;
 
-  const rows = await getDb()
-    .select({ estimatedCostUsd: contentGenerationJobs.estimatedCostUsd })
-    .from(contentGenerationJobs);
-  const spentUsd = rows.reduce((sum, row) => sum + Number(row.estimatedCostUsd ?? 0), 0);
+  const [row] = await getDb()
+    .select({ total: sql<string>`coalesce(sum(${aiCostEntries.costUsd}), 0)` })
+    .from(aiCostEntries)
+    .where(eq(aiCostEntries.byok, false));
+  const spentUsd = Number(row?.total ?? 0);
 
   return { limitUsd, spentUsd, exceeded: spentUsd >= limitUsd };
 }

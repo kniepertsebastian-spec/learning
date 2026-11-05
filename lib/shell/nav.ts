@@ -67,6 +67,7 @@ export type NavLabelKey =
   | "adminOverview"
   | "adminRequests"
   | "adminStats"
+  | "adminAiCosts"
   | "adminSalary"
   | "adminUi"
   | "adminReviewers"
@@ -123,6 +124,7 @@ export function navItems(context: ShellContext, opts: CompanyNavOptions = { canA
         { href: "/admin/requests", label: "adminRequests", icon: "inbox" },
         { href: "/admin/reviewers", label: "adminReviewers", icon: "users" },
         { href: "/admin/stats", label: "adminStats", icon: "chart" },
+        { href: "/admin/ai-costs", label: "adminAiCosts", icon: "layers" },
         { href: "/admin/salary", label: "adminSalary", icon: "file" },
         { href: "/admin/ui", label: "adminUi", icon: "layers" },
       ];

@@ -1,6 +1,7 @@
 import { z, type ZodType } from "zod";
 import { GoogleGenAI } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini";
+import { recordAiUsage } from "@/lib/server/admin/ai-ledger";
 
 export class AIGenerationError extends Error {
   constructor(
@@ -332,6 +333,7 @@ export async function requestJson(
       console.log(
         `USAGE model=${model} promptTokens=${promptTokens} completionTokens=${completionTokens} totalTokens=${promptTokens + completionTokens} cachedTokens=${cachedTokens}`,
       );
+      await recordAiUsage({ model, promptTokens, completionTokens, cachedTokens }, { byok: clientOverride !== undefined });
       onUsage?.({ model, promptTokens, completionTokens, cachedTokens });
 
       if (!response.text) {

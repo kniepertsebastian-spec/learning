@@ -3,6 +3,7 @@ import { isAutoTranslateEnabled, startCourseTranslation } from "@/lib/server/cou
 import { ensureCourseOverview } from "@/lib/server/course-overview/service";
 import { getCourseGenerationJob, isTerminalCourseGenerationStatus, nextSplitPartJob } from "./job-service";
 import { executeCourseGenerationJob, publishPreparedCourseGenerationPackage } from "./worker";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 /**
  * In-Prozess-Jobtracking (siehe course_generation.md Abschnitt 0: bewusst
@@ -54,7 +55,7 @@ async function startNextSplitPart(jobId: string): Promise<void> {
 
 export function startCourseGenerationJob(jobId: string): void {
   if (activeJobs.has(jobId)) return;
-  const processPromise = executeCourseGenerationJob(jobId)
+  const processPromise = withAiCost({ source: "course_generation", generationJobId: jobId }, () => executeCourseGenerationJob(jobId))
     .catch((error) => {
       // executeCourseGenerationJob() fängt und protokolliert eigene Fehler
       // bereits im Job-Datensatz (siehe handleJobFailure) - dieser Catch ist
@@ -80,7 +81,7 @@ export function startCourseGenerationJob(jobId: string): void {
  * fertige Paket, ohne die Generierung erneut zu durchlaufen. */
 export function startCourseGenerationPublish(jobId: string): void {
   if (activeJobs.has(jobId)) return;
-  const processPromise = publishPreparedCourseGenerationPackage(jobId)
+  const processPromise = withAiCost({ source: "course_generation", generationJobId: jobId }, () => publishPreparedCourseGenerationPackage(jobId))
     .catch((error) => {
       console.error(`Course generation publish ${jobId} failed outside its own error handling:`, error);
     })

@@ -50,6 +50,7 @@ import {
 } from "./ai-prompt";
 import { createCheckpoint, EditorNotFoundError, EditValidationError, getSectionForEditor, nextHumanId, readQuestion } from "./service";
 import { DIFFICULTIES, fingerprint, normalizeSection, QUESTION_TYPES, type NewQuestion, type QuestionSnapshot, type SectionSnapshot } from "./snapshots";
+import { withAiCostDefaults } from "@/lib/server/admin/ai-ledger";
 
 /**
  * KI-Nachbesserung in der Kurs-Werkstatt (roadmap3.md, Schritt 3). Grundsätze:
@@ -454,7 +455,7 @@ export async function proposeAi(certId: string, req: AiRequest, deps: { generate
     if (c !== null) costUsd = (costUsd ?? 0) + c;
   };
   const client = deps.generate ? undefined : await clientFor(cert);
-  const generate: Generate = deps.generate ?? ((system, user, schema) => generateStructured(system, user, schema, AI_EDIT_MODEL, onUsage, client));
+  const generate: Generate = deps.generate ?? ((system, user, schema) => withAiCostDefaults({ source: "workshop", certificationId: certId }, () => generateStructured(system, user, schema, AI_EDIT_MODEL, onUsage, client)));
   const instr = req.instruction || null;
 
   let proposal: AiProposal;

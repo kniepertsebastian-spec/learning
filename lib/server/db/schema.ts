@@ -1515,10 +1515,57 @@ export const recallChecks = pgTable(
   ],
 );
 
+export type AiCostSource =
+  | "course_generation"
+  | "translation"
+  | "workshop"
+  | "batch"
+  | "overview"
+  | "legacy_script"
+  | "other";
+
+/**
+ * Das Kostenbuch: eine Zeile je KI-Aufruf (lib/ai/generate.ts schreibt sie), dazu Zeilen aus der Zeit vor dem Buch
+ * (`historic`, aus den früheren Summenfeldern übernommen, ohne Token). Einzige Quelle für „was hat die KI insgesamt
+ * gekostet“ und „was hat welcher Kurs gekostet“ (lib/server/admin/ai-ledger.ts) sowie für das Budget GEMINI_BUDGET_USD.
+ *
+ * Bewusst ohne Kaskade am Kurs: Wird ein Kurs gelöscht, bleibt das ausgegebene Geld in der Summe (`certification_id` wird
+ * NULL). Aufrufe der Kursgenerierung tragen zusätzlich die Auftrags-ID; der Kurs ergibt sich dann aus dem Auftrag
+ * (`result_certification_id`), denn beim Generieren gibt es den Kurs noch nicht.
+ */
+export const aiCostEntries = pgTable(
+  "ai_cost_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    source: text("source").$type<AiCostSource>().notNull(),
+    /** Feinere Angabe zur Quelle, z. B. die Art des Sammellaufs („stale“). */
+    detail: text("detail"),
+    certificationId: uuid("certification_id").references(() => certifications.id, { onDelete: "set null" }),
+    generationJobId: uuid("generation_job_id").references(() => courseGenerationJobs.id, { onDelete: "set null" }),
+    model: text("model"),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    cachedTokens: integer("cached_tokens").notNull().default(0),
+    /** Geschätzt aus Token und Preis (estimateCostUsd). NULL = für das Modell ist kein Preis hinterlegt: zählt als 0, wird aber gemeldet. */
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6 }),
+    /** Aufruf mit dem eigenen Schlüssel einer Firma (BYOK): kostet die Firma, nicht die Plattform, und zählt nicht ins Budget. */
+    byok: boolean("byok").notNull().default(false),
+    /** Aus einem früheren Summenfeld übernommen (Migration 0112), nicht aus einem einzelnen Aufruf. */
+    historic: boolean("historic").notNull().default(false),
+  },
+  (table) => [
+    index("ai_cost_entries_certification_idx").on(table.certificationId),
+    index("ai_cost_entries_generation_job_idx").on(table.generationJobId),
+    index("ai_cost_entries_created_idx").on(table.createdAt),
+    check("ai_cost_entries_source_check", sql`${table.source} in ('course_generation', 'translation', 'workshop', 'batch', 'overview', 'legacy_script', 'other')`),
+  ],
+);
+
 /**
  * Historie der früheren Skript-Generierung (die Admin-Oberfläche startete `npm run content:draft-*` als Kindprozess).
- * Dieser Weg ist abgebaut, es schreibt niemand mehr in die Tabelle. Sie bleibt, weil `getAiBudgetStatus()`
- * (lib/server/admin/ai-cost.ts) die Kosten der alten Zeilen summiert und die Zeilen zum Kurs gehören (Löschen eines Kurses).
+ * Dieser Weg ist abgebaut, es schreibt niemand mehr in die Tabelle. Die Kosten der alten Zeilen stehen seit Migration 0112
+ * zusätzlich in `ai_cost_entries` (historic = true); die Tabelle selbst bleibt, weil die Zeilen zum Kurs gehören (Löschen eines Kurses).
  */
 export const contentGenerationJobs = pgTable(
   "content_generation_jobs",

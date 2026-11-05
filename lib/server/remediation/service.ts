@@ -14,6 +14,7 @@ import {
   checkRemediationGenerationRateLimit,
   checkRemediationRegenerateCooldown,
 } from "@/lib/server/admin/rate-limit";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 /** Kontingent bzw. Abklingzeit für KI-Generierung überschritten. */
 export class RemediationRateLimitError extends Error {
@@ -136,11 +137,11 @@ export class RemediationService {
     const objData = obj[0];
 
     // Generate remediation content via AI - the ONE call for this session
-    const remediation = await generateRemediationForObjective(
+    const remediation = await withAiCost({ source: "other", detail: "remediation" }, () => generateRemediationForObjective(
       objData.certificationName,
       objData.title,
       objData.description || "",
-    );
+    ));
 
     const sessionInserted = await db
       .insert(remediationSessions)

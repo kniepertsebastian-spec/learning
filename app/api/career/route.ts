@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/server/auth-guards";
 import { CareerLimitError, CareerProfileError, getCareerView, refreshCareerPaths } from "@/lib/server/career/service";
 import { getServerLocale } from "@/lib/server/locale";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -19,7 +20,7 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const locale = await getServerLocale();
   try {
-    await refreshCareerPaths(user.id, locale);
+    await withAiCost({ source: "other", detail: "career" }, () => refreshCareerPaths(user.id, locale));
   } catch (error) {
     if (error instanceof CareerProfileError) return NextResponse.json({ error: error.message }, { status: 422 });
     if (error instanceof CareerLimitError) return NextResponse.json({ error: error.message }, { status: 429 });

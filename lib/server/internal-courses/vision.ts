@@ -1,6 +1,7 @@
 import type { GoogleGenAI } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini";
 import type { AIUsage } from "@/lib/ai/generate";
+import { recordAiUsage } from "@/lib/server/admin/ai-ledger";
 
 /** Beschreibt einen Screenshot als Text (Bild + MIME-Typ rein, Text raus). */
 export type ImageDescriber = (image: { mimeType: string; data: Buffer; filename: string }) => Promise<string>;
@@ -28,7 +29,9 @@ export function createImageDescriber(model: string, client?: GoogleGenAI, onUsag
       config: { systemInstruction: VISION_SYSTEM_PROMPT, temperature: 0.1, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } },
     });
     const usage = response.usageMetadata;
-    onUsage?.({ model, promptTokens: usage?.promptTokenCount ?? 0, completionTokens: usage?.candidatesTokenCount ?? 0 });
+    const used = { model, promptTokens: usage?.promptTokenCount ?? 0, completionTokens: usage?.candidatesTokenCount ?? 0 };
+    await recordAiUsage(used, { byok: client !== undefined });
+    onUsage?.(used);
     return (response.text ?? "").trim();
   };
 }

@@ -47,6 +47,7 @@ import { createRegenerationGenerator, estimateObjectiveTokens, regenerateStaleCo
 import { backfillPossible, lessonsNeedingPossible } from "./possible-backfill";
 import { getCourseReport, type Improvement, type ImprovementKind } from "./report";
 import { createQuestion, editableCourse, saveQuestion, saveSection } from "./service";
+import { withAiCost } from "@/lib/server/admin/ai-ledger";
 
 export const BATCH_KINDS = ["quality", "simulations", "concepts", "variants", "explanations", "prerequisites", "formats", "rationales", "blocks", "possible", "stale"] as const;
 
@@ -525,7 +526,7 @@ async function executeQuality(run: Row, userId: string | null, params: QualityPa
       if (budget?.exceeded) { aborted = true; break; }
     }
     try {
-      const proposal = await proposeAi(certId, task.request, { generate: deps.generate });
+      const proposal = await withAiCost({ source: "batch", detail: run.kind, certificationId: certId }, () => proposeAi(certId, task.request, { generate: deps.generate }));
       counts.costUsd = (counts.costUsd ?? 0) + (proposal.costUsd ?? 0);
       const applied = await applyProposal(certId, proposal, userId);
       streak = 0;
@@ -564,7 +565,7 @@ async function executeSimulations(run: Row, userId: string | null, deps: BatchDe
     const usage = { prompt: 0, completion: 0 };
     const generator = deps.simulationGenerator ?? createSimulationGenerator(await clientFor(course), (u) => { usage.prompt += u.promptTokens; usage.completion += u.completionTokens; });
     const base = { ...counts };
-    const result = await backfillSimulations(course.id, generator, {
+    const result = await withAiCost({ source: "batch", detail: run.kind, certificationId: course.id }, () => backfillSimulations(course.id, generator, {
       usage,
       shouldStop: () => cancelled(run.id),
       onProgress: (c) => {
@@ -576,7 +577,7 @@ async function executeSimulations(run: Row, userId: string | null, deps: BatchDe
           costUsd: String((base.costUsd ?? 0) + (c.costUsd ?? 0)),
         });
       },
-    });
+    }));
     counts.processed += result.added + result.unsuitable + result.failed;
     counts.applied += result.added;
     counts.skipped += result.unsuitable;
@@ -601,10 +602,10 @@ async function executeConcepts(run: Row, userId: string | null, deps: BatchDeps)
     }
     const tagger = deps.conceptTagger ?? createConceptTagger(await clientFor(course));
     const base = { ...counts };
-    const result = await tagCourseConcepts(course.id, tagger, {
+    const result = await withAiCost({ source: "batch", detail: run.kind, certificationId: course.id }, () => tagCourseConcepts(course.id, tagger, {
       shouldStop: () => cancelled(run.id),
       onProgress: (c) => void patch(run.id, { processed: base.processed + c.objectives + c.failed, applied: base.applied + c.objectives, failed: base.failed + c.failed }),
-    });
+    }));
     counts.processed += result.objectives + result.failed;
     counts.applied += result.objectives;
     counts.failed += result.failed;
@@ -630,11 +631,11 @@ async function perCourse(
       if (budget?.exceeded) { aborted = true; break; }
     }
     const base = { ...counts };
-    const result = await work(
+    const result = await withAiCost({ source: "batch", detail: run.kind, certificationId: course.id }, () => work(
       course,
       (c) => void patch(run.id, { processed: base.processed + c.processed, applied: base.applied + c.applied, skipped: base.skipped + (c.skipped ?? 0), failed: base.failed + c.failed }),
       () => cancelled(run.id),
-    );
+    ));
     counts.processed += result.processed;
     counts.applied += result.applied;
     counts.skipped += result.skipped ?? 0;
@@ -694,7 +695,7 @@ async function executeFormats(run: Row, userId: string | null, deps: BatchDeps) 
         await ensureAiCheckpoint(task.certId, userId);
         checkpointed.add(task.certId);
       }
-      const proposal = await proposeAi(task.certId, { target: "objective", id: task.objectiveId, action: "add_format_questions", count: FORMAT_QUESTIONS_PER_OBJECTIVE }, { generate: deps.generate });
+      const proposal = await withAiCost({ source: "batch", detail: run.kind, certificationId: task.certId }, () => proposeAi(task.certId, { target: "objective", id: task.objectiveId, action: "add_format_questions", count: FORMAT_QUESTIONS_PER_OBJECTIVE }, { generate: deps.generate }));
       counts.costUsd = (counts.costUsd ?? 0) + (proposal.costUsd ?? 0);
       const applied = await applyProposal(task.certId, proposal, userId);
       streak = 0;
