@@ -218,12 +218,12 @@ Begleitend ohne Code: Backup-Betrieb prüfen (`roadmap_datenintegritaet.md`, Pha
 
 ## Stufe 5 – Nach Bedarf
 
-- [ ] Wirkung messen, restliche Punkte (`roadmap_didaktik.md`, Phase 7): Export nach Feature-Flags, Readiness gegen Prüfungsergebnis; sobald genug Prüfungsergebnisse vorliegen
-- [ ] Web Push (`roadmap_pwa.md`, Phase 6), sinnvoll zusammen mit PSRP-HR-Erinnerungszeiten
+- [ ] Wirkung messen, restliche Punkte (`roadmap_didaktik.md`, Phase 7): Export nach Feature-Flags, Readiness gegen Prüfungsergebnis; sobald genug Prüfungsergebnisse vorliegen. Teilweise: Bereitschaft gegen Prüfungsergebnis und Behaltensquote je Flag stehen im Wirkungsbericht unter `/admin/impact` (#189); es fehlen Bestehens- und Abbruchquote je Flag
+- [x] Web Push (`roadmap_pwa.md`, Phase 6), sinnvoll zusammen mit PSRP-HR-Erinnerungszeiten (#187: Erinnerungszeit aus `review_log.local_hour`)
 - [ ] Didaktik „Später“ (`roadmap_didaktik.md`, Phase 11)
 - [ ] Motivation messen (`roadmap_motivation.md`, Phase 10): Kennzahlen zu Abbruch, Rückkehr und Abschluss gibt es jetzt im Export (Abschnitt `engagement`, siehe `docs/WIEDERHOLUNGSPLANUNG.md`); Ausgangswerte und Vergleich je Flag per `npm run psrp:baseline` (siehe `docs/MESSEN.md`); offen: Ziele festlegen (erst nach den ersten Daten), Reaktivierung zusätzlich per Push
 - [x] Nachträge für bestehende Kurse: Varianten, Alternativerklärungen, Voraussetzungen, Formatfragen, Begründungen, Lernblöcke und „Was damit möglich ist“ laufen als Sammelläufe in der Kurs-Werkstatt und für alle Kurse im Adminbereich (siehe `docs/ANTWORTFORMATE.md`)
-- [ ] Qualität der Prüfer im Betrieb (`roadmap_pruefer.md`, Phase 6): Kennzahlen je Prüfer, Zweitprüfung als Stichprobe, Wiedervorlage bei neuer Prüfungsversion; sobald freigegebene Kurse Nutzer haben
+- [x] Qualität der Prüfer im Betrieb (`roadmap_pruefer.md`, Phase 6): Kennzahlen je Prüfer, Zweitprüfung als Stichprobe, Wiedervorlage bei neuer Prüfungsversion; sobald freigegebene Kurse Nutzer haben (#188)
 
 ---
 
