@@ -4,7 +4,7 @@ import { generateStructured, type AIUsage } from "@/lib/ai/generate";
 import { CURRICULUM_MODEL } from "@/lib/gemini";
 import { extractSimulationSources } from "@/lib/markdown/simulation";
 import { repairLearningBlocks, validateLearningBlocks } from "@/lib/markdown/validate";
-import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/ai-cost";
 import { shuffleOptions } from "@/lib/server/course-generation/variety";
 import { MAX_ACCEPTED_ANSWERS, MAX_MATCHING_PAIRS, MAX_ORDERING_STEPS, normalizeShortAnswer, validateAnswerData, type AnswerData } from "@/lib/questions/answer-formats";
 import { clientFor } from "@/lib/server/course-translation/service";

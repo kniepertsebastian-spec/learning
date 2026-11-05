@@ -6,7 +6,7 @@ import { LESSONS_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import { domains, lessons, objectives, sections } from "@/lib/server/db/schema";
 import { SIMULATION_PROMPT } from "@/lib/server/course-generation/providers";
-import { estimateCostUsd } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import { replaceLessonContent } from "@/lib/server/course-editor/service";
 import { parseSimulation, simulationSkeleton, SIMULATION_LANG } from "@/lib/markdown/simulation";
 import type { LessonText } from "./blocks-backfill";

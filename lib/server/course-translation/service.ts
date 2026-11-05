@@ -6,7 +6,7 @@ import { recordQuestionRevision, recordSectionRevision } from "@/lib/server/cour
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains, lessons, objectives, questionOptions, questions, sections } from "@/lib/server/db/schema";
 import { translatableAnswerTexts, withTranslatedAnswerTexts, type AnswerData } from "@/lib/questions/answer-formats";
-import { estimateCostUsd } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import { AiAccessUnavailableError, clientForOrganization } from "@/lib/server/internal-courses/ai-client";
 import type { Locale, Localized } from "@/lib/types";
 import {

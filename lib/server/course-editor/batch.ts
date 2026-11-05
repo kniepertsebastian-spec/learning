@@ -18,7 +18,7 @@
 import { and, asc, desc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import { LESSONS_MODEL } from "@/lib/gemini";
-import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd, getAiBudgetStatus } from "@/lib/server/admin/ai-cost";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { clientFor } from "@/lib/server/course-translation/service";
 import { getDb } from "@/lib/server/db/client";

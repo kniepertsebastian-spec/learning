@@ -12,7 +12,7 @@ import { generateStructured } from "@/lib/ai/generate";
 import { localizedStringSchema } from "@/lib/ai/schemas";
 import { LESSONS_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
-import { estimateCostUsd } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import { domains, itemVariants, objectives, probeVariants, questionOptions, questions } from "@/lib/server/db/schema";
 import { MAX_SURFACE_SIMILARITY, similarity, validateVariant } from "@/lib/server/psrp/concepts";
 

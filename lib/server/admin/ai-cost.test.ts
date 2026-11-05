@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CURRICULUM_MODEL } from "@/lib/gemini";
-import { classifyGenerationError, estimateCostUsd } from "./content-generation";
+import { estimateCostUsd } from "./ai-cost";
 
 /**
  * CURRICULUM_MODEL und LESSONS_MODEL fallen beide auf dasselbe reale
@@ -23,80 +23,13 @@ async function withDistinctLessonsModel<T>(
     const { CURRICULUM_MODEL: curriculumModel, LESSONS_MODEL: lessonsModel } = await import(
       "@/lib/gemini"
     );
-    const { estimateCostUsd: freshEstimateCostUsd } = await import("./content-generation");
+    const { estimateCostUsd: freshEstimateCostUsd } = await import("./ai-cost");
     return await fn({ curriculumModel, lessonsModel, estimateCostUsd: freshEstimateCostUsd });
   } finally {
     vi.unstubAllEnvs();
     vi.resetModules();
   }
 }
-
-describe("classifyGenerationError", () => {
-  it("classifies an exhausted daily quota as 'quota', not just 'rate_limit'", () => {
-    const output =
-      'RateLimitError: 429 {"type":"error","error":{"type":"rate_limit_error",' +
-      '"message":"This request would exceed your organization\'s tokens per day limit"}}';
-    expect(classifyGenerationError(output)).toBe("quota");
-  });
-
-  it("classifies a short-term 429 without daily-quota wording as 'rate_limit'", () => {
-    const output =
-      'RateLimitError: 429 {"type":"error","error":{"type":"rate_limit_error","message":"Number of request tokens has exceeded your per-minute rate limit"}}';
-    expect(classifyGenerationError(output)).toBe("rate_limit");
-  });
-
-  it("classifies a schema-validation failure as 'schema'", () => {
-    expect(
-      classifyGenerationError(
-        "AIGenerationError: KI-Antwort entspricht nicht dem erwarteten Schema: invalid type",
-      ),
-    ).toBe("schema");
-    expect(
-      classifyGenerationError("AIGenerationError: KI-Antwort konnte nicht als JSON geparst werden."),
-    ).toBe("schema");
-  });
-
-  it("classifies a 5xx or network failure as 'provider_outage'", () => {
-    expect(
-      classifyGenerationError(
-        'InternalServerError: 529 {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}',
-      ),
-    ).toBe("provider_outage");
-    expect(classifyGenerationError("FetchError: fetch failed (ECONNRESET)")).toBe(
-      "provider_outage",
-    );
-  });
-
-  it("classifies the Anthropic SDK's native structured-output parse failure as 'schema', not 'provider_outage'", () => {
-    // Realer Fehlerfall: eine Stacktrace-Zeilennummer wie
-    // "MessageStream.ts:505:43" traf zuvor auf den (mittlerweile entfernten)
-    // bare-\b5\d\d\b-Check und klassifizierte einen Zod-Validierungsfehler
-    // fälschlich als "provider_outage" ("KI-Anbieter nicht erreichbar").
-    const output =
-      'AnthropicError: Failed to parse structured output: Error: Failed to parse structured output: [...]\n' +
-      "    at parseOutputFormat (/app/node_modules/@anthropic-ai/sdk/src/lib/parser.ts:123:11)\n" +
-      "    at MessageStream._MessageStream_addStreamEvent (/app/node_modules/@anthropic-ai/sdk/src/lib/MessageStream.ts:505:43)";
-    expect(classifyGenerationError(output)).toBe("schema");
-  });
-
-  it("does not misclassify a bare 3-digit stacktrace line number as a rate limit or outage", () => {
-    expect(
-      classifyGenerationError("TypeError: x is not a function\n    at foo (/app/bar.ts:429:12)"),
-    ).toBe("internal");
-    expect(
-      classifyGenerationError("TypeError: x is not a function\n    at foo (/app/bar.ts:503:12)"),
-    ).toBe("internal");
-  });
-
-  it("falls back to 'internal' for anything else", () => {
-    expect(classifyGenerationError("TypeError: Cannot read properties of undefined")).toBe(
-      "internal",
-    );
-    expect(
-      classifyGenerationError("GeminiConfigError: GEMINI_API_KEY ist nicht gesetzt"),
-    ).toBe("internal");
-  });
-});
 
 describe("estimateCostUsd", () => {
   const ENV_KEYS = [

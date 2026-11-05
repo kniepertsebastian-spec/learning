@@ -176,43 +176,8 @@ export function createSonnetBlueprintProvider(client?: GoogleGenAI): BlueprintPr
 }
 export const anthropicSonnetBlueprintProvider: BlueprintProvider = createSonnetBlueprintProvider();
 
-/**
- * Abschnitt 3.2-3.3/13: die eigentliche, kostenlose (innerhalb des
- * Claude-Pro-Kontingents) Blueprint-Erzeugung über eine Claude-Code-Cloud-
- * Routine. Technisch entspricht das einer über die claude-code-remote-
- * MCP-Werkzeuge erstellten Routine (siehe course_generation.md Abschnitt 0),
- * die bei Auslösung `GET /api/internal/course-generation/:id/request`
- * abruft und ihr Ergebnis an `POST .../blueprint` zurückgibt (Abschnitt 7).
- *
- * Absichtlich NICHT in dieser Session eingerichtet: das erfordert einen
- * echten, öffentlich erreichbaren Callback-Endpunkt (dieser Dev-Sandbox ist
- * nicht öffentlich erreichbar) sowie CLAUDE_ROUTINE_TRIGGER_URL/_TOKEN, die
- * erst nach dem eigentlichen Deployment sinnvoll gesetzt werden können - das
- * Anlegen einer produktiven Routine/von Secrets ohne konkrete
- * Ziel-Infrastruktur wäre eine Konsequenzhandlung ohne Nutzen. Wirft daher
- * bewusst einen klaren Fehler statt eines stillen Fallbacks, bis
- * CLAUDE_ROUTINE_TRIGGER_URL konfiguriert ist.
- */
-export const routineBlueprintProvider: BlueprintProvider = {
-  name: "claude-routine-sonnet",
-  model: "claude-sonnet-5",
-  async generateBlueprint() {
-    if (!process.env.CLAUDE_ROUTINE_TRIGGER_URL) {
-      throw new Error(
-        "BLUEPRINT_PROVIDER=claude-routine-sonnet erfordert CLAUDE_ROUTINE_TRIGGER_URL/CLAUDE_ROUTINE_TRIGGER_TOKEN " +
-          "(siehe course_generation.md Abschnitt 14) - noch nicht konfiguriert. Nutze BLUEPRINT_PROVIDER=anthropic-sonnet, " +
-          "bis die Routine eingerichtet ist.",
-      );
-    }
-    throw new Error(
-      "Routine-Trigger ist konfiguriert, aber der HTTP-Aufruf ist noch nicht implementiert (Phase 4 Folgearbeit).",
-    );
-  },
-};
-
 export function resolveBlueprintProvider(name: string): BlueprintProvider {
   if (name === anthropicSonnetBlueprintProvider.name) return anthropicSonnetBlueprintProvider;
-  if (name === routineBlueprintProvider.name) return routineBlueprintProvider;
   throw new Error(`Unbekannter BlueprintProvider "${name}".`);
 }
 

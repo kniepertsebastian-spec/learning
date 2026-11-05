@@ -1,6 +1,6 @@
 import { raiseQuestionTargets } from "@/lib/chapters/logic";
 import { isRetryableError, type AIUsage } from "@/lib/ai/generate";
-import { estimateCostUsd } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import {
   createSplitPartJobs,
   getCourseGenerationJob,

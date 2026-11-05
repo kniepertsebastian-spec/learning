@@ -7,7 +7,7 @@ import { LESSONS_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import { domains, lessons, objectives, sections } from "@/lib/server/db/schema";
 import { LEARNING_BLOCKS_PROMPT } from "@/lib/server/course-generation/providers";
-import { estimateCostUsd } from "@/lib/server/admin/content-generation";
+import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import { replaceLessonContent } from "@/lib/server/course-editor/service";
 import { validateLearningBlocks } from "@/lib/markdown/validate";
 

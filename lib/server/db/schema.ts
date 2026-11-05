@@ -30,8 +30,8 @@ export type AgeRange = (typeof AGE_RANGES)[number];
 export const EVALUATION_GROUPS = ["vanilla", "planning", "planning_state"] as const;
 export type EvaluationGroup = (typeof EVALUATION_GROUPS)[number];
 
-/** R0.1 (roadmap.md): Fehlerklassen für content_generation_jobs, siehe
- * classifyGenerationError() in lib/server/admin/content-generation.ts. */
+/** R0.1 (roadmap.md): Fehlerklassen für content_generation_jobs. Vergeben hat sie classifyGenerationError() der früheren
+ * Skript-Generierung (entfernt); die Spalte bleibt für die alten Zeilen. */
 export type GenerationErrorClass =
   | "schema"
   | "rate_limit"
@@ -472,8 +472,8 @@ export const questionOptions = pgTable("question_options", {
  * akzeptierter Frage" - ein Snapshot statt einer Historie: das erzeugende
  * Skript (scripts/generate-lessons-and-questions.ts) kennt keine
  * content_generation_jobs-ID (läuft auch völlig eigenständig per CLI, ohne
- * Job-Kontext - siehe runNpmScript() in lib/server/admin/content-generation.ts,
- * das keine Job-ID an den Kindprozess weiterreicht), daher Zuordnung über
+ * Job-Kontext; auch als die Admin-Oberfläche es noch als Kindprozess
+ * startete, bekam das Skript keine Job-ID), daher Zuordnung über
  * objectiveId statt jobId. Ein erneuter Lauf überschreibt den Snapshot
  * (ON CONFLICT), passend dazu, dass eine Regenerierung den vorherigen
  * Lernstoff der Section/des Objectives ohnehin ersetzt (siehe R1.5). Die
@@ -1516,6 +1516,11 @@ export const recallChecks = pgTable(
   ],
 );
 
+/**
+ * Historie der früheren Skript-Generierung (die Admin-Oberfläche startete `npm run content:draft-*` als Kindprozess).
+ * Dieser Weg ist abgebaut, es schreibt niemand mehr in die Tabelle. Sie bleibt, weil `getAiBudgetStatus()`
+ * (lib/server/admin/ai-cost.ts) die Kosten der alten Zeilen summiert und die Zeilen zum Kurs gehören (Löschen eines Kurses).
+ */
 export const contentGenerationJobs = pgTable(
   "content_generation_jobs",
   {
@@ -1532,19 +1537,16 @@ export const contentGenerationJobs = pgTable(
     progress: integer("progress").notNull().default(0),
     message: text("message"),
     error: text("error"),
-    /** R0.1 (roadmap.md): grobe Fehlerklasse für die Admin-UI, siehe
-     * classifyGenerationError() in content-generation.ts. */
+    /** R0.1 (roadmap.md): grobe Fehlerklasse für die Admin-UI (früher von classifyGenerationError() vergeben). */
     errorClass: text("error_class").$type<GenerationErrorClass>(),
     /** R6 (roadmap.md): "Modell, Tokenverbrauch und geschätzte Kosten pro
-     * Job" - läuft über den kompletten Job (curriculum + lessons Skript,
-     * beide als Kindprozess, siehe runNpmScript() in content-generation.ts)
-     * hoch, nicht erst am Ende: bei einem Absturz mitten im Job bleibt der
+     * Job" - lief über den kompletten Job (curriculum + lessons Skript,
+     * beide als Kindprozess der Admin-Oberfläche) hoch, nicht erst am Ende: bei einem Absturz mitten im Job bleibt der
      * bis dahin tatsächlich verbrauchte Verbrauch erhalten (jede
      * `USAGE`-Zeile aus lib/ai/generate.ts aktualisiert die Zeile sofort).
      * Curriculum- und Lessons-Phase nutzen unterschiedliche Claude-Modelle
      * (siehe lib/gemini.ts) - `model` listet alle in diesem Job tatsächlich
-     * verwendeten Modelle kommagetrennt, siehe trackUsageLine() in
-     * content-generation.ts. */
+     * verwendeten Modelle kommagetrennt. */
     model: text("model"),
     promptTokens: integer("prompt_tokens").notNull().default(0),
     completionTokens: integer("completion_tokens").notNull().default(0),
@@ -2116,10 +2118,8 @@ export const courseGenerationJobs = pgTable(
     phase: text("phase").notNull().default("queued"),
     message: text("message"),
     blueprintProvider: text("blueprint_provider").notNull(),
-    /** Abschnitt 6: "routineSessionUrl" - erst befüllt, sobald ein
-     * BlueprintProvider tatsächlich eine Claude-Code-Cloud-Routine auslöst
-     * (siehe providers.ts::routineBlueprintProvider) - bleibt NULL beim
-     * aktuell aktiven anthropic-sonnet-Provider. */
+    /** Abschnitt 6: "routineSessionUrl" - war für einen Blueprint-Provider gedacht, der eine Claude-Code-Cloud-Routine auslöst.
+     * Den gibt es nicht mehr (der Platzhalter wurde entfernt); die Spalte bleibt, immer NULL. */
     routineSessionUrl: text("routine_session_url"),
     blueprintJson: jsonb("blueprint_json").$type<Record<string, unknown>>(),
     packageJson: jsonb("package_json").$type<Record<string, unknown>>(),
