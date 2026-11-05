@@ -247,11 +247,11 @@ run("E-Mail-Bestätigung, Passwort-Reset, Versand (echte DB + SMTP-Testserver)",
       const token = await createAccountToken(id, "reset_password");
       expect((await resetRoute(post({ token, newPassword: "kurz" }))).status).toBe(400);
       expect((await resetRoute(post({ token, newPassword: "ä".repeat(40) }))).status).toBe(400); // > 72 Byte
-      const invalid = await resetRoute(post({ token: "x".repeat(43), newPassword: "gutes-passwort-1" }));
+      const invalid = await resetRoute(post({ token: "x".repeat(43), newPassword: "Gutes-passwort-1" }));
       expect(invalid.status).toBe(400);
       expect((await invalid.json()).error).toMatch(/ungültig oder abgelaufen/);
-      expect((await resetRoute(post({ token, newPassword: "gutes-passwort-1" }))).status).toBe(200);
-      expect((await resetRoute(post({ token, newPassword: "gutes-passwort-2" }))).status).toBe(400);
+      expect((await resetRoute(post({ token, newPassword: "Gutes-passwort-1" }))).status).toBe(200);
+      expect((await resetRoute(post({ token, newPassword: "Gutes-passwort-2" }))).status).toBe(400);
     });
   });
 
