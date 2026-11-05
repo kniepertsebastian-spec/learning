@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "../lib/server/db/client";
 import { certifications, courseApprovals, domains, objectives, questions, secondReviews, users } from "../lib/server/db/schema";
-import { COURSE_SLUG, USERS } from "./global-setup";
+import { USERS } from "./global-setup";
 import { expect, login, test } from "./fixtures";
 
 test("Zweitprüfung: der zugewiesene Prüfer urteilt, „stimmt nicht“ braucht eine Begründung, die Abweichung steht beim Admin", async ({ page, gateway }) => {
