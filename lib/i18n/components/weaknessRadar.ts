@@ -6,6 +6,7 @@ const texts = {
     worthReviewing: "Hier lohnt sich Nachbereitung",
     fromYourDoesItStick: "Aus deinen „Sitzt das?“-Quizzes. Zählt je Frage die letzte Antwort.",
     n0Of1QuestionsLast: "{0} von {1} Fragen zuletzt falsch beantwortet",
+    viewAll: "Alle Schwachstellen ansehen",
   },
   en: {
     weaknessRadar: "Weakness radar",
@@ -13,6 +14,7 @@ const texts = {
     worthReviewing: "Worth reviewing",
     fromYourDoesItStick: "From your “Does it stick?” quizzes. Counts the latest answer per question.",
     n0Of1QuestionsLast: "{0} of {1} questions last answered wrong",
+    viewAll: "View all weak spots",
   },
 } as const;
 

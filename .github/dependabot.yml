@@ -25,9 +25,12 @@ updates:
         update-types: ["version-update:semver-major"]
       # Das Binding 0.6 liefert 34 Gewichte (FSRS-7), das Projekt rechnet mit FSRS-6 und 21 Gewichten (ts-fsrs/models/fsrs-6,
       # Tabelle user_fsrs_params). Patch-Updates der 0.5er-Reihe laufen weiter. Der Umstieg auf FSRS-7 ist eine eigene
-      # Entscheidung: andere Gewichte, Neuaufbau des Gedächtnisstands aus dem review_log, Node 24.
+      # Entscheidung: andere Gewichte und Neuaufbau des Gedächtnisstands aus dem review_log.
       - dependency-name: "@open-spaced-repetition/binding"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      # Die Typen folgen der Node-Version der CI und des Dockerfiles; der Major-Sprung kommt mit ihr (siehe docker unten).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       # Beides ist in package.json exakt gepinnt und muss zusammen auf dieselbe Version.
       next:
