@@ -62,11 +62,12 @@ let warned = false;
 /**
  * Hält einen KI-Aufruf fest. Wirft nie: Ein Fehler beim Verbuchen darf den Aufruf, der gerade Geld gekostet hat und dessen
  * Ergebnis gebraucht wird, nicht scheitern lassen (er wird einmal gemeldet). `byok`: der Aufruf lief mit dem Schlüssel einer Firma.
+ * `batch`: der Aufruf lief über die Batch-API und wird zum Batch-Preis geschätzt (GEMINI_BATCH_PRICE_FACTOR).
  */
-export async function recordAiUsage(usage: AIUsage, options: { byok?: boolean } = {}): Promise<void> {
+export async function recordAiUsage(usage: AIUsage, options: { byok?: boolean; batch?: boolean } = {}): Promise<void> {
   try {
     const context = storage.getStore();
-    const cost = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model, usage.cachedTokens ?? 0);
+    const cost = estimateCostUsd(usage.promptTokens, usage.completionTokens, usage.model, usage.cachedTokens ?? 0, { batch: options.batch });
     await getDb()
       .insert(aiCostEntries)
       .values({

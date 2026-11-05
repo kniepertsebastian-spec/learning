@@ -3735,3 +3735,40 @@ export const aiBatchRuns = pgTable(
     uniqueIndex("ai_batch_runs_one_running_all").on(table.kind).where(sql`${table.status} = 'running' and ${table.certificationId} is null`),
   ],
 );
+
+export type GeminiBatchKind = "tagging";
+export type GeminiBatchStatus = "submitted" | "applying" | "done" | "failed";
+
+/**
+ * Aufträge an die Gemini Batch API (lib/ai/batch.ts): Google antwortet asynchron, bis zu 24 Stunden später. Die Zeile hält fest,
+ * was eingereicht wurde und was zum Auswerten nötig ist (`payload`), damit ein Neustart des Servers nichts verliert. Ein
+ * Hintergrundlauf (lib/server/ai-batch) fragt offene Aufträge ab und verarbeitet die Antworten. Nicht zu verwechseln mit
+ * `ai_batch_runs`: das sind die Sammelläufe der Werkstatt (einzelne Aufrufe nacheinander).
+ */
+export const geminiBatchJobs = pgTable(
+  "gemini_batch_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").$type<GeminiBatchKind>().notNull(),
+    certificationId: uuid("certification_id").notNull().references(() => certifications.id, { onDelete: "cascade" }),
+    /** Name des Auftrags bei Google („batches/…“). */
+    geminiName: text("gemini_name").notNull(),
+    model: text("model").notNull(),
+    status: text("status").$type<GeminiBatchStatus>().notNull().default("submitted"),
+    /** Je Art, was zum Auswerten gebraucht wird (Tagging: die Eingaben je Lernziel). */
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    requestCount: integer("request_count").notNull(),
+    message: text("message"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Lebenszeichen: ein „applying“-Auftrag ohne Lebenszeichen wurde beim Verarbeiten unterbrochen und wird neu aufgenommen. */
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("gemini_batch_jobs_name_unique").on(table.geminiName),
+    index("gemini_batch_jobs_status_idx").on(table.status, table.submittedAt),
+    index("gemini_batch_jobs_certification_idx").on(table.certificationId),
+    check("gemini_batch_jobs_kind_check", sql`${table.kind} in ('tagging')`),
+    check("gemini_batch_jobs_status_check", sql`${table.status} in ('submitted', 'applying', 'done', 'failed')`),
+  ],
+);

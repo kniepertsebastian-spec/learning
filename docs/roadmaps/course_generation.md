@@ -1046,9 +1046,28 @@ teure Teil, deshalb setzen die Maßnahmen vor allem dort an.
 - **Implizites Caching.** Der Systemprompt geht als `systemInstruction` an Gemini und hängt nur vom Kurs ab, die
   Quellenausschnitte stehen vor den lernzielspezifischen Angaben. Gleiche Anfänge rechnet Gemini zum Cache-Preis ab;
   die Kostenschätzung berücksichtigt `cachedContentTokenCount` (Faktor `GEMINI_CACHED_PROMPT_PRICE_FACTOR`, Standard 0,1).
-- **Batch-Modus: noch nicht umgesetzt.** Die Gemini Batch API rechnet laut Google etwa den halben Preis ab, liefert aber
-  asynchron (bis 24 h). Sinnvoll für die Massengenerierung nach dem Canary; dafür muss der Worker Aufträge einreichen,
-  den Lauf über Neustarts hinweg abfragen und Canary/Circuit Breaker darauf umstellen. Eigenes Arbeitspaket.
+- **Batch-Modus (nur Konzept-Tagging, Stand November 2026, hinter `GEMINI_BATCH=1`).** Die Gemini Batch API rechnet laut
+  Google etwa den halben Preis ab, liefert aber asynchron (Ziel: 24 h). Genutzt wird sie dort, wo niemand wartet: Das
+  Konzept-Tagging nach der Veröffentlichung (`tagConceptsAfterGeneration`) reicht alle ungetaggten Lernziele eines Kurses als
+  Auftrag ein (`lib/ai/batch.ts`, `lib/server/ai-batch/tagging.ts`; bei mehr als 200 Anfragen oder 5 MB mehrere Aufträge).
+  Der Auftrag steht in `gemini_batch_jobs`; ein Hintergrundlauf (`lib/server/ai-batch/service.ts`, alle 5 Minuten, gestartet
+  in `instrumentation.ts`) fragt ihn ab und verarbeitet die Antworten wie im Live-Weg (Schema, `buildTaggingPlan`, `savePlan`).
+  Fehlt eine Antwort oder ist sie ungültig, geht dieses Lernziel einzeln über den Live-Aufruf; scheitert der ganze Auftrag
+  oder lehnt Google die Einreichung ab, läuft das Tagging wie bisher einzeln. Die Voraussetzungen zwischen den Konzepten
+  folgen live, sobald der letzte Auftrag des Kurses erledigt ist. Im Kostenbuch steht der Schritt als `tagging_batch`, die
+  Schätzung nutzt `GEMINI_BATCH_PRICE_FACTOR` (Standard 0,5).
+  - **Nicht gegen die echte API getestet.** Die Hülle folgt den Typen des installierten SDK und läuft in den Tests gegen
+    einen Fake-Client. Offen bis zum ersten echten Lauf: ob Google den Faktor 0,5 auch auf den Cache-Anteil anwendet,
+    das Größenlimit für Inline-Anfragen (hier vorsichtig 5 MB je Auftrag) und ob alle Antwort-Felder wie erwartet ankommen.
+    Nach dem ersten Lauf die Kosten in der Admin-Tabelle („Konzepte und Abfragevarianten (Batch)“) mit der Google-Rechnung
+    abgleichen und `GEMINI_BATCH_PRICE_FACTOR` bei Abweichung setzen.
+  - **Bewusst nicht im Batch:** die Kursgenerierung selbst (Blueprint → Canary → Batches mit Schutzschalter → Reparaturen):
+    jeder Schritt hängt vom Ergebnis des vorigen ab, eine Runde könnte bis zu 24 h dauern, und der Schutzschalter, der bei
+    vielen Fehlern abbricht und Geld spart, fiele weg. Die Übersetzung läuft ebenfalls weiter einzeln: Sie nutzt schon ein
+    schlankes Modell (Flash-Lite), und ein Batch bräuchte einen eigenen Status in Kursübersicht und Lernansicht („Übersetzung läuft“ über bis
+    zu 24 h), einen Abgleich, ob sich der Text inzwischen geändert hat, und eine Anpassung der Erkennung „unterbrochen“.
+- **Eigenes Modell für die Folgeschritte.** `GEMINI_TAGGING_MODEL` (Standard: das Lektionsmodell, es ändert sich also nichts)
+  gilt für Konzept-Tagging, Abfragevarianten und Voraussetzungen; Preise dafür über `GEMINI_TAGGING_PRICE_PER_MILLION_*`.
 
 ## Anhang: Robustheit und hängende Läufe (Oktober 2026)
 
