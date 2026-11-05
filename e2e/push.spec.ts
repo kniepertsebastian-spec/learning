@@ -5,6 +5,15 @@ const ENDPOINT = "https://fcm.googleapis.com/fcm/send/e2e-device-1";
 const KEYS = { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" };
 
 test("Web Push: ohne Anmeldung nichts, die Einstellungen fragen nie von selbst nach der Berechtigung", async ({ page, gateway }) => {
+  // Jeder Aufruf von Notification.requestPermission() wird gezählt (sessionStorage überlebt die Seitenwechsel). Der Startwert
+  // der Berechtigung hängt vom Browser ab (headless Chromium in der CI meldet „denied“, lokal „default“), darum prüfen wir
+  // das Verhalten der Seite und nicht den Startwert.
+  await page.addInitScript(() => {
+    Notification.requestPermission = (() => {
+      sessionStorage.setItem("permissionAsks", String(Number(sessionStorage.getItem("permissionAsks") ?? "0") + 1));
+      return Promise.resolve(Notification.permission);
+    }) as typeof Notification.requestPermission;
+  });
   expect((await page.request.get(`${gateway.url}/api/push/preferences`)).status()).toBe(401);
   expect((await page.request.post(`${gateway.url}/api/push/subscribe`, { data: { endpoint: ENDPOINT, keys: KEYS } })).status()).toBe(401);
 
@@ -13,8 +22,9 @@ test("Web Push: ohne Anmeldung nichts, die Einstellungen fragen nie von selbst n
   await expect(page.getByTestId("push-settings")).toBeVisible();
   await expect(page.getByTestId("push-toggle")).toBeVisible();
   await expect(page.getByTestId("push-state")).toContainText(/off for this device|aus/i);
-  // Opt-in: die Seite hat die Berechtigung nicht angefragt.
-  expect(await page.evaluate(() => Notification.permission)).toBe("default");
+  // Opt-in: die Seite hat die Berechtigung weder angefragt noch bekommen.
+  expect(await page.evaluate(() => sessionStorage.getItem("permissionAsks"))).toBeNull();
+  expect(await page.evaluate(() => Notification.permission)).not.toBe("granted");
 });
 
 test("Web Push: die drei Arten sind einzeln schaltbar und bleiben nach dem Neuladen erhalten", async ({ page, gateway }) => {
