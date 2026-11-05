@@ -3835,3 +3835,30 @@ export const pushDeliveries = pgTable(
     check("push_deliveries_kind_check", sql`${table.kind} in ('exam_soon', 'voucher_expiring', 'retake_included', 'reviews_due', 'streak_risk')`),
   ],
 );
+
+export type SecondReviewStatus = "pending" | "agreed" | "deviated";
+
+/**
+ * Zweitprüfung als Stichprobe (docs/roadmaps/roadmap_pruefer.md, Phase 6): bei jeder Freigabe wird ein Anteil der Fragen einem zweiten
+ * Prüfer des Kurses vorgelegt (nicht dem Freigebenden). Weicht sein Urteil ab, steht die Frage beim Admin; es gibt keine automatische
+ * Folge. Ohne zweiten Prüfer bleibt `reviewer_user_id` leer, bis jemand zugewiesen ist.
+ */
+export const secondReviews = pgTable(
+  "second_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    approvalId: uuid("approval_id").notNull().references(() => courseApprovals.id, { onDelete: "cascade" }),
+    questionId: uuid("question_id").notNull().references(() => questions.id, { onDelete: "cascade" }),
+    reviewerUserId: uuid("reviewer_user_id").references(() => users.id, { onDelete: "set null" }),
+    status: text("status").$type<SecondReviewStatus>().notNull().default("pending"),
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("second_reviews_approval_question_unique").on(table.approvalId, table.questionId),
+    index("second_reviews_reviewer_idx").on(table.reviewerUserId, table.status),
+    index("second_reviews_status_idx").on(table.status),
+    check("second_reviews_status_check", sql`${table.status} in ('pending', 'agreed', 'deviated')`),
+  ],
+);

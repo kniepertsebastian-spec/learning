@@ -8,6 +8,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { courseApprovals, domains, itemVariants, lessons, objectives, questionOptions, questions, sections, certifications, type CourseApprovalKind } from "@/lib/server/db/schema";
 import { recordAuditEvent } from "@/lib/server/audit/service";
+import { createSecondReviewSample } from "@/lib/server/reviewers/second-review";
 import { contentHash, countChanges, diffFingerprints, nextVersionLabel, type CourseFingerprints, type FingerprintDiff } from "@/lib/approvals/diff";
 import { fingerprint, normalizeSection, type QuestionSnapshot, type SectionSnapshot } from "@/lib/server/course-editor/snapshots";
 
@@ -203,6 +204,8 @@ export async function approveCourse(input: {
     targetId: input.certificationId,
     metadata: { version: entry.versionLabel, reviewer: name, contentHash: entry.contentHash },
   }).catch((error) => console.error("Audit-Log fehlgeschlagen:", error));
+  // Zweitprüfung als Stichprobe: ein Fehler hier darf die Freigabe nie rückgängig machen oder aufhalten.
+  await createSecondReviewSample(entry.id).catch((error) => console.error("Zweitprüfung konnte nicht angelegt werden:", error));
   return toEntry(entry);
 }
 

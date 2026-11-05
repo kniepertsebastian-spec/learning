@@ -55,8 +55,8 @@ export function reviewersText(seal: Pick<Seal, "reviewers" | "anonymousCount">, 
  * sondern in den Service Agreements / AGB (Seite /agb).
  */
 export const SEAL_DISCLAIMER = {
-  de: "„Geprüft“ bezieht sich auf die fachliche Richtigkeit der Inhalte zum angegebenen Stand.",
-  en: "“Reviewed” refers to the technical correctness of the content at the stated date.",
+  de: "„Geprüft“ bezieht sich auf die fachliche Richtigkeit der Inhalte zum angegebenen Stand. Es ist keine Garantie, die Prüfung zu bestehen.",
+  en: "“Reviewed” refers to the technical correctness of the content at the stated date. It is not a guarantee of passing the exam.",
 } as const;
 
 /** Der Satz zur fachlichen Prüfung, verbindlich: „Dieser Kurs wurde fachlich von [Experten-Name] geprüft.“ (ohne Verlinkung, z. B. für Texte und Metadaten). */
