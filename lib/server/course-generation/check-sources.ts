@@ -1,4 +1,4 @@
-import { fetchSource, SourceFetchError } from "./sources";
+import { describeFetchError, fetchSource } from "./sources";
 
 export type SourceCheck = { url: string; ok: true } | { url: string; ok: false; error: string };
 
@@ -19,8 +19,7 @@ export async function checkSources(urls: string[], fetchOne: typeof fetchSource 
         await fetchOne(`check-${index + 1}`, url);
         results[index] = { url, ok: true };
       } catch (error) {
-        const message = error instanceof SourceFetchError || error instanceof Error ? error.message : "Unbekannter Fehler beim Abruf.";
-        results[index] = { url, ok: false, error: message.slice(0, 300) };
+        results[index] = { url, ok: false, error: describeFetchError(error) };
       }
     }
   }

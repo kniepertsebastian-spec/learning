@@ -62,7 +62,10 @@ export async function getCourseSources(certificationId: string): Promise<CourseS
   const entries: CourseSourceEntry[] = rows.map((r) => ({ title: r.title, provider: r.provider || null, url: safeUrl(r.sourceUrl), version: r.versionLabel, publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null }));
   const primary = job?.report?.primary;
   if (primary) entries.push({ title: primary.title, provider: null, url: safeUrl(primary.url), version: null, publishedAt: null });
+  // Übersprungene Quellen (beim Start nicht verwendbar) flossen nicht in den Kurs ein und gehören nicht in die Quellenliste.
+  const skippedUrls = new Set((job?.report?.skipped ?? []).map((s) => s.url));
   for (const url of job?.urls ?? []) {
+    if (skippedUrls.has(url)) continue;
     const safe = safeUrl(url);
     if (safe) entries.push({ title: hostOf(safe), provider: null, url: safe, version: null, publishedAt: null });
   }

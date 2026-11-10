@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { checkInternalCourseRateLimit } from "@/lib/server/auth-rate-limit";
 import { requireCompanyApi } from "@/lib/server/company/guard";
+import { BodyTooLargeError, readFormDataCapped, readJsonCapped } from "@/lib/server/http/capped-body";
 import { SuppressNotAllowedError, uploadCompanyDocument } from "@/lib/server/company/documents";
 import { isSuppressible, SECRET_KIND_LABELS, SUPPRESSIBLE_KINDS, type SecretKind } from "@/lib/server/documents/secret-scanner";
 import { getDb } from "@/lib/server/db/client";
@@ -24,6 +25,8 @@ const ROLES = ["company_admin", "mentor"] as const;
 
 /** Gesamtgröße aller Dateien einer Anfrage. */
 const MAX_REQUEST_BYTES = 105 * 1024 * 1024;
+/** Der JSON-Weg (bereits gespeicherte Dokumente) enthält nur Kennungen und ein paar Einstellungen. */
+const MAX_JSON_BYTES = 256 * 1024;
 
 const startSchema = z.object({
   documentId: z.string().uuid().optional(),
@@ -64,14 +67,14 @@ export async function POST(request: Request) {
   /** Für diesen Auftrag temporär angelegte Dateien: bei einem Fehler wieder löschen. */
   const temporaryIds: string[] = [];
   if (contentType.startsWith("multipart/form-data")) {
-    const declared = Number(request.headers.get("content-length"));
-    if (Number.isFinite(declared) && declared > MAX_REQUEST_BYTES) {
-      return NextResponse.json({ error: "Die Dateien sind zusammen zu groß (höchstens 100 MB).", code: "too_large" }, { status: 413 });
-    }
+    // Mit Obergrenze lesen, auch wenn der Body in Stücken ohne Content-Length kommt.
     let form: FormData;
     try {
-      form = await request.formData();
-    } catch {
+      form = await readFormDataCapped(request, MAX_REQUEST_BYTES);
+    } catch (error) {
+      if (error instanceof BodyTooLargeError) {
+        return NextResponse.json({ error: "Die Dateien sind zusammen zu groß (höchstens 100 MB).", code: "too_large" }, { status: 413 });
+      }
       return NextResponse.json({ error: "Ungültige Anfrage (multipart/form-data erwartet)." }, { status: 400 });
     }
     const files = form.getAll("files").filter((f): f is File => f instanceof File);
@@ -136,7 +139,13 @@ export async function POST(request: Request) {
     }
     input = { ...meta.data, documentIds: [...temporaryIds, ...storedParsed.data] };
   } else {
-    const parsed = startSchema.safeParse(await request.json().catch(() => null));
+    let payload: unknown = null;
+    try {
+      payload = await readJsonCapped(request, MAX_JSON_BYTES);
+    } catch (error) {
+      if (error instanceof BodyTooLargeError) return NextResponse.json({ error: "Die Anfrage ist zu groß.", code: "too_large" }, { status: 413 });
+    }
+    const parsed = startSchema.safeParse(payload);
     if (!parsed.success || (!parsed.data.documentId && !parsed.data.documentIds)) return NextResponse.json({ error: "Ungültige Anfrage." }, { status: 400 });
     input = parsed.data;
   }

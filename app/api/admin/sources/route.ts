@@ -5,9 +5,12 @@ import { requireAdminApi } from "@/lib/server/auth-guards";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, certificationSources } from "@/lib/server/db/schema";
 import {
+  isMarkdownUpload,
   listCertificationSources,
   registerCertificationSource,
   registerCertificationSourceFromUrl,
+  registerCertificationSourceMarkdown,
+  validateMarkdownUpload,
   validatePdfUpload,
   validateSourceUrlShape,
 } from "@/lib/server/admin/sources";
@@ -33,8 +36,8 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/admin/sources (multipart/form-data) - R1.1: Quelle registrieren,
- * entweder per PDF-Upload (Feld "file") oder per URL-Abruf (Feld "url") -
- * genau eines der beiden muss gesetzt sein. Gemeinsame Felder:
+ * entweder per Datei-Upload (Feld "file": PDF oder Markdown, erkannt an Endung bzw.
+ * MIME-Type) oder per URL-Abruf (Feld "url") - genau eines der beiden muss gesetzt sein. Gemeinsame Felder:
  * certificationId, title, provider, optional publishedAt (ISO-Datum).
  */
 export async function POST(request: Request) {
@@ -123,27 +126,50 @@ export async function POST(request: Request) {
 
   if (file instanceof File) {
     const data = Buffer.from(await file.arrayBuffer());
-    const validationError = validatePdfUpload({
-      mimeType: file.type,
-      fileSizeBytes: data.byteLength,
-      data,
-    });
-    if (validationError) {
-      return NextResponse.json(
-        { error: validationError.message, code: validationError.code },
-        { status: 400 },
-      );
-    }
+    if (isMarkdownUpload(file)) {
+      const validationError = validateMarkdownUpload({
+        mimeType: file.type,
+        fileSizeBytes: data.byteLength,
+        data,
+      });
+      if (validationError) {
+        return NextResponse.json(
+          { error: validationError.message, code: validationError.code },
+          { status: 400 },
+        );
+      }
 
-    ({ source, alreadyExisted } = await registerCertificationSource({
-      certificationId,
-      title: title.trim(),
-      provider: provider.trim(),
-      publishedAt,
-      data,
-      mimeType: file.type,
-      supersedesSourceId,
-    }));
+      ({ source, alreadyExisted } = await registerCertificationSourceMarkdown({
+        certificationId,
+        title: title.trim(),
+        provider: provider.trim(),
+        publishedAt,
+        data,
+        supersedesSourceId,
+      }));
+    } else {
+      const validationError = validatePdfUpload({
+        mimeType: file.type,
+        fileSizeBytes: data.byteLength,
+        data,
+      });
+      if (validationError) {
+        return NextResponse.json(
+          { error: validationError.message, code: validationError.code },
+          { status: 400 },
+        );
+      }
+
+      ({ source, alreadyExisted } = await registerCertificationSource({
+        certificationId,
+        title: title.trim(),
+        provider: provider.trim(),
+        publishedAt,
+        data,
+        mimeType: file.type,
+        supersedesSourceId,
+      }));
+    }
   } else {
     const url = (urlRaw as string).trim();
     const shapeError = validateSourceUrlShape(url);

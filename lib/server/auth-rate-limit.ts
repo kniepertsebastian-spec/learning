@@ -27,17 +27,16 @@ export function clientIp(headers: Headers): string {
 }
 
 /**
- * Login-Versuche je Konto UND je IP: das Konto-Limit greift auch bei
- * wechselnden IPs, das IP-Limit beim Durchprobieren vieler Konten. Beide
- * Zähler laufen bei jedem Versuch. Nachteil des Konto-Limits: Fremde können ein
- * Konto durch Fehlversuche für 15 Minuten sperren (bewusster Kompromiss).
+ * Login-Versuche je IP UND je Konto: das IP-Limit greift beim Durchprobieren vieler Konten, das Konto-Limit auch bei
+ * wechselnden IPs. Zuerst zählt die IP; nur wenn sie nicht gesperrt ist, zählt auch das Konto. So legt eine bereits
+ * gesperrte IP keine weiteren Konto-Einträge an und kann fremde Konten nicht zusätzlich sperren. Nachteil des
+ * Konto-Limits: Fremde können ein Konto durch Fehlversuche für 15 Minuten sperren (bewusster Kompromiss).
  */
 export function checkLoginRateLimit(ip: string, email: string): RateLimitResult {
   const factor = loginLimitFactor();
-  const byEmail = checkRateLimit("login-email", email, LOGIN_WINDOW_MS, LOGIN_MAX_PER_EMAIL * factor);
   const byIp = checkRateLimit("login-ip", ip, LOGIN_WINDOW_MS, LOGIN_MAX_PER_IP * factor);
-  if (!byEmail.allowed) return byEmail;
-  return byIp;
+  if (!byIp.allowed) return byIp;
+  return checkRateLimit("login-email", email, LOGIN_WINDOW_MS, LOGIN_MAX_PER_EMAIL * factor);
 }
 
 /** Registrierungsversuche je IP. */
@@ -136,13 +135,13 @@ const RECOVERY_TOKEN_MAX_PER_IP = 20;
 
 /**
  * „Passwort vergessen“ und „Bestätigung erneut senden“: je IP 10/h und je Adresse 3/h. Die
- * Adress-Grenze schützt ein Postfach vor Mail-Flut, die IP-Grenze den Versand (Gmail hat Tageslimits).
+ * Adress-Grenze schützt ein Postfach vor Mail-Flut, die IP-Grenze den Versand (Gmail hat Tageslimits). Wie beim Login zählt die
+ * Adresse nur, wenn die IP noch nicht gesperrt ist.
  */
 export function checkRecoveryRequestRateLimit(ip: string, email: string): RateLimitResult {
-  const byEmail = checkRateLimit("recovery-email", email, RECOVERY_WINDOW_MS, RECOVERY_MAX_PER_EMAIL);
   const byIp = checkRateLimit("recovery-ip", ip, RECOVERY_WINDOW_MS, RECOVERY_MAX_PER_IP);
-  if (!byEmail.allowed) return byEmail;
-  return byIp;
+  if (!byIp.allowed) return byIp;
+  return checkRateLimit("recovery-email", email, RECOVERY_WINDOW_MS, RECOVERY_MAX_PER_EMAIL);
 }
 
 /** Einlösen von Reset- und Bestätigungslinks: je IP 20 pro 15 Minuten. */

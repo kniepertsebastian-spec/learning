@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { SourceUrlInput } from "@/components/SourceUrlInput";
+import { toast } from "@/components/ui/toaster";
 import { useLocale } from "@/lib/i18n";
 import { fmt } from "@/lib/quiz/keys";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
@@ -27,6 +28,8 @@ interface Job {
   courseTitle?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** Quellenbericht des Preflights; `skipped` nennt Quellen, die der Kurs nicht nutzt. */
+  sourceReport?: { skipped?: { url: string; error: string }[] } | null;
 }
 
 interface Objective {
@@ -95,6 +98,9 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
   const [requestError, setRequestError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(true);
   const [showObjectiveCosts, setShowObjectiveCosts] = useState(false);
+  const publishedToastFor = useRef(new Set<string>());
+  /** „Jetzt veröffentlichen“ wurde geklickt: Der Server stellt den Status erst kurz danach von „package_ready“ um, bis dahin trotzdem abfragen. */
+  const [publishing, setPublishing] = useState(false);
 
   const active = job ? !TERMINAL_STATUSES.has(job.status) : false;
 
@@ -141,11 +147,19 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       setJob(data.job);
       setPricingConfigured(data.pricingConfigured !== false);
       setObjectives(data.objectives);
-      if (data.job.status === "published") router.refresh();
+      if (data.job.status !== "package_ready") setPublishing(false);
+      if (data.job.status === "published") {
+        // Einmal je Auftrag bestätigen: auch nach „Jetzt veröffentlichen“ oder bei automatischer Veröffentlichung, wenn die Anzeige gerade woanders steht.
+        if (!publishedToastFor.current.has(data.job.id)) {
+          publishedToastFor.current.add(data.job.id);
+          toast.success(c_courseGenerationPanel(locale).coursePublished);
+        }
+        router.refresh();
+      }
     } catch {
       // transienter Polling-Fehler - nächster Tick versucht es erneut
     }
-  }, [router]);
+  }, [router, locale]);
 
   // Den letzten Auftrag wiederherstellen (nach Neuladen oder Seitenwechsel), sofern er nicht veröffentlicht ist:
   // so bleibt sichtbar, wo es zuletzt stand, und die Generierung lässt sich neu starten.
@@ -169,10 +183,10 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
   }, [loadJob]);
 
   useEffect(() => {
-    if (!job || !active) return;
+    if (!job || (!active && !publishing)) return;
     const interval = window.setInterval(() => void loadJob(job.id), 2_000);
     return () => window.clearInterval(interval);
-  }, [job, active, loadJob]);
+  }, [job, active, publishing, loadJob]);
 
   /** Vor dem Start geprüfte, aber fehlerhafte Quellen: der Betreiber entscheidet, ob sie entfernt werden und es weitergeht. */
   const [badSources, setBadSources] = useState<{ url: string; error: string }[] | null>(null);
@@ -281,6 +295,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       const response = await fetch(`/api/admin/course-generation/${job.id}/retry`, { method: "POST" });
       const data = (await response.json()) as { job?: Job; error?: string };
       if (!response.ok) throw new Error(data.error ?? `Status ${response.status}`);
+      if (job.status === "package_ready") setPublishing(true);
       if (data.job) setJob(data.job);
     } catch (error) {
       setRequestError(error instanceof Error ? error.message : "Retry fehlgeschlagen.");
@@ -449,6 +464,21 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           </div>
           {job.message && <p className="text-xs text-subtle">{job.message}</p>}
 
+          {(job.sourceReport?.skipped?.length ?? 0) > 0 && (
+            <div role="status" className="rounded-md border border-warning/40 bg-warning-soft p-3 text-xs text-warning-text" data-testid="skipped-sources">
+              <p className="font-medium">{fill(c_courseGenerationPanel(locale).n0SourceSSkipped, job.sourceReport?.skipped?.length ?? 0)}</p>
+              <p className="mt-0.5">{c_courseGenerationPanel(locale).skippedSourcesHint}</p>
+              <ul className="mt-1.5 flex flex-col gap-1.5">
+                {job.sourceReport?.skipped?.map((s) => (
+                  <li key={s.url}>
+                    <span className="block break-all font-mono">{s.url}</span>
+                    <span className="block">{s.error}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {objectives.length > 0 && (
             <div>
               <button
@@ -583,7 +613,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
               <button
                 type="button"
                 onClick={handleRetry}
-                disabled={loading}
+                disabled={loading || publishing}
                 className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
               >
                 {job.status === "package_ready"

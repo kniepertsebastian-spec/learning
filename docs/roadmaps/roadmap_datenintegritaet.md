@@ -1,6 +1,6 @@
 # Entwicklungs-Roadmap: Datenintegrität über Zeit
 
-> **Stand 24.10.2026:** Phasen 1–5 umgesetzt und geprüft (Unit-, DB- und E2E-Tests, Beschreibung in `docs/PWA.md`, Abschnitt „Datenintegrität über Zeit“). Phase 6 ist Betrieb auf dem Server und bleibt offen; die Checkliste steht in `docs/BACKUP.md`.
+> **Stand 24.10.2026:** Phasen 1–5 umgesetzt und geprüft (Unit-, DB- und E2E-Tests, Beschreibung in `docs/PWA.md`, Abschnitt „Datenintegrität über Zeit“). Phase 6 ist Betrieb auf dem Server; der Betreiber hat Backup-Prüfung und Monitoring-Alarm am 05.11.2026 als erledigt gemeldet (vom Agenten nicht geprüft). Der Restore-Test bleibt offen, bis sein Datum im Protokoll in `docs/BACKUP.md` steht. Die Checkliste steht ebenfalls dort.
 
 Technischer Umsetzungsplan, damit offline erbrachte Lernleistung auch nach Tagen oder Wochen vollständig, mit dem richtigen Zeitpunkt und nur bei Berechtigten ankommt. Das Dokument ist für die Umsetzung durch einen Coding-Agenten geschrieben und setzt kein Vorwissen aus anderen Dokumenten voraus. Grundlage ist ein PWA-Review vom 24.10.2026 (`main` nach PR #156).
 
@@ -105,9 +105,12 @@ Dazu kleinere Punkte: endgültig abgelehnte Ereignisse bleiben für immer als �
 
 ## Phase 6 – Betrieb prüfen (begleitend, kein Code)
 
-- [ ] Auf dem Server prüfen, dass das automatische Backup tatsächlich per Cron läuft, `BACKUP_REMOTE` gesetzt ist und der private Schlüssel getrennt vom Server liegt (`docs/BACKUP.md`).
+- [x] Auf dem Server prüfen, dass das automatische Backup tatsächlich per Cron läuft, `BACKUP_REMOTE` gesetzt ist und der private Schlüssel getrennt vom Server liegt (`docs/BACKUP.md`).
+  - _Am 05.11.2026 auf Anweisung des Betreibers abgehakt, nur auf dem Server prüfbar._
 - [ ] Restore-Test einmal im Quartal durchführen und Datum notieren.
-- [ ] Monitoring-Alarm, wenn das letzte Backup älter als 36 Stunden ist.
+  - _Vom Betreiber am 05.11.2026 als erledigt gemeldet, hier aber offen gelassen: Es ist kein Datum notiert, das Restore-Test-Protokoll in `docs/BACKUP.md` ist leer. Der Haken kommt mit dem Datum des letzten Tests; danach alle drei Monate wiederholen._
+- [x] Monitoring-Alarm, wenn das letzte Backup älter als 36 Stunden ist.
+  - _Am 05.11.2026 auf Anweisung des Betreibers abgehakt. `scripts/monitor.sh` alarmiert schon ab 26 Stunden (`MONITOR_BACKUP_MAX_HOURS`), also früher als gefordert._
 
 ---
 

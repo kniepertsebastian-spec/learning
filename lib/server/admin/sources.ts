@@ -1,7 +1,13 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
-import { certificationSources, sourceChunks, type CertificationSourceType } from "@/lib/server/db/schema";
-import { sha256Hex, storageKeyForChecksum, writeSourceFile } from "@/lib/server/storage/local-disk";
+import {
+  blueprintDrafts,
+  certificationSources,
+  sourceChunks,
+  type CertificationSourceStatus,
+  type CertificationSourceType,
+} from "@/lib/server/db/schema";
+import { readSourceFile, sha256Hex, storageKeyForChecksum, writeSourceFile } from "@/lib/server/storage/local-disk";
 import { fetchUrlSafely, UrlFetchError } from "@/lib/server/network/fetch-url";
 import { UnsafeUrlError } from "@/lib/server/network/ssrf-guard";
 
@@ -131,6 +137,190 @@ export async function registerCertificationSource(input: {
   supersedesSourceId?: string | null;
 }): Promise<{ source: CertificationSource; alreadyExisted: boolean }> {
   return insertSourceRecord({ ...input, sourceType: "pdf" });
+}
+
+/** Markdown ist reiner Text: 5 MB sind weit mehr, als ein Prüfungsleitfaden je hat, und halten die Seitenzerlegung schnell. */
+export const MAX_MARKDOWN_BYTES = 5 * 1024 * 1024;
+const MARKDOWN_MIME_TYPES = new Set(["", "text/markdown", "text/x-markdown", "text/plain", "application/octet-stream"]);
+const MARKDOWN_MIME = "text/markdown";
+/** Sehr viel länger als jede sinnvolle Quellenbezeichnung; verhindert nur Fehleingaben. */
+const MAX_SOURCE_TITLE_CHARS = 300;
+
+export interface MarkdownValidationError {
+  code: "empty" | "too_large" | "wrong_mime_type" | "not_text";
+  message: string;
+}
+
+/**
+ * Ob eine hochgeladene Datei als Markdown behandelt werden soll: nach Endung (.md, .markdown) oder, falls der Browser sie
+ * kennt, nach dem MIME-Type. Browser melden für .md je nach System text/markdown, text/plain oder gar nichts, deshalb entscheidet
+ * hier vor allem die Endung.
+ */
+export function isMarkdownUpload(file: { name: string; type: string }): boolean {
+  return /\.(md|markdown)$/i.test(file.name) || file.type === "text/markdown" || file.type === "text/x-markdown";
+}
+
+/** Dekodiert Markdown-Bytes als UTF-8 (ohne Byte-Order-Mark, Zeilenenden als \n) und wirft, wenn es kein gültiger UTF-8-Text ist. */
+export function decodeMarkdown(data: Buffer): string {
+  // fatal: ungültige Byte-Folgen (z. B. Latin-1-Umlaute, eine umbenannte Binärdatei) ergeben einen Fehler statt „�“ im Kurs.
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(data);
+  return text.replace(/\r\n?/g, "\n");
+}
+
+/**
+ * Prüft einen Markdown-Upload wie validatePdfUpload() die PDF: Größe, MIME-Type und - weil es keine Signatur gibt - dass es
+ * lesbarer UTF-8-Text ist (kein NUL-Byte, gültig kodiert, nicht leer). Reine Funktion, damit sie ohne DB testbar ist.
+ */
+export function validateMarkdownUpload(input: { mimeType: string; fileSizeBytes: number; data: Buffer }): MarkdownValidationError | null {
+  if (input.fileSizeBytes <= 0) return { code: "empty", message: "Datei ist leer." };
+  if (input.fileSizeBytes > MAX_MARKDOWN_BYTES) {
+    return { code: "too_large", message: `Markdown-Datei ist größer als ${MAX_MARKDOWN_BYTES / (1024 * 1024)} MB.` };
+  }
+  if (!MARKDOWN_MIME_TYPES.has(input.mimeType)) {
+    return { code: "wrong_mime_type", message: `Unerwarteter MIME-Type "${input.mimeType}", erwartet Markdown oder Text.` };
+  }
+  if (input.data.includes(0)) {
+    return { code: "not_text", message: "Die Datei enthält Binärdaten und ist keine Markdown-Datei." };
+  }
+  let text: string;
+  try {
+    text = decodeMarkdown(input.data);
+  } catch {
+    return { code: "not_text", message: "Die Datei ist kein gültiger UTF-8-Text. Bitte als UTF-8 speichern." };
+  }
+  if (!text.trim()) return { code: "empty", message: "Die Datei enthält keinen Text." };
+  return null;
+}
+
+/** Markdown-Datei als Quelle anlegen (Dedup über die Checksumme wie bei PDF und URL). */
+export async function registerCertificationSourceMarkdown(input: {
+  certificationId: string;
+  title: string;
+  provider: string;
+  publishedAt: Date | null;
+  data: Buffer;
+  supersedesSourceId?: string | null;
+}): Promise<{ source: CertificationSource; alreadyExisted: boolean }> {
+  return insertSourceRecord({ ...input, sourceType: "markdown", mimeType: MARKDOWN_MIME });
+}
+
+/** Solange der Text nur hochgeladen, ausgelesen oder fehlgeschlagen ist, darf er noch geändert werden; danach hängen Prüfung und Freigabe daran. */
+const EDITABLE_STATUSES: CertificationSourceStatus[] = ["uploaded", "parsed", "failed"];
+
+/** Ob die Quelle eine Markdown-Quelle ist, die sich im Nachhinein noch bearbeiten lässt. */
+export function isEditableMarkdownSource(source: Pick<CertificationSource, "sourceType" | "status">): boolean {
+  return source.sourceType === "markdown" && EDITABLE_STATUSES.includes(source.status);
+}
+
+export class SourceEditError extends Error {
+  constructor(
+    readonly code: "not_found" | "not_markdown" | "locked" | "invalid" | "duplicate",
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export interface MarkdownSourceUpdateResult {
+  source: CertificationSource;
+  /** Der Text hat sich geändert: die Quelle steht wieder auf „uploaded“ und muss neu ausgelesen werden. */
+  contentChanged: boolean;
+  /** Zu dieser Quelle gibt es schon einen Blueprint-Entwurf, der noch den alten Text kennt. */
+  blueprintDraftExists: boolean;
+}
+
+/** Der Markdown-Text einer Quelle, wie er gespeichert ist (für den Editor). */
+export async function readMarkdownSource(sourceId: string): Promise<{ source: CertificationSource; content: string; editable: boolean }> {
+  const source = await getCertificationSource(sourceId);
+  if (!source) throw new SourceEditError("not_found", "Quelle nicht gefunden.");
+  if (source.sourceType !== "markdown") throw new SourceEditError("not_markdown", "Nur Markdown-Quellen lassen sich als Text bearbeiten.");
+  const content = decodeMarkdown(await readSourceFile(source.storageKey));
+  return { source, content, editable: isEditableMarkdownSource(source) };
+}
+
+/**
+ * Ändert Titel und/oder Text einer Markdown-Quelle. Der neue Text wird wie ein Upload inhaltsadressiert abgelegt (neue
+ * Checksumme, neue Datei); die alte Datei bleibt liegen, weil sie von einer anderen Quelle derselben Bytes mitgenutzt werden
+ * kann. Ändert sich der Text, geht die Quelle zurück auf „uploaded“: der Aufrufer liest sie danach neu aus
+ * (extractSourceContent). Freigegebene oder geprüfte Quellen bleiben unverändert - dafür gibt es die neue Ausgabe
+ * (supersedesSourceId).
+ */
+export async function updateMarkdownSource(input: {
+  sourceId: string;
+  title?: string;
+  content?: string;
+}): Promise<MarkdownSourceUpdateResult> {
+  const db = getDb();
+  const source = await getCertificationSource(input.sourceId);
+  if (!source) throw new SourceEditError("not_found", "Quelle nicht gefunden.");
+  if (source.sourceType !== "markdown") throw new SourceEditError("not_markdown", "Nur Markdown-Quellen lassen sich bearbeiten.");
+  if (!isEditableMarkdownSource(source)) {
+    throw new SourceEditError(
+      "locked",
+      "Diese Quelle ist bereits geprüft oder freigegeben und lässt sich nicht mehr ändern. Lade stattdessen eine neue Ausgabe hoch.",
+    );
+  }
+
+  const title = input.title === undefined ? source.title : input.title.trim();
+  if (!title || title.length > MAX_SOURCE_TITLE_CHARS) {
+    throw new SourceEditError("invalid", `Der Titel darf nicht leer sein und höchstens ${MAX_SOURCE_TITLE_CHARS} Zeichen haben.`);
+  }
+
+  let data: Buffer | null = null;
+  if (input.content !== undefined) {
+    const text = input.content.replace(/\r\n?/g, "\n");
+    if (!text.trim()) throw new SourceEditError("invalid", "Der Text darf nicht leer sein.");
+    data = Buffer.from(text, "utf-8");
+    if (data.byteLength > MAX_MARKDOWN_BYTES) {
+      throw new SourceEditError("invalid", `Der Text ist größer als ${MAX_MARKDOWN_BYTES / (1024 * 1024)} MB.`);
+    }
+  }
+
+  const checksum = data ? sha256Hex(data) : source.checksum;
+  const contentChanged = checksum !== source.checksum;
+  if (!contentChanged && title === source.title) {
+    return { source, contentChanged: false, blueprintDraftExists: false };
+  }
+
+  if (contentChanged && data) {
+    // Dieselbe Zertifizierung darf denselben Text nur einmal haben (Unique-Index auf certification_id + checksum).
+    const twin = await findByCertificationAndChecksum(source.certificationId, checksum);
+    if (twin && twin.id !== source.id) {
+      throw new SourceEditError("duplicate", `Genau diesen Text gibt es in dieser Zertifizierung schon als Quelle „${twin.title}“.`);
+    }
+  }
+
+  const storageKey = contentChanged ? storageKeyForChecksum(checksum) : source.storageKey;
+  if (contentChanged && data) await writeSourceFile(storageKey, data);
+
+  let updated: CertificationSource | undefined;
+  try {
+    [updated] = await db
+      .update(certificationSources)
+      .set(
+        contentChanged && data
+          ? { title, checksum, storageKey, fileSizeBytes: data.byteLength, status: "uploaded", parseError: null }
+          : { title },
+      )
+      // Der Status steht in der Bedingung: wurde die Quelle inzwischen geprüft, ändert dieses UPDATE nichts.
+      .where(and(eq(certificationSources.id, source.id), inArray(certificationSources.status, EDITABLE_STATUSES)))
+      .returning();
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      throw new SourceEditError("duplicate", "Genau diesen Text gibt es in dieser Zertifizierung schon als Quelle.");
+    }
+    throw error;
+  }
+  if (!updated) {
+    throw new SourceEditError("locked", "Die Quelle wurde inzwischen geprüft oder freigegeben und lässt sich nicht mehr ändern.");
+  }
+
+  let blueprintDraftExists = false;
+  if (contentChanged) {
+    const [draft] = await db.select({ id: blueprintDrafts.id }).from(blueprintDrafts).where(eq(blueprintDrafts.sourceId, source.id)).limit(1);
+    blueprintDraftExists = Boolean(draft);
+  }
+  return { source: updated, contentChanged, blueprintDraftExists };
 }
 
 const MAX_URL_SOURCE_BYTES = MAX_UPLOAD_BYTES;

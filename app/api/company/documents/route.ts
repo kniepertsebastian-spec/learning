@@ -5,6 +5,7 @@ import { listCompanyDocuments, SuppressNotAllowedError, uploadCompanyDocument } 
 import { requireCompanyApi } from "@/lib/server/company/guard";
 import { isSuppressible, SECRET_KIND_LABELS, SUPPRESSIBLE_KINDS, type SecretKind } from "@/lib/server/documents/secret-scanner";
 import { MAX_DOCUMENT_BYTES } from "@/lib/server/documents/upload";
+import { BodyTooLargeError, readFormDataCapped } from "@/lib/server/http/capped-body";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,15 +35,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const declared = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > MAX_DOCUMENT_BYTES + 1024 * 1024) {
-    return NextResponse.json({ error: "Die Datei ist zu groß.", code: "too_large" }, { status: 413 });
-  }
-
+  // Datei plus Formularfelder; mit Obergrenze lesen, auch wenn der Body in Stücken ohne Content-Length kommt.
   let form: FormData;
   try {
-    form = await request.formData();
-  } catch {
+    form = await readFormDataCapped(request, MAX_DOCUMENT_BYTES + 1024 * 1024);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: "Die Datei ist zu groß.", code: "too_large" }, { status: 413 });
+    }
     return NextResponse.json({ error: "Ungültige Anfrage (multipart/form-data erwartet)." }, { status: 400 });
   }
   const file = form.get("file");

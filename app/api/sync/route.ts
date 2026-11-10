@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
 import { processSyncEvents } from "@/lib/server/sync/service";
+import { BodyTooLargeError, readJsonCapped } from "@/lib/server/http/capped-body";
 import { MAX_SYNC_BODY_BYTES, splitSyncEvents, syncBodySchema } from "@/lib/server/sync/validate";
 
 export const dynamic = "force-dynamic";
@@ -20,12 +21,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const declaredLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_SYNC_BODY_BYTES) {
-    return NextResponse.json({ error: "Anfrage zu groß." }, { status: 413 });
+  // Mit Obergrenze lesen, auch wenn der Body in Stücken ohne Content-Length kommt.
+  let payload: unknown = null;
+  try {
+    payload = await readJsonCapped(request, MAX_SYNC_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) return NextResponse.json({ error: "Anfrage zu groß." }, { status: 413 });
   }
 
-  const parsed = syncBodySchema.safeParse(await request.json().catch(() => null));
+  const parsed = syncBodySchema.safeParse(payload);
   if (!parsed.success) {
     return NextResponse.json({ error: "events must be an array" }, { status: 400 });
   }

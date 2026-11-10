@@ -27,5 +27,7 @@ describe("parseSourceList", () => {
     expect(titleFromUrl("https://www.example.org/")).toBe("example.org");
     expect(titleFromUrl("https://example.org/files/SY0-701_Objectives%20v2.pdf")).toBe("SY0-701 Objectives v2");
     expect(titleFromFileName("Exam_Guide-2026.PDF")).toBe("Exam Guide-2026");
+    expect(titleFromFileName("Prüfungsleitfaden_SY0-701.md")).toBe("Prüfungsleitfaden SY0-701");
+    expect(titleFromFileName("notes.MARKDOWN")).toBe("notes");
   });
 });

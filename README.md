@@ -23,7 +23,7 @@ Voraussetzungen: Node.js 26 (LTS; CI und `Dockerfile` nutzen dieselbe Version), 
 
 ```bash
 npm ci
-cp .env.example .env.local      # DATABASE_URL, AUTH_SECRET, GEMINI_API_KEY eintragen
+cp .env.minimal.example .env.local   # DATABASE_URL, AUTH_SECRET, GEMINI_API_KEY eintragen (alle Optionen: .env.example)
 npm run db:migrate              # Schema anlegen
 npm run db:seed                 # Grunddaten (Zertifizierung und Domänen)
 npm run dev

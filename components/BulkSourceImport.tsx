@@ -22,7 +22,7 @@ const STATE_TEXT: Record<RowState, { de: string; en: string }> = {
 type Task = { key: string; label: string; title: string; url?: string; file?: File };
 
 /**
- * Mehrere Quellen auf einmal hinzufügen: eine Liste von Adressen (eine je Zeile) und/oder mehrere PDF-Dateien, mit
+ * Mehrere Quellen auf einmal hinzufügen: eine Liste von Adressen (eine je Zeile) und/oder mehrere PDF- oder Markdown-Dateien, mit
  * gemeinsamem Anbieter und Datum. Jede Quelle geht über denselben Weg wie das Einzel-Hinzufügen (`POST /api/admin/sources`),
  * je drei gleichzeitig; auf Wunsch wird der Text gleich extrahiert. Fehler einer Quelle stoppen die anderen nicht.
  */
@@ -125,8 +125,8 @@ export function BulkSourceImport({ certificationId, locale, online, onDone }: { 
         </span>
       </label>
       <label className="block text-sm sm:col-span-2">
-        <span className="mb-1 block font-medium">{c_bulkSourceImport(de).pdfFilesMultipleAllowed}</span>
-        <input ref={fileInput} type="file" accept="application/pdf" multiple disabled={running} onChange={(e) => setFiles(Array.from(e.target.files ?? []))} data-testid="bulk-files" className="w-full rounded-md border border-border bg-background px-3 py-2" />
+        <span className="mb-1 block font-medium">{c_bulkSourceImport(de).filesMultipleAllowed}</span>
+        <input ref={fileInput} type="file" accept="application/pdf,.md,.markdown,text/markdown" multiple disabled={running} onChange={(e) => setFiles(Array.from(e.target.files ?? []))} data-testid="bulk-files" className="w-full rounded-md border border-border bg-background px-3 py-2" />
       </label>
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input type="checkbox" checked={autoParse} onChange={(e) => setAutoParse(e.target.checked)} disabled={running} />

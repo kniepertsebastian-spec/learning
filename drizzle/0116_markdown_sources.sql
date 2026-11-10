@@ -1,0 +1,2 @@
+ALTER TABLE "certification_sources" DROP CONSTRAINT "certification_sources_source_type_check";--> statement-breakpoint
+ALTER TABLE "certification_sources" ADD CONSTRAINT "certification_sources_source_type_check" CHECK ("certification_sources"."source_type" in ('pdf', 'url', 'markdown'));

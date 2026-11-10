@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkDocumentImageRateLimit } from "@/lib/server/auth-rate-limit";
+import { BodyTooLargeError, readFormDataCapped } from "@/lib/server/http/capped-body";
 import { requireReviewerUserApi } from "@/lib/server/reviewers/guard";
 import { deletePhoto, getOwnPhoto, MAX_PHOTO_BYTES, savePhoto } from "@/lib/server/reviewers/photo-service";
 import { profileErrorResponse } from "@/lib/server/reviewers/profile-http";
@@ -23,12 +24,12 @@ export async function POST(request: Request) {
   if (!guard.ok) return guard.response;
   const limit = checkDocumentImageRateLimit(guard.user.id);
   if (!limit.allowed) return NextResponse.json({ error: "Zu viele Uploads. Bitte später erneut versuchen." }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } });
-  const declared = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > MAX_PHOTO_BYTES + 512 * 1024) return NextResponse.json({ error: "Das Foto ist zu groß." }, { status: 413 });
+  // Mit Obergrenze lesen, auch wenn der Body in Stücken ohne Content-Length kommt.
   let form: FormData;
   try {
-    form = await request.formData();
-  } catch {
+    form = await readFormDataCapped(request, MAX_PHOTO_BYTES + 512 * 1024);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) return NextResponse.json({ error: "Das Foto ist zu groß." }, { status: 413 });
     return NextResponse.json({ error: "Ungültige Anfrage (multipart/form-data erwartet)." }, { status: 400 });
   }
   const file = form.get("file");

@@ -1,7 +1,11 @@
 import { extractPdfPages } from "@/lib/server/admin/source-extraction";
+import { splitIntoSections, type SourceExcerpt } from "@/lib/server/documents/sections";
 import { fetchUrlSafely, UrlFetchError } from "@/lib/server/network/fetch-url";
 import { UnsafeUrlError } from "@/lib/server/network/ssrf-guard";
 import { extractOfficialObjectives, MIN_RECOGNISED } from "./coverage";
+
+// Ausschnitte und Abschnittszerlegung liegen in documents/sections.ts; hier bleiben sie unter dem bisherigen Namen erreichbar.
+export { splitIntoSections, type SourceExcerpt };
 
 export class SourceFetchError extends Error {}
 
@@ -16,12 +20,6 @@ const MAX_EXCERPT_CHARS_PER_SOURCE = 60_000;
  * Sicherheitsgrenze bleibt (etwa 400 PDF-Seiten Text).
  */
 export const PRIMARY_SOURCE_MAX_CHARS = Number(process.env.COURSE_GEN_PRIMARY_SOURCE_MAX_CHARS) || 400_000;
-
-export interface SourceExcerpt {
-  /** Seiten-/Abschnittsbezug, z. B. "S. 4" (PDF) oder "Abschnitt 1" (Text/HTML). */
-  locator: string;
-  text: string;
-}
 
 export interface FetchedSource {
   id: string;
@@ -54,62 +52,6 @@ export function stripHtml(html: string): string {
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-}
-
-const SECTION_MIN_CHARS = 800;
-const SECTION_MAX_CHARS = 6_000;
-
-/**
- * Zerlegt einen Fließtext (HTML nach stripHtml, Markdown, Text) in Abschnitte mit eigenem Locator
- * („Abschnitt 3: Backups“). Vorher war jede Text-/HTML-Quelle EIN Ausschnitt „Abschnitt 1“: der Blueprint konnte so
- * keinem Lernziel einen Teil zuordnen, und JEDES Lernziel bekam die ganze Quelle (bis zur Höchstmenge) erneut als
- * Eingabe. Getrennt wird an Überschriften (ab SECTION_MIN_CHARS Zeichen) und, wenn ein Abschnitt zu lang wird, an
- * Absatzgrenzen. Kurze Texte bleiben ein Abschnitt.
- */
-export function splitIntoSections(text: string, maxChars = SECTION_MAX_CHARS, minChars = SECTION_MIN_CHARS): SourceExcerpt[] {
-  const trimmed = text.trim();
-  if (trimmed.length <= maxChars) return [{ locator: "Abschnitt 1", text: trimmed }];
-
-  const chunks: { heading: string | null; text: string }[] = [];
-  let current: { heading: string | null; lines: string[]; size: number } = { heading: null, lines: [], size: 0 };
-  const flush = () => {
-    const body = current.lines.join("\n").trim();
-    if (body) chunks.push({ heading: current.heading, text: body });
-    current = { heading: null, lines: [], size: 0 };
-  };
-  const headingOf = (line: string) => /^\s*#{1,6}\s+(\S.*)$/.exec(line)?.[1]?.trim() ?? null;
-
-  const lines = trimmed.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const heading = headingOf(line);
-    if (heading && current.size >= minChars) flush();
-    // Eine Überschrift benennt den Abschnitt, solange er noch leer ist (auch statt eines „(Forts.)“-Namens).
-    if (heading && (current.heading === null || current.lines.length === 0)) current.heading = heading;
-    // Zu lang: an der nächsten Leerzeile (Absatzende) trennen; eine einzelne Riesenzeile wird hart geteilt.
-    if (current.size >= maxChars && line.trim() === "") {
-      const carry = current.heading;
-      flush();
-      current.heading = carry ? `${carry} (Forts.)` : null;
-      continue;
-    }
-    if (line.length > maxChars) {
-      for (let start = 0; start < line.length; start += maxChars) {
-        current.lines.push(line.slice(start, start + maxChars));
-        current.size += Math.min(maxChars, line.length - start);
-        if (current.size >= maxChars) flush();
-      }
-      continue;
-    }
-    current.lines.push(line);
-    current.size += line.length + 1;
-  }
-  flush();
-
-  return chunks.map((chunk, index) => ({
-    locator: `Abschnitt ${index + 1}${chunk.heading ? `: ${chunk.heading.replace(/[#*`_[\]]/g, "").slice(0, 60).trim()}` : ""}`,
-    text: chunk.text,
-  }));
 }
 
 /** Kappt die Ausschnitte einer Quelle bei MAX_EXCERPT_CHARS_PER_SOURCE (Kostenschutz). */
@@ -230,13 +172,60 @@ export function primarySourceIndex(sources: Array<Pick<FetchedSource, "excerpts"
   return best;
 }
 
-/** Alle Quellen abrufen; der Prüfungsleitfaden darunter wird bis PRIMARY_SOURCE_MAX_CHARS gelesen, die übrigen wie bisher. */
-export async function fetchSources(urls: string[]): Promise<FetchedSource[]> {
-  const full = await Promise.all(urls.map((url, index) => fetchSource(`src-${index + 1}`, url, PRIMARY_SOURCE_MAX_CHARS)));
+/** Der Prüfungsleitfaden unter den Quellen wird bis PRIMARY_SOURCE_MAX_CHARS gelesen, die übrigen werden wie bisher gekappt. */
+function markPrimaryAndCap(full: FetchedSource[]): FetchedSource[] {
   const primary = primarySourceIndex(full);
   return full.map((source, i) => {
     if (i === primary) return { ...source, primary: true };
     const { excerpts, truncated } = capExcerpts(source.excerpts);
     return { ...source, excerpts, truncated: source.truncated || truncated };
   });
+}
+
+/** Alle Quellen abrufen, sonst Fehler: eine einzige kaputte Quelle bricht ab. Für den Vergleich mit dem Stand der Kurserstellung („Quelle prüfen“), der nur mit allen Quellen stimmt. */
+export async function fetchSources(urls: string[]): Promise<FetchedSource[]> {
+  const full = await Promise.all(urls.map((url, index) => fetchSource(`src-${index + 1}`, url, PRIMARY_SOURCE_MAX_CHARS)));
+  return markPrimaryAndCap(full);
+}
+
+/** Eine Quelle, die sich nicht verwenden ließ: Adresse und Grund (kurz, nie Inhalt). */
+export interface SkippedSource {
+  url: string;
+  error: string;
+}
+
+export interface FetchSourcesResult {
+  sources: FetchedSource[];
+  skipped: SkippedSource[];
+}
+
+/** Fehlermeldung des Preflights, wenn keine der Quellen brauchbar war: bei einer einzigen deren Grund, sonst eine Liste. */
+export function noUsableSourceMessage(skipped: SkippedSource[]): string {
+  if (skipped.length === 1) return skipped[0].error;
+  const shown = skipped.slice(0, 5).map((s) => `${s.url}: ${s.error}`).join("; ");
+  const more = skipped.length > 5 ? ` (und ${skipped.length - 5} weitere)` : "";
+  return `Keine der ${skipped.length} Quellen ließ sich verwenden - ${shown}${more}`;
+}
+
+/** Kurze, anzeigbare Fehlermeldung zu einem gescheiterten Abruf. */
+export function describeFetchError(error: unknown): string {
+  const message = error instanceof Error && error.message ? error.message : "Unbekannter Fehler beim Abruf.";
+  return message.slice(0, 300);
+}
+
+/**
+ * Alle Quellen abrufen und die funktionierenden verwenden: Scheitert eine (nicht erreichbar, zu wenig Text, defektes PDF),
+ * wird sie übersprungen und gemeldet, statt den ganzen Auftrag abzubrechen. Wie viele übrig bleiben, entscheidet der Aufrufer
+ * (der Worker bricht nur ab, wenn keine einzige brauchbar ist). Die Kennungen („src-3“) folgen der Stelle in der Eingabe und
+ * bleiben deshalb auch dann stabil, wenn davor eine Quelle ausfällt.
+ */
+export async function fetchSourcesTolerant(urls: string[], fetchOne: typeof fetchSource = fetchSource): Promise<FetchSourcesResult> {
+  const settled = await Promise.allSettled(urls.map((url, index) => fetchOne(`src-${index + 1}`, url, PRIMARY_SOURCE_MAX_CHARS)));
+  const fetched: FetchedSource[] = [];
+  const skipped: SkippedSource[] = [];
+  settled.forEach((result, index) => {
+    if (result.status === "fulfilled") fetched.push(result.value);
+    else skipped.push({ url: urls[index], error: describeFetchError(result.reason) });
+  });
+  return { sources: markPrimaryAndCap(fetched), skipped };
 }

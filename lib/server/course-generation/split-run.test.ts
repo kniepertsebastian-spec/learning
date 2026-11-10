@@ -70,7 +70,7 @@ run("Aufteilung sehr großer Kurse im Worker (echte DB, Fake-KI)", () => {
       blueprintProvider: createFakeBlueprintProvider(bp),
       contentProvider: cp,
       repairProvider: cp,
-      fetchSourcesFn: async () => [{ id: "src-1", title: "Leitfaden", url: "https://example.org/guide", retrievedAt: new Date().toISOString(), excerpts: [{ locator: "Abschnitt 1", text: "x".repeat(500) }], truncated: false }],
+      fetchSourcesFn: async () => ({ sources: [{ id: "src-1", title: "Leitfaden", url: "https://example.org/guide", retrievedAt: new Date().toISOString(), excerpts: [{ locator: "Abschnitt 1", text: "x".repeat(500) }], truncated: false }], skipped: [] }),
     });
 
     const first = (await getCourseGenerationJob(job.id))!;

@@ -10,6 +10,8 @@
 
 ## Stand (06.10.2026)
 
+> **Nachtrag 05.11.2026:** Alle bisher offenen Punkte aus Phase 0 hat der Betreiber als erledigt gemeldet und sie sind abgehakt. Ausnahmen sind die CI-Prüfung mit Vitest und Playwright, die in `pwa-hardening-review.md` offen bleibt, und drei Punkte, bei denen `main` noch nicht zur Meldung passt (`standalone`-Image, Service Worker ohne Cache für angemeldete Seiten, generische Fehler der beiden Admin-Routen). Sie bleiben offen, bis der Code stimmt. Gate 0 ist bewusst noch nicht abgehakt. Wo `main` vom Haken abweicht, steht das am jeweiligen Punkt. Der Text und die Tabelle unten geben den Stand vom 06.10.2026 wieder.
+
 **Gemergt auf `main`:** Phase 0 bis auf die unten genannten Punkte, Phase 1, Phase 2 (Gate 2 erfüllt), Zuweisen und Statusansicht, Einstieg in den Firmenbereich, Sicherheitsupdates, Server-Absicherung, Monitoring per Mail (Skript und Anleitung). **Auch gemergt (PR #77, #78):** Migrationen `0029` bis `0033`; **in Arbeit auf diesem Branch:** `0034` (interne Lernpfade): Firmendokumente mit Secret-Scanner und bestätigbaren Fehlalarmen, allgemeine/interne Lernpfade mit Kundenanfragen, Freigaben und fachlicher Prüfung, KI-Zugang je Firma (BYOK oder unser Zugang).
 
 | Phase | Stand |
@@ -65,7 +67,8 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft:_ `docker compose config` bricht ohne `DB_PASSWORD` mit Fehlermeldung ab
 - [x] App-Port nur an `127.0.0.1` gebunden (Caddy-Upstream und Cloudflare Tunnel bleiben erreichbar)
   - _Geprüft:_ `docker compose config` zeigt `host_ip: 127.0.0.1`
-- [ ] Firewall des Servers prüfen (nicht aus dem Repo prüfbar)
+- [x] Firewall des Servers prüfen (nicht aus dem Repo prüfbar)
+  - _Am 05.11.2026 auf Anweisung des Betreibers abgehakt, nicht aus dem Repo prüfbar. Der Befund darunter ist der Stand davor._
   - _Befund vom Betreiber (`docker ps`):_ auf dem Server laufen noch Container der **alten** Compose-Datei, `learning-postgres` auf `0.0.0.0:5432` und `learning-app` auf `0.0.0.0:3000`, also von außen erreichbar. Die Korrektur steht im Repo, ist aber **nicht ausgerollt**
 - [x] Härtung auf dem Server ausgerollt und geprüft
   - _Vorbereitet:_ Anleitung `docs/DEPLOY-UPDATE.md` (Hoster-Firewall, Backup, Passwort in laufender DB ändern, `.env`, Update, Rückweg, Vorgehen bei Kompromittierung) und lesendes Prüfskript `scripts/check-server.sh` (Ports, Standardpasswort über das Docker-Netz, `.env`, Dubletten für Migration 0024; getestet mit simuliertem Docker in drei Szenarien)
@@ -75,9 +78,11 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
   - _Geprüft:_ `next` 16.3.8 (u. a. kritische Lücke in `next/og`, von der App nicht genutzt), `nodemailer` 10.0.15, übrige Funde per `npm audit fix`; `npm audit --omit=dev` meldet 0 Funde. Tests (274 mit Datenbank), `tsc`, Lint, Produktions-Build grün; im Browser erneut geprüft: komplette Mail-Strecke über TLS (24 Prüfungen, nodemailer 10) und Offline-Betrieb mit Service Worker
   - _Offen (nur Entwicklungswerkzeuge, kein Laufzeitcode):_ Funde bei `vitest`/`@vitest/mocker`, `esbuild` (über `drizzle-kit`) und `braces`/`micromatch`/`fast-glob` (über `eslint-config-next`) brauchen größere Versionssprünge; bei Gelegenheit nachziehen
 - [ ] Dockerfile nutzt `output: "standalone"` (kleineres Image, keine Dev-Tools)
+  - _Vom Betreiber am 05.11.2026 als erledigt gemeldet, hier aber offen gelassen: Auf `main` kopiert das Dockerfile noch `.next` statt des `standalone`-Ordners (Zeile 32); die Option steht nur in `next.config.ts`. Der Haken kommt, wenn das Dockerfile umgestellt ist. Die Vermerke darunter gelten weiter._
   - _Ist-Stand:_ Option steht in `next.config.ts`, Dockerfile kopiert noch `.next` + volles `node_modules`
   - _Offen, nicht verifizierbar ohne Docker-Daemon:_ Das Image muss weiter `drizzle-kit`/`tsx` für Migration beim Start und die Admin-Skripte (`user:*`, `cert:*`, `content:*`) enthalten. Eine schlanke Variante bräuchte ein eigenes Migrationsskript auf Basis von `drizzle-orm` und einen Image-Build-Test
-- [ ] Datenbank-Migrationen beim Deploy automatisch ausführen
+- [x] Datenbank-Migrationen beim Deploy automatisch ausführen
+  - _Am 05.11.2026 auf Anweisung des Betreibers abgehakt; der Container-Start selbst wurde vom Agenten nicht geprüft. Die Vermerke darunter sind der Stand davor._
   - _Stand:_ `command: npm run db:migrate && npm start` in `docker-compose.yml`. **Geprüft** gegen eine echte PostgreSQL-16-Instanz: komplette Kette (25 Migrationen) auf leerer DB, zweiter Lauf ändert nichts. Die Kette läuft zusätzlich in der CI auf leerer PostgreSQL-17-Datenbank durch. **Offen:** der Container-Start selbst (hier gibt es keinen Docker-Daemon). Bei einer Umstellung auf `standalone` muss `drizzle-kit` im Image bleiben
 
 ### Sicherheit
@@ -98,10 +103,12 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 - [x] Service Worker: Seitenaufrufe erst Netzwerk, Cache nur als Rückfall (NetworkFirst, 3 s Timeout)
   - _Anlass und Prüfung im Browser:_ Beim Test der Einladungen fiel auf, dass Stale-While-Revalidate nach einer Änderung beim Neuladen die VERALTETE Seite zeigte (neue Einladung fehlte in der Liste; ohne Service Worker war sie da). Nach der Umstellung erscheint sie mit und ohne Service Worker. Offline-Reload liefert `/company` weiter aus dem Cache, 0 CSP-Verletzungen
 - [ ] Service Worker: angemeldete Seiten gar nicht erst cachen
+  - _Vom Betreiber am 05.11.2026 als erledigt gemeldet, hier aber offen gelassen: Auf `main` enthält `app/sw.ts` weiter eine NetworkFirst-Regel mit Cache (Zeile 61). Der Haken kommt, wenn angemeldete Seiten nicht mehr zwischengespeichert werden. Die Vermerke darunter gelten weiter._
   - _Bewusst offen:_ Die zuletzt geladenen Seiten bleiben im `ui-cache` (Offline-Modus) und werden erst beim Logout gelöscht. Wer ein Gerät angemeldet liegen lässt, lässt sie dort. „Gar nicht cachen“ bräuchte eine andere Offline-Lösung (nur die Lerninhalte aus IndexedDB, keine Firmenseiten)
 - [x] API-Fehler für Lernende nach außen generisch, Details nur ins Log
   - _Geprüft im Code:_ alle Nicht-Admin-Routen mit 500er-Pfad durchgesehen; `exams/[certId]` leakte `error.message` und ist behoben, `remediation` generisch (bekannte Fälle als 404/409/429 mit fester Meldung)
 - [ ] API-Fehler der Admin-Routen `sources/[id]/blueprint` und `sources/[id]/parse` (502) generisch machen
+  - _Vom Betreiber am 05.11.2026 als erledigt gemeldet, hier aber offen gelassen: Auf `main` geben beide Routen weiter `error.message` mit Status 502 zurück (`parse/route.ts:34`, `blueprint/route.ts:72`). Der Haken kommt, wenn die Antwort generisch ist. Die Vermerke darunter gelten weiter._
   - _Offen, Entscheidung nötig:_ beide geben die Roh-Meldung an Admins zurück (Quell-Extraktion speichert sie zusätzlich als `parseError`). Generisch machen kostet Admins die Fehlerdiagnose in der Oberfläche, wenn Details nur im Log stehen
 - [x] E-Mail-Adressen normalisieren (Kleinschreibung) plus Migration bestehender Konten
   - _Geprüft live:_ Registrierung `Tester@Example.com` wird als `tester@example.com` gespeichert, Dublette in anderer Schreibweise → 409, Login mit `R1@Example.com` klappt. Migration `0024` gegen echte DB: `Max.Muster@Example.COM` und `  Anna@x.de ` werden normalisiert. **Achtung beim Deploy:** zwei Konten, die sich nur in der Schreibweise unterscheiden, lassen die Migration (und damit den App-Start) abbrechen. Vorher prüfen: `select lower(btrim(email)), count(*) from users group by 1 having count(*) > 1;`
@@ -109,12 +116,16 @@ Jede neue Funktion wird gegen diese Punkte geprüft. Was sie verletzt, wird nich
 ### Qualität und Betrieb
 - [x] GitHub Actions: Lint, Tests, Build, Typecheck bei Push auf `main` und bei Pull Requests
   - _Geprüft:_ Check `check` an PR #69 grün (Lauf 37218663107); erster Lauf war rot wegen fehlendem `poppler-utils`, behoben
-- [ ] Branch Protection auf `main`
-- [ ] Nächtliches, verschlüsseltes Offsite-Backup (Postgres und Quell-PDFs)
+- [x] Branch Protection auf `main`
+  - _Am 05.11.2026 auf Anweisung des Betreibers abgehakt, Einstellung auf GitHub, nicht aus dem Repo prüfbar._
+- [x] Nächtliches, verschlüsseltes Offsite-Backup (Postgres und Quell-PDFs)
+  - _Am 05.11.2026 auf Anweisung des Betreibers abgehakt; Timer und Offsite-Kopie auf dem Server hat der Agent nicht geprüft. Die Vermerke darunter sind der Stand davor._
   - _Stand:_ `scripts/backup.sh` (age-Verschlüsselung, nur öffentlicher Schlüssel auf dem Server, Aufbewahrung, atomares Schreiben) und systemd-Vorlagen in `deploy/`. **Geprüft** (Modus `direct`, echte PostgreSQL-16-DB): Dump und PDF-Archiv werden verschlüsselt geschrieben, Rechte 600. **Nicht geprüft:** Compose-Modus (kein Docker hier), Offsite-Kopie per `rclone` (nicht installiert, Ziel offen), systemd-Timer auf dem Server
-- [ ] **Restore einmal vollständig getestet**
+- [x] **Restore einmal vollständig getestet**
+  - _Am 05.11.2026 auf Anweisung des Betreibers abgehakt; der Restore auf dem Server hat der Agent nicht geprüft. Die Vermerke darunter sind der Stand davor._
   - _Stand:_ `scripts/restore-test.sh` spielt ein Backup in eine Wegwerf-DB ein und prüft sie. **Geprüft:** Backup→Restore einer Testdatenbank (25 Migrationen, 10 Nutzer wie in der Quelle), falscher Schlüssel und abgeschnittenes Backup schlagen fehl, Wegwerf-DB wird immer gelöscht. **Offen:** ein Restore eines echten Produktions-Backups auf dem Server
-- [ ] Error-Tracking und Uptime-Monitoring
+- [x] Error-Tracking und Uptime-Monitoring
+  - _Am 05.11.2026 auf Anweisung des Betreibers abgehakt; Timer, Testmail und Error-Tracking auf dem Server hat der Agent nicht geprüft. Die Vermerke darunter sind der Stand davor._
   - _Entscheidung des Betreibers:_ Zabbix ist nicht Teil dieses Repos (kommt später auf einem eigenen Server). Fürs Erste: Alarm per E-Mail
   - _Gebaut:_ `scripts/monitor.sh` (läuft auf dem App-Server, alle 5 Minuten per `deploy/learning-monitor.timer`, Versand direkt per SMTP/curl, damit auch bei ausgefallener App eine Mail kommt). Prüft `/api/ready` (App und Datenbank), Container, Alter des letzten Backups (Marker `backups/.last-success`, den `backup.sh` nach Erfolg setzt) und Plattenbelegung. Mail bei der 2. Fehlschlag-Prüfung in Folge („PROBLEM“), bei Entwarnung („BEHOBEN“) und als Erinnerung nach 24 h. Anleitung `docs/MONITORING.md`
   - _Geprüft (manuelles Skript, 20 Prüfungen, nicht Teil der CI):_ echter SMTP-Server mit TLS und Anmeldung (Passwort mit `"` und `\`), HTTP-Ersatz für `/api/ready`: Testmail an zwei Empfänger, falsches Passwort → Exit 1 ohne Passwort in der Ausgabe, gesund → keine Mail, 1. Fehlschlag still / 2. alarmiert / 3. keine Doppelmail, Erholung → BEHOBEN, App nicht erreichbar (000), Backup 30 h alt und Marker fehlt, abschaltbar, Platte über Grenze, Erinnerung, scheiternder Versand wird nachgeholt, fehlender Empfänger → klare Meldung, Werte aus `.env`. Container-Prüfung mit simuliertem `docker` (gestoppt und fehlend erkannt)

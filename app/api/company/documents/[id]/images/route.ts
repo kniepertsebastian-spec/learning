@@ -4,6 +4,7 @@ import { DOCUMENT_ROLES } from "@/lib/server/company/access";
 import { addDocumentImage, AttestationRequiredError, DocumentNotFoundError, listDocumentImages, TooManyImagesError } from "@/lib/server/company/documents";
 import { requireCompanyApi } from "@/lib/server/company/guard";
 import { MAX_IMAGE_BYTES, MAX_IMAGES_PER_DOCUMENT } from "@/lib/server/documents/images";
+import { BodyTooLargeError, readFormDataCapped } from "@/lib/server/http/capped-body";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,14 +33,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!limit.allowed) {
     return NextResponse.json({ error: "Zu viele Uploads. Bitte später erneut versuchen." }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } });
   }
-  const declared = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > MAX_IMAGE_BYTES + 1024 * 1024) {
-    return NextResponse.json({ error: "Das Bild ist zu groß.", code: "too_large" }, { status: 413 });
-  }
+  // Mit Obergrenze lesen, auch wenn der Body in Stücken ohne Content-Length kommt.
   let form: FormData;
   try {
-    form = await request.formData();
-  } catch {
+    form = await readFormDataCapped(request, MAX_IMAGE_BYTES + 1024 * 1024);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json({ error: "Das Bild ist zu groß.", code: "too_large" }, { status: 413 });
+    }
     return NextResponse.json({ error: "Ungültige Anfrage (multipart/form-data erwartet)." }, { status: 400 });
   }
   const file = form.get("file");

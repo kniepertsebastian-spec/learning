@@ -6,6 +6,7 @@ import { ExpertProfileView } from "@/components/experts/ExpertProfileView";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { toast } from "@/components/ui/toaster";
 import { publicView, type CertificationData, type ExperienceData, type ProfileData } from "@/lib/reviewers/profile";
 import type { ReviewerExperienceKind, ReviewerProfileField } from "@/lib/server/db/schema";
 import type { Locale } from "@/lib/types";
@@ -79,6 +80,12 @@ export function ReviewerProfileEditor({ initial, courses, locale }: { initial: O
     }
     setMessage({ tone: "error", text: r.error, problems: r.problems });
     return false;
+  }
+
+  /** Die Meldung oben im Formular liegt beim Klick meist außerhalb des Bildschirms: zusätzlich ein Toast als Bestätigung. */
+  async function publish() {
+    const text = c_reviewerReviewerProfileEditor(de).profilePublished;
+    if (await run(() => call("/api/reviewer/profile/publish", "POST", { action: "publish" }), text)) toast.success(text);
   }
 
   const saveProfile = () =>
@@ -223,7 +230,7 @@ export function ReviewerProfileEditor({ initial, courses, locale }: { initial: O
             </p>
             <div className="flex flex-wrap gap-2">
               {!p.published && (
-                <Button onClick={() => void run(() => call("/api/reviewer/profile/publish", "POST", { action: "publish" }), c_reviewerReviewerProfileEditor(de).profilePublished)} disabled={busy} data-testid="profile-publish">
+                <Button onClick={() => void publish()} disabled={busy} data-testid="profile-publish">
                   {c_reviewerReviewerProfileEditor(de).publish}
                 </Button>
               )}

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { trackedRateLimitKeys } from "./admin/rate-limit";
 import {
   checkAccountActionRateLimit,
   checkAccountExportRateLimit,
   checkInvitationAcceptRateLimit,
   checkInvitationCreateRateLimit,
   checkLoginRateLimit,
+  checkRecoveryRequestRateLimit,
   checkRegistrationRateLimit,
   clientIp,
 } from "./auth-rate-limit";
@@ -24,6 +26,27 @@ describe("auth rate limits", () => {
     }
     expect(checkLoginRateLimit("1.1.1.1", "another@example.com").allowed).toBe(false);
     expect(checkLoginRateLimit("9.9.9.9", "another@example.com").allowed).toBe(true);
+  });
+
+  it("eine gesperrte IP zählt keine Konto-Versuche mehr und kann fremde Konten nicht zusätzlich sperren", () => {
+    for (let i = 0; i < 30; i++) expect(checkLoginRateLimit("7.7.7.7", `fill${i}@example.com`).allowed).toBe(true);
+    const keysBefore = trackedRateLimitKeys();
+
+    // Jetzt ist die IP gesperrt: weitere Versuche (auch mit neuen Adressen) legen nichts mehr im Speicher an.
+    for (let i = 0; i < 20; i++) expect(checkLoginRateLimit("7.7.7.7", "victim@example.com").allowed).toBe(false);
+    for (let i = 0; i < 20; i++) expect(checkLoginRateLimit("7.7.7.7", `neu${i}@example.com`).allowed).toBe(false);
+    expect(trackedRateLimitKeys()).toBe(keysBefore);
+
+    // Das Konto des Opfers ist von anderer IP aus weiter voll nutzbar.
+    for (let i = 0; i < 10; i++) expect(checkLoginRateLimit("8.8.8.8", "victim@example.com").allowed).toBe(true);
+    expect(checkLoginRateLimit("8.8.8.8", "victim@example.com").allowed).toBe(false);
+  });
+
+  it("meldet bei gesperrter IP die Wartezeit der IP", () => {
+    for (let i = 0; i < 30; i++) checkLoginRateLimit("6.6.6.6", `w${i}@example.com`);
+    const blocked = checkLoginRateLimit("6.6.6.6", "w0@example.com");
+    expect(blocked.allowed).toBe(false);
+    if (!blocked.allowed) expect(blocked.retryAfterSeconds).toBeGreaterThan(0);
   });
 
   it("der E2E-Faktor lockert nur die Login-Limits und nur wenn gesetzt", () => {
@@ -48,6 +71,14 @@ describe("auth rate limits", () => {
       expect(checkRegistrationRateLimit("2.2.2.2").allowed).toBe(true);
     }
     expect(checkRegistrationRateLimit("2.2.2.2").allowed).toBe(false);
+  });
+
+  it("zählt bei „Passwort vergessen“ die Adresse nur, solange die IP nicht gesperrt ist", () => {
+    for (let i = 0; i < 10; i++) expect(checkRecoveryRequestRateLimit("11.11.11.11", `r${i}@example.com`).allowed).toBe(true);
+    for (let i = 0; i < 5; i++) expect(checkRecoveryRequestRateLimit("11.11.11.11", "target@example.com").allowed).toBe(false);
+    // Die Adresse hat von einer anderen IP aus ihre drei Anfragen pro Stunde noch.
+    for (let i = 0; i < 3; i++) expect(checkRecoveryRequestRateLimit("12.12.12.12", "target@example.com").allowed).toBe(true);
+    expect(checkRecoveryRequestRateLimit("12.12.12.12", "target@example.com").allowed).toBe(false);
   });
 
   it("liest die Client-IP in Prioritätsreihenfolge", () => {

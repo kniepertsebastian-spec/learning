@@ -32,9 +32,9 @@ export function titleFromUrl(url: string): string {
   }
 }
 
-/** Dateiname ohne `.pdf` als Titel einer hochgeladenen Datei. */
+/** Dateiname ohne `.pdf`, `.md` oder `.markdown` als Titel einer hochgeladenen Datei. */
 export function titleFromFileName(name: string): string {
-  return name.replace(/\.pdf$/i, "").replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim() || name;
+  return name.replace(/\.(pdf|md|markdown)$/i, "").replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim() || name;
 }
 
 export function parseSourceList(text: string): SourceListResult {

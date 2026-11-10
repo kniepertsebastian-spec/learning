@@ -8,16 +8,17 @@ import { users } from "@/lib/server/db/schema";
 import { checkRegistrationRateLimit, clientIp } from "@/lib/server/auth-rate-limit";
 import { hasPendingInvitationForEmail } from "@/lib/server/company/invitations";
 import { hasPendingReviewerInvitationForEmail } from "@/lib/server/reviewers/service";
-import { normalizeEmail } from "@/lib/server/email";
+import { MAX_EMAIL_LENGTH, normalizeEmail } from "@/lib/server/email";
 import { sendVerificationEmail } from "@/lib/server/account/recovery";
 import { isMailConfigured } from "@/lib/server/mail/config";
 import { cleanCompanyName, createOrganizationForUser, isCompanyEmail, requestCompanyClaim } from "@/lib/server/company/claims";
 import { newPasswordSchema } from "@/lib/server/password-policy";
 
 const registerRequestSchema = z.object({
-  email: z.string().email().transform(normalizeEmail),
+  email: z.string().max(MAX_EMAIL_LENGTH).email().transform(normalizeEmail),
   password: newPasswordSchema,
-  name: z.string().min(1).optional(),
+  // Der Name erscheint in Zertifikaten, Firmenlisten und E-Mails: ohne Leerraum an den Rändern und höchstens 200 Zeichen.
+  name: z.string().trim().min(1).max(200).optional(),
   // Privatperson (Standard) oder Unternehmen: dann ist die E-Mail die Firmen-Adresse, und der
   // Firmenname ist Pflicht. Die Firma entsteht erst nach Bestätigung per Link (company/claims.ts).
   accountType: z.enum(["private", "company"]).default("private"),

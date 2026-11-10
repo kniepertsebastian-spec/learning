@@ -77,7 +77,7 @@ export type CourseRequestStatus =
   /** Die erteilte Freigabe wurde vom Betreiber wieder entzogen. */
   | "revoked";
 
-export type CertificationSourceType = "pdf" | "url";
+export type CertificationSourceType = "pdf" | "url" | "markdown";
 
 /** R1.1 (roadmap.md): Lebenszyklus einer certification_sources-Zeile. `parsed`
  * wird von R1.1 gesetzt (Textextraktion fertig); `reviewed`/`approved`/
@@ -1698,10 +1698,12 @@ export const certificationSources = pgTable(
     certificationId: uuid("certification_id")
       .notNull()
       .references(() => certifications.id, { onDelete: "cascade" }),
-    /** "pdf" (Datei-Upload) oder "url" (serverseitig abgerufen, siehe
+    /** "pdf" (Datei-Upload), "url" (serverseitig abgerufen, siehe
      * registerCertificationSourceFromUrl() in lib/server/admin/sources.ts,
-     * SSRF-abgesichert über lib/server/network/ssrf-guard.ts). Beide Typen
-     * landen in derselben Storage-/Extraktions-Pipeline. */
+     * SSRF-abgesichert über lib/server/network/ssrf-guard.ts) oder "markdown"
+     * (.md-Datei oder im Editor eingefügter Text; nachträglich bearbeitbar,
+     * solange die Quelle nicht geprüft/freigegeben ist). Alle Typen landen in
+     * derselben Storage-/Extraktions-Pipeline. */
     sourceType: text("source_type").$type<CertificationSourceType>().notNull(),
     title: text("title").notNull(),
     provider: text("provider").notNull(),
@@ -1740,7 +1742,7 @@ export const certificationSources = pgTable(
     ),
     check(
       "certification_sources_source_type_check",
-      sql`${table.sourceType} in ('pdf', 'url')`,
+      sql`${table.sourceType} in ('pdf', 'url', 'markdown')`,
     ),
     check(
       "certification_sources_status_check",
@@ -2028,6 +2030,8 @@ export type SourceReport = {
   /** Quellen, die für die KI gekürzt wurden: Anfang statt ganzer Text, Lernziele aus dem Rest fehlen dann womöglich. */
   truncated: Array<{ title: string; url: string }>;
   sourceCount: number;
+  /** Quellen, die sich beim Start nicht verwenden ließen (nicht erreichbar, zu wenig Text, defekt): der Kurs entstand ohne sie. Fehlt, wenn alle funktionierten. */
+  skipped?: Array<{ url: string; error: string }>;
   /** Als Prüfungsleitfaden erkannte Quelle (wird nicht auf 60.000 Zeichen gekürzt); fehlt bei älteren Berichten. */
   primary?: { title: string; url: string } | null;
   /** Fingerabdruck des Quelltexts (Leitfaden, sonst alle Quellen) und darin genannte Prüfungsversionen („SY0-701“, „Version 7.0“). */

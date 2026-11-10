@@ -82,6 +82,8 @@ const ALLOWED_SERVER_MODULES = new Set([
   "sections/completed",
   // Firmendokumente: PDF-Text, Upload-Prüfung und Secret-Scanner (reine Funktionen, keine Lerndaten)
   "documents",
+  // Uploads: liest den Request-Body mit fester Obergrenze (reine Funktion auf Bytes, keine Lerndaten)
+  "http/capped-body",
   // KI-Zugang der Firma: Verschlüsselung der Schlüssel und Prüfung des Schlüssels (keine Lerndaten)
   "crypto",
   "byok",

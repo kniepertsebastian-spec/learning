@@ -69,11 +69,12 @@ export function compareCoverage(official: OfficialObjective[], courseCodes: stri
  * Bericht über die Quellen eines Auftrags: erkannte offizielle Lernziele und gekürzte Quellen. Die Bilder-Beschreibungen
  * („Bild: …“) zählen nicht mit, sie sind KI-Text und keine Gliederung der Quelle.
  */
-export function buildSourceReport(sources: FetchedSource[], now: Date = new Date()): SourceReport {
+export function buildSourceReport(sources: FetchedSource[], now: Date = new Date(), skipped: Array<{ url: string; error: string }> = []): SourceReport {
   const excerpts = sources.flatMap((s) => s.excerpts.filter((e) => !e.locator.startsWith("Bild:")));
   const main = sources.find((s) => s.primary) ?? null;
   const tracked = (main ? main.excerpts : excerpts).map((e) => e.text).join("\n");
   return {
+    ...(skipped.length > 0 ? { skipped } : {}),
     fingerprint: createHash("sha256").update(tracked.replace(/\s+/g, " ").trim()).digest("hex").slice(0, 16),
     versions: detectExamVersions(tracked),
     checkedAt: now.toISOString(),

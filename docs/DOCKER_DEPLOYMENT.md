@@ -17,7 +17,8 @@ ssh user@your-server
 cd /path/to/app
 
 # Create .env file from template
-cp .env.example .env
+# (.env.minimal.example = only the required values; .env.example = all options, ranked by importance)
+cp .env.minimal.example .env
 
 # Edit with your values
 nano .env
@@ -219,6 +220,10 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
+        # Client-Adresse für die Rate-Limits der App; ein vom Client geschickter CF-Connecting-IP wird verworfen
+        # (nur weglassen, wenn cloudflared vor nginx steht - dann liefert Cloudflare den echten Wert).
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header CF-Connecting-IP "";
         proxy_cache_bypass $http_upgrade;
     }
 }

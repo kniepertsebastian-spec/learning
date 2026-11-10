@@ -22,9 +22,11 @@ server {
 		proxy_http_version 1.1;
 		proxy_set_header Host $host;
 		proxy_set_header X-Real-IP $remote_addr;
-		# Steht nginx direkt im Netz (nicht hinter Cloudflare), muss ein vom Client geschickter
-		# CF-Connecting-IP entfernt werden, die App vertraut ihm für ihre Rate-Limits:
-		# proxy_set_header CF-Connecting-IP "";
+		# Die App vertraut CF-Connecting-IP für ihre Rate-Limits. Steht nginx direkt im Netz (wie hier mit
+		# "listen 443 ssl"), würde ein vom Client erfundener Header alle Begrenzungen je IP aushebeln - deshalb
+		# wird er entfernt, und die App nimmt X-Real-IP. Läuft cloudflared VOR nginx (Tunnel -> nginx -> App),
+		# diese Zeile streichen, sonst sieht die App nur die Adresse des Tunnels und alle Nutzer teilen sich ein Limit.
+		proxy_set_header CF-Connecting-IP "";
 		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 		proxy_set_header X-Forwarded-Proto $scheme;
 

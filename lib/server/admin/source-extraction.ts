@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { extractPdfPages } from "@/lib/server/documents/pdf-text";
+import { splitIntoSections } from "@/lib/server/documents/sections";
 import { getDb } from "@/lib/server/db/client";
 import { certificationSources, sourceChunks } from "@/lib/server/db/schema";
 import { readSourceFile, sha256Hex } from "@/lib/server/storage/local-disk";
-import { getCertificationSource } from "./sources";
+import { decodeMarkdown, getCertificationSource } from "./sources";
 
 // Die PDF-Textextraktion liegt in lib/server/documents/pdf-text.ts (auch vom Firmenbereich genutzt, der keine
 // Lernquellen-Module importieren darf); hier bleibt sie unter dem bisherigen Namen erreichbar.
@@ -46,18 +47,35 @@ export async function extractSourceContent(sourceId: string): Promise<void> {
 
   try {
     const data = await readSourceFile(source.storageKey);
-    const isPdf = source.mimeType === "application/pdf";
-    const pages = isPdf ? await extractPdfPages(data) : [{ pageNumber: 1, text: stripHtml(data.toString("utf-8")) }];
+    const isMarkdown = source.sourceType === "markdown";
+    const isPdf = !isMarkdown && source.mimeType === "application/pdf";
+    let pages: Array<{ pageNumber: number; text: string }>;
+    if (isMarkdown) {
+      // Markdown hat keine Seiten: Abschnitte (an Überschriften) übernehmen die Rolle der Seiten, damit Blueprint und Prüfansicht
+      // wie bei PDFs auf Teile der Quelle verweisen können.
+      pages = splitIntoSections(decodeMarkdown(data)).map((section, index) => ({ pageNumber: index + 1, text: section.text }));
+    } else if (isPdf) {
+      pages = await extractPdfPages(data);
+    } else {
+      pages = [{ pageNumber: 1, text: stripHtml(data.toString("utf-8")) }];
+    }
 
     if (pages.length === 0 || pages.every((page) => !page.text.trim())) {
       throw new Error(
         isPdf
           ? "Aus der PDF-Datei konnte kein Text extrahiert werden (evtl. eingescannt/nur Bilder ohne OCR)."
-          : "Aus der URL-Quelle konnte kein verwertbarer Text extrahiert werden.",
+          : isMarkdown
+            ? "Die Markdown-Datei enthält keinen Text."
+            : "Aus der URL-Quelle konnte kein verwertbarer Text extrahiert werden.",
       );
     }
 
     await db.transaction(async (tx) => {
+      // Ein geänderter Markdown-Text kann weniger Abschnitte haben als vorher: übrig gebliebene Abschnitte weg, sonst zeigen
+      // Prüfansicht und Blueprint Text, der gar nicht mehr in der Quelle steht.
+      await tx
+        .delete(sourceChunks)
+        .where(and(eq(sourceChunks.sourceId, sourceId), gt(sourceChunks.pageNumber, Math.max(...pages.map((page) => page.pageNumber)))));
       for (const page of pages) {
         const contentHash = sha256Hex(Buffer.from(page.text, "utf-8"));
         await tx

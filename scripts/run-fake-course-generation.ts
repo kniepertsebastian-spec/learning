@@ -171,7 +171,7 @@ async function main() {
     blueprintProvider,
     contentProvider,
     repairProvider: contentProvider,
-    fetchSourcesFn: async () => fakeSources(),
+    fetchSourcesFn: async () => ({ sources: fakeSources(), skipped: [] }),
   });
 
   const finalJob = await getCourseGenerationJob(job.id);

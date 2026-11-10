@@ -141,6 +141,17 @@ export function CourseReport({ certId, locale, onOpen, onObjectiveCreated }: { c
             </ul>
           </div>
         )}
+        {c.skipped.length > 0 && (
+          <div className="mt-3 rounded-xl border border-warning/40 bg-warning-soft p-3 text-sm text-warning-text" role="status" data-testid="coverage-skipped">
+            <p className="font-semibold">{tr("Quellen übersprungen", "Sources skipped")}</p>
+            <p className="mt-0.5">{tr("Diese Quellen ließen sich beim Erstellen nicht verwenden. Der Kurs entstand aus den übrigen, Inhalte nur aus diesen Quellen fehlen womöglich.", "These sources could not be used when the course was created. The course was built from the others, so content found only in these may be missing.")}</p>
+            <ul className="mt-1 list-disc pl-5">
+              {c.skipped.map((s) => (
+                <li key={s.url} className="break-all">{s.url} <span className="text-xs">({s.error})</span></li>
+              ))}
+            </ul>
+          </div>
+        )}
         {c.change && (
           <div className="mt-3 rounded-xl border border-warning/40 bg-warning-soft p-3 text-sm text-warning-text" role="status" data-testid="coverage-change">
             <p className="font-semibold">{tr("Die Quelle hat sich geändert", "The source has changed")}</p>

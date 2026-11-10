@@ -44,7 +44,7 @@ import {
 } from "./schemas";
 import { looksLikeOutline } from "./outline";
 import { partTitle, splitBlueprint } from "./split";
-import { fetchSources, type FetchedSource } from "./sources";
+import { fetchSourcesTolerant, noUsableSourceMessage, type FetchedSource, type FetchSourcesResult, type SkippedSource } from "./sources";
 import { buildSourceReport } from "./coverage";
 import { autoFixObjectiveContent, missingQuestionsOnly, pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
 import { getDb } from "@/lib/server/db/client";
@@ -119,7 +119,8 @@ export interface CourseGenerationDeps {
   blueprintProvider: BlueprintProvider;
   contentProvider: CourseContentProvider;
   repairProvider: CourseContentProvider;
-  fetchSourcesFn: (urls: string[]) => Promise<FetchedSource[]>;
+  /** Liefert die brauchbaren Quellen und die übersprungenen; der Worker bricht nur ab, wenn keine einzige brauchbar ist. */
+  fetchSourcesFn: (urls: string[]) => Promise<FetchSourcesResult>;
   /** Interne Lernpfade: Text des Firmendokuments (geschwärzt und gescannt). */
   loadDocumentSourcesFn: (organizationId: string, jobId: string, describeImage?: ImageDescriber, legacyDocumentId?: string | null) => Promise<FetchedSource[]>;
   /** Interne Lernpfade: beschreibt Screenshots über den KI-Zugang der Firma. */
@@ -135,7 +136,7 @@ async function defaultDeps(
   job: CourseGenerationJob,
   override?: Partial<CourseGenerationDeps>,
 ): Promise<CourseGenerationDeps> {
-  const base = { fetchSourcesFn: fetchSources, loadDocumentSourcesFn: loadJobSources };
+  const base = { fetchSourcesFn: fetchSourcesTolerant, loadDocumentSourcesFn: loadJobSources };
   if (!job.organizationId) {
     return {
       blueprintProvider: resolveBlueprintProvider(job.blueprintProvider),
@@ -520,11 +521,14 @@ export async function executeCourseGenerationJob(
       );
     }
     let sources: FetchedSource[];
+    // Quellen, die sich nicht verwenden ließen: der Kurs entsteht aus den übrigen (nur wenn keine einzige brauchbar ist, bricht der Preflight ab).
+    let skippedSources: SkippedSource[] = [];
     try {
-      sources =
-        job.organizationId && (job.documentId || (await hasJobDocuments(jobId)))
-          ? await deps.loadDocumentSourcesFn(job.organizationId, jobId, deps.describeImageFn, job.documentId)
-          : await deps.fetchSourcesFn(job.sourceUrls);
+      if (job.organizationId && (job.documentId || (await hasJobDocuments(jobId)))) {
+        sources = await deps.loadDocumentSourcesFn(job.organizationId, jobId, deps.describeImageFn, job.documentId);
+      } else {
+        ({ sources, skipped: skippedSources } = await deps.fetchSourcesFn(job.sourceUrls));
+      }
     } catch (error) {
       if (error instanceof DocumentSourceError) throw new PreflightError(error.message);
       // fetchSource() wirft SourceFetchError (siehe sources.ts) - das ist
@@ -533,11 +537,17 @@ export async function executeCourseGenerationJob(
       // generischer "failed"-Status.
       throw new PreflightError((error as Error).message);
     }
+    if (sources.length === 0 && skippedSources.length > 0) throw new PreflightError(noUsableSourceMessage(skippedSources));
 
-    // Was die Quellen hergeben (offizielle Lernziel-Nummern, gekürzte Quellen) für den Qualitätsbericht festhalten.
-    // Reine Zusatzinformation: ein Fehler hier darf den Auftrag nie aufhalten.
+    // Was die Quellen hergeben (offizielle Lernziel-Nummern, gekürzte Quellen, übersprungene Quellen) für den Qualitätsbericht
+    // festhalten. Reine Zusatzinformation: ein Fehler hier darf den Auftrag nie aufhalten.
     try {
-      await updateCourseGenerationJob(jobId, { sourceReport: buildSourceReport(sources) });
+      await updateCourseGenerationJob(jobId, {
+        sourceReport: buildSourceReport(sources, new Date(), skippedSources),
+        ...(skippedSources.length > 0
+          ? { message: `${skippedSources.length} von ${sources.length + skippedSources.length} Quellen ließen sich nicht verwenden und werden übersprungen.` }
+          : {}),
+      });
     } catch (error) {
       console.error("[course-generation] Quellenbericht nicht gespeichert:", error);
     }

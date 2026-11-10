@@ -26,6 +26,8 @@ const texts = {
     removeAndContinue: "Entfernen und fortfahren",
     cancelFixMyself: "Abbrechen (selbst korrigieren)",
     n0SourceSCannotBe: "{0} Quelle(n) lassen sich nicht verwenden:",
+    n0SourceSSkipped: "{0} Quelle(n) übersprungen",
+    skippedSourcesHint: "Der Kurs entsteht aus den übrigen Quellen. Diese ließen sich nicht verwenden:",
   },
   en: {
     pleaseAddAtLeastOne: "Please add at least one source.",
@@ -53,6 +55,8 @@ const texts = {
     removeAndContinue: "Remove and continue",
     cancelFixMyself: "Cancel (fix myself)",
     n0SourceSCannotBe: "{0} source(s) cannot be used:",
+    n0SourceSSkipped: "{0} source(s) skipped",
+    skippedSourcesHint: "The course is built from the remaining sources. These could not be used:",
   },
 } as const;
 

@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { checkLoginRateLimit, clientIp } from "./auth-rate-limit";
 import { authenticateUser } from "./credentials";
 import { isSessionTokenValid } from "./session-validity";
-import { normalizeEmail } from "./email";
+import { parseLoginCredentials } from "./login-input";
 import { consumeLoginTicket } from "./sso/service";
 
 /**
@@ -26,17 +26,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials, request) => {
-        const email =
-          typeof credentials?.email === "string" ? normalizeEmail(credentials.email) : undefined;
-        const password =
-          typeof credentials?.password === "string" ? credentials.password : undefined;
-        if (!email || !password) return null;
+        // Fehlende Felder und zu lange E-Mails (über 254 Zeichen) lehnen wir ab, bevor sie den Rate-Limiter erreichen.
+        const input = parseLoginCredentials(credentials);
+        if (!input) return null;
 
         // Gesperrte Versuche liefern dieselbe Antwort wie falsche Zugangsdaten.
-        if (!checkLoginRateLimit(clientIp(request.headers), email).allowed) return null;
+        if (!checkLoginRateLimit(clientIp(request.headers), input.email).allowed) return null;
 
         // Passwortprüfung inkl. E-Mail-Bestätigung: lib/server/credentials.ts
-        return authenticateUser(email, password);
+        return authenticateUser(input.email, input.password);
       },
     }),
     // Anmeldung über das Firmenkonto: nur mit einem einmaligen Ticket, das /api/sso/callback nach geprüfter Rückkehr vom IdP ausstellt.

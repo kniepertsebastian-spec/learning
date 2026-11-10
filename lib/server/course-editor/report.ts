@@ -58,6 +58,8 @@ export type CoverageView = {
   checkedAt: string | null;
   sourceCount: number;
   truncated: SourceReport["truncated"];
+  /** Quellen, die beim Start nicht verwendbar waren: der Kurs entstand ohne sie. */
+  skipped: NonNullable<SourceReport["skipped"]>;
   /** Als Prüfungsleitfaden erkannte Quelle (vollständig gelesen). */
   primary: { title: string; url: string } | null;
   /** Hat sich die Quelle seit der Kurserstellung (bzw. dem letzten bestätigten Stand) geändert? */
@@ -213,8 +215,8 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
 
   // Abdeckung gegen die Quelle
   let coverage: CoverageView;
-  if (meta?.courseType === "custom") coverage = { unavailable: "custom_course", checkedAt: null, sourceCount: 0, truncated: [], primary: null, change: null, result: null, canRefresh: false };
-  else if (!job) coverage = { unavailable: "no_job", checkedAt: null, sourceCount: 0, truncated: [], primary: null, change: null, result: null, canRefresh: false };
+  if (meta?.courseType === "custom") coverage = { unavailable: "custom_course", checkedAt: null, sourceCount: 0, truncated: [], skipped: [], primary: null, change: null, result: null, canRefresh: false };
+  else if (!job) coverage = { unavailable: "no_job", checkedAt: null, sourceCount: 0, truncated: [], skipped: [], primary: null, change: null, result: null, canRefresh: false };
   else {
     const rep = job.sourceReport;
     coverage = {
@@ -222,6 +224,7 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
       checkedAt: rep?.checkedAt ?? null,
       sourceCount: rep?.sourceCount ?? 0,
       truncated: rep?.truncated ?? [],
+      skipped: rep?.skipped ?? [],
       primary: rep?.primary ?? null,
       change: sourceChange(rep),
       result: rep ? compareCoverage(rep.officialObjectives, objs.map((o) => o.code)) : null,
@@ -260,14 +263,20 @@ export async function refreshCoverage(certId: string, fetcher: (urls: string[]) 
   await editableCourse(certId);
   const job = await latestJob(certId);
   if (!job || job.sourceUrls.length === 0) throw new CoverageRefreshError("Zu diesem Kurs ist keine Quelle hinterlegt.");
+  // Quellen, die schon beim Start nicht verwendbar waren, flossen nicht in den Kurs ein: sie bleiben außen vor (und bleiben im
+  // Bericht vermerkt), sonst scheiterte „Quelle prüfen“ für immer an derselben kaputten Adresse.
+  const skipped = job.sourceReport?.skipped ?? [];
+  const skippedUrls = new Set(skipped.map((s) => s.url));
+  const urls = job.sourceUrls.filter((url) => !skippedUrls.has(url));
+  if (urls.length === 0) throw new CoverageRefreshError("Zu diesem Kurs ist keine verwendbare Quelle hinterlegt.");
   let sources: FetchedSource[];
   try {
-    sources = await fetcher(job.sourceUrls);
+    sources = await fetcher(urls);
   } catch (error) {
     if (error instanceof SourceFetchError) throw new CoverageRefreshError(`Quelle nicht abrufbar: ${error.message}`);
     throw error;
   }
-  const report = { ...buildSourceReport(sources, now), baseline: baselineFor(job.sourceReport) };
+  const report = { ...buildSourceReport(sources, now, skipped), baseline: baselineFor(job.sourceReport) };
   await getDb().update(courseGenerationJobs).set({ sourceReport: report }).where(eq(courseGenerationJobs.id, job.id));
   // Versionsüberwachung: zuletzt gegen die Quelle geprüft.
   await getDb().update(certifications).set({ lastVerifiedDate: now }).where(eq(certifications.id, certId));

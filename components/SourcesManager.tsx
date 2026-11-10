@@ -4,9 +4,10 @@ import { c_sourcesManager } from "@/lib/i18n/components/sourcesManager";
 import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Link as LinkIcon, Loader2, UploadCloud } from "lucide-react";
+import { FileCode, FileText, Link as LinkIcon, Loader2, UploadCloud } from "lucide-react";
 import { BlueprintPanel } from "./BlueprintPanel";
 import { BulkSourceImport } from "./BulkSourceImport";
+import { MarkdownSourceEditor } from "./MarkdownSourceEditor";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
 
 interface Source {
@@ -41,6 +42,8 @@ const STATUS_COLOR: Record<string, string> = {
   failed: "bg-danger-soft text-danger-text",
 };
 
+const SOURCE_KIND_LABEL = { pdf: "PDF", markdown: "Markdown", url: "URL" } as const;
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -61,7 +64,7 @@ export function SourcesManager({
   const router = useRouter();
   const online = useOnlineStatus();
   const [sources, setSources] = useState<Source[]>(initialSources);
-  const [sourceKind, setSourceKind] = useState<"pdf" | "url">("pdf");
+  const [sourceKind, setSourceKind] = useState<"pdf" | "markdown" | "url">("pdf");
   const [addMode, setAddMode] = useState<"single" | "bulk">("single");
   const [parsingAll, setParsingAll] = useState<{ done: number; total: number } | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -195,40 +198,39 @@ export function SourcesManager({
             <span className="mb-1 block font-medium">
               {c_sourcesManager(locale).source}
             </span>
-            <div className="mb-2 flex gap-1 rounded-md border border-border p-0.5">
-              <button
-                type="button"
-                onClick={() => setSourceKind("pdf")}
-                className={`flex-1 rounded px-2 py-1 text-xs font-medium ${
-                  sourceKind === "pdf" ? "bg-primary text-on-primary" : "hover:bg-background"
-                }`}
-              >
-                PDF
-              </button>
-              <button
-                type="button"
-                onClick={() => setSourceKind("url")}
-                className={`flex-1 rounded px-2 py-1 text-xs font-medium ${
-                  sourceKind === "url" ? "bg-primary text-on-primary" : "hover:bg-background"
-                }`}
-              >
-                URL
-              </button>
+            <div className="mb-2 flex gap-1 rounded-md border border-border p-0.5" role="group" aria-label={c_sourcesManager(locale).source}>
+              {(["pdf", "markdown", "url"] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  aria-pressed={sourceKind === kind}
+                  onClick={() => setSourceKind(kind)}
+                  data-testid={`source-kind-${kind}`}
+                  className={`flex-1 rounded px-2 py-1 text-xs font-medium ${
+                    sourceKind === kind ? "bg-primary text-on-primary" : "hover:bg-background"
+                  }`}
+                >
+                  {SOURCE_KIND_LABEL[kind]}
+                </button>
+              ))}
             </div>
-            {sourceKind === "pdf" ? (
-              <input
-                name="file"
-                type="file"
-                accept="application/pdf"
-                required
-                className="w-full rounded-md border border-border bg-background px-3 py-2"
-              />
-            ) : (
+            {sourceKind === "url" ? (
               <input
                 name="url"
                 type="url"
                 required
                 placeholder="https://example.org/exam-guide.pdf"
+                className="w-full rounded-md border border-border bg-background px-3 py-2"
+              />
+            ) : (
+              <input
+                // Eigener key je Art: Beim Wechsel zwischen PDF und Markdown wird die schon gewählte Datei sonst behalten, obwohl sie nicht mehr passt.
+                key={sourceKind}
+                name="file"
+                type="file"
+                accept={sourceKind === "markdown" ? ".md,.markdown,text/markdown" : "application/pdf"}
+                required
+                data-testid="source-file"
                 className="w-full rounded-md border border-border bg-background px-3 py-2"
               />
             )}
@@ -314,6 +316,8 @@ export function SourcesManager({
                     <div className="flex items-start gap-2">
                       {source.sourceType === "url" ? (
                         <LinkIcon className="mt-0.5 h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
+                      ) : source.sourceType === "markdown" ? (
+                        <FileCode className="mt-0.5 h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
                       ) : (
                         <FileText className="mt-0.5 h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
                       )}
@@ -322,7 +326,7 @@ export function SourcesManager({
                         <p className="text-xs text-subtle">
                           {source.provider} · {formatBytes(source.fileSizeBytes)}
                           {textExtracted
-                            ? ` · ${source.chunkCount} ${c_sourcesManager(locale).pagesExtracted}`
+                            ? ` · ${source.chunkCount} ${source.sourceType === "markdown" ? c_sourcesManager(locale).sectionsExtracted : c_sourcesManager(locale).pagesExtracted}`
                             : ""}
                         </p>
                         {source.sourceType === "url" && source.sourceUrl && (
@@ -359,6 +363,11 @@ export function SourcesManager({
                       ? c_sourcesManager(locale).extractText
                       : c_sourcesManager(locale).reExtract}
                   </button>
+
+                  {/* Markdown-Text lässt sich bis zur Prüfung noch ändern; danach hängen Blueprint und Freigabe daran. */}
+                  {source.sourceType === "markdown" && ["uploaded", "parsed", "failed"].includes(source.status) && (
+                    <MarkdownSourceEditor sourceId={source.id} title={source.title} locale={locale} online={online} onSaved={refresh} />
+                  )}
 
                   {textExtracted && (
                     <BlueprintPanel
