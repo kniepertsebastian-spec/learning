@@ -38,4 +38,21 @@ test("Datenschutzerklärung nennt jede Angabe mit Zweck, Speicherdauer und Empf�
   await expect(page.locator("#berufsprofil")).toContainText("Gemini");
   await expect(page.locator("#tagesangaben")).toContainText(/Zeitbudget|time budget/);
   await expect(page.locator("#altersspanne")).toBeVisible();
+  // Aufgabe 10: Der KI-Dienst ist benannt, Verarbeitungsort und Trainingsausschluss kommen vom Betreiber (hier nicht gesetzt).
+  await expect(page.locator("section[aria-labelledby=privacy-ai]")).toContainText("Gemini");
+  await expect(page.getByTestId("ai-statement-missing")).toBeVisible();
+});
+
+/** Aufgabe 08 (Review 12.11.2026): Die AGB sind vollständig und enthalten keinen Platzhalter mehr. */
+test("AGB nennen Parteien, Laufzeit, Kündigung und Haftung und enthalten keinen Platzhalter", async ({ page, gateway }) => {
+  await page.goto(`${gateway.url}/agb`);
+  const text = (await page.getByTestId("agb-page").innerText()).toLowerCase();
+  expect(text).not.toMatch(/zu ergänzen|to be added|platzhalter|placeholder/);
+  for (const id of ["parteien", "fachliche-pruefung", "keine-bestehensgarantie", "pruefungsbedingungen", "laufzeit-kuendigung", "haftung", "datenschutz"]) {
+    await expect(page.locator(`#${id}`)).toBeVisible();
+  }
+  // Betreiber und Kontakt stehen in den Parteien (ohne hinterlegte Angaben als Hinweis), die Freigabe steht aus.
+  await expect(page.locator("#parteien").getByTestId("operator-notice")).toBeVisible();
+  await expect(page.getByTestId("terms-draft")).toBeVisible();
+  await expect(page.locator("#datenschutz a")).toHaveAttribute("href", "/datenschutz");
 });

@@ -62,8 +62,23 @@ const SYSTEM_PROMPT = [
   'Antworte ausschließlich als JSON: {"paths": [...]}.',
 ].join("\n");
 
+/**
+ * Felder zur Person, die an den KI-Dienst gehen (Aufgabe 10, Datenminimierung). Diese Liste steht auch in der Datenschutzerklärung
+ * (`lib/legal/privacy.ts`, Eintrag „Berufsprofil“). Das Bundesland gehört nicht dazu: es dient nur der lokalen Anzeige der
+ * Gehaltsregion, die KI braucht es nicht. Name, E-Mail-Adresse und Kennungen der Person gehen nie mit.
+ */
+export const CAREER_MODEL_PROFILE_FIELDS = ["jobTitle", "jobDescription", "focusAreas", "targetRole"] as const;
+export const CAREER_MODEL_SKILL_FIELDS = ["kind", "name", "level", "recency"] as const;
+
+/** Was tatsächlich an die KI geht: die Eingabe ohne das Bundesland. */
+export function careerModelInput(input: CareerInput): Omit<CareerInput, "profile"> & { profile: Omit<CareerInput["profile"], "state"> } {
+  const { state: _state, ...profile } = input.profile;
+  void _state;
+  return { ...input, profile };
+}
+
 export function createCareerGenerator(client?: GoogleGenAI, onUsage?: (u: AIUsage) => void): CareerGenerator {
-  return (input) => generateStructured(SYSTEM_PROMPT, JSON.stringify(input, null, 1), responseSchema, CURRICULUM_MODEL, onUsage, client);
+  return (input) => generateStructured(SYSTEM_PROMPT, JSON.stringify(careerModelInput(input), null, 1), responseSchema, CURRICULUM_MODEL, onUsage, client);
 }
 
 /** Antwort der KI bereinigen: nur Kurse aus dem Katalog (ohne bereits abgeschlossene, ohne doppelte), Codes prüfen. */

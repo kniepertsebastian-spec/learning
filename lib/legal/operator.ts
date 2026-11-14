@@ -15,6 +15,13 @@ export interface OperatorInfo {
   vatId: string | null;
   /** Pflichtangaben vollständig: Name, Anschrift und E-Mail. */
   complete: boolean;
+  /**
+   * Aussage des Betreibers zum KI-Dienst: Verarbeitungsort und ob Kundendaten zum Training genutzt werden (`LEGAL_AI_STATEMENT`,
+   * Aufgabe 10). Das ist eine Vertragstatsache des Betreibers mit dem Anbieter und steht nicht im Code.
+   */
+  aiStatement: string | null;
+  /** Die AGB wurden vom Betreiber geprüft und freigegeben (`LEGAL_TERMS_REVIEWED=true`, Aufgabe 08). */
+  termsReviewed: boolean;
   /** Die Datenschutzerklärung wurde rechtlich geprüft und freigegeben (`LEGAL_PRIVACY_REVIEWED=true`). */
   privacyReviewed: boolean;
 }
@@ -40,6 +47,8 @@ export function getOperatorInfo(env: Record<string, string | undefined> = proces
     register: clean(env.LEGAL_REGISTER),
     vatId: clean(env.LEGAL_VAT_ID),
     complete: Boolean(name && addressLines.length > 0 && email),
+    aiStatement: clean(env.LEGAL_AI_STATEMENT),
+    termsReviewed: env.LEGAL_TERMS_REVIEWED === "true",
     privacyReviewed: env.LEGAL_PRIVACY_REVIEWED === "true",
   };
 }

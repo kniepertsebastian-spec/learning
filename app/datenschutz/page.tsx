@@ -58,6 +58,23 @@ export default async function DatenschutzPage() {
           })}
         </div>
       </section>
+      <section className="mt-8" aria-labelledby="privacy-ai">
+        <h2 id="privacy-ai" className="mb-2 text-lg font-semibold">{de ? "KI-Dienst" : "AI service"}</h2>
+        <p className="text-sm leading-relaxed text-text-2">
+          {de
+            ? "Für die Karrierepfade nutzt die Plattform die Gemini-Schnittstelle von Google (siehe „Berufsprofil, Skills und Karrierepfade“). Andere KI-Funktionen, etwa die Erstellung und Übersetzung von Kursen, arbeiten mit Kursinhalten und von Firmen hochgeladenen Dokumenten, nicht mit Angaben zu dir."
+            : "For career paths the platform uses Google's Gemini interface (see “Career profile, skills and career paths”). Other AI features, such as creating and translating courses, work with course content and documents uploaded by companies, not with details about you."}
+        </p>
+        {operator.aiStatement ? (
+          <p className="mt-2 text-sm leading-relaxed text-text-2" data-testid="ai-statement">{operator.aiStatement}</p>
+        ) : (
+          <p role="note" className="mt-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm text-warning-text" data-testid="ai-statement-missing">
+            {de
+              ? "Verarbeitungsort und Ausschluss des Trainings auf Kundendaten sind noch nicht bestätigt (LEGAL_AI_STATEMENT)."
+              : "Processing location and exclusion of training on customer data are not confirmed yet (LEGAL_AI_STATEMENT)."}
+          </p>
+        )}
+      </section>
       <section className="mt-8" aria-labelledby="privacy-technical">
         <h2 id="privacy-technical" className="mb-3 text-lg font-semibold">{de ? "Technisches" : "Technical"}</h2>
         <div className="flex flex-col gap-4 text-sm leading-relaxed text-text-2">

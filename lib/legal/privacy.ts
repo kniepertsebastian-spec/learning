@@ -204,8 +204,8 @@ export const PRIVACY_ENTRIES: PrivacyEntry[] = [
       en: "Until you change or delete the details, at the latest until the account is deleted.",
     },
     recipients: {
-      de: "KI-Dienst: Für die Karrierepfade werden Berufsbezeichnung, Beschreibung, Schwerpunkte, Bundesland, Zielrolle, Skills, abgeschlossene Kurse und Zertifikatstitel an die Gemini-Schnittstelle von Google übertragen, und nur, wenn du die Berechnung auslöst. Name und E-Mail-Adresse werden nicht übertragen.",
-      en: "AI service: for career paths, job title, description, focus areas, federal state, target role, skills, completed courses and certificate titles are sent to Google's Gemini interface, and only when you trigger the calculation. Your name and email address are not sent.",
+      de: "KI-Dienst: Für die Karrierepfade werden Berufsbezeichnung, Beschreibung, Schwerpunkte, Zielrolle, Skills (Art, Name, Stufe, Aktualität), abgeschlossene Kurse und Zertifikatstitel an die Gemini-Schnittstelle von Google übertragen, und nur, wenn du die Berechnung auslöst. Name, E-Mail-Adresse, Bundesland und Kennungen werden nicht übertragen.",
+      en: "AI service: for career paths, job title, description, focus areas, target role, skills (kind, name, level, recency), completed courses and certificate titles are sent to Google's Gemini interface, and only when you trigger the calculation. Your name, email address, federal state and identifiers are not sent.",
     },
     exportKeys: ["learning.profile", "learning.skills", "learning.careerPaths"],
   },

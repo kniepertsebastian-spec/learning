@@ -10,7 +10,7 @@ import { getDb } from "@/lib/server/db/client";
 import { careerSuggestions, certifications, salaryDatasets, users } from "@/lib/server/db/schema";
 import { addSkill, saveProfile } from "@/lib/server/profile/service";
 import { importSalaryDataset, salaryFor, SalaryImportError } from "@/lib/server/salary/service";
-import { hintTerms, CareerLimitError, CareerProfileError, getCareerView, hasEnoughProfile, inputHash, MAX_RUNS_PER_DAY, refreshCareerPaths, sanitizePaths, type CareerGenerator, type CareerInput } from "./service";
+import { careerModelInput, CAREER_MODEL_PROFILE_FIELDS, CAREER_MODEL_SKILL_FIELDS, hintTerms, CareerLimitError, CareerProfileError, getCareerView, hasEnoughProfile, inputHash, MAX_RUNS_PER_DAY, refreshCareerPaths, sanitizePaths, type CareerGenerator, type CareerInput } from "./service";
 
 const run = TEST_DB ? describe : describe.skip;
 const tag = randomUUID().slice(0, 8);
@@ -140,5 +140,24 @@ run("Karrierepfade und Gehalt (echte DB)", () => {
     expect(calls).toBe(MAX_RUNS_PER_DAY);
     expect((await getCareerView(u, "de")).runsLeft).toBe(0);
     await getDb().delete(careerSuggestions).where(eq(careerSuggestions.userId, u));
+  });
+});
+
+describe("Eingabe an den KI-Dienst (Datenminimierung)", () => {
+  const withEverything: CareerInput = { ...input, profile: { jobTitle: "Cloud Engineer", jobDescription: "Betrieb", focusAreas: "AWS", state: "BY", targetRole: "SRE" }, skills: [{ kind: "tool", name: "Terraform", level: "advanced", recency: "current" }] };
+
+  it("das Bundesland geht nicht an die KI, es bleibt für die lokale Anzeige in der Eingabe", () => {
+    const sent = careerModelInput(withEverything);
+    expect(JSON.stringify(sent)).not.toContain("BY");
+    expect(sent.profile).not.toHaveProperty("state");
+    expect(withEverything.profile.state).toBe("BY");
+  });
+
+  it("an die KI gehen nur die in der Datenschutzerklärung genannten Felder zur Person", () => {
+    const sent = careerModelInput(withEverything);
+    expect(Object.keys(sent.profile).sort()).toEqual([...CAREER_MODEL_PROFILE_FIELDS].sort());
+    for (const skill of sent.skills) expect(Object.keys(skill).sort()).toEqual([...CAREER_MODEL_SKILL_FIELDS].sort());
+    // Keine Kennungen der Person: die Eingabe kennt weder Name noch E-Mail noch Konto-ID.
+    expect(Object.keys(sent).sort()).toEqual(["catalog", "certificateTitles", "completedCourseIds", "locale", "occupationHints", "profile", "skills"]);
   });
 });

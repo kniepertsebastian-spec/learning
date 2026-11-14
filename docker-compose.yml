@@ -97,6 +97,8 @@ services:
       LEGAL_REGISTER: ${LEGAL_REGISTER:-}
       LEGAL_VAT_ID: ${LEGAL_VAT_ID:-}
       LEGAL_PRIVACY_REVIEWED: ${LEGAL_PRIVACY_REVIEWED:-}
+      LEGAL_TERMS_REVIEWED: ${LEGAL_TERMS_REVIEWED:-}
+      LEGAL_AI_STATEMENT: ${LEGAL_AI_STATEMENT:-}
       SSO_ALLOW_PRIVATE_IDP: ${SSO_ALLOW_PRIVATE_IDP:-}
 
       # Uploaded certification source PDFs (R1.1, lib/server/storage/local-disk.ts)

@@ -23,8 +23,15 @@ describe("getOperatorInfo", () => {
     expect(info.name).toBeNull();
   });
 
+  it("die Aussage zum KI-Dienst kommt aus der Umgebung und fehlt sonst", () => {
+    expect(getOperatorInfo({}).aiStatement).toBeNull();
+    expect(getOperatorInfo({ LEGAL_AI_STATEMENT: " Verarbeitung in der EU, kein Training. " }).aiStatement).toBe("Verarbeitung in der EU, kein Training.");
+  });
+
   it("die Freigabe der Datenschutzerklärung gilt nur bei genau `true`", () => {
     expect(getOperatorInfo({ LEGAL_PRIVACY_REVIEWED: "true" }).privacyReviewed).toBe(true);
     expect(getOperatorInfo({ LEGAL_PRIVACY_REVIEWED: "1" }).privacyReviewed).toBe(false);
+    expect(getOperatorInfo({ LEGAL_TERMS_REVIEWED: "true" }).termsReviewed).toBe(true);
+    expect(getOperatorInfo({}).termsReviewed).toBe(false);
   });
 });
