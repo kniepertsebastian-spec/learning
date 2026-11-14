@@ -2,6 +2,8 @@
 
 > **Stand 12.11.2026.** Grundlage ist `docs/PWA-REVIEW-2026-11-12.md` (`main` bei Commit `be684769`). Der Plan hat zwei Teile: erst die Befunde beheben (Phasen 0 bis 3), dann die Messung menschlicher Faktoren ausbauen (Phasen 4 bis 6). Phase 2 verbindet beide, weil die Antwortzeit heute fehlt und zugleich die Grundlage für mehrere neue Messwerte ist.
 
+Die Aufgaben stehen einzeln in `docs/roadmaps/review-2026-11-12/` (Index: `README.md`). Die Abhak-Listen unten bleiben die Quelle für den Stand.
+
 Der Plan ist für die Umsetzung durch einen Coding-Agenten geschrieben. Vor Änderungen an Next.js-Routen die passende Anleitung in `node_modules/next/dist/docs/` lesen (siehe `AGENTS.md`).
 
 ---
