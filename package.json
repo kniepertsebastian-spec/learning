@@ -37,6 +37,7 @@
     "lessons:possible": "tsx scripts/backfill-lesson-possible.ts",
     "courses:check-sources": "tsx scripts/check-course-sources.ts",
     "stats:backfill-completions": "tsx scripts/backfill-completion-stats.ts",
+    "exams:audit-attempts": "tsx scripts/exam-attempts-audit.ts",
     "company:set-member": "tsx scripts/manage-company.ts set-member",
     "company:remove-member": "tsx scripts/manage-company.ts remove-member",
     "user:reset-password": "tsx scripts/reset-user-password.ts",
