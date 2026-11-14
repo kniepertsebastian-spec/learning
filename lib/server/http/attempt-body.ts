@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { ANSWER_CONFIDENCES } from "@/lib/answer-confidence";
 import { MAX_MATCHING_PAIRS, MAX_ORDERING_STEPS } from "@/lib/questions/answer-formats";
 import { BodyTooLargeError, readJsonCapped } from "./capped-body";
 
@@ -27,7 +28,7 @@ const answerPayload = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("matching"), matches: z.record(z.string().max(1000), z.string().max(1000)).refine((m) => Object.keys(m).length <= MAX_MATCHING_PAIRS * 4, "zu viele Zuordnungen") }),
 ]);
 
-const confidence = z.enum(["guessed", "unsure", "sure"]);
+const confidence = z.enum(ANSWER_CONFIDENCES);
 
 const answerFields = {
   selectedOptionId: optionId,

@@ -19,6 +19,7 @@ import { recordReviewOutcomes } from "@/lib/server/review/service";
 import { answerTime, type ReviewTiming } from "@/lib/server/sync/effective-time";
 import { sanitizeAnswer, type AnswerPayload } from "@/lib/questions/answer-formats";
 import { gradeQuestionAnswer } from "@/lib/server/questions/grading";
+import { parseConfidence } from "@/lib/answer-confidence";
 import type { AnswerConfidence } from "@/lib/types";
 
 export class SectionNotFoundError extends Error {}
@@ -147,7 +148,8 @@ async function recordQuizAttemptCore(
 ): Promise<SectionQuizAttemptResult> {
   const db = getDb();
   // Eingewebte Antworten zählen nicht für Ergebnis und Lernzielstand dieser Lektion (nur wenn das Flag gilt, sonst werden sie verworfen).
-  const candidates = allAnswers.filter((a) => !a.woven);
+  // Unbekannte Selbsteinschätzungen (Sync-Warteschlange alter Geräte) entfallen, die Antwort zählt (Aufgabe 04b).
+  const candidates = allAnswers.filter((a) => !a.woven).map((a) => ({ ...a, confidence: parseConfidence(a.confidence) ?? undefined }));
   const candidateIds = [...new Set(candidates.map((a) => a.questionId))];
   const existingIds = new Set(candidateIds.length > 0 ? (await db.select({ id: questions.id }).from(questions).where(inArray(questions.id, candidateIds))).map((q) => q.id) : []);
   const answers = candidates.filter((a) => existingIds.has(a.questionId));
