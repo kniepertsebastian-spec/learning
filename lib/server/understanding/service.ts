@@ -19,6 +19,8 @@ import {
   type StruggleSignal,
 } from "@/lib/server/db/schema";
 import { flagConceptHotspots } from "./hotspots";
+import { isFeatureEnabled } from "@/lib/server/feature-flags";
+import { hasMisconception } from "@/lib/server/psrp/error-types-db";
 import { lastShownByQuestion } from "@/lib/server/variants/rotation";
 import {
   DEFAULT_UNDERSTANDING_CONFIG,
@@ -146,6 +148,10 @@ export async function detectStruggles(userId: string, itemIds: string[], now: Da
       await db.update(conceptStruggles).set({ signals: evaluation.signals, updatedAt: now }).where(eq(conceptStruggles.id, existing.id));
       continue;
     }
+    // Aufgabe 15: neu eingeschaltet wird nur bei Fehlvorstellung (dieselbe falsche Option wiederholt oder mehrfach „sicher“ falsch,
+    // bei mindestens drei Versuchen einer Frage). Lücke und Flüchtigkeit brauchen keinen anderen Zugang (docs/MESSEN.md, H15).
+    const from = new Date(now.getTime() - config.windowDays * DAY_MS);
+    if (isFeatureEnabled("error_type_gate", userId) && !(await hasMisconception(userId, all.map((a) => a.itemId), from, since))) continue;
     await db
       .insert(conceptStruggles)
       .values({ userId, conceptId, status: "detected", signals: evaluation.signals, detectedAt: now, updatedAt: now })

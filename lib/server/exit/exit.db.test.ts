@@ -119,9 +119,9 @@ run("Notausstieg (echte DB)", () => {
       { userId, source: "session", questionId: course.questionIds[1] },
     ]);
     expect(await detectStruggles(userId, [course.questionIds[0]])).toEqual([]);
-    // dazu ein „falsch + sicher“: zwei Signalarten
+    // dazu „falsch + sicher“: zwei Signalarten. Drei Versuche, damit die Fehlerart als Fehlvorstellung gilt (Aufgabe 15).
     const [session] = await db.insert(studySessions).values({ userId, certificationId: course.certId, status: "completed", goalType: "minutes", goalValue: 5, completedAt: new Date() }).returning();
-    await db.insert(studySessionItems).values({ sessionId: session.id, orderNum: 1, category: "review", referenceType: "question", referenceId: course.questionIds[0], outcome: "incorrect", confidence: "sure" });
+    await db.insert(studySessionItems).values([1, 2, 3].map((orderNum) => ({ sessionId: session.id, orderNum, category: "review" as const, referenceType: "question" as const, referenceId: course.questionIds[0], outcome: "incorrect" as const, confidence: "sure" as const })));
     expect(await detectStruggles(userId, [course.questionIds[0]])).toEqual([concept.id]);
     const [struggle] = await db.select().from(conceptStruggles).where(eq(conceptStruggles.userId, userId));
     expect(struggle.signals.map((x) => x.kind)).toEqual(expect.arrayContaining(["repeated_exit", "sure_wrong"]));

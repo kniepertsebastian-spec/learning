@@ -5,7 +5,7 @@
  */
 import { createHash } from "node:crypto";
 
-export const FEATURE_FLAGS = ["pretest_questions", "recall_check", "understanding_mode", "dropout_guard", "exit_with_win", "energy_modes", "reactivation", "woven_reviews", "reading_time", "device_class", "interruptions", "guess_weighting"] as const;
+export const FEATURE_FLAGS = ["pretest_questions", "recall_check", "understanding_mode", "dropout_guard", "exit_with_win", "energy_modes", "reactivation", "woven_reviews", "reading_time", "device_class", "interruptions", "guess_weighting", "error_type_gate"] as const;
 /**
  * Flags, die standardmäßig AUS sind: sie greifen in eine Bewertung ein und brauchen eine Entscheidung des Betreibers.
  * Einschalten mit `FEATURE_<NAME>=1` (alle) oder `FEATURE_<NAME>_ROLLOUT` (Anteil).

@@ -19,7 +19,7 @@ Jede Kennzahl gibt es gesamt, je Evaluationsgruppe und **je Feature-Flag mit und
 1. **Ausgangswert festhalten, bevor eine Mechanik eingeschaltet wird oder eine Kontrollgruppe startet:**
    `npm run psrp:baseline -- save "Vor dem Pilot"`
    Die Momentaufnahme (Tabelle `metric_snapshots`) enthält nur Aggregate, keine Personen, dazu die Flag-Anteile zu diesem Zeitpunkt und die Größe der Datenbasis.
-2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`, `reading_time`, `device_class`, `interruptions`. Ausnahme: `guess_weighting` ist standardmäßig **aus** und wird mit `FEATURE_GUESS_WEIGHTING=1` oder `FEATURE_GUESS_WEIGHTING_ROLLOUT` eingeschaltet, weil es in eine Bewertung eingreift. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
+2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`, `reading_time`, `device_class`, `interruptions`, `error_type_gate`. Ausnahme: `guess_weighting` ist standardmäßig **aus** und wird mit `FEATURE_GUESS_WEIGHTING=1` oder `FEATURE_GUESS_WEIGHTING_ROLLOUT` eingeschaltet, weil es in eine Bewertung eingreift. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
 3. **Später vergleichen:**
    `npm run psrp:baseline -- compare latest` (letzte Momentaufnahme gegen jetzt) oder `compare <id-a> <id-b>`; `list` zeigt alle Momentaufnahmen.
 4. **Ziele festlegen**, erst nachdem Ausgangswerte vorliegen und genug Personen dabei sind (Richtwert: mindestens 20 im Nenner der jeweiligen Kennzahl). Ziele gehören in diesen Abschnitt, mit Datum.
@@ -160,6 +160,46 @@ Die Sätze sind Beobachtungen und ändern nichts am Plan.
 |---|---|---|---|
 | H13 | Durchgeklickte Antworten sind seltener richtig als normal schnelle | `rushing.accuracy` | durchgeklickt gegen normal, ab 20 Reviews je Seite; Voraussetzung für `guess_weighting` |
 | H14 | Geänderte Antworten sind seltener richtig als nicht geänderte; die Änderungsquote ergänzt die Kalibrierung bei Personen ohne Sicherheitsangabe | `changedAnswer.accuracy` | geändert gegen nicht geändert, ab 20 Antworten je Seite |
+
+## Menschliche Faktoren: Fehlerart und Hilfe-Verhalten (Stufe 1)
+Abgeleitet aus vorhandenen Tabellen, ohne neue Daten. Der Export (`npm run psrp:metrics`) enthält die Abschnitte `errorTypes` und `helpBehavior`: gesamt mit Listen je Frage (`human_id`) und je Konzept („Name [ID-Anfang]“), je Evaluationsgruppe nur die Summen. Code: `lib/server/psrp/error-types.ts` (Regeln) und `error-types-db.ts` (Laden).
+
+**Heuristik Fehlerart (4.8), vorab festgelegt.** Eingeordnet wird je Person und Frage (das Item; Antworten auf Varianten zählen mit), aus abgeschlossenen Lernsitzungen und Lektionstests. Verstehens- und Voraussetzungs-Aufgaben zählen nicht.
+
+| Klasse | Regel |
+|---|---|
+| unbekannt | weniger als **3 Versuche** (`MIN_ATTEMPTS`), oder sicherer Stoff ohne messbare Antwortzeit der Fehler |
+| Fehlvorstellung | dieselbe falsche Option derselben gezeigten Frage mindestens **2-mal** und mindestens die Hälfte der Fehler, **oder** mindestens **2 Fehler mit „sicher“** |
+| Flüchtigkeit | Trefferquote mindestens **2/3** und jeder Fehler schneller als der Median der Antwortzeiten dieser Frage (erst ab 20 Messungen, wie bei 4.2) |
+| Lücke | alles andere: wechselnde falsche Optionen ohne „sicher“, oder Fehler bei normaler oder langer Antwortzeit |
+
+Fragen ohne Fehler bekommen keine Klasse. Die Prüfung läuft in dieser Reihenfolge, jede Frage mit Fehlern landet also in genau einer Klasse. „Sicher und falsch“ zählt als Fehlvorstellung, weil eine Variante andere Option-IDs hat: dieselbe Verwechslung zeigt sich dort nicht als dieselbe Option, aber als feste Überzeugung.
+
+**Was die App damit tut (Flag `error_type_gate`, standardmäßig an):** Der Verstehens-Modus schaltet ein Konzept nur noch ein, wenn zusätzlich zum bisherigen Muster (zwei Signalarten oder zweimal „sicher“ falsch) mindestens eine Frage des Konzepts im Signalfenster (14 Tage, nach einer Lösung oder Ablehnung nur neuere Antworten) als **Fehlvorstellung** gilt. Ein schon laufender Verstehens-Modus bleibt unberührt. Mit `FEATURE_ERROR_TYPE_GATE=0` gilt das alte Muster allein; der Vergleich beider Seiten ist H15. Lücke („Lektion zeigen“) und Flüchtigkeit (kein Eingriff) steuern noch nichts.
+
+| Faktor | Wert im Export | Nenner `n` | Was gemessen wird |
+|---|---|---|---|
+| 4.8 Fehlerart | `errorTypes.all.totals` | Person-Frage-Paare mit Fehlern (`questionsWithErrors`) | Anzahl je Klasse |
+| | `errorTypes.all.byQuestion`, `.byConcept` | dieselben Paare je Frage bzw. Konzept | Anzahl je Klasse |
+| 4.7 Hilfe-Verhalten | `helpBehavior.all.simulations.withHelp` | gelöste Simulationen | Anteil mit Hilfe (Tipp, Lösung, Fehlversuch) beim letzten Lösen |
+| | `simulations.early`, `.late` | einmal bzw. mehrfach gelöste Simulationen | Hilfe schon beim ersten Lösen gegen Hilfe noch beim Wiederholen |
+| | `mentorRequests` | Personen | Anfragen „Ich hänge fest“ und Anteil der Personen mit mindestens einer |
+| | `people.seeksHelp`, `.skips`, `.both`, `.neither` | Personen | sucht Hilfe (Simulation mit Hilfe oder „Ich hänge fest“) gegen überspringt (Frage offen gelassen oder Notausstieg) |
+| | `byQuestion`, `byConcept` | Zählwerte | offen gelassene Fragen und Notausstiege je Frage, dazu Simulationen (über das Lernziel) je Konzept |
+
+**Grenzen:**
+- „Antwort zeigen“ (`/reveal`) ist die Rückmeldung nach dem Antworten, keine Hilfe davor, und wird nicht gespeichert. Hilfe vor dem Antworten gibt es nur in Simulationen.
+- „Ich hänge fest“ ist ohne Bezug zur Frage gespeichert und erscheint deshalb nur je Person.
+- `simulation_results` hält nur das beste und das letzte Lösen. „Früh“ und „spät“ sind deshalb erstes gegen wiederholtes Lösen, nicht der Zeitpunkt der Hilfe innerhalb eines Versuchs.
+- Die Grenze zwischen Lücke und Fehlvorstellung ist eine Heuristik. Drei Versuche sind wenig; „unbekannt“ wird anfangs die häufigste Klasse sein.
+
+**Hypothesen (Annahmen, keine Zusagen, keine Zielwerte):**
+
+| Nr. | Annahme | Gemessen mit | Vergleich |
+|---|---|---|---|
+| H15 | Mit `error_type_gate` löst der Verstehens-Modus seltener aus, aber die ausgelösten Fälle enden häufiger mit „resolved“ | `concept_struggle.status`, `understandingMode` | Flag an gegen aus (`FEATURE_ERROR_TYPE_GATE_ROLLOUT=50`), ab 20 ausgelösten Konzepten je Seite |
+| H16 | Fragen mit Fehlvorstellung werden nach der Verstehens-Aufgabe öfter richtig beantwortet als Fragen mit Lücke nach normaler Wiederholung | `errorTypes.byQuestion` und `review_log` danach | beschreibend, ab 20 Person-Frage-Paaren je Klasse; Voraussetzung für „Lücke: Lektion zeigen“ |
+| H17 | Wer Hilfe sucht, bricht seltener ab als wer überspringt | `helpBehavior.people` gegen `engagement` | beschreibend, ab 20 Personen je Seite |
 
 ## Grenzen
 - Reaktivierung per Push gibt es nicht, nur per E-Mail (siehe Web Push in `umsetzungsplan.md`, Stufe 5).

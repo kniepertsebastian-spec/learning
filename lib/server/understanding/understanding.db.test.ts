@@ -7,7 +7,7 @@ const TEST_DB = process.env.TEST_DATABASE_URL;
 if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 
 import { getDb } from "@/lib/server/db/client";
-import { conceptStruggles, concepts, itemConcepts, itemStates, itemVariants, questionOptions, questions, reviewLog, studySessionItems, studySessions, users } from "@/lib/server/db/schema";
+import { conceptStruggles, concepts, itemConcepts, itemStates, itemVariants, learningExits, questionOptions, questions, reviewLog, studySessionItems, studySessions, users } from "@/lib/server/db/schema";
 import { seedCourse, seedUser } from "@/lib/server/psrp/test-db";
 import { completeStudySession, getStudySessionWithContent, startStudySession } from "@/lib/server/study/session-service";
 import type { AnswerConfidence } from "@/lib/types";
@@ -112,6 +112,9 @@ run("Verstehens-Modus (echte DB)", () => {
     await answerSession(userId, fx, [{ itemId: item, pick: "wrong", confidence: "sure" }]);
     expect(await struggleOf(userId, fx.conceptId)).toBeUndefined();
     await answerSession(userId, fx, [{ itemId: item, shown: v1, pick: "wrong", confidence: "sure" }]);
+    // Aufgabe 15: zwei Versuche reichen nicht, die Fehlerart ist noch „unbekannt“
+    expect(await struggleOf(userId, fx.conceptId)).toBeUndefined();
+    await answerSession(userId, fx, [{ itemId: item, pick: "wrong", confidence: "sure" }]);
 
     const struggle = await struggleOf(userId, fx.conceptId);
     expect(struggle.status).toBe("detected");
@@ -170,6 +173,7 @@ run("Verstehens-Modus (echte DB)", () => {
     const [item] = fx.items;
     await answerSession(userId, fx, [{ itemId: item, pick: "wrong", confidence: "sure" }]);
     await answerSession(userId, fx, [{ itemId: item, shown: fx.variants.get(item)![0], pick: "wrong", confidence: "sure" }]);
+    await answerSession(userId, fx, [{ itemId: item, pick: "wrong", confidence: "sure" }]);
 
     const first = await startStudySession(userId, fx.certId, 10);
     const content = await getStudySessionWithContent(first.id, userId);
@@ -187,6 +191,35 @@ run("Verstehens-Modus (echte DB)", () => {
     expect((await getStudySessionWithContent(second.id, userId)).items.some((i) => i.category === "understand")).toBe(false);
   });
 
+  it("Lücke (wechselnde falsche Antworten ohne „sicher“) schaltet den Verstehens-Modus nicht ein, ohne Flag error_type_gate schon (Aufgabe 15)", async () => {
+    const setup = async () => {
+      const userId = await newUser();
+      const fx = await seedFixture();
+      const [item] = fx.items;
+      const [v1, v2] = fx.variants.get(item)!;
+      await getDb().insert(learningExits).values([
+        { userId, source: "session", questionId: item },
+        { userId, source: "session", questionId: item },
+      ]);
+      await answerSession(userId, fx, [{ itemId: item, pick: "wrong", confidence: "unsure" }]);
+      await answerSession(userId, fx, [{ itemId: item, shown: v1, pick: "wrong", confidence: "unsure" }]);
+      await answerSession(userId, fx, [{ itemId: item, shown: v2, pick: "wrong", confidence: "unsure" }]);
+      return { userId, fx };
+    };
+    const gap = await setup();
+    expect(await struggleOf(gap.userId, gap.fx.conceptId)).toBeUndefined();
+
+    process.env.FEATURE_ERROR_TYPE_GATE = "0";
+    try {
+      const ungated = await setup();
+      const struggle = await struggleOf(ungated.userId, ungated.fx.conceptId);
+      expect(struggle.status).toBe("detected");
+      expect(struggle.signals.map((s) => s.kind)).toEqual(expect.arrayContaining(["repeated_exit", "distinct_variant_failures"]));
+    } finally {
+      delete process.env.FEATURE_ERROR_TYPE_GATE;
+    }
+  });
+
   it("ist mit FEATURE_UNDERSTANDING_MODE=0 abschaltbar", async () => {
     process.env.FEATURE_UNDERSTANDING_MODE = "0";
     try {
@@ -194,6 +227,7 @@ run("Verstehens-Modus (echte DB)", () => {
       const fx = await seedFixture();
       await answerSession(userId, fx, [{ itemId: fx.items[0], pick: "wrong", confidence: "sure" }]);
       await answerSession(userId, fx, [{ itemId: fx.items[0], shown: fx.variants.get(fx.items[0])![0], pick: "wrong", confidence: "sure" }]);
+      await answerSession(userId, fx, [{ itemId: fx.items[0], pick: "wrong", confidence: "sure" }]);
       expect(await struggleOf(userId, fx.conceptId)).toBeUndefined();
     } finally {
       delete process.env.FEATURE_UNDERSTANDING_MODE;
