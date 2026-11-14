@@ -2,6 +2,7 @@ import { isCertificationHidden, isExamHidden } from "@/lib/server/catalog/access
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
+import { readAttemptJson } from "@/lib/server/http/attempt-body";
 import { ExamNotFoundError, InvalidExamSubmissionError, parseExamAttemptInput, submitExamAttempt } from "@/lib/server/exam/attempt";
 import { getServerLocale } from "@/lib/server/locale";
 
@@ -18,10 +19,13 @@ export async function POST(
   if ((await isCertificationHidden(session.user.id, certId)) || (await isExamHidden(session.user.id, examId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  // Mit Obergrenze lesen: zu groß ist 413, kein gültiges JSON ist 400.
+  const json = await readAttemptJson(request);
+  if (!json.ok) return json.response;
   const locale = await getServerLocale();
 
   try {
-    const input = parseExamAttemptInput(await request.json().catch(() => null));
+    const input = parseExamAttemptInput(json.data);
     // Geprüft wird serverseitig gegen die Fragen der Prüfung (lib/server/exam/attempt.ts); die Antwort enthält keine Lösungen.
     const result = await submitExamAttempt(session.user.id, examId, input, locale);
     return NextResponse.json({

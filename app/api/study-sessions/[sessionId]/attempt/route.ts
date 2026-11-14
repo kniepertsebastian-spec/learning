@@ -2,11 +2,11 @@ import { isStudySessionHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
+import { parseAttemptBody, studySessionAttemptBody } from "@/lib/server/http/attempt-body";
 import {
   completeStudySession,
   StudySessionNotActiveError,
   StudySessionNotFoundError,
-  type StudySessionAnswerInput,
 } from "@/lib/server/study/session-service";
 
 export const dynamic = "force-dynamic";
@@ -30,10 +30,11 @@ export async function POST(
   if (await isStudySessionHidden(session.user.id, sessionId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  const body = (await request.json()) as { answers: StudySessionAnswerInput[] };
+  const body = await parseAttemptBody(request, studySessionAttemptBody);
+  if (!body.ok) return body.response;
 
   try {
-    const result = await completeStudySession(sessionId, session.user.id, body.answers ?? []);
+    const result = await completeStudySession(sessionId, session.user.id, body.data.answers);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof StudySessionNotFoundError) {

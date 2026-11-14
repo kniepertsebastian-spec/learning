@@ -2,10 +2,10 @@ import { featuresOfSection, isSectionHidden } from "@/lib/server/catalog/access"
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/server/auth";
+import { parseAttemptBody, sectionAttemptBody } from "@/lib/server/http/attempt-body";
 import {
   recordSectionQuizAttempt,
   SectionNotFoundError,
-  type SectionQuizAnswerInput,
 } from "@/lib/server/sections/attempt-service";
 
 export async function POST(
@@ -25,10 +25,11 @@ export async function POST(
   if (features && !features.includeSectionQuizzes) {
     return NextResponse.json({ error: "Lektionstests sind für diesen Lernpfad ausgeschaltet." }, { status: 409 });
   }
-  const body = (await request.json()) as { answers: SectionQuizAnswerInput[] };
+  const body = await parseAttemptBody(request, sectionAttemptBody);
+  if (!body.ok) return body.response;
 
   try {
-    const result = await recordSectionQuizAttempt(session.user.id, sectionId, body.answers);
+    const result = await recordSectionQuizAttempt(session.user.id, sectionId, body.data.answers);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof SectionNotFoundError) {
