@@ -54,6 +54,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // sessionVersion setzt authorize() (Typ-Erweiterung von User greift in Auth.js nicht).
         const version = (user as { sessionVersion?: unknown }).sessionVersion;
         token.sv = typeof version === "number" ? version : 0;
+        // Zeitpunkt der Anmeldung (Sekunden). Kontolöschung ohne Passwort verlangt eine frische Anmeldung (Aufgabe 09).
+        token.at = Math.floor(Date.now() / 1000);
         return token;
       }
       // Bei jedem späteren Lesen: Nutzer gelöscht oder Passwort geändert -> Sitzung beenden
@@ -66,6 +68,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user && typeof token.id === "string") {
         session.user.id = token.id;
       }
+      // Ältere Tokens ohne Zeitpunkt gelten als nicht frisch (lesen: lib/server/session-auth-time.ts).
+      Object.assign(session, { authenticatedAt: typeof token.at === "number" ? token.at : null });
       return session;
     },
   },

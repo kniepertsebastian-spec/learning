@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { c_accountAccountFormsSection } from "@/lib/i18n/components/accountAccountFormsSection";
 import { ChangePasswordForm, CompanyForm, DeleteAccountForm } from "@/components/AccountForms";
 
@@ -6,11 +7,14 @@ export function AccountForms({
   email,
   locale,
   company,
+  confirmWith = "password",
 }: {
   userId: string;
   email: string;
   locale: "de" | "en";
   company: { name: string; role: string } | null;
+  /** Aufgabe 09: SSO-Konten ohne lokales Passwort bestätigen mit der E-Mail-Adresse und sehen kein Passwortformular. */
+  confirmWith?: "password" | "email";
 }) {
   const de = locale === "de";
   const card = "rounded-lg border border-border bg-surface p-6";
@@ -42,9 +46,19 @@ export function AccountForms({
 
       <section className={card}>
         <h2 className="text-lg font-medium">{c_accountAccountFormsSection(de).changePassword}</h2>
-        <div className="mt-3">
-          <ChangePasswordForm userId={userId} locale={locale} />
-        </div>
+        {confirmWith === "email" ? (
+          <p className="mt-2 text-sm text-muted" data-testid="no-local-password">
+            {c_accountAccountFormsSection(de).noLocalPassword}{" "}
+            <Link href="/forgot-password" className="text-accent underline">
+              {c_accountAccountFormsSection(de).forgotPassword}
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="mt-3">
+            <ChangePasswordForm userId={userId} locale={locale} />
+          </div>
+        )}
       </section>
 
       <section className={card}>
@@ -65,7 +79,7 @@ export function AccountForms({
       <section className={`${card} border-danger/40`}>
         <h2 className="text-lg font-medium text-danger-text">{c_accountAccountFormsSection(de).deleteAccount}</h2>
         <div className="mt-3">
-          <DeleteAccountForm userId={userId} locale={locale} />
+          <DeleteAccountForm userId={userId} locale={locale} confirmWith={confirmWith} />
         </div>
       </section>
     </div>

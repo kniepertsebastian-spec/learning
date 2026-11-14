@@ -31,6 +31,8 @@ const answerPayload = z.discriminatedUnion("kind", [
 const confidence = z.enum(ANSWER_CONFIDENCES);
 /** Grobe Größenklasse des Bildschirms (Aufgabe 16); ein anderer Wert ist ein 400. */
 const deviceClass = z.enum(["narrow", "wide"]);
+/** Unterbrechungen der Sitzung (Aufgabe 12). Ein unbrauchbarer Wert kostet nicht die Abgabe: er entfällt, die Grenzen prüft der Server. */
+const interruptions = z.object({ count: z.number(), totalMs: z.number() }).optional().catch(undefined);
 
 const answerFields = {
   selectedOptionId: optionId,
@@ -44,6 +46,8 @@ const answerFields = {
    * die Antwort: er entfällt. Die Grenzen 300 ms bis 10 Minuten setzt `recordReviewOutcomes`.
    */
   responseTimeMs: z.number().min(0).optional().catch(undefined),
+  /** Antwort vor dem Absenden geändert (Aufgabe 13); fehlt bei älteren Clients, ein unbrauchbarer Wert entfällt. */
+  changedAnswer: z.boolean().optional().catch(undefined),
 };
 
 /** Antwort einer Sitzung (`StudySessionAnswerInput`). */
@@ -54,9 +58,9 @@ export const sectionAnswerSchema = z.object({ questionId: id, ...answerFields, w
 const list = <T extends z.ZodType>(schema: T) => z.array(schema).max(MAX_ANSWERS_PER_ATTEMPT);
 
 /** POST /api/study-sessions/:id/attempt */
-export const studySessionAttemptBody = z.object({ answers: list(studySessionAnswerSchema).default([]), deviceClass: deviceClass.optional() });
+export const studySessionAttemptBody = z.object({ answers: list(studySessionAnswerSchema).default([]), deviceClass: deviceClass.optional(), interruptions });
 /** POST /api/study-sessions/:id/exit */
-export const studySessionExitBody = z.object({ answers: list(studySessionAnswerSchema).default([]), openItemId: id.nullish(), deviceClass: deviceClass.optional() });
+export const studySessionExitBody = z.object({ answers: list(studySessionAnswerSchema).default([]), openItemId: id.nullish(), deviceClass: deviceClass.optional(), interruptions });
 /** POST /api/sections/:id/attempt und /api/chapters/:id/attempt */
 export const sectionAttemptBody = z.object({ answers: list(sectionAnswerSchema) });
 /** POST /api/sections/:id/exit */

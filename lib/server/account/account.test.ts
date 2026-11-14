@@ -41,6 +41,7 @@ import {
   studySessionItems,
   studySessions,
   syncEvents,
+  userIdentities,
   users,
   type CompanyRole,
 } from "@/lib/server/db/schema";
@@ -48,15 +49,15 @@ import { DELETE as deleteAccountRoute } from "@/app/api/account/route";
 import { GET as exportRoute } from "@/app/api/account/export/route";
 import { POST as passwordRoute } from "@/app/api/account/password/route";
 import { changePassword } from "./password";
-import { deleteAccount } from "./delete";
+import { deleteAccount, deletionConfirmationMode, FRESH_LOGIN_MS } from "./delete";
 import { exportAccountData } from "./export";
 import { isSessionTokenValid } from "@/lib/server/session-validity";
 
 const run = TEST_DB ? describe : describe.skip;
 const PASSWORD = "Altes-passwort-1";
 
-function signInAs(userId: string | null) {
-  authMock.mockResolvedValue(userId ? { user: { id: userId } } : null);
+function signInAs(userId: string | null, authenticatedAt?: number) {
+  authMock.mockResolvedValue(userId ? { user: { id: userId }, ...(authenticatedAt !== undefined ? { authenticatedAt } : {}) } : null);
 }
 const body = (data: unknown, method = "POST") => ({
   method,
@@ -284,7 +285,7 @@ run("Self-Service: Passwort, Löschen, Export (echte DB)", () => {
 
     it("falsches Passwort: nichts wird gelöscht", async () => {
       const id = await makeUser("del-wrong");
-      expect(await deleteAccount(id, "falsch")).toEqual({ ok: false, reason: "wrong_password" });
+      expect(await deleteAccount(id, { password: "falsch" })).toEqual({ ok: false, reason: "wrong_password" });
       expect(await getDb().select().from(users).where(eq(users.id, id))).toHaveLength(1);
     });
 
@@ -319,7 +320,7 @@ run("Self-Service: Passwort, Löschen, Export (echte DB)", () => {
       expect(Object.values(before).every((n) => n >= 1), JSON.stringify(before)).toBe(true);
       const otherBefore = await rowsFor(other);
 
-      expect(await deleteAccount(victim, PASSWORD)).toEqual({ ok: true });
+      expect(await deleteAccount(victim, { password: PASSWORD })).toEqual({ ok: true });
 
       expect(await getDb().select().from(users).where(eq(users.id, victim))).toHaveLength(0);
       const after = await rowsFor(victim);
@@ -345,22 +346,22 @@ run("Self-Service: Passwort, Löschen, Export (echte DB)", () => {
 
     it("verweigert Plattform-Admins und den letzten Firmen-Admin einer Organisation", async () => {
       const platformAdmin = await makeUser("del-platform", "admin");
-      expect(await deleteAccount(platformAdmin, PASSWORD)).toEqual({ ok: false, reason: "platform_admin" });
+      expect(await deleteAccount(platformAdmin, { password: PASSWORD })).toEqual({ ok: false, reason: "platform_admin" });
 
       const [org] = await getDb().insert(organizations).values({ name: `Org ${tag}` }).returning();
       orgs.push(org.id);
       const sole = await makeUser("del-sole-admin");
       const second = await makeUser("del-second-admin");
       await getDb().insert(organizationMemberships).values({ organizationId: org.id, userId: sole, role: "company_admin" });
-      expect(await deleteAccount(sole, PASSWORD)).toEqual({ ok: false, reason: "last_company_admin" });
+      expect(await deleteAccount(sole, { password: PASSWORD })).toEqual({ ok: false, reason: "last_company_admin" });
       expect(await getDb().select().from(users).where(eq(users.id, sole))).toHaveLength(1);
 
       // mit einem zweiten Admin darf der erste gehen; ein Mentor oder Lernender sowieso
       await getDb().insert(organizationMemberships).values({ organizationId: org.id, userId: second, role: "company_admin" });
-      expect(await deleteAccount(sole, PASSWORD)).toEqual({ ok: true });
+      expect(await deleteAccount(sole, { password: PASSWORD })).toEqual({ ok: true });
       const mentor = await makeUser("del-mentor");
       await getDb().insert(organizationMemberships).values({ organizationId: org.id, userId: mentor, role: "mentor" as CompanyRole });
-      expect(await deleteAccount(mentor, PASSWORD)).toEqual({ ok: true });
+      expect(await deleteAccount(mentor, { password: PASSWORD })).toEqual({ ok: true });
     });
 
     it("API: 401 ohne Anmeldung, 403 bei falschem Passwort, 409 bei letztem Admin, 200 sonst", async () => {
@@ -379,6 +380,73 @@ run("Self-Service: Passwort, Löschen, Export (echte DB)", () => {
       expect((await blocked.json()).error).toMatch(/Admin/);
       signInAs(id);
       expect((await call({ password: PASSWORD })).status).toBe(200);
+    });
+
+    describe("Konto mit Firmen-Anmeldung (SSO, Aufgabe 09)", () => {
+      /** Konto wie von provisionUser angelegt: unbekanntes Passwort, Identität beim IdP der Firma. */
+      async function makeSsoUser(key: string) {
+        const id = await makeUser(key);
+        const [org] = await getDb().insert(organizations).values({ name: `SSO ${key} ${tag}` }).returning();
+        orgs.push(org.id);
+        await getDb().update(users).set({ passwordSet: false, passwordHash: await bcrypt.hash(randomUUID(), 4) }).where(eq(users.id, id));
+        await getDb().insert(organizationMemberships).values({ organizationId: org.id, userId: id, role: "learner" });
+        await getDb().insert(userIdentities).values({ userId: id, organizationId: org.id, issuer: `https://idp-${tag}.example`, subject: key });
+        return id;
+      }
+      const fresh = () => new Date(Date.now() - 60_000);
+
+      it("löscht ohne Passwort mit E-Mail und frischer Anmeldung, dieselben Daten wie beim Passwort-Konto", async () => {
+        const sso = await makeSsoUser("del-sso");
+        const other = await makeUser("del-sso-other");
+        await seedLearningData(sso);
+        await seedLearningData(other);
+        const otherBefore = await rowsFor(other);
+        expect(await deletionConfirmationMode(sso)).toBe("email");
+
+        expect(await deleteAccount(sso, { email: ` ${emailOf("del-sso").toUpperCase()} `, authenticatedAt: fresh() })).toEqual({ ok: true });
+        expect(await getDb().select().from(users).where(eq(users.id, sso))).toHaveLength(0);
+        const after = await rowsFor(sso);
+        expect(after, JSON.stringify(after)).toEqual(Object.fromEntries(Object.keys(after).map((k) => [k, 0])));
+        expect(await getDb().select().from(userIdentities).where(eq(userIdentities.userId, sso))).toHaveLength(0);
+        expect(await isSessionTokenValid(sso, 0)).toBe(false);
+        expect(await rowsFor(other)).toEqual(otherBefore);
+      });
+
+      it("falsche E-Mail, alte oder fehlende Anmeldung: nichts wird gelöscht", async () => {
+        const sso = await makeSsoUser("del-sso-refused");
+        const now = new Date();
+        expect(await deleteAccount(sso, { email: emailOf("jemand-anders"), authenticatedAt: fresh() })).toEqual({ ok: false, reason: "wrong_email" });
+        expect(await deleteAccount(sso, { email: emailOf("del-sso-refused"), authenticatedAt: new Date(now.getTime() - FRESH_LOGIN_MS - 1000), now })).toEqual({ ok: false, reason: "stale_session" });
+        expect(await deleteAccount(sso, { email: emailOf("del-sso-refused"), authenticatedAt: null })).toEqual({ ok: false, reason: "stale_session" });
+        expect(await getDb().select().from(users).where(eq(users.id, sso))).toHaveLength(1);
+      });
+
+      it("Konto mit Passwort und ohne Firmen-Anmeldung: weiter nur mit Passwort", async () => {
+        const id = await makeUser("del-pw-only");
+        expect(await deletionConfirmationMode(id)).toBe("password");
+        expect(await deleteAccount(id, { email: emailOf("del-pw-only"), authenticatedAt: fresh() })).toEqual({ ok: false, reason: "password_required" });
+        expect(await getDb().select().from(users).where(eq(users.id, id))).toHaveLength(1);
+        expect(await deleteAccount(id, { password: PASSWORD })).toEqual({ ok: true });
+      });
+
+      it("API: E-Mail-Bestätigung nutzt den Anmeldezeitpunkt der Sitzung", async () => {
+        const call = async (data: unknown) => deleteAccountRoute(new Request("http://x/api/account", body(data, "DELETE")));
+        const sso = await makeSsoUser("del-sso-api");
+        const nowSec = Math.floor(Date.now() / 1000);
+        signInAs(sso); // Token aus der Zeit vor Aufgabe 09: kein Zeitpunkt
+        expect((await call({ email: emailOf("del-sso-api") })).status).toBe(403);
+        signInAs(sso, nowSec - 3600);
+        const stale = await call({ email: emailOf("del-sso-api") });
+        expect(stale.status).toBe(403);
+        expect((await stale.json()).error).toMatch(/erneut/);
+        signInAs(sso, nowSec - 30);
+        expect((await call({ email: emailOf("del-sso-api") })).status).toBe(200);
+
+        const pw = await makeUser("del-pw-api");
+        signInAs(pw, nowSec - 30);
+        expect((await call({ email: emailOf("del-pw-api") })).status).toBe(403);
+        expect(await getDb().select().from(users).where(eq(users.id, pw))).toHaveLength(1);
+      });
     });
   });
 

@@ -49,7 +49,7 @@ async function main() {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  await db.update(users).set({ passwordHash }).where(eq(users.email, email));
+  await db.update(users).set({ passwordHash, passwordSet: true }).where(eq(users.email, email));
 
   await recordAuditEvent({
     actorType: "cli",

@@ -148,11 +148,11 @@ export async function provisionUser(input: { organizationId: string; issuer: str
           .update(users)
           .set({
             sessionVersion: sql`${users.sessionVersion} + 1`,
-            ...(existing.emailVerifiedAt ? {} : { emailVerifiedAt: new Date(), passwordHash: await unusablePasswordHash() }),
+            ...(existing.emailVerifiedAt ? {} : { emailVerifiedAt: new Date(), passwordHash: await unusablePasswordHash(), passwordSet: false }),
           })
           .where(eq(users.id, existing.id));
       } else {
-        const [row] = await tx.insert(users).values({ email, name: input.name, passwordHash: await unusablePasswordHash(), emailVerifiedAt: new Date() }).returning({ id: users.id });
+        const [row] = await tx.insert(users).values({ email, name: input.name, passwordHash: await unusablePasswordHash(), passwordSet: false, emailVerifiedAt: new Date() }).returning({ id: users.id });
         userId = row.id;
         created = true;
       }

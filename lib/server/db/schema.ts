@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { SelfReportKind, SelfReportRefType } from "@/lib/self-reports";
 import {
   date,
   type AnyPgColumn,
@@ -110,6 +111,9 @@ export const users = pgTable(
     /** Wird bei Passwortwechsel erhöht. Das JWT trägt die Version; weicht sie ab (oder
      * existiert der Nutzer nicht mehr), ist die Sitzung ungültig (lib/server/session-validity.ts). */
     sessionVersion: integer("session_version").notNull().default(0),
+    /** Aufgabe 09 (Review 12.11.2026): Die Person kennt ein lokales Passwort. Falsch bei Konten, die per SSO angelegt wurden
+     * (unbrauchbares Zufallspasswort) oder deren Passwort beim ersten SSO-Verknüpfen ersetzt wurde. Ein Reset per Mail setzt es. */
+    passwordSet: boolean("password_set").notNull().default(true),
     /** Zeitpunkt der E-Mail-Bestätigung (lib/server/account/tokens.ts). Null = noch nicht bestätigt.
      * Bestandskonten wurden bei der Einführung als bestätigt markiert. */
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
@@ -551,6 +555,10 @@ export const quizAnswers = pgTable("quiz_answers", {
    * exam_answers übertragen: die Abschlussprüfung soll eine realistische,
    * zeitkritische Simulation bleiben statt einer reflektierenden Übung. */
   confidence: text("confidence").$type<AnswerConfidence>(),
+  /** Zeit bis zur Antwort in ms (Aufgabe 13, Grenzen aus Aufgabe 06b); Grundlage der Gewichtung beim Durchklicken (Flag `guess_weighting`). */
+  responseTimeMs: integer("response_time_ms"),
+  /** Die Antwort wurde vor dem Absenden geändert (Aufgabe 13, Faktor 4.6); null bei älteren Clients. */
+  changedAnswer: boolean("changed_answer"),
 },
 (table) => [check("quiz_answers_confidence_check", sql`${table.confidence} is null or ${table.confidence} in ('guessed', 'unsure', 'sure')`)],
 );
@@ -844,8 +852,12 @@ export interface StudySessionDraft {
     answeredAt?: string;
     /** Bisher gemessene Zeit bis zur Antwort (ms, roh); der Client rechnet beim Fortsetzen weiter (Aufgabe 06b). */
     responseTimeMs?: number;
+    /** Antwort vor der Pause schon einmal geändert (Aufgabe 13). */
+    changedAnswer?: boolean;
   }>;
   currentIndex: number;
+  /** Unterbrechungen bis zur Pause (Aufgabe 12); der Client zählt beim Fortsetzen weiter. Die Pause selbst zählt nicht. */
+  interruptions?: { count: number; totalMs: number };
 }
 
 /** Grobe Größenklasse des Bildschirms (Aufgabe 16, Faktor 4.12): schmal (Smartphone) oder breit. */
@@ -893,6 +905,12 @@ export const studySessions = pgTable(
      * Keine Gerätekennung, kein Modell, keine genaue Breite. Nur für die Auswertung je Lage.
      */
     deviceClass: text("device_class").$type<DeviceClass>(),
+    /**
+     * Unterbrechungen während der Sitzung (Flag `interruptions`, Aufgabe 12, Faktor 4.3): wie oft die Seite mindestens 2 Sekunden im
+     * Hintergrund war, und wie lange insgesamt. Beide null, wenn nichts gemessen wurde (älteres Gerät, Flag aus, vor der Messung).
+     */
+    interruptionCount: integer("interruption_count"),
+    interruptionMs: integer("interruption_ms"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -910,6 +928,10 @@ export const studySessions = pgTable(
       sql`${table.energyLevel} is null or ${table.energyLevel} in ('low', 'medium', 'high')`,
     ),
     check("study_sessions_device_class_check", sql`${table.deviceClass} is null or ${table.deviceClass} in ('narrow', 'wide')`),
+    check(
+      "study_sessions_interruptions_check",
+      sql`(${table.interruptionCount} is null and ${table.interruptionMs} is null) or (${table.interruptionCount} >= 0 and ${table.interruptionMs} >= 0)`,
+    ),
   ],
 );
 
@@ -951,6 +973,8 @@ export const studySessionItems = pgTable("study_session_items", {
   selectedOptionId: uuid("selected_option_id").references((): AnyPgColumn => questionOptions.id, { onDelete: "set null" }),
   /** Antwort bei den neuen Formaten (Reihenfolge, Kurzantwort, Zuordnung). */
   answer: jsonb("answer").$type<AnswerPayload>(),
+  /** Die Antwort wurde vor dem Absenden geändert (Aufgabe 13, Faktor 4.6); null bei älteren Clients und unbeantworteten Items. */
+  changedAnswer: boolean("changed_answer"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 },
 (table) => [check("study_session_items_confidence_check", sql`${table.confidence} is null or ${table.confidence} in ('guessed', 'unsure', 'sure')`)],
@@ -3663,6 +3687,53 @@ export const userCheckinFlags = pgTable("user_checkin_flags", {
   monotone: boolean("monotone").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Freiwillige Selbstauskünfte (Aufgabe 17). Eine Zeile je gestellter Frage: `value` ist die Antwort, null heißt übersprungen.
+ * Höchstens eine Frage je Lernsitzung (eindeutiger Index auf `session_id`). Arten und Werte: `lib/self-reports.ts`.
+ */
+export const selfReports = pgTable(
+  "self_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<SelfReportKind>().notNull(),
+    value: text("value"),
+    refType: text("ref_type").$type<SelfReportRefType>(),
+    refId: uuid("ref_id"),
+    sessionId: uuid("session_id").references(() => studySessions.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("self_reports_user_kind_time_idx").on(table.userId, table.kind, table.createdAt),
+    uniqueIndex("self_reports_session_unique").on(table.sessionId).where(sql`${table.sessionId} is not null`),
+    check("self_reports_kind_check", sql`${table.kind} in ('effort', 'retention_forecast', 'exam_confidence', 'learning_reason', 'work_relevance', 'learning_environment')`),
+    check("self_reports_ref_type_check", sql`${table.refType} is null or ${table.refType} in ('section', 'course', 'session')`),
+  ],
+);
+
+/** Schalter je Art und Regel gegen Fragemüdigkeit (Aufgabe 17, Muster wie `user_checkin_flags`). Ohne Zeile: an, nicht pausiert. */
+export const selfReportSettings = pgTable(
+  "self_report_settings",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<SelfReportKind>().notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    /** Übersprungen in Folge; bei `SKIP_PAUSE_STREAK` pausiert die Frage und der Zähler beginnt neu. */
+    skipStreak: integer("skip_streak").notNull().default(0),
+    pausedUntil: timestamp("paused_until", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.kind] }),
+    check("self_report_settings_kind_check", sql`${table.kind} in ('effort', 'retention_forecast', 'exam_confidence', 'learning_reason', 'work_relevance', 'learning_environment')`),
+    check("self_report_settings_skip_streak_check", sql`${table.skipStreak} >= 0`),
+  ],
+);
 
 /** Phase 2: persönliche FSRS-Parameter nach dem Fit (Optimizer-Job). */
 export const userFsrsParams = pgTable("user_fsrs_params", {

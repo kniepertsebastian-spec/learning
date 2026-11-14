@@ -18,10 +18,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { sessionId } = await params;
   if (await isStudySessionHidden(session.user.id, sessionId)) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const body = (await request.json().catch(() => ({}))) as { answers?: StudySessionAnswerInput[]; currentIndex?: number };
+  const body = (await request.json().catch(() => ({}))) as { answers?: StudySessionAnswerInput[]; currentIndex?: number; interruptions?: unknown };
 
   try {
-    return NextResponse.json(await pauseStudySession(sessionId, session.user.id, { answers: Array.isArray(body.answers) ? body.answers : [], currentIndex: body.currentIndex ?? 0 }));
+    return NextResponse.json(await pauseStudySession(sessionId, session.user.id, { answers: Array.isArray(body.answers) ? body.answers : [], currentIndex: body.currentIndex ?? 0, interruptions: body.interruptions }));
   } catch (error) {
     if (error instanceof StudySessionNotFoundError) return NextResponse.json({ error: error.message }, { status: 404 });
     if (error instanceof StudySessionNotActiveError) return NextResponse.json({ error: error.message }, { status: 409 });

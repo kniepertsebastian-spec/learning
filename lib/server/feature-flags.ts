@@ -5,14 +5,20 @@
  */
 import { createHash } from "node:crypto";
 
-export const FEATURE_FLAGS = ["pretest_questions", "recall_check", "understanding_mode", "dropout_guard", "exit_with_win", "energy_modes", "reactivation", "woven_reviews", "reading_time", "device_class"] as const;
+export const FEATURE_FLAGS = ["pretest_questions", "recall_check", "understanding_mode", "dropout_guard", "exit_with_win", "energy_modes", "reactivation", "woven_reviews", "reading_time", "device_class", "interruptions", "guess_weighting", "error_type_gate", "self_reports"] as const;
+/**
+ * Flags, die standardmäßig AUS sind: sie greifen in eine Bewertung ein und brauchen eine Entscheidung des Betreibers.
+ * Einschalten mit `FEATURE_<NAME>=1` (alle) oder `FEATURE_<NAME>_ROLLOUT` (Anteil).
+ */
+export const DEFAULT_OFF_FLAGS: readonly FeatureFlag[] = ["guess_weighting"];
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
 export function isFeatureEnabled(flag: FeatureFlag, userId: string, env: Record<string, string | undefined> = process.env): boolean {
   const key = `FEATURE_${flag.toUpperCase()}`;
   if (env[key] === "0") return false;
   const raw = env[`${key}_ROLLOUT`];
-  const percent = raw === undefined || raw === "" || !Number.isFinite(Number(raw)) ? 100 : Math.min(100, Math.max(0, Number(raw)));
+  const fallback = DEFAULT_OFF_FLAGS.includes(flag) && env[key] !== "1" ? 0 : 100;
+  const percent = raw === undefined || raw === "" || !Number.isFinite(Number(raw)) ? fallback : Math.min(100, Math.max(0, Number(raw)));
   if (percent >= 100) return true;
   if (percent <= 0) return false;
   const hash = createHash("sha256").update(`${flag}-v1:${userId}`).digest();

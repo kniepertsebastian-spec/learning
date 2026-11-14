@@ -49,6 +49,8 @@ import {
   sessionCheckins,
   sessionDerived,
   userCheckinFlags,
+  selfReports,
+  selfReportSettings,
   userFsrsParams,
   userCalibration,
   probeResults,
@@ -110,6 +112,8 @@ export const EXPORTED_USER_REFERENCES: readonly string[] = [
   "review_log.user_id",
   "session_checkin.user_id",
   "user_checkin_flags.user_id",
+  "self_reports.user_id",
+  "self_report_settings.user_id",
   "user_fsrs_params.user_id",
   "user_calibration.user_id",
   "probe_result.user_id",
@@ -334,6 +338,9 @@ export async function exportAccountData(userId: string) {
         ? await db.select().from(sessionDerived).where(inArray(sessionDerived.sessionId, studySessionRows.map((r) => r.id)))
         : [],
       checkinFlags: await db.select().from(userCheckinFlags).where(eq(userCheckinFlags.userId, userId)),
+      // Aufgabe 17: freiwillige Selbstauskünfte (null = übersprungen) und Schalter je Art
+      selfReports: await db.select().from(selfReports).where(eq(selfReports.userId, userId)),
+      selfReportSettings: await db.select().from(selfReportSettings).where(eq(selfReportSettings.userId, userId)),
       fsrsParams: await db.select().from(userFsrsParams).where(eq(userFsrsParams.userId, userId)),
       calibration: await db.select().from(userCalibration).where(eq(userCalibration.userId, userId)),
       probeResults: await db.select().from(probeResults).where(eq(probeResults.userId, userId)),

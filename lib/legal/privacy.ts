@@ -89,8 +89,8 @@ export const PRIVACY_ENTRIES: PrivacyEntry[] = [
     id: "lernverlauf",
     title: { de: "Lernverlauf und Ergebnisse", en: "Learning progress and results" },
     data: {
-      de: "Gelesene und übersprungene Lektionen, Quiz-, Prüfungs- und Simulationsergebnisse mit den einzelnen Antworten (bei Quizfragen mit der Selbsteinschätzung „geraten / unsicher / sicher“), Stand je Lernziel und dessen Verlauf, Wiederholungsaufgaben, Lernzeit, Lesezeit je Lektion (aktive Sekunden und wie oft du sie geöffnet hast), Einstiegstests, abgebrochene Kurse, Prüfungstermine, hinterlegte Zertifikate, zugewiesene Prüfungsgutscheine (ohne Code).",
-      en: "Lessons read and skipped, quiz, exam and simulation results with the individual answers (for quiz questions including the self-assessment “guessed / unsure / sure”), standing per learning objective and its history, remediation sessions, learning time, reading time per lesson (active seconds and how often you opened it), entry tests, abandoned courses, exam dates, stored certificates, assigned exam vouchers (without the code).",
+      de: "Gelesene und übersprungene Lektionen, Quiz-, Prüfungs- und Simulationsergebnisse mit den einzelnen Antworten (bei Quizfragen mit der Selbsteinschätzung „geraten / unsicher / sicher“, der Antwortzeit und ob die Antwort vor dem Absenden geändert wurde), Stand je Lernziel und dessen Verlauf, Wiederholungsaufgaben, Lernzeit, Lesezeit je Lektion (aktive Sekunden und wie oft du sie geöffnet hast), Einstiegstests, abgebrochene Kurse, Prüfungstermine, hinterlegte Zertifikate, zugewiesene Prüfungsgutscheine (ohne Code).",
+      en: "Lessons read and skipped, quiz, exam and simulation results with the individual answers (for quiz questions including the self-assessment “guessed / unsure / sure”, the response time and whether the answer was changed before submitting), standing per learning objective and its history, remediation sessions, learning time, reading time per lesson (active seconds and how often you opened it), entry tests, abandoned courses, exam dates, stored certificates, assigned exam vouchers (without the code).",
     },
     purpose: {
       de: "Lernstand anzeigen, passende Aufgaben und Wiederholungen auswählen, Prüfungsbereitschaft einschätzen, Ergebnisse der Prüfungen dokumentieren. Lesezeit und Bildschirmgröße dienen nur der Auswertung, ob Lesetiefe und Gerät mit dem Lernerfolg zusammenhängen; sie ändern nichts an deinem Plan.",
@@ -123,12 +123,12 @@ export const PRIVACY_ENTRIES: PrivacyEntry[] = [
     id: "wiederholung",
     title: { de: "Wiederholungsplanung und Lernsitzungen", en: "Review planning and study sessions" },
     data: {
-      de: "Jede beantwortete Frage mit Zeitpunkt, Ergebnis, Antwortzeit und Selbsteinschätzung, Gedächtnismodell je Frage und persönliche Parameter dazu, Kalibrierung, Ergebnisse von Probeaufgaben, Lernsitzungen mit ihren Aufgaben und der groben Bildschirmgröße beim Abschluss („schmal“ oder „breit“, keine Gerätekennung), daraus abgeleitete Werte, Rückmeldungen zu Sitzungsvorschlägen.",
-      en: "Every answered question with time, result, response time and self-assessment, memory model per question and personal parameters for it, calibration, results of probe tasks, study sessions with their tasks and the rough screen size at completion (“narrow” or “wide”, no device identifier), values derived from them, feedback on session suggestions.",
+      de: "Jede beantwortete Frage mit Zeitpunkt, Ergebnis, Antwortzeit und Selbsteinschätzung, Gedächtnismodell je Frage und persönliche Parameter dazu, Kalibrierung, Ergebnisse von Probeaufgaben, Lernsitzungen mit ihren Aufgaben, der groben Bildschirmgröße beim Abschluss („schmal“ oder „breit“, keine Gerätekennung) und wie oft und wie lange die App während der Sitzung im Hintergrund war (nur Zahl und Gesamtdauer), daraus abgeleitete Werte, Rückmeldungen zu Sitzungsvorschlägen.",
+      en: "Every answered question with time, result, response time and self-assessment, memory model per question and personal parameters for it, calibration, results of probe tasks, study sessions with their tasks, the rough screen size at completion (“narrow” or “wide”, no device identifier) and how often and how long the app was in the background during the session (count and total duration only), values derived from them, feedback on session suggestions.",
     },
     purpose: {
-      de: "Berechnen, wann welche Frage wieder fällig ist, und die Tagesplanung daran ausrichten. Die Antwortzeit dient dazu, den Aufwand eines Tages realistisch zu planen und Anzeichen von Überforderung zu erkennen.",
-      en: "Working out when each question is due again and aligning the daily plan with it. Response time is used to plan a day's effort realistically and to notice signs of overload.",
+      de: "Berechnen, wann welche Frage wieder fällig ist, und die Tagesplanung daran ausrichten. Die Antwortzeit dient dazu, den Aufwand eines Tages realistisch zu planen und Anzeichen von Überforderung zu erkennen. Aus Antwortzeit, Fehlern nach Position in der Sitzung und Unterbrechungen zeigt „Wie ich lerne“ dir kurze Aussagen über deine Sitzungen; sie ändern nichts an deinem Plan.",
+      en: "Working out when each question is due again and aligning the daily plan with it. Response time is used to plan a day's effort realistically and to notice signs of overload. From response time, mistakes by position in the session and interruptions, “How I learn” shows you short statements about your sessions; they do not change your plan.",
     },
     retention: UNTIL_DELETION,
     recipients: NO_RECIPIENT,
@@ -159,6 +159,21 @@ export const PRIVACY_ENTRIES: PrivacyEntry[] = [
     retention: UNTIL_DELETION,
     recipients: NO_RECIPIENT,
     exportKeys: ["learning.sessionCheckins", "learning.checkinFlags"],
+  },
+  {
+    id: "selbstauskuenfte",
+    title: { de: "Freiwillige Selbstauskünfte", en: "Optional self-reports" },
+    data: {
+      de: "Antworten auf kurze Fragen, etwa wie anstrengend eine Lektion war, wie viel du davon behalten wirst, wie sicher du die Prüfung bestehst, warum du lernst, ob du den Stoff bei der Arbeit brauchst und wo du lernst. Dazu der Bezug (Lektion, Kurs oder Lernsitzung), der Zeitpunkt, ob du eine Frage übersprungen hast, und je Art, ob sie eingeschaltet oder nach dreimaligem Überspringen pausiert ist.",
+      en: "Answers to short questions, such as how demanding a lesson was, how much of it you will remember, how confident you are about passing the exam, why you are learning, whether you need the material at work and where you learn. Plus the reference (lesson, course or study session), the time, whether you skipped a question, and for each kind whether it is switched on or paused after three skips.",
+    },
+    purpose: {
+      de: "Dinge berücksichtigen, die sich aus dem Lernverhalten nicht ablesen lassen, und messen, ob die Fragen stören. Freiwillig: jede Frage lässt sich überspringen und unter „Wie ich lerne“ je Art abschalten. Höchstens eine Frage je Lernsitzung.",
+      en: "Taking into account what your learning behaviour does not show, and measuring whether the questions get in the way. Optional: every question can be skipped and each kind switched off under “How I learn”. At most one question per study session.",
+    },
+    retention: UNTIL_DELETION,
+    recipients: NO_RECIPIENT,
+    exportKeys: ["learning.selfReports", "learning.selfReportSettings"],
   },
   {
     id: "rhythmus",

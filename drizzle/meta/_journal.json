@@ -834,6 +834,34 @@
       "when": 1794664484947,
       "tag": "0118_reading_time_and_device_class",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1794666934870,
+      "tag": "0119_sso_password_set",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1794667559057,
+      "tag": "0120_session_interruptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1794668029395,
+      "tag": "0121_changed_answer_guessing",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1794668863671,
+      "tag": "0122_self_reports",
+      "breakpoints": true
     }
   ]
 }

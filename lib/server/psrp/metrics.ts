@@ -14,6 +14,9 @@ import { DEFAULT_PSRP_CONFIG } from "./config";
 import { engagementMetrics } from "./engagement-metrics-db";
 import { humanFactorsMetrics } from "./human-factors-db";
 import { sessionContextMetrics } from "./session-context-db";
+import { fatigueMetrics } from "./fatigue-db";
+import { guessingMetrics } from "./guessing-db";
+import { errorTypeMetrics, helpBehaviorMetrics } from "./error-types-db";
 import { calibrationHistory, type ProbeObservation } from "./calibration";
 
 const DAY_MS = 86_400_000;
@@ -322,7 +325,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     })),
     salt,
   );
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), thinkFirst: computeFlagArms(reviews, (r) => Boolean(r.thinkFirst)), wovenReviews: { arms: computeFlagArms(reviews, (r) => Boolean(r.wovenReviews)), woven: wovenStats }, reactivation: { arms: computeFlagArms(reviews, (r) => Boolean(r.reactivation)), messages: await reactivationStats(asOf) }, energyModes: { arms: computeFlagArms(reviews, (r) => Boolean(r.energyModes)), choices: energyChoices }, recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults, engagement: await engagementMetrics(asOf, (id) => anonymize(id, salt)), humanFactors: await humanFactorsMetrics(asOf, (id) => anonymize(id, salt)), sessionContext: await sessionContextMetrics(asOf) };
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), thinkFirst: computeFlagArms(reviews, (r) => Boolean(r.thinkFirst)), wovenReviews: { arms: computeFlagArms(reviews, (r) => Boolean(r.wovenReviews)), woven: wovenStats }, reactivation: { arms: computeFlagArms(reviews, (r) => Boolean(r.reactivation)), messages: await reactivationStats(asOf) }, energyModes: { arms: computeFlagArms(reviews, (r) => Boolean(r.energyModes)), choices: energyChoices }, recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults, engagement: await engagementMetrics(asOf, (id) => anonymize(id, salt)), humanFactors: await humanFactorsMetrics(asOf, (id) => anonymize(id, salt)), sessionContext: await sessionContextMetrics(asOf), fatigue: await fatigueMetrics(asOf), guessing: await guessingMetrics(asOf), errorTypes: await errorTypeMetrics(asOf), helpBehavior: await helpBehaviorMetrics(asOf) };
 }
 
 /** Der Teil des Exports, der als Ausgangswert festgehalten wird: nur Aggregate, keine Personen (auch nicht anonymisiert). */

@@ -15,6 +15,12 @@ describe("isFeatureEnabled", () => {
     expect(ids.filter((id) => isFeatureEnabled("pretest_questions", id, env))).toEqual(on);
     expect(isFeatureEnabled("pretest_questions", "u", { FEATURE_PRETEST_QUESTIONS_ROLLOUT: "0" })).toBe(false);
   });
+  it("Flags, die in eine Bewertung eingreifen, sind standardmäßig aus (Aufgabe 13)", () => {
+    expect(isFeatureEnabled("guess_weighting", "u", {})).toBe(false);
+    expect(isFeatureEnabled("guess_weighting", "u", { FEATURE_GUESS_WEIGHTING: "1" })).toBe(true);
+    expect(isFeatureEnabled("guess_weighting", "u", { FEATURE_GUESS_WEIGHTING_ROLLOUT: "100" })).toBe(true);
+    expect(isFeatureEnabled("guess_weighting", "u", { FEATURE_GUESS_WEIGHTING_ROLLOUT: "abc" })).toBe(false);
+  });
   it("behandelt ungültige Werte wie 'alle'", () => {
     expect(isFeatureEnabled("pretest_questions", "u", { FEATURE_PRETEST_QUESTIONS_ROLLOUT: "abc" })).toBe(true);
   });

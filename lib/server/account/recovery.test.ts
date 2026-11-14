@@ -182,6 +182,7 @@ run("E-Mail-Bestätigung, Passwort-Reset, Versand (echte DB + SMTP-Testserver)",
   describe("Passwort zurücksetzen", () => {
     it("Link in der Mail setzt ein neues Passwort, beendet Sitzungen, verbraucht alle Links", async () => {
       const id = await makeUser("reset", false);
+      await getDb().update(users).set({ passwordSet: false }).where(eq(users.id, id)); // wie ein SSO-Konto (Aufgabe 09)
       await requestPasswordReset(emailOf("reset").toUpperCase()); // Schreibweise wird normalisiert
       const mail = await sink.waitFor(toOf(emailOf("reset")));
       expect(mail.subject).toMatch(/Passwort/);
@@ -193,6 +194,7 @@ run("E-Mail-Bestätigung, Passwort-Reset, Versand (echte DB + SMTP-Testserver)",
       expect(await bcrypt.compare("ganz-neues-passwort-9", row.passwordHash)).toBe(true);
       expect(await bcrypt.compare(PASSWORD, row.passwordHash)).toBe(false);
       expect(row.sessionVersion).toBe(1);
+      expect(row.passwordSet).toBe(true); // ab jetzt gibt es ein bekanntes Passwort
       expect(row.emailVerifiedAt).toBeInstanceOf(Date); // Link aus dem Postfach beweist die Adresse
       expect(await isSessionTokenValid(id, 0)).toBe(false);
       expect(await resetPasswordWithToken(token, "noch-ein-passwort-9")).toBe(false); // einmalig

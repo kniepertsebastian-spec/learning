@@ -16,6 +16,7 @@ import {
 import { isFeatureEnabled } from "@/lib/server/feature-flags";
 import { ObjectiveProgressService } from "@/lib/server/progress/service";
 import { recordReviewOutcomes } from "@/lib/server/review/service";
+import { plausibleResponseTimeMs } from "@/lib/server/review/response-time";
 import { answerTime, type ReviewTiming } from "@/lib/server/sync/effective-time";
 import { sanitizeAnswer, type AnswerPayload } from "@/lib/questions/answer-formats";
 import { gradeQuestionAnswer } from "@/lib/server/questions/grading";
@@ -40,6 +41,8 @@ export interface SectionQuizAnswerInput {
   answeredAt?: string;
   /** Zeit bis zur Antwort in ms, roh vom Client (Aufgabe 06a); fehlt bei älteren Clients. */
   responseTimeMs?: number;
+  /** Antwort vor dem Absenden geändert (Aufgabe 13); fehlt bei älteren Clients. */
+  changedAnswer?: boolean;
 }
 
 export interface SectionQuizAttemptResult {
@@ -197,6 +200,8 @@ async function recordQuizAttemptCore(
         answer: sanitizeAnswer(a.answer),
         isCorrect: results.find((r) => r.questionId === a.questionId)?.isCorrect ?? false,
         confidence: a.confidence ?? null,
+        responseTimeMs: plausibleResponseTimeMs(a.responseTimeMs),
+        changedAnswer: typeof a.changedAnswer === "boolean" ? a.changedAnswer : null,
       })),
     );
   }

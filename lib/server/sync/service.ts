@@ -48,6 +48,8 @@ interface StudySessionPayload {
   answers: StudySessionAnswerInput[];
   /** Größenklasse des Bildschirms beim Abschluss (Aufgabe 16); fehlt bei älteren Geräten. */
   deviceClass?: unknown;
+  /** Unterbrechungen der Sitzung (Aufgabe 12); fehlt bei älteren Geräten. */
+  interruptions?: unknown;
 }
 
 /**
@@ -239,6 +241,7 @@ async function applyEvent(userId: string, event: SyncEventInput): Promise<unknow
     return completeStudySession(payload.sessionId, userId, payload.answers, {
       countIfFinished: true,
       deviceClass: payload.deviceClass,
+      interruptions: payload.interruptions,
       timing: (session) => createReviewTiming({ eventTime: event.clientCreatedAt, notBefore: session.createdAt }),
     });
   }

@@ -12,6 +12,7 @@ import { ConfidenceBar } from "@/components/quiz/ConfidenceBar";
 import { FormatQuestionCard, type FormatEvaluation } from "@/components/quiz/FormatQuestionCard";
 import { useThinkFirst } from "@/lib/client/use-think-first";
 import { useResponseTimer } from "@/lib/client/use-response-timer";
+import { useInterruptionCounter } from "@/lib/client/use-interruption-counter";
 import { currentDeviceClass } from "@/lib/client/device-class";
 import { isSelfExplainType } from "@/lib/questions/self-explain";
 import { buildPrompt, buildSolution, gradeAnswer, type AnswerData, type AnswerFormat, type AnswerPayload, type AnswerPrompt, type AnswerSolution } from "@/lib/questions/answer-formats";
@@ -114,7 +115,7 @@ interface StudySessionProps {
   /** Im Firmenbereich mit zugeordnetem Mentor: „Mentor fragen“ in der Verstehens-Aufgabe (nur online). */
   mentorAsk?: { certificationId: string } | null;
   /** „Pause für heute“: gespeicherter Zwischenstand, die Session geht dort weiter (nur online). */
-  resume?: { answers: Array<{ itemId: string; selectedOptionId: string; answer?: unknown; confidence?: AnswerConfidence; thinkFirst?: boolean; answeredAt?: string; responseTimeMs?: number }>; currentIndex: number } | null;
+  resume?: { answers: Array<{ itemId: string; selectedOptionId: string; answer?: unknown; confidence?: AnswerConfidence; thinkFirst?: boolean; answeredAt?: string; responseTimeMs?: number; changedAnswer?: boolean }>; currentIndex: number; interruptions?: { count: number; totalMs: number } } | null;
   /** Sicherheitsangabe ab der 3. Session (und wenn nicht abgeschaltet, „Wie ich lerne“); sonst gilt wie bisher das Rating ohne Angabe. */
   askConfidence?: boolean;
 }
@@ -146,8 +147,17 @@ export function StudySession({
   const [answers, setAnswers] = useState<Array<string | null>>(() => questionItems.map((q) => { const saved = savedByItem.get(q.itemId); return saved ? (saved.answer ? FORMAT_ANSWER : saved.selectedOptionId || null) : null; }));
   // Zeitpunkt der Antwort je Frage; offline gespeichert, damit die Verbuchung später den richtigen Zeitpunkt kennt.
   const answeredAtRef = useRef<Record<number, string>>(Object.fromEntries(questionItems.flatMap((q, i) => { const at = savedByItem.get(q.itemId)?.answeredAt; return at ? [[i, at] as const] : []; })));
+  // Aufgabe 13 (Faktor 4.6): Auswahl vor dem Absenden geändert. Nur möglich, wenn die Rückmeldung erst am Ende kommt.
+  const changedRef = useRef<Record<number, boolean>>(Object.fromEntries(questionItems.flatMap((q, i) => (savedByItem.get(q.itemId)?.changedAnswer ? [[i, true] as const] : []))));
   // Antwortzeit je Frage (Aufgabe 06a): von der Anzeige bis zur Antwort, ohne Zeit im Hintergrund. Die Sicherheitsabfrage danach zählt nicht.
   const timer = useResponseTimer();
+  // Unterbrechungen der Sitzung (Aufgabe 12): Wechsel in den Hintergrund ab 2 Sekunden, Zahl und Gesamtdauer. Nach einer Pause geht es weiter.
+  const interruptions = useInterruptionCounter();
+  useEffect(() => {
+    interruptions.restore(resume?.interruptions);
+    // Nur beim Öffnen einer pausierten Session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     questionItems.forEach((q, i) => {
       const saved = savedByItem.get(q.itemId)?.responseTimeMs;
@@ -269,7 +279,8 @@ export function StudySession({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           currentIndex: !finished[currentIndex] ? currentIndex : firstOpen === -1 ? currentIndex : firstOpen,
-          answers: questionItems.flatMap((q, i) => (finished[i] ? [{ itemId: q.itemId, selectedOptionId: payloads[i] ? "" : answers[i], answer: payloads[i] ?? undefined, confidence: confidences[i] ?? undefined, thinkFirst: thinkFirst && !payloads[i] ? true : undefined, answeredAt: answeredAtRef.current[i], responseTimeMs: timer.get(i) }] : [])),
+          interruptions: interruptions.snapshot(),
+          answers: questionItems.flatMap((q, i) => (finished[i] ? [{ itemId: q.itemId, selectedOptionId: payloads[i] ? "" : answers[i], answer: payloads[i] ?? undefined, confidence: confidences[i] ?? undefined, thinkFirst: thinkFirst && !payloads[i] ? true : undefined, answeredAt: answeredAtRef.current[i], responseTimeMs: timer.get(i), changedAnswer: Boolean(changedRef.current[i]) }] : [])),
         }),
       });
       if (!response.ok) throw new Error(`Status ${response.status}`);
@@ -368,8 +379,9 @@ export function StudySession({
         // Nur beantwortete Aufgaben: die übrigen bekommen kein Rating und bleiben fällig.
         body: JSON.stringify({
           deviceClass: currentDeviceClass(),
+          interruptions: interruptions.snapshot(),
           openItemId: item.itemId,
-          answers: questionItems.flatMap((q, i) => (answers[i] ? [{ itemId: q.itemId, selectedOptionId: payloads[i] ? "" : answers[i], answer: payloads[i] ?? undefined, confidence: confidences[i] ?? undefined, thinkFirst: thinkFirst && !payloads[i] ? true : undefined, responseTimeMs: timer.get(i) }] : [])),
+          answers: questionItems.flatMap((q, i) => (answers[i] ? [{ itemId: q.itemId, selectedOptionId: payloads[i] ? "" : answers[i], answer: payloads[i] ?? undefined, confidence: confidences[i] ?? undefined, thinkFirst: thinkFirst && !payloads[i] ? true : undefined, responseTimeMs: timer.get(i), changedAnswer: Boolean(changedRef.current[i]) }] : [])),
         }),
       });
       const data = await response.json();
@@ -392,6 +404,7 @@ export function StudySession({
     const payload = {
       // Grobe Größenklasse des Bildschirms (Aufgabe 16); der Server speichert sie nur bei eingeschaltetem Flag.
       deviceClass: currentDeviceClass(),
+      interruptions: interruptions.snapshot(),
       answers: questionItems.map((item, i) => ({
         itemId: item.itemId,
         selectedOptionId: payloads[i] ? "" : (answers[i] ?? ""),
@@ -399,6 +412,7 @@ export function StudySession({
         confidence: confidences[i] ?? undefined,
         thinkFirst: thinkFirst && !payloads[i] ? true : undefined,
         responseTimeMs: timer.get(i),
+        changedAnswer: answers[i] ? Boolean(changedRef.current[i]) : undefined,
       })),
     };
 
@@ -414,7 +428,7 @@ export function StudySession({
       await enqueueSyncEvent(
         offline.userId,
         "study_session",
-        { sessionId, deviceClass: payload.deviceClass, answers: payload.answers.map((a, i) => ({ ...a, answeredAt: answeredAtRef.current[i] })) },
+        { sessionId, deviceClass: payload.deviceClass, interruptions: payload.interruptions, answers: payload.answers.map((a, i) => ({ ...a, answeredAt: answeredAtRef.current[i] })) },
         c_studySession(locale).todaySSession,
       ).catch(() => {});
       setResult({ score, results });
@@ -450,6 +464,7 @@ export function StudySession({
     const option = sorted[index];
     if (!option || formatPromptOf(item) || (thinkFirst && !optionsShown[currentIndex])) return;
     if (instant && answers[currentIndex]) return; // Antwort ist nach dem Wählen gesperrt
+    if (answers[currentIndex] && answers[currentIndex] !== option.id) changedRef.current[currentIndex] = true;
     answeredAtRef.current[currentIndex] = new Date().toISOString();
     timer.answer(currentIndex);
     setAnswers((prev) => {

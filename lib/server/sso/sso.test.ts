@@ -128,6 +128,7 @@ run("SSO (echte DB, Fake-IdP)", () => {
     expect(lastTokenRequest!.get("code_verifier")).toBeTruthy();
     const [user] = await getDb().select().from(users).where(eq(users.id, result.userId));
     expect(user.emailVerifiedAt).not.toBeNull();
+    expect(user.passwordSet).toBe(false); // Aufgabe 09: kein Passwortformular, Löschen per E-Mail
     const [member] = await getDb().select().from(organizationMemberships).where(eq(organizationMemberships.userId, result.userId));
     expect(member).toMatchObject({ organizationId: orgA, role: "company_admin" });
     expect(await getDb().select().from(userIdentities).where(eq(userIdentities.userId, result.userId))).toHaveLength(1);
@@ -217,6 +218,7 @@ run("SSO (echte DB, Fake-IdP)", () => {
     expect(after.passwordHash).not.toBe(hash);
     expect(after.sessionVersion).toBe(4);
     expect(after.emailVerifiedAt).not.toBeNull();
+    expect(after.passwordSet).toBe(false);
     expect(await authenticateUser(email, "bekanntes-passwort")).toBeNull();
   });
 
