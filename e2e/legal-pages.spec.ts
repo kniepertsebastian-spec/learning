@@ -27,3 +27,15 @@ for (const path of ["/login", "/register"]) {
     await expect(page.getByTestId("datenschutz-page")).toBeVisible();
   });
 }
+
+test("Datenschutzerklärung nennt jede Angabe mit Zweck, Speicherdauer und Empfänger", async ({ page, gateway }) => {
+  await page.goto(`${gateway.url}/datenschutz`);
+  // Ohne Freigabe des Betreibers steht der Hinweis „Entwurf“ da.
+  await expect(page.getByTestId("privacy-draft")).toBeVisible();
+  const entries = page.getByTestId("privacy-entry");
+  expect(await entries.count()).toBeGreaterThanOrEqual(10);
+  for (const label of [/^(Angaben|Details)$/, /^(Zweck|Purpose)$/, /^(Speicherdauer|Retention)$/, /^(Empfänger|Recipients)$/]) await expect(entries.first().getByText(label)).toBeVisible();
+  await expect(page.locator("#berufsprofil")).toContainText("Gemini");
+  await expect(page.locator("#tagesangaben")).toContainText(/Zeitbudget|time budget/);
+  await expect(page.locator("#altersspanne")).toBeVisible();
+});
