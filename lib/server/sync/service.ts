@@ -67,7 +67,7 @@ export async function processSyncEvents(
 }
 
 /** Platzhalter der Claim-Zeile, solange das Ereignis verarbeitet wird (kein endgültiges Ergebnis). */
-const PROCESSING_MESSAGE = "wird verarbeitet";
+export const PROCESSING_MESSAGE = "wird verarbeitet";
 
 /**
  * Ab diesem Alter gilt eine Claim-Zeile mit PROCESSING_MESSAGE als verwaist (Prozess während der Verbuchung beendet, z. B. durch
