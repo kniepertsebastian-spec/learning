@@ -3,6 +3,7 @@ import { afterCommit, getDb, inTransaction } from "@/lib/server/db/client";
 import { certifications, examAnswers, examAttempts, examQuestions, exams, questionOptions } from "@/lib/server/db/schema";
 import { ExamScoringService, type ExamScoringResult } from "@/lib/server/exam/scoring";
 import { addSkillFromCourse } from "@/lib/server/profile/service";
+import { rawResponseTimeMs } from "@/lib/server/review/response-time";
 import { recordReviewOutcomes } from "@/lib/server/review/service";
 import { passMarkPercent, recordFinalExamPass } from "@/lib/server/stats/completions";
 
@@ -10,6 +11,8 @@ export interface ExamAnswerInput {
   questionId: string;
   /** Leer: nicht beantwortet (zählt als falsch). */
   selectedOptionId: string;
+  /** Zeit bis zur Antwort in ms, roh vom Client (Aufgabe 06a); fehlt bei älteren Clients oder unbeantworteten Fragen. */
+  responseTimeMs?: number;
 }
 
 export interface ExamAttemptInput {
@@ -40,11 +43,13 @@ export function parseExamAttemptInput(body: unknown): ExamAttemptInput {
   }
   const raw = body as { answers: unknown[]; durationSeconds?: unknown };
   const answers = raw.answers.map((a) => {
-    const entry = a as { questionId?: unknown; selectedOptionId?: unknown } | null;
+    const entry = a as { questionId?: unknown; selectedOptionId?: unknown; responseTimeMs?: unknown } | null;
     if (typeof entry?.questionId !== "string" || (entry.selectedOptionId !== undefined && entry.selectedOptionId !== null && typeof entry.selectedOptionId !== "string")) {
       throw new InvalidExamSubmissionError("Ungültige Antwort.");
     }
-    return { questionId: entry.questionId, selectedOptionId: typeof entry.selectedOptionId === "string" ? entry.selectedOptionId : "" };
+    // Eine unbrauchbare Zeit kostet nicht die Abgabe: sie entfällt (Aufgabe 06b).
+    const responseTimeMs = rawResponseTimeMs(entry.responseTimeMs);
+    return { questionId: entry.questionId, selectedOptionId: typeof entry.selectedOptionId === "string" ? entry.selectedOptionId : "", ...(responseTimeMs !== undefined ? { responseTimeMs } : {}) };
   });
   return { answers, durationSeconds: typeof raw.durationSeconds === "number" ? raw.durationSeconds : undefined };
 }
@@ -111,8 +116,9 @@ export async function submitExamAttempt(userId: string, examId: string, input: E
       await tx.insert(examAnswers).values(evaluation.map((e) => ({ examAttemptId: attempt.id, questionId: e.questionId, selectedOptionId: e.selectedOptionId, isCorrect: e.isCorrect })));
     }
 
-    // R2.2: Review-Zustand (Fälligkeit/Intervall) je Frage fortschreiben.
-    await recordReviewOutcomes(userId, results);
+    // R2.2: Review-Zustand (Fälligkeit/Intervall) je Frage fortschreiben, mit der gemessenen Antwortzeit (Aufgabe 06b).
+    const timeOf = new Map(input.answers.map((a) => [a.questionId, a.responseTimeMs]));
+    await recordReviewOutcomes(userId, results.map((r) => ({ ...r, responseTimeMs: timeOf.get(r.questionId) })));
 
     if (passed) {
       // Anonyme Abschluss-Statistik: erstes Bestehen der Person in diesem Kurs (lib/server/stats/completions.ts).

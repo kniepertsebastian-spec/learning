@@ -38,6 +38,8 @@ export interface SectionQuizAnswerInput {
   thinkFirst?: boolean;
   /** Zeitpunkt der Antwort auf dem Gerät (ISO); nur im Sync-Pfad ausgewertet, siehe lib/server/sync/effective-time.ts. */
   answeredAt?: string;
+  /** Zeit bis zur Antwort in ms, roh vom Client (Aufgabe 06a); fehlt bei älteren Clients. */
+  responseTimeMs?: number;
 }
 
 export interface SectionQuizAttemptResult {
@@ -216,6 +218,7 @@ async function recordQuizAttemptCore(
       isCorrect: r.isCorrect,
       confidence: answers.find((a) => a.questionId === r.questionId)?.confidence ?? null,
       thinkFirst: answers.find((a) => a.questionId === r.questionId)?.thinkFirst === true,
+      responseTimeMs: answers.find((a) => a.questionId === r.questionId)?.responseTimeMs,
       ...(timing ? answerTime(timing, answers.find((a) => a.questionId === r.questionId)?.answeredAt) : {}),
     })),
   );
@@ -273,6 +276,7 @@ async function recordWovenAnswers(userId: string, sectionId: string, section: { 
           variantQuestionId: itemId !== a.questionId ? a.questionId : null,
           isCorrect: !!correct && correct.id === a.selectedOptionId,
           confidence: a.confidence ?? null,
+          responseTimeMs: a.responseTimeMs,
           reviewType: "interleaved" as const,
           wovenIntoLessonId: lesson?.id ?? null,
           ...(timing ? answerTime(timing, a.answeredAt) : {}),

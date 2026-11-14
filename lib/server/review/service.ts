@@ -4,11 +4,13 @@ import { domains, objectives, questions, reviewItems, type ReviewLogType } from 
 import type { AnswerConfidence } from "@/lib/types";
 import { probeVariantsByQuestion, recordProbeAnswer } from "@/lib/server/psrp/probes";
 import { ratingFromOutcome, recordRatedReviews } from "@/lib/server/psrp/service";
+import { plausibleResponseTimeMs } from "./response-time";
 
 export interface ReviewOutcomeInput {
   questionId: string;
   isCorrect: boolean;
   confidence?: AnswerConfidence | null;
+  /** Vom Client gemessene Zeit bis zur Antwort (Rohwert); unplausible Werte werden beim Verbuchen null (Aufgabe 06b). */
   responseTimeMs?: number | null;
   /** Gezeigte Variante (questions.id); `questionId` bleibt das Original, an dem der FSRS-Zustand hängt. */
   variantQuestionId?: string | null;
@@ -35,8 +37,8 @@ export async function recordReviewOutcomes(
 ): Promise<void> {
   if (results.length === 0) return;
   const db = getDb();
-  // Dedupliziert auf die letzte Antwort je Frage.
-  const deduped = [...new Map(results.map((r) => [r.questionId, r])).values()];
+  // Dedupliziert auf die letzte Antwort je Frage. Antwortzeiten außerhalb von 300 ms bis 10 Minuten werden null (Aufgabe 06b).
+  const deduped = [...new Map(results.map((r) => [r.questionId, { ...r, responseTimeMs: plausibleResponseTimeMs(r.responseTimeMs) }])).values()];
   // Abfragevarianten (PSRP-HR Phase 7) werden als Review des Original-Items mit Messwerten erfasst.
   const variants = await probeVariantsByQuestion(deduped.map((r) => r.questionId));
   for (const result of deduped.filter((r) => variants.has(r.questionId))) {
@@ -66,7 +68,7 @@ export async function recordReviewOutcomes(
       .map((r) => ({
         itemId: r.questionId,
         rawRating: ratingFromOutcome(r.isCorrect, r.confidence),
-        responseTimeMs: r.responseTimeMs ?? null,
+        responseTimeMs: r.responseTimeMs,
         variantQuestionId: r.variantQuestionId ?? null,
         reviewType: r.reviewType,
         wovenIntoLessonId: r.wovenIntoLessonId ?? null,

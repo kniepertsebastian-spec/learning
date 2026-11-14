@@ -842,6 +842,8 @@ export interface StudySessionDraft {
     confidence?: "guessed" | "unsure" | "sure";
     thinkFirst?: boolean;
     answeredAt?: string;
+    /** Bisher gemessene Zeit bis zur Antwort (ms, roh); der Client rechnet beim Fortsetzen weiter (Aufgabe 06b). */
+    responseTimeMs?: number;
   }>;
   currentIndex: number;
 }
