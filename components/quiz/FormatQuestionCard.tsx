@@ -30,6 +30,7 @@ export function FormatQuestionCard({
   prompt,
   evaluate,
   onAnswered,
+  onSelected,
   askConfidence = false,
   sourceReference,
   questionId,
@@ -45,6 +46,8 @@ export function FormatQuestionCard({
   prompt: AnswerPrompt;
   evaluate: (answer: AnswerPayload) => FormatEvaluation | Promise<FormatEvaluation>;
   onAnswered: (correct: boolean, answer: AnswerPayload, confidence?: AnswerConfidence, evaluation?: FormatEvaluation) => void;
+  /** Die Antwort wurde abgegeben, noch vor Sicherheitsabfrage und Auswertung (für die Antwortzeit). */
+  onSelected?: () => void;
   askConfidence?: boolean;
   sourceReference?: string | null;
   questionId: string;
@@ -78,6 +81,7 @@ export function FormatQuestionCard({
   function submit() {
     if (submitted || busy || !isDraftComplete(prompt, draft)) return;
     setSubmitted(draft);
+    onSelected?.();
     if (!askConfidence) void finish(draft, null);
   }
 

@@ -18,6 +18,8 @@ export const USERS = {
   formatsSession: { email: "e2e-formats-session@test.example", role: "learner" },
   /** Pausiert die Tages-Session und macht später weiter. */
   pauser: { email: "e2e-pauser@test.example", role: "learner" },
+  /** Prüft die Antwortzeit einer Frage der Tages-Session (Aufgabe 06a); eigener Nutzer, damit der Test nicht mit „Pause für heute“ kollidiert. */
+  responseTimer: { email: "e2e-response-timer@test.example", role: "learner" },
   /** Durchläuft den Einstiegstest direkt nach der Kurswahl (alle anderen haben ihn schon übersprungen). */
   preAssessment: { email: "e2e-pre-assessment@test.example", role: "learner" },
   preAssessmentSkip: { email: "e2e-pre-assessment-skip@test.example", role: "learner" },
@@ -70,6 +72,7 @@ export default async function globalSetup() {
   await ensureUnlockCourse();
   await resetFormatsSessionUser(passwordHash);
   await resetPauseUser(passwordHash);
+  await resetPauseUser(passwordHash, USERS.responseTimer.email);
 
   // Prüfer-Nutzer: genau dem E2E-Kurs zugewiesen.
   const [reviewer] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.reviewer.email)).limit(1);
@@ -112,9 +115,8 @@ async function resetFormatsSessionUser(passwordHash: string) {
 }
 
 /** Frisch angelegt, Lektion des Demo-Kurses gelesen, keine Session: die Tages-Session wird im Test gebaut, pausiert und fortgesetzt. */
-async function resetPauseUser(passwordHash: string) {
+async function resetPauseUser(passwordHash: string, email: string = USERS.pauser.email) {
   const db = getDb();
-  const email = USERS.pauser.email;
   await db.delete(users).where(eq(users.email, email));
   const [user] = await db.insert(users).values({ email, passwordHash, role: "learner", emailVerifiedAt: new Date() }).returning({ id: users.id });
   const [cert] = await db.select({ id: certifications.id }).from(certifications).where(eq(certifications.slug, COURSE_SLUG)).limit(1);
