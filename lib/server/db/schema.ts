@@ -110,6 +110,9 @@ export const users = pgTable(
     /** Wird bei Passwortwechsel erhöht. Das JWT trägt die Version; weicht sie ab (oder
      * existiert der Nutzer nicht mehr), ist die Sitzung ungültig (lib/server/session-validity.ts). */
     sessionVersion: integer("session_version").notNull().default(0),
+    /** Aufgabe 09 (Review 12.11.2026): Die Person kennt ein lokales Passwort. Falsch bei Konten, die per SSO angelegt wurden
+     * (unbrauchbares Zufallspasswort) oder deren Passwort beim ersten SSO-Verknüpfen ersetzt wurde. Ein Reset per Mail setzt es. */
+    passwordSet: boolean("password_set").notNull().default(true),
     /** Zeitpunkt der E-Mail-Bestätigung (lib/server/account/tokens.ts). Null = noch nicht bestätigt.
      * Bestandskonten wurden bei der Einführung als bestätigt markiert. */
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),

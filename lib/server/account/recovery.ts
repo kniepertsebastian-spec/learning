@@ -76,6 +76,8 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
       .update(users)
       .set({
         passwordHash,
+        // Auch ein SSO-Konto hat danach ein lokales Passwort (Aufgabe 09).
+        passwordSet: true,
         sessionVersion: sql`${users.sessionVersion} + 1`,
         emailVerifiedAt: sql`coalesce(${users.emailVerifiedAt}, now())`,
       })

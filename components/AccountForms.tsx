@@ -92,8 +92,11 @@ export function ChangePasswordForm({ userId, locale }: { userId: string; locale:
   );
 }
 
-/** Konto löschen: verlangt das Passwort und eine ausdrückliche Bestätigung. */
-export function DeleteAccountForm({ userId, locale }: { userId: string; locale: Locale }) {
+/**
+ * Konto löschen: verlangt das Passwort und eine ausdrückliche Bestätigung. SSO-Konten ohne eigenes Passwort tippen stattdessen
+ * ihre E-Mail-Adresse ein (Aufgabe 09); der Server verlangt dann eine frische Anmeldung.
+ */
+export function DeleteAccountForm({ userId, locale, confirmWith = "password" }: { userId: string; locale: Locale; confirmWith?: "password" | "email" }) {
   const router = useRouter();
   const de = locale === "de";
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +110,7 @@ export function DeleteAccountForm({ userId, locale }: { userId: string; locale: 
     const res = await fetch("/api/account", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: fd.get("password") }),
+      body: JSON.stringify(confirmWith === "email" ? { email: fd.get("email") } : { password: fd.get("password") }),
     });
     if (res.ok) {
       await clearLocalUserData(userId);
@@ -126,10 +129,20 @@ export function DeleteAccountForm({ userId, locale }: { userId: string; locale: 
         {c_accountForms(de).yourAccountAndAllYour}
       </p>
       {error && <Message kind="error">{error}</Message>}
-      <label className="text-sm font-medium">
-        {c_accountForms(de).passwordToConfirm}
-        <input name="password" type="password" required autoComplete="current-password" className={`${inputClass} mt-1`} />
-      </label>
+      {confirmWith === "email" ? (
+        <>
+          <p className="text-sm text-muted">{c_accountForms(de).ssoDeleteHint}</p>
+          <label className="text-sm font-medium">
+            {c_accountForms(de).emailToConfirm}
+            <input name="email" type="email" required autoComplete="off" className={`${inputClass} mt-1`} />
+          </label>
+        </>
+      ) : (
+        <label className="text-sm font-medium">
+          {c_accountForms(de).passwordToConfirm}
+          <input name="password" type="password" required autoComplete="current-password" className={`${inputClass} mt-1`} />
+        </label>
+      )}
       <label className="flex items-start gap-2 text-sm">
         <input name="confirm" type="checkbox" required className="mt-0.5" />
         <span>
