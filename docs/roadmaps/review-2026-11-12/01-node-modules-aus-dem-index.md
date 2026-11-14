@@ -10,8 +10,8 @@ Auf `main` liegen 42.320 Dateien unter `node_modules` im Index, dazu `tsconfig.t
 CI und Docker-Image sind nicht betroffen, weil beide `npm ci` ausführen und `.dockerignore` den Ordner ausschließt. Betroffen ist, wer lokal ohne `npm ci` arbeitet.
 
 ## Aufgaben
-- [ ] `git rm -r --cached node_modules tsconfig.tsbuildinfo` ausführen. `.gitignore` bleibt unverändert.
-- [ ] CI-Schritt ergänzen, der fehlschlägt, wenn `git ls-files node_modules` etwas ausgibt.
+- [x] `git rm -r --cached node_modules tsconfig.tsbuildinfo` ausführen. `.gitignore` bleibt unverändert.
+- [x] CI-Schritt ergänzen, der fehlschlägt, wenn `git ls-files node_modules` etwas ausgibt.
 - [ ] Image mit der aktuellen `.dockerignore` (Stand `be684769`) neu bauen, alte Images und den Build-Cache entfernen.
 - [ ] Wurden alte Images weitergegeben, die `.env` enthalten: Secrets wechseln. (Abschluss von Altbefund 2 vom 06.11.2026.)
 
