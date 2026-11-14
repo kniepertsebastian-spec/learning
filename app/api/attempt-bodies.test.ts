@@ -104,6 +104,8 @@ describe("falsche Typen sind ein 400", () => {
     { name: "/api/study-sessions/:id/attempt: answers ist kein Array", route: routes[0], body: { answers: "x" } },
     { name: "/api/study-sessions/:id/attempt: itemId ist keine Zeichenkette", route: routes[0], body: { answers: [{ itemId: 5, selectedOptionId: "a" }] } },
     { name: "/api/study-sessions/:id/exit: unbekannte Sicherheit", route: routes[1], body: { answers: [{ itemId: "i", selectedOptionId: "a", confidence: "egal" }] } },
+    { name: "/api/study-sessions/:id/attempt: unbekannte Größenklasse", route: routes[0], body: { answers: [], deviceClass: "tablet" } },
+    { name: "/api/study-sessions/:id/exit: Größenklasse ist kein Text", route: routes[1], body: { answers: [], deviceClass: 5 } },
     { name: "/api/sections/:id/attempt: answers fehlt", route: routes[2], body: {} },
     { name: "/api/sections/:id/attempt: questionId fehlt", route: routes[2], body: { answers: [{ selectedOptionId: "a" }] } },
     { name: "/api/sections/:id/exit: Antwortformat unbekannt", route: routes[3], body: { answers: [{ questionId: "q", answer: { kind: "magie" } }] } },

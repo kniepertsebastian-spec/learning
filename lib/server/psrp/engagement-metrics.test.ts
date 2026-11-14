@@ -1,3 +1,4 @@
+import { FEATURE_FLAGS } from "@/lib/server/feature-flags";
 import { describe, expect, it } from "vitest";
 import { computeEngagement, computeEngagementByFlag, computeEngagementByGroup, type EngagementUser } from "./engagement-metrics";
 
@@ -83,6 +84,6 @@ describe("je Feature-Flag", () => {
     expect(byFlag.exit_with_win.disabled.churn7.rate).toBeNull(); // b ist erst einen Tag dabei: zählt nicht
     expect(byFlag.reactivation.disabled.users).toBe(0);
     expect(byFlag.reactivation.disabled.churn7.rate).toBeNull();
-    expect(Object.keys(byFlag)).toHaveLength(8);
+    expect(Object.keys(byFlag)).toHaveLength(FEATURE_FLAGS.length);
   });
 });

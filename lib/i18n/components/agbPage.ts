@@ -2,11 +2,15 @@
 const texts = {
   de: {
     termsOfService: "AGB / Service Agreements",
-    excerptStatementsOnReviewPassing: "Auszug: Aussagen zu Prüfung, Bestehen und Prüfungsbedingungen.",
+    conditionsOfUse: "Bedingungen für die Nutzung der Plattform.",
+    draftNotice: "Entwurf: Die Freigabe der Bedingungen durch den Betreiber steht noch aus.",
+    toPrivacyPolicy: "Zur Datenschutzerklärung",
   },
   en: {
     termsOfService: "Terms of service",
-    excerptStatementsOnReviewPassing: "Excerpt: statements on review, passing and exam conditions.",
+    conditionsOfUse: "Terms for using the platform.",
+    draftNotice: "Draft: the operator has not yet approved these terms.",
+    toPrivacyPolicy: "Go to the privacy policy",
   },
 } as const;
 

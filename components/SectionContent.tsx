@@ -1,5 +1,6 @@
 "use client";
 
+import { LessonReadingTracker } from "@/components/LessonReadingTracker";
 import { c_sectionContent } from "@/lib/i18n/components/sectionContent";
 import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
@@ -136,6 +137,7 @@ export function SectionContent({
   return (
     <LessonSimulationsProvider text={content} sectionId={sectionId} persist={signedIn && !offline} offlineUserId={offline?.userId} initialProgress={simulationProgress} mentorAsk={offline ? null : (mentorAsk ?? null)}>
     <div className="flex flex-1 flex-col" data-testid="lesson-page">
+      {signedIn && !offline && <LessonReadingTracker sectionId={sectionId} active={!showQuiz} />}
       <ReadingProgress />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
