@@ -8,6 +8,7 @@ Der Stand je Datei ist aus den Abhak-Listen (`- [x]` / `- [ ]`) im Dokument gez�
 
 | Datei | Inhalt | Stand (erledigt/gesamt) |
 |---|---|---|
+| [vision.md](vision.md) | Vision, Abgrenzung (was Firmen nicht sehen), Ausscheiden aus der Firma, was zurückgestellt wird, Weg zum ersten Firmenkunden. | 0/18, 18 offen |
 | [ROADMAP-TECHNISCH.md](ROADMAP-TECHNISCH.md) | Technik: Infrastruktur, Sicherheit, Datenmodell, Backend, Frontend, Qualität, Betrieb, mit Prüfnachweis je Punkt. | 70/119, 49 offen |
 | [ROADMAP-UI.md](ROADMAP-UI.md) | Oberfläche und Bedienung samt nötiger Daten- und API-Erweiterungen. | 114/126, 12 offen |
 | [roadmap_review_messung.md](roadmap_review_messung.md) | Befunde aus dem PWA-Review vom 12.11.2026 und Ausbau der Messung menschlicher Faktoren (Antwortzeit, Ermüdung, Selbstauskunft). | 0/42, 42 offen |
