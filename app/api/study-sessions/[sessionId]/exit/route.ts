@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!body.ok) return body.response;
 
   try {
-    return NextResponse.json(await exitStudySession(sessionId, session.user.id, body.data.answers, body.data.openItemId ?? null, { deviceClass: body.data.deviceClass }));
+    return NextResponse.json(await exitStudySession(sessionId, session.user.id, body.data.answers, body.data.openItemId ?? null, { deviceClass: body.data.deviceClass, interruptions: body.data.interruptions }));
   } catch (error) {
     if (error instanceof StudySessionNotFoundError) return NextResponse.json({ error: error.message }, { status: 404 });
     if (error instanceof StudySessionNotActiveError) return NextResponse.json({ error: error.message }, { status: 409 });

@@ -849,6 +849,8 @@ export interface StudySessionDraft {
     responseTimeMs?: number;
   }>;
   currentIndex: number;
+  /** Unterbrechungen bis zur Pause (Aufgabe 12); der Client zählt beim Fortsetzen weiter. Die Pause selbst zählt nicht. */
+  interruptions?: { count: number; totalMs: number };
 }
 
 /** Grobe Größenklasse des Bildschirms (Aufgabe 16, Faktor 4.12): schmal (Smartphone) oder breit. */
@@ -896,6 +898,12 @@ export const studySessions = pgTable(
      * Keine Gerätekennung, kein Modell, keine genaue Breite. Nur für die Auswertung je Lage.
      */
     deviceClass: text("device_class").$type<DeviceClass>(),
+    /**
+     * Unterbrechungen während der Sitzung (Flag `interruptions`, Aufgabe 12, Faktor 4.3): wie oft die Seite mindestens 2 Sekunden im
+     * Hintergrund war, und wie lange insgesamt. Beide null, wenn nichts gemessen wurde (älteres Gerät, Flag aus, vor der Messung).
+     */
+    interruptionCount: integer("interruption_count"),
+    interruptionMs: integer("interruption_ms"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -913,6 +921,10 @@ export const studySessions = pgTable(
       sql`${table.energyLevel} is null or ${table.energyLevel} in ('low', 'medium', 'high')`,
     ),
     check("study_sessions_device_class_check", sql`${table.deviceClass} is null or ${table.deviceClass} in ('narrow', 'wide')`),
+    check(
+      "study_sessions_interruptions_check",
+      sql`(${table.interruptionCount} is null and ${table.interruptionMs} is null) or (${table.interruptionCount} >= 0 and ${table.interruptionMs} >= 0)`,
+    ),
   ],
 );
 

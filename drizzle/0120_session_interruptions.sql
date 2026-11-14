@@ -1,0 +1,3 @@
+ALTER TABLE "study_sessions" ADD COLUMN "interruption_count" integer;--> statement-breakpoint
+ALTER TABLE "study_sessions" ADD COLUMN "interruption_ms" integer;--> statement-breakpoint
+ALTER TABLE "study_sessions" ADD CONSTRAINT "study_sessions_interruptions_check" CHECK (("study_sessions"."interruption_count" is null and "study_sessions"."interruption_ms" is null) or ("study_sessions"."interruption_count" >= 0 and "study_sessions"."interruption_ms" >= 0));

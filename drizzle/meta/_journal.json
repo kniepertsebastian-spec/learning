@@ -841,6 +841,13 @@
       "when": 1794666934870,
       "tag": "0119_sso_password_set",
       "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1794667559057,
+      "tag": "0120_session_interruptions",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, notInArray, sql } from "drizz
 import { afterCommit, getDb, inTransaction } from "@/lib/server/db/client";
 import { parseConfidence } from "@/lib/answer-confidence";
 import { parseDeviceClass } from "@/lib/device-class";
+import { parseInterruptions } from "@/lib/interruptions";
 import {
   domains,
   lessons,
@@ -846,6 +847,8 @@ interface CompleteStudySessionOptions {
   countIfFinished?: boolean;
   /** Grobe Größenklasse des Bildschirms (Aufgabe 16, Flag `device_class`); unbekannte Werte werden verworfen. */
   deviceClass?: unknown;
+  /** Unterbrechungen der Sitzung (Aufgabe 12, Flag `interruptions`); unbrauchbare Werte werden verworfen. */
+  interruptions?: unknown;
 }
 
 /**
@@ -915,6 +918,7 @@ async function completeStudySessionInTransaction(
   const timing = options.timing?.(session);
   // Gerätegröße nur, wenn das Flag für die Person gilt (Kontrollgruppe: nichts speichern); unbekannte Werte entfallen.
   const deviceClass = isFeatureEnabled("device_class", userId) ? parseDeviceClass(options.deviceClass) : null;
+  const interruptions = isFeatureEnabled("interruptions", userId) ? parseInterruptions(options.interruptions) : null;
 
   const items = await db
     .select()
@@ -1052,6 +1056,7 @@ async function completeStudySessionInTransaction(
       draft: null,
       updatedAt: new Date(),
       ...(deviceClass ? { deviceClass } : {}),
+      ...(interruptions ? { interruptionCount: interruptions.count, interruptionMs: interruptions.totalMs } : {}),
     })
     .where(eq(studySessions.id, sessionId));
 
@@ -1150,13 +1155,13 @@ export interface StudySessionExitResult extends StudySessionAttemptResult {
  * bekommen kein Rating und bleiben fällig. Danach höchstens drei Erfolgsaufgaben (sehr wahrscheinlich gekonnt, ohnehin bald fällig)
  * als kurze Folge-Session. Der Notausstieg zählt als Signal für die Frühwarnung.
  */
-export async function exitStudySession(sessionId: string, userId: string, answers: StudySessionAnswerInput[], openItemId?: string | null, options: { deviceClass?: unknown } = {}): Promise<StudySessionExitResult> {
+export async function exitStudySession(sessionId: string, userId: string, answers: StudySessionAnswerInput[], openItemId?: string | null, options: { deviceClass?: unknown; interruptions?: unknown } = {}): Promise<StudySessionExitResult> {
   const db = getDb();
   const [session] = await db.select().from(studySessions).where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId))).limit(1);
   if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
   const answered = answers.filter((a) => a.selectedOptionId || a.answer);
   const items = await db.select({ id: studySessionItems.id, referenceId: studySessionItems.referenceId }).from(studySessionItems).where(eq(studySessionItems.sessionId, sessionId));
-  const result = await completeStudySession(sessionId, userId, answered, { deviceClass: options.deviceClass });
+  const result = await completeStudySession(sessionId, userId, answered, { deviceClass: options.deviceClass, interruptions: options.interruptions });
   await db.update(studySessions).set({ exitedAt: new Date() }).where(eq(studySessions.id, sessionId));
   const open = openItemId ? items.find((i) => i.id === openItemId && !answered.some((a) => a.itemId === i.id)) : undefined;
   await recordExit({ userId, source: "session", sessionId, questionId: open?.referenceId ?? null });
@@ -1191,7 +1196,7 @@ export async function declineDeescalatedSession(sessionId: string, userId: strin
 export async function pauseStudySession(
   sessionId: string,
   userId: string,
-  input: { answers: StudySessionAnswerInput[]; currentIndex: number },
+  input: { answers: StudySessionAnswerInput[]; currentIndex: number; interruptions?: unknown },
 ): Promise<{ answered: number }> {
   const db = getDb();
   const [session] = await db
@@ -1226,6 +1231,8 @@ export async function pauseStudySession(
     answers: [...byItem.values()],
     currentIndex: Math.max(0, Math.min(items.length - 1, Math.floor(Number(input.currentIndex) || 0))),
   };
+  const interruptions = isFeatureEnabled("interruptions", userId) ? parseInterruptions(input.interruptions) : null;
+  if (interruptions) draft.interruptions = interruptions;
   const now = new Date();
   await db
     .update(studySessions)

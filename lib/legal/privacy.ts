@@ -123,12 +123,12 @@ export const PRIVACY_ENTRIES: PrivacyEntry[] = [
     id: "wiederholung",
     title: { de: "Wiederholungsplanung und Lernsitzungen", en: "Review planning and study sessions" },
     data: {
-      de: "Jede beantwortete Frage mit Zeitpunkt, Ergebnis, Antwortzeit und Selbsteinschätzung, Gedächtnismodell je Frage und persönliche Parameter dazu, Kalibrierung, Ergebnisse von Probeaufgaben, Lernsitzungen mit ihren Aufgaben und der groben Bildschirmgröße beim Abschluss („schmal“ oder „breit“, keine Gerätekennung), daraus abgeleitete Werte, Rückmeldungen zu Sitzungsvorschlägen.",
-      en: "Every answered question with time, result, response time and self-assessment, memory model per question and personal parameters for it, calibration, results of probe tasks, study sessions with their tasks and the rough screen size at completion (“narrow” or “wide”, no device identifier), values derived from them, feedback on session suggestions.",
+      de: "Jede beantwortete Frage mit Zeitpunkt, Ergebnis, Antwortzeit und Selbsteinschätzung, Gedächtnismodell je Frage und persönliche Parameter dazu, Kalibrierung, Ergebnisse von Probeaufgaben, Lernsitzungen mit ihren Aufgaben, der groben Bildschirmgröße beim Abschluss („schmal“ oder „breit“, keine Gerätekennung) und wie oft und wie lange die App während der Sitzung im Hintergrund war (nur Zahl und Gesamtdauer), daraus abgeleitete Werte, Rückmeldungen zu Sitzungsvorschlägen.",
+      en: "Every answered question with time, result, response time and self-assessment, memory model per question and personal parameters for it, calibration, results of probe tasks, study sessions with their tasks, the rough screen size at completion (“narrow” or “wide”, no device identifier) and how often and how long the app was in the background during the session (count and total duration only), values derived from them, feedback on session suggestions.",
     },
     purpose: {
-      de: "Berechnen, wann welche Frage wieder fällig ist, und die Tagesplanung daran ausrichten. Die Antwortzeit dient dazu, den Aufwand eines Tages realistisch zu planen und Anzeichen von Überforderung zu erkennen.",
-      en: "Working out when each question is due again and aligning the daily plan with it. Response time is used to plan a day's effort realistically and to notice signs of overload.",
+      de: "Berechnen, wann welche Frage wieder fällig ist, und die Tagesplanung daran ausrichten. Die Antwortzeit dient dazu, den Aufwand eines Tages realistisch zu planen und Anzeichen von Überforderung zu erkennen. Aus Antwortzeit, Fehlern nach Position in der Sitzung und Unterbrechungen zeigt „Wie ich lerne“ dir kurze Aussagen über deine Sitzungen; sie ändern nichts an deinem Plan.",
+      en: "Working out when each question is due again and aligning the daily plan with it. Response time is used to plan a day's effort realistically and to notice signs of overload. From response time, mistakes by position in the session and interruptions, “How I learn” shows you short statements about your sessions; they do not change your plan.",
     },
     retention: UNTIL_DELETION,
     recipients: NO_RECIPIENT,

@@ -19,7 +19,7 @@ Jede Kennzahl gibt es gesamt, je Evaluationsgruppe und **je Feature-Flag mit und
 1. **Ausgangswert festhalten, bevor eine Mechanik eingeschaltet wird oder eine Kontrollgruppe startet:**
    `npm run psrp:baseline -- save "Vor dem Pilot"`
    Die Momentaufnahme (Tabelle `metric_snapshots`) enthält nur Aggregate, keine Personen, dazu die Flag-Anteile zu diesem Zeitpunkt und die Größe der Datenbasis.
-2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`, `reading_time`, `device_class`. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
+2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`, `reading_time`, `device_class`, `interruptions`. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
 3. **Später vergleichen:**
    `npm run psrp:baseline -- compare latest` (letzte Momentaufnahme gegen jetzt) oder `compare <id-a> <id-b>`; `list` zeigt alle Momentaufnahmen.
 4. **Ziele festlegen**, erst nachdem Ausgangswerte vorliegen und genug Personen dabei sind (Richtwert: mindestens 20 im Nenner der jeweiligen Kennzahl). Ziele gehören in diesen Abschnitt, mit Datum.
@@ -97,6 +97,41 @@ Auch hier **nur Auswertung**: Der Export (`npm run psrp:metrics`) enthält den A
 | H7 | Wer eine Lektion kaum liest, schneidet im ersten Lektionstest schlechter ab | `reading.firstQuizScore` | gelesen gegen kaum gelesen, ab 20 Lektionen je Seite |
 | H8 | Nach drei Fehlern in Folge steigt der Anteil, der aufhört, ohne dass ein Ausstieg gewählt wird | `persistence.ended` gegen `exited` | beschreibend, ab 20 Sitzungen mit Serie |
 | H9 | Am Smartphone ist die Trefferquote je Sitzung niedriger oder die Sitzung kürzer als am großen Bildschirm | `device.narrow` gegen `device.wide` | beschreibend, ab 20 Sitzungen je Seite |
+
+## Menschliche Faktoren: Ermüdung und Unterbrechungen (Stufe 1)
+Auch hier **nur Auswertung**: Der Export (`npm run psrp:metrics`) enthält den Abschnitt `fatigue` (gesamt und je Evaluationsgruppe). Eine persönliche Sitzungslänge und „schwere Fragen nach vorn“ sind **nicht** gebaut; sie brauchen erst die Hypothesen unten und einen Effekt in den Zahlen. Die Unterbrechungen sind eine neue Angabe und haben deshalb ein Flag (`interruptions`, standardmäßig für alle an, `FEATURE_INTERRUPTIONS=0` schaltet ab; dann speichert der Server nichts).
+
+| Faktor | Wert im Export | Nenner `n` | Was gemessen wird |
+|---|---|---|---|
+| 4.1 Ermüdung | `thirds.first`, `.second`, `.third` | Antworten im Drittel (`errors.n`), Antworten mit Zeit (`timed`) | Abgeschlossene Sitzungen mit mindestens drei beantworteten Fragen, nach der Reihenfolge der Aufgaben in Drittel geteilt (Antwort i von n im Drittel ⌊3·i/n⌋). Je Drittel Fehlerquote und Median der Antwortzeit |
+| | `errorIncrease`, `slowdown` | wie oben | Fehlerquote letztes minus erstes Drittel; Median der Antwortzeit letztes durch erstes Drittel |
+| | `sessions`, `answers`, `medianSessionLength` | Sitzungen | Wie viele Sitzungen und Antworten eingehen, typische Länge |
+| 4.3 Unterbrechungen | `interruptions.interrupted` | Sitzungen mit Messung (`measured`) | Anteil der Sitzungen mit mindestens einem Wechsel in den Hintergrund |
+| | `interruptions.medianCount`, `.medianSeconds` | unterbrochene Sitzungen | Typische Zahl und Gesamtdauer der Unterbrechungen |
+| | `interruptions.accuracy` | Sitzungen je Seite | Trefferquote der Sitzungen mit und ohne Unterbrechung |
+
+**Was gespeichert wird:** `study_sessions.interruption_count` und `interruption_ms`: wie oft die Seite während der Sitzung mindestens 2 Sekunden im Hintergrund war (Tab-Wechsel, App im Hintergrund, gesperrter Bildschirm) und wie lange insgesamt. Nicht wann, nicht wohin. Bei „Pause für heute“ steht der bisherige Stand im Zwischenstand und wird beim Fortsetzen weitergezählt; die Pause selbst zählt nicht. Die Werte kommen online, beim Notausstieg und über die Sync-Warteschlange an. Beides steht im Datenexport und in der Datenschutzerklärung.
+
+**Was die Person sieht:** Auf „Wie ich lerne“ erscheinen nur ganze Sätze und nur bei genug Daten und deutlichem Unterschied (Schwellen als Vorschlag in `lib/server/psrp/fatigue.ts`):
+- „Nach etwa N Fragen machst du mehr Fehler …“: mindestens 30 Antworten im ersten und im letzten Drittel, Fehlerquote mindestens 10 Prozentpunkte höher. N ist der Beginn des letzten Drittels einer typischen Sitzung (zwei Drittel der Median-Länge).
+- „Gegen Ende … deutlich länger“: mindestens 30 gemessene Antworten auf beiden Seiten, Median mindestens ein Viertel länger.
+- „In X von Y Sitzungen … unterbrochen“: mindestens 5 gemessene Sitzungen, davon mindestens die Hälfte unterbrochen.
+
+Die Sätze sind Beobachtungen und ändern nichts am Plan.
+
+**Grenzen:**
+- 4.1: Die Reihenfolge ist die geplante Reihenfolge der Aufgaben, nicht die Zeit. Spätere Aufgaben sind nicht zufällig verteilt: der Session-Builder stellt fällige Wiederholungen, neue Fragen und Rückblicke in eine feste Abfolge. Ein Anstieg der Fehler im letzten Drittel kann deshalb auch an der Art der Aufgaben liegen und ist für sich kein Beleg für Ermüdung. Kurze Sitzungen (3 bis 5 Fragen) verteilen sich grob.
+- 4.3: Ein Wechsel unter 2 Sekunden zählt nicht. Wer die App offen lässt und weggeht, ohne den Bildschirm zu sperren, wirkt nicht unterbrochen. Offline wird gezählt, aber nur mit der Sync-Warteschlange übertragen.
+
+**Hypothesen (Annahmen, keine Zusagen, keine Zielwerte):**
+
+| Nr. | Annahme | Gemessen mit | Vergleich |
+|---|---|---|---|
+| H10 | Im letzten Drittel einer Sitzung liegt die Fehlerquote höher und die Antwortzeit länger als im ersten | `thirds`, `errorIncrease`, `slowdown` | beschreibend, ab 20 Sitzungen; vor einer persönlichen Sitzungslänge zusätzlich mit gemischter Reihenfolge prüfen (sonst ist Ermüdung nicht von der Aufgabenart zu trennen) |
+| H11 | Unterbrochene Sitzungen haben eine niedrigere Trefferquote als ununterbrochene | `interruptions.accuracy` | mit gegen ohne Unterbrechung, ab 20 Sitzungen je Seite |
+| H12 | Wer oft unterbrochen wird, schließt kürzere Sitzungen häufiger ab | `interruptions` gegen `medianSessionLength` je Person | beschreibend; Voraussetzung für „kürzere Sitzungen anbieten“ |
+
+**Persönliche Sitzungslänge:** erst, wenn H10 mit gemischter Reihenfolge einen Effekt zeigt. Bis dahin schlägt die App keine Länge vor.
 
 ## Grenzen
 - Reaktivierung per Push gibt es nicht, nur per E-Mail (siehe Web Push in `umsetzungsplan.md`, Stufe 5).
