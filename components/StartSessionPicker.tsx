@@ -1,5 +1,7 @@
 "use client";
 
+import { c_selfReportPrompt } from "@/lib/i18n/components/selfReportPrompt";
+import { SELF_REPORT_VALUES } from "@/lib/self-reports";
 import { c_startSessionPicker } from "@/lib/i18n/components/startSessionPicker";
 import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
@@ -38,6 +40,7 @@ export function StartSessionPicker({
   welcomeBack = false,
   energyModes = false,
   deescalated = false,
+  environmentQuestion = false,
 }: {
   certSlug: string;
   certificationId: string;
@@ -49,12 +52,15 @@ export function StartSessionPicker({
   /** Flag `energy_modes`: bei niedriger Energie oder in der Entlastung Alternativen anbieten (nie Zwang). */
   energyModes?: boolean;
   deescalated?: boolean;
+  /** Aufgabe 18, 5.6: im Check-in zusätzlich „Wo lernst du heute?“ fragen (freiwillig, der Server hat entschieden, dass sie dran ist). */
+  environmentQuestion?: boolean;
 }) {
   const router = useRouter();
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [energy, setEnergy] = useState<number | null>(null);
   const [workday, setWorkday] = useState<boolean | null>(null);
+  const [environment, setEnvironment] = useState<string | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
   const [customMinutes, setCustomMinutes] = useState("");
   const customValue = Number(customMinutes);
@@ -80,6 +86,18 @@ export function StartSessionPicker({
       });
       if (!response.ok && response.status !== 409) {
         throw new Error(`Status ${response.status}`);
+      }
+      // Aufgabe 18, 5.6: Antwort festhalten; ohne Wahl zählt die gezeigte Frage als übersprungen (Regel gegen Fragemüdigkeit). Nie blockierend.
+      if (environmentQuestion && intro.offerCheckin) {
+        const sessionId = ((await response.json().catch(() => null)) as { session?: { id?: string } } | null)?.session?.id;
+        if (sessionId) {
+          void fetch("/api/self-reports", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ kind: "learning_environment", value: environment, refType: "session", refId: sessionId, sessionId }),
+            keepalive: true,
+          }).catch(() => {});
+        }
       }
       router.push(`/cert/${certSlug}/session`);
     } catch {
@@ -254,6 +272,29 @@ export function StartSessionPicker({
           </button>
         ))}
       </div>
+
+      {environmentQuestion && (
+        <div data-testid="checkin-environment">
+          <p className="mb-1.5 mt-3 text-xs text-faint">{c_selfReportPrompt(locale).environmentOptional}</p>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label={c_selfReportPrompt(locale).questions.learning_environment.question}>
+            {SELF_REPORT_VALUES.learning_environment.map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setEnvironment((current) => (current === value ? null : value))}
+                disabled={starting !== null}
+                aria-pressed={environment === value}
+                data-testid={`checkin-environment-${value}`}
+                className={`rounded-md border px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60 ${
+                  environment === value ? "border-accent bg-accent-soft text-link" : "border-border bg-surface text-subtle hover:border-accent-border"
+                }`}
+              >
+                {(c_selfReportPrompt(locale).questions.learning_environment.options as Record<string, string>)[value]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
         </>
       )}

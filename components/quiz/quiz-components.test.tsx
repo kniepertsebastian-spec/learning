@@ -8,6 +8,7 @@ import { ExamSession } from "@/components/ExamSession";
 import { FeedbackPanel } from "@/components/quiz/FeedbackPanel";
 import { QuestionNavigator } from "@/components/quiz/QuestionNavigator";
 import { OptionTile } from "@/components/quiz/OptionTile";
+import { StartSessionPicker } from "@/components/StartSessionPicker";
 
 const wrap = (node: React.ReactNode) => renderToStaticMarkup(<LocaleProvider>{node}</LocaleProvider>);
 
@@ -69,5 +70,23 @@ describe("OptionTile", () => {
     expect(ok).toContain("sr-only");
     const bad = wrap(<OptionTile index={1} state="wrong" stateLabel="Falsch">x</OptionTile>);
     expect(bad).toContain("<svg");
+  });
+});
+
+describe("Check-in: Lernumgebung (Aufgabe 18, 5.6)", () => {
+  const picker = (props: Partial<React.ComponentProps<typeof StartSessionPicker>>) =>
+    wrap(<StartSessionPicker certSlug="x" certificationId="c" locale="de" intro={{ firstSession: false, offerCheckin: true }} {...props} />);
+
+  it("zeigt die freiwillige Frage mit drei Antworten, wenn der Server sie für dran hält", () => {
+    const html = picker({ environmentQuestion: true });
+    expect(html).toContain('data-testid="checkin-environment"');
+    for (const value of ["quiet", "on_the_go", "at_work"]) expect(html).toContain(`data-testid="checkin-environment-${value}"`);
+    expect(html).toContain("Wo lernst du heute? (freiwillig)");
+  });
+
+  it("zeigt sie nicht ohne Freigabe des Servers und nicht ohne Check-in", () => {
+    expect(picker({ environmentQuestion: false })).not.toContain("checkin-environment");
+    expect(picker({ environmentQuestion: true, intro: { firstSession: false, offerCheckin: false } })).not.toContain("checkin-environment");
+    expect(picker({ environmentQuestion: true, intro: { firstSession: true, offerCheckin: true } })).not.toContain("checkin-environment");
   });
 });

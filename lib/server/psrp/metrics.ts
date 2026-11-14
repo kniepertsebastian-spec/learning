@@ -14,6 +14,7 @@ import { DEFAULT_PSRP_CONFIG } from "./config";
 import { engagementMetrics } from "./engagement-metrics-db";
 import { humanFactorsMetrics } from "./human-factors-db";
 import { sessionContextMetrics } from "./session-context-db";
+import { selfReportMetrics } from "./self-report-metrics-db";
 import { fatigueMetrics } from "./fatigue-db";
 import { guessingMetrics } from "./guessing-db";
 import { errorTypeMetrics, helpBehaviorMetrics } from "./error-types-db";
@@ -68,6 +69,8 @@ export interface MetricReview {
   thinkFirst?: boolean;
   /** Feature-Flag `energy_modes` des Nutzers. */
   energyModes?: boolean;
+  /** Feature-Flag `self_reports` des Nutzers (Aufgabe 18): Kontrollgruppe ohne Fragen. */
+  selfReports?: boolean;
 }
 
 export interface GroupMetrics {
@@ -228,6 +231,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
       energyModes: isFeatureEnabled("energy_modes", r.userId),
       reactivation: isFeatureEnabled("reactivation", r.userId),
       wovenReviews: isFeatureEnabled("woven_reviews", r.userId),
+      selfReports: isFeatureEnabled("self_reports", r.userId),
       thinkFirst: r.thinkFirst,
     }));
 
@@ -325,7 +329,7 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     })),
     salt,
   );
-  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), thinkFirst: computeFlagArms(reviews, (r) => Boolean(r.thinkFirst)), wovenReviews: { arms: computeFlagArms(reviews, (r) => Boolean(r.wovenReviews)), woven: wovenStats }, reactivation: { arms: computeFlagArms(reviews, (r) => Boolean(r.reactivation)), messages: await reactivationStats(asOf) }, energyModes: { arms: computeFlagArms(reviews, (r) => Boolean(r.energyModes)), choices: energyChoices }, recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults, engagement: await engagementMetrics(asOf, (id) => anonymize(id, salt)), humanFactors: await humanFactorsMetrics(asOf, (id) => anonymize(id, salt)), sessionContext: await sessionContextMetrics(asOf), fatigue: await fatigueMetrics(asOf), guessing: await guessingMetrics(asOf), errorTypes: await errorTypeMetrics(asOf), helpBehavior: await helpBehaviorMetrics(asOf) };
+  return { asOf: asOf.toISOString(), groups: computeGroupMetrics(reviews, asOf), variantRotation: computeVariantMetrics(reviews), pretestQuestions: computeFlagArms(reviews, (r) => Boolean(r.pretest)), understandingMode: computeFlagArms(reviews, (r) => Boolean(r.understanding)), dropoutGuard: computeFlagArms(reviews, (r) => Boolean(r.dropoutGuard)), exitWithWin: computeFlagArms(reviews, (r) => Boolean(r.exitWithWin)), thinkFirst: computeFlagArms(reviews, (r) => Boolean(r.thinkFirst)), wovenReviews: { arms: computeFlagArms(reviews, (r) => Boolean(r.wovenReviews)), woven: wovenStats }, reactivation: { arms: computeFlagArms(reviews, (r) => Boolean(r.reactivation)), messages: await reactivationStats(asOf) }, energyModes: { arms: computeFlagArms(reviews, (r) => Boolean(r.energyModes)), choices: energyChoices }, recallCheck: { arms: computeFlagArms(reviews, (r) => Boolean(r.recall)), checks: recallMetrics }, calibration, examResults, engagement: await engagementMetrics(asOf, (id) => anonymize(id, salt)), humanFactors: await humanFactorsMetrics(asOf, (id) => anonymize(id, salt)), sessionContext: await sessionContextMetrics(asOf), fatigue: await fatigueMetrics(asOf), guessing: await guessingMetrics(asOf), errorTypes: await errorTypeMetrics(asOf), helpBehavior: await helpBehaviorMetrics(asOf), selfReports: { arms: computeFlagArms(reviews, (r) => Boolean(r.selfReports)), answers: await selfReportMetrics(asOf) } };
 }
 
 /** Der Teil des Exports, der als Ausgangswert festgehalten wird: nur Aggregate, keine Personen (auch nicht anonymisiert). */

@@ -1,6 +1,7 @@
 "use client";
 
 import { LessonReadingTracker } from "@/components/LessonReadingTracker";
+import { SelfReportPrompt } from "@/components/SelfReportPrompt";
 import { c_sectionContent } from "@/lib/i18n/components/sectionContent";
 import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
@@ -319,6 +320,7 @@ export function SectionContent({
                     </Button>
                   )}
                   {completeError && <p role="alert" className="text-sm text-danger-text">{completeError}</p>}
+                  {signedIn && !offline && completed && <SelfReportPrompt context="lesson" refId={sectionId} locale={locale} />}
                   <Link href={`/cert/${certSlug}`} className="w-fit text-sm text-link hover:underline">{lp.backToPath}</Link>
                 </div>
               ) : hasQuiz ? (
