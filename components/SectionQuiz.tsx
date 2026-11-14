@@ -1,7 +1,7 @@
 "use client";
 
 import { c_sectionQuiz } from "@/lib/i18n/components/sectionQuiz";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
 import { FormatQuestionCard } from "@/components/quiz/FormatQuestionCard";
 import { buildPrompt, buildSolution, gradeAnswer, type AnswerData, type AnswerFormat, type AnswerPayload } from "@/lib/questions/answer-formats";
@@ -14,6 +14,7 @@ import { fmt } from "@/lib/quiz/keys";
 import type { SegmentState } from "@/components/ui/progress";
 import type { AnswerConfidence, QuizQuestion, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
+import { useResponseTimer } from "@/lib/client/use-response-timer";
 
 export interface SectionQuizQuestion {
   id: string;
@@ -69,6 +70,11 @@ interface SectionQuizProps {
 export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions, questions, certSlug, locale, contextLabel, objectiveLabel, offline, exitEnabled, askConfidence = true }: SectionQuizProps) {
   const { t } = useLocale();
   const [quizIndex, setQuizIndex] = useState(0);
+  // Antwortzeit je Frage (Aufgabe 06a): von der Anzeige bis zur Wahl der Antwort, ohne Zeit im Hintergrund und ohne die Sicherheitsabfrage.
+  const timer = useResponseTimer();
+  useEffect(() => {
+    timer.show(quizIndex);
+  }, [timer, quizIndex]);
   const [results, setResults] = useState<boolean[]>([]);
   const [hasAnsweredCurrent, setHasAnsweredCurrent] = useState(false);
   const [quizFinished, setQuizFinished] = useState(false);
@@ -81,9 +87,11 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
     thinkFirst?: boolean;
     /** Zeitpunkt der Antwort (ISO); für die zeitgenaue Verbuchung offline aufgezeichneter Ergebnisse. */
     answeredAt?: string;
+    /** Antwortzeit in Millisekunden ohne Zeit im Hintergrund (Aufgabe 06a). */
+    responseTimeMs?: number;
   } | null>(null);
   const [answers, setAnswers] = useState<
-    Array<{ questionId: string; selectedOptionId: string; answer?: AnswerPayload; confidence?: AnswerConfidence; woven?: boolean; thinkFirst?: boolean; answeredAt?: string }>
+    Array<{ questionId: string; selectedOptionId: string; answer?: AnswerPayload; confidence?: AnswerConfidence; woven?: boolean; thinkFirst?: boolean; answeredAt?: string; responseTimeMs?: number }>
   >([]);
 
   function mapQuestion(q: SectionQuizQuestion): QuizQuestion {
@@ -116,6 +124,7 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
       woven: q.woven || undefined,
       thinkFirst,
       answeredAt: new Date().toISOString(),
+      responseTimeMs: timer.get(quizIndex),
     });
   }
 
@@ -123,7 +132,7 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
     setResults((r) => [...r, correct]);
     setHasAnsweredCurrent(true);
     const q = questions[quizIndex];
-    setPendingAnswer({ questionId: q.id, selectedOptionId: "", answer, confidence, woven: q.woven || undefined, answeredAt: new Date().toISOString() });
+    setPendingAnswer({ questionId: q.id, selectedOptionId: "", answer, confidence, woven: q.woven || undefined, answeredAt: new Date().toISOString(), responseTimeMs: timer.get(quizIndex) });
   }
 
   function handleNext() {
@@ -234,6 +243,7 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
             const grade = gradeAnswer(current.format as Exclude<AnswerFormat, "choice">, current.answerData!, answer);
             return { correct: grade.correct, partial: grade.partial, solution: buildSolution(current.format as Exclude<AnswerFormat, "choice">, current.answerData!) };
           }}
+          onSelected={() => timer.answer(quizIndex)}
           onAnswered={handleFormatAnswered}
           askConfidence={askConfidence}
           sourceReference={current.sourceReference}
@@ -247,6 +257,7 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
       <QuizQuestionCard
         key={current.id}
         question={mapQuestion(current)}
+        onSelected={() => timer.answer(quizIndex)}
         onAnswered={handleAnswered}
         sourceReference={current.sourceReference}
         askConfidence={askConfidence}

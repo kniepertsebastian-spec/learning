@@ -14,6 +14,8 @@ import type { AnswerConfidence, QuizQuestion } from "@/lib/types";
 interface QuizQuestionCardProps {
   question: QuizQuestion;
   onAnswered: (isCorrect: boolean, selectedIndex: number, confidence?: AnswerConfidence, thinkFirst?: boolean) => void;
+  /** Die Option wurde gewählt, noch vor der Sicherheitsabfrage (für die Antwortzeit). */
+  onSelected?: (selectedIndex: number) => void;
   /** R1.4: knappe Quellenangabe (z. B. "S. 4"); die vollständige Angabe bleibt dem Adminbereich vorbehalten. */
   sourceReference?: string | null;
   /** R2: Selbsteinschätzung VOR der Aufdeckung erfassen, sonst wäre sie keine echte Selbsteinschätzung mehr. */
@@ -34,6 +36,7 @@ interface QuizQuestionCardProps {
 export function QuizQuestionCard({
   question,
   onAnswered,
+  onSelected,
   sourceReference,
   askConfidence = false,
   onNext,
@@ -59,6 +62,7 @@ export function QuizQuestionCard({
   function pick(index: number) {
     if (selected !== null || hidden) return;
     setSelected(index);
+    onSelected?.(index);
     if (!askConfidence) onAnswered(index === question.correctIndex, index, undefined, thinkFirst || undefined);
   }
 

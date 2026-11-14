@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { afterCommit, getDb, inTransaction } from "@/lib/server/db/client";
+import { parseConfidence } from "@/lib/answer-confidence";
 import {
   domains,
   lessons,
@@ -970,7 +971,7 @@ async function completeStudySessionInTransaction(
         results.filter(toBook).map((r) => ({
           questionId: r.questionId,
           isCorrect: r.isCorrect,
-          confidence: answerOf.get(r.itemId)?.confidence ?? null,
+          confidence: parseConfidence(answerOf.get(r.itemId)?.confidence),
           thinkFirst: answerOf.get(r.itemId)?.thinkFirst === true,
           variantQuestionId: variantByItemId.get(r.itemId) ?? null,
           reviewType: recallByItemId.has(r.itemId) ? ("recall_check" as const) : undefined,
@@ -984,7 +985,8 @@ async function completeStudySessionInTransaction(
   }
 
   if (results.length > 0) {
-    const confidenceByItemId = new Map(answers.map((a) => [a.itemId, a.confidence]));
+    // Unbekannte Selbsteinschätzungen (Sync-Warteschlange alter Geräte) entfallen, die Antwort zählt (Aufgabe 04b).
+    const confidenceByItemId = new Map(answers.map((a) => [a.itemId, parseConfidence(a.confidence)]));
     const thinkFirstByItemId = new Set(answers.filter((a) => a.thinkFirst === true).map((a) => a.itemId));
     const selectedByItemId = new Map(answers.map((a) => [a.itemId, a.selectedOptionId]));
     const answeredAtByItemId = new Map(answers.map((a) => [a.itemId, a.answeredAt]));

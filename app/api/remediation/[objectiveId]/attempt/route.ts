@@ -3,15 +3,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
+import { parseAttemptBody, remediationAttemptBody } from "@/lib/server/http/attempt-body";
 import { getDb } from "@/lib/server/db/client";
 import { remediationSessions, objectiveProgress } from "@/lib/server/db/schema";
 import { RemediationService } from "@/lib/server/remediation/service";
 import type { RemediationResponse } from "@/lib/server/ai/service";
-
-interface RemediationAnswerPayload {
-  sessionId: string;
-  answers: Array<{ questionIndex: number; selectedOptionIndex: number }>;
-}
 
 export async function POST(
   request: NextRequest,
@@ -30,7 +26,9 @@ export async function POST(
   if (features && !features.includeSectionQuizzes) {
     return NextResponse.json({ error: "Wiederholungen gibt es nur bei Lernpfaden mit Lektionstests." }, { status: 409 });
   }
-  const body = (await request.json()) as RemediationAnswerPayload;
+  const parsedBody = await parseAttemptBody(request, remediationAttemptBody);
+  if (!parsedBody.ok) return parsedBody.response;
+  const body = parsedBody.data;
   const db = getDb();
 
   try {

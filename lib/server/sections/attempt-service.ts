@@ -1,5 +1,5 @@
 import { and, eq, gt, inArray, ne } from "drizzle-orm";
-import { getDb } from "@/lib/server/db/client";
+import { getDb, inTransaction } from "@/lib/server/db/client";
 import {
   domains,
   itemVariants,
@@ -19,6 +19,7 @@ import { recordReviewOutcomes } from "@/lib/server/review/service";
 import { answerTime, type ReviewTiming } from "@/lib/server/sync/effective-time";
 import { sanitizeAnswer, type AnswerPayload } from "@/lib/questions/answer-formats";
 import { gradeQuestionAnswer } from "@/lib/server/questions/grading";
+import { parseConfidence } from "@/lib/answer-confidence";
 import type { AnswerConfidence } from "@/lib/types";
 
 export class SectionNotFoundError extends Error {}
@@ -62,6 +63,17 @@ export async function recordSectionQuizAttempt(
   allAnswers: SectionQuizAnswerInput[],
   options: { timing?: ReviewTiming } = {},
 ): Promise<SectionQuizAttemptResult> {
+  // Aufgabe 03b (Review 12.11.2026): Versuch, Antworten, Lernzielstand und Wiederholungen gemeinsam oder gar nicht. Bricht etwas
+  // ab, bleibt kein halber Versuch stehen, und ein erneutes Senden verbucht jede Antwort genau einmal.
+  return inTransaction(() => recordSectionQuizAttemptInTransaction(userId, sectionId, allAnswers, options));
+}
+
+async function recordSectionQuizAttemptInTransaction(
+  userId: string,
+  sectionId: string,
+  allAnswers: SectionQuizAnswerInput[],
+  options: { timing?: ReviewTiming },
+): Promise<SectionQuizAttemptResult> {
   const db = getDb();
   const wovenAnswers = isFeatureEnabled("woven_reviews", userId) ? allAnswers.filter((a) => a.woven) : [];
 
@@ -103,6 +115,16 @@ export async function recordChapterQuizAttempt(
   allAnswers: SectionQuizAnswerInput[],
   options: { timing?: ReviewTiming } = {},
 ): Promise<SectionQuizAttemptResult> {
+  // Wie beim Lektionstest (Aufgabe 03b): alles in einer Transaktion.
+  return inTransaction(() => recordChapterQuizAttemptInTransaction(userId, domainId, allAnswers, options));
+}
+
+async function recordChapterQuizAttemptInTransaction(
+  userId: string,
+  domainId: string,
+  allAnswers: SectionQuizAnswerInput[],
+  options: { timing?: ReviewTiming },
+): Promise<SectionQuizAttemptResult> {
   const db = getDb();
   const [domain] = await db.select({ certificationId: domains.certificationId }).from(domains).where(eq(domains.id, domainId)).limit(1);
   if (!domain) throw new SectionNotFoundError(`Kapitel ${domainId} nicht gefunden.`);
@@ -126,7 +148,8 @@ async function recordQuizAttemptCore(
 ): Promise<SectionQuizAttemptResult> {
   const db = getDb();
   // Eingewebte Antworten zählen nicht für Ergebnis und Lernzielstand dieser Lektion (nur wenn das Flag gilt, sonst werden sie verworfen).
-  const candidates = allAnswers.filter((a) => !a.woven);
+  // Unbekannte Selbsteinschätzungen (Sync-Warteschlange alter Geräte) entfallen, die Antwort zählt (Aufgabe 04b).
+  const candidates = allAnswers.filter((a) => !a.woven).map((a) => ({ ...a, confidence: parseConfidence(a.confidence) ?? undefined }));
   const candidateIds = [...new Set(candidates.map((a) => a.questionId))];
   const existingIds = new Set(candidateIds.length > 0 ? (await db.select({ id: questions.id }).from(questions).where(inArray(questions.id, candidateIds))).map((q) => q.id) : []);
   const answers = candidates.filter((a) => existingIds.has(a.questionId));
@@ -214,7 +237,7 @@ export async function recordSimulationWovenAnswer(userId: string, sectionId: str
     .where(eq(sections.id, sectionId))
     .limit(1);
   if (!section) return false;
-  await recordWovenAnswers(userId, sectionId, section, [{ ...answer, woven: true }]);
+  await inTransaction(() => recordWovenAnswers(userId, sectionId, section, [{ ...answer, woven: true }]));
   return true;
 }
 

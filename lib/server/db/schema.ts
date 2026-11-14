@@ -551,7 +551,9 @@ export const quizAnswers = pgTable("quiz_answers", {
    * exam_answers übertragen: die Abschlussprüfung soll eine realistische,
    * zeitkritische Simulation bleiben statt einer reflektierenden Übung. */
   confidence: text("confidence").$type<AnswerConfidence>(),
-});
+},
+(table) => [check("quiz_answers_confidence_check", sql`${table.confidence} is null or ${table.confidence} in ('guessed', 'unsure', 'sure')`)],
+);
 
 export const objectiveProgress = pgTable(
   "objective_progress",
@@ -939,7 +941,9 @@ export const studySessionItems = pgTable("study_session_items", {
   /** Antwort bei den neuen Formaten (Reihenfolge, Kurzantwort, Zuordnung). */
   answer: jsonb("answer").$type<AnswerPayload>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+},
+(table) => [check("study_session_items_confidence_check", sql`${table.confidence} is null or ${table.confidence} in ('guessed', 'unsure', 'sure')`)],
+);
 
 export type ConceptStruggleStatus = "detected" | "in_progress" | "resolved" | "declined";
 

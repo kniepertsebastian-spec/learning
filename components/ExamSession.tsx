@@ -1,7 +1,8 @@
 "use client";
 
 import { c_examSession } from "@/lib/i18n/components/examSession";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useResponseTimer } from "@/lib/client/use-response-timer";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { ExamTimer } from "@/components/ExamTimer";
 import { FocusFrame } from "@/components/quiz/FocusFrame";
@@ -97,6 +98,11 @@ export function ExamSession({
   // secondsLeft dann exakt 0 ist statt der tatsächlich verstrichenen Zeit).
   const [startedAt] = useState(() => Date.now());
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Antwortzeit je Frage (Aufgabe 06a): Zeit, in der die Frage angezeigt war, ohne Zeit im Hintergrund. Beim Zurückblättern addiert sie sich.
+  const timer = useResponseTimer();
+  useEffect(() => {
+    timer.show(currentIndex);
+  }, [timer, currentIndex]);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questions.map(() => null));
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
@@ -112,6 +118,7 @@ export function ExamSession({
         answers: questions.map((q, i) => ({
           questionId: q.questionId,
           selectedOptionId: answers[i] ?? "",
+          responseTimeMs: timer.get(i),
         })),
         durationSeconds: Math.round((Date.now() - startedAt) / 1000),
       };
@@ -152,6 +159,7 @@ export function ExamSession({
   function pickOption(index: number) {
     const option = sortedOptions[index];
     if (!option) return;
+    timer.answer(currentIndex);
     setAnswers((prev) => {
       const next = [...prev];
       next[currentIndex] = option.id;

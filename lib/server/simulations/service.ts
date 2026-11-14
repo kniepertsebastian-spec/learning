@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
-import { getDb } from "@/lib/server/db/client";
+import { getDb, inTransaction } from "@/lib/server/db/client";
 import { domains, lessons, objectives, questions, reviewItems, sections, simulationResults } from "@/lib/server/db/schema";
 import { extractSimulationSources, parseSimulation } from "@/lib/markdown/simulation";
 import { recordInterleavedTask } from "@/lib/server/psrp/implicit";
@@ -34,6 +34,22 @@ export async function recordSimulationSolved(
   /** Offline gelöst, später synchronisiert: Zeitpunkt der Lösung; `applyState` falsch = nur protokollieren (Ereignis zu alt). */
   options: { at?: Date; applyState?: boolean } = {},
 ): Promise<{ struggled: boolean; pulledForward: number; woven: WovenQuestion[] }> {
+  // Aufgabe 03b (Review 12.11.2026): Lösung festhalten, implizite Wiederholungen und Vorziehen gemeinsam oder gar nicht.
+  const { struggled, pulledForward, serverNow } = await inTransaction(() => recordSimulationSolvedInTransaction(userId, sectionId, simIndex, helps, options));
+  // Roadmap Didaktik Phase 10: nach einer souverän gelösten Simulation eine fällige Frage aus einer früheren Lektion (Flag woven_reviews).
+  // Wer sich durchkämpfen musste, bekommt nichts obendrauf. Nur lesend und best effort: in eigener Transaktion (Savepoint), damit ein
+  // Fehler hier weder die Verbuchung noch eine äußere Transaktion (Sync-Pfad) abbricht.
+  const woven = struggled ? [] : await inTransaction(() => pickWovenQuestions(userId, sectionId, 0, serverNow, { max: 1 })).catch(() => []);
+  return { struggled, pulledForward, woven };
+}
+
+async function recordSimulationSolvedInTransaction(
+  userId: string,
+  sectionId: string,
+  simIndex: number,
+  helps: number,
+  options: { at?: Date; applyState?: boolean },
+): Promise<{ struggled: boolean; pulledForward: number; serverNow: Date }> {
   const db = getDb();
   const [row] = await db
     .select({ objectiveId: sections.objectiveId, content: lessons.content })
@@ -78,10 +94,7 @@ export async function recordSimulationSolved(
       pulledForward = moved.length;
     }
   }
-  // Roadmap Didaktik Phase 10: nach einer souverän gelösten Simulation eine fällige Frage aus einer früheren Lektion (Flag woven_reviews).
-  // Wer sich durchkämpfen musste, bekommt nichts obendrauf.
-  const woven = struggled ? [] : await pickWovenQuestions(userId, sectionId, 0, serverNow, { max: 1 }).catch(() => []);
-  return { struggled, pulledForward, woven };
+  return { struggled, pulledForward, serverNow };
 }
 
 export type PracticeSimulation = { sectionId: string; title: Localized<string>; content: Localized<string>; simIndex: number };

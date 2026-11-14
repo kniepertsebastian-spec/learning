@@ -15,6 +15,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "user:set-role": "tsx scripts/set-user-role.ts",
     "sync:reprocess-conflicts": "tsx scripts/sync-reprocess-conflicts.ts",
+    "sync:release-stale-claims": "tsx scripts/sync-release-stale-claims.ts",
     "company:create": "tsx scripts/manage-company.ts create",
     "company:ensure": "tsx scripts/manage-company.ts ensure",
     "company:offline-expiry": "tsx scripts/manage-company.ts offline-expiry",
