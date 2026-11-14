@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, inArray, isNull, notInArray, sql } from "drizzle-orm";
-import { getDb } from "@/lib/server/db/client";
+import { afterCommit, getDb, inTransaction } from "@/lib/server/db/client";
 import {
   domains,
   lessons,
@@ -50,7 +50,7 @@ import { applyReviewedPracticeTasks } from "@/lib/server/psrp/practice-reviews";
 import { usesPlanning } from "@/lib/server/psrp/evaluation";
 import { DEFAULT_PSRP_CONFIG } from "@/lib/server/psrp/config";
 import { moreStudyExtra } from "@/lib/server/psrp/planner";
-import { interleaveProbes, selectProbes } from "@/lib/server/psrp/probes";
+import { interleaveProbes, probeVariantsByQuestion, selectProbes } from "@/lib/server/psrp/probes";
 import { getDueReviewCount, getDueReviewItems, recordReviewOutcomes } from "@/lib/server/review/service";
 import { answerTime, type ReviewTiming } from "@/lib/server/sync/effective-time";
 import {
@@ -835,29 +835,69 @@ export interface StudySessionAttemptResult {
   results: Array<{ itemId: string; questionId: string; isCorrect: boolean; correctOptionId: string }>;
 }
 
+interface CompleteStudySessionOptions {
+  timing?: (session: { createdAt: Date }) => ReviewTiming;
+  /** Sync-Pfad: eine inzwischen abgeschlossene oder ausgesetzte Session ist kein Fehler, die Antworten zählen trotzdem als Wiederholungen. */
+  countIfFinished?: boolean;
+}
+
 /**
  * R2.3/R2.4: wertet eine eingereichte Session aus, aktualisiert den
  * Review-Zustand jeder beantworteten Frage (recordReviewOutcomes(), R2.2)
  * und markiert die Session als abgeschlossen - Grundlage für "Nach der
  * Session eine kurze, motivierende Zusammenfassung zeigen" (R2.4) und die
  * Lernserie (computeStreak() liest completedAt).
+ *
+ * Aufgabe 03a (Review 12.11.2026): Antworten speichern, Wiederholungen verbuchen und Status setzen laufen in EINER Transaktion,
+ * die Session-Zeile ist dabei gesperrt. Schlägt etwas fehl, bleibt nichts verbucht und die Session offen; ein erneutes Senden
+ * verbucht jede Antwort genau einmal. Zusätzlich wird keine Frage verbucht, für die es in dieser Session schon einen Eintrag in
+ * `review_log` gibt. Nachgelagerte Schritte (Verstehens-Erkennung, Fortschritts-Stand, ...) laufen nach dem Commit.
  */
 export async function completeStudySession(
   sessionId: string,
   userId: string,
   answers: StudySessionAnswerInput[],
-  options: {
-    timing?: (session: { createdAt: Date }) => ReviewTiming;
-    /** Sync-Pfad: eine inzwischen abgeschlossene oder ausgesetzte Session ist kein Fehler, die Antworten zählen trotzdem als Wiederholungen. */
-    countIfFinished?: boolean;
-  } = {},
+  options: CompleteStudySessionOptions = {},
+): Promise<StudySessionAttemptResult> {
+  return inTransaction(() => completeStudySessionInTransaction(sessionId, userId, answers, options));
+}
+
+/**
+ * Fragen, die in dieser Session schon in `review_log` stehen (Idempotenz). Schlüssel wie beim Verbuchen: das Original-Item,
+ * bei Abfrage-Varianten zusätzlich die Variante (eine Abfrage ist ein Review des Original-Items, siehe recordProbeAnswer()).
+ */
+async function bookedQuestionIds(userId: string, sessionId: string, questionIds: string[]): Promise<Set<string>> {
+  if (questionIds.length === 0) return new Set();
+  const db = getDb();
+  const logged = await db
+    .select({ itemId: reviewLog.itemId, probeVariantId: reviewLog.probeVariantId })
+    .from(reviewLog)
+    .where(and(eq(reviewLog.userId, userId), eq(reviewLog.sessionId, sessionId)));
+  if (logged.length === 0) return new Set();
+  const keys = new Set(logged.map((l) => `${l.itemId}:${l.probeVariantId ?? ""}`));
+  const probes = await probeVariantsByQuestion(questionIds);
+  return new Set(
+    questionIds.filter((questionId) => {
+      const probe = probes.get(questionId);
+      return keys.has(probe ? `${probe.sourceItemId}:${probe.id}` : `${questionId}:`);
+    }),
+  );
+}
+
+async function completeStudySessionInTransaction(
+  sessionId: string,
+  userId: string,
+  answers: StudySessionAnswerInput[],
+  options: CompleteStudySessionOptions,
 ): Promise<StudySessionAttemptResult> {
   const db = getDb();
+  // Gesperrt bis zum Commit: eine zweite, gleichzeitige Abgabe derselben Session wartet und sieht danach den neuen Status.
   const [session] = await db
     .select()
     .from(studySessions)
     .where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId)))
-    .limit(1);
+    .limit(1)
+    .for("update");
   if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
   const finished = session.status !== "planned" && session.status !== "in_progress";
   if (finished && !options.countIfFinished) {
@@ -917,13 +957,17 @@ export async function completeStudySession(
     });
   }
 
+  // Idempotenz: was in dieser Session schon verbucht ist, wird nicht noch einmal verbucht (Ergebnis und Score zählen es weiter).
+  const booked = await bookedQuestionIds(userId, sessionId, [...new Set(results.map((r) => r.questionId))]);
+  const toBook = (r: (typeof results)[number]) => !understandByItemId.has(r.itemId) && !booked.has(r.questionId);
+
   if (finished) {
     // Die Session wurde nicht erneut abgeschlossen (Status, Verstehens- und Rückblick-Zustand bleiben), aber echte Wiederholungen gehen nicht verloren.
     if (results.length > 0) {
       const answerOf = new Map(answers.map((a) => [a.itemId, a]));
       await recordReviewOutcomes(
         userId,
-        results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => ({
+        results.filter(toBook).map((r) => ({
           questionId: r.questionId,
           isCorrect: r.isCorrect,
           confidence: answerOf.get(r.itemId)?.confidence ?? null,
@@ -960,7 +1004,7 @@ export async function completeStudySession(
     );
     await recordReviewOutcomes(
       userId,
-      results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => ({
+      results.filter(toBook).map((r) => ({
         questionId: r.questionId,
         isCorrect: r.isCorrect,
         confidence: confidenceByItemId.get(r.itemId) ?? null,
@@ -980,10 +1024,10 @@ export async function completeStudySession(
         prereqResults.set(struggleId, [...(prereqResults.get(struggleId) ?? []), { questionId: r.questionId, isCorrect: r.isCorrect }]);
       }
     }
-    for (const [struggleId, list] of prereqResults) await recordPrereqResults(struggleId, list, timing?.completedAt).catch((error) => console.error("Grundlagen-Check (Auswertung) fehlgeschlagen:", error));
+    for (const [struggleId, list] of prereqResults) await afterCommit(() => recordPrereqResults(struggleId, list, timing?.completedAt).catch((error) => console.error("Grundlagen-Check (Auswertung) fehlgeschlagen:", error)));
     await recordRecallResults(results.flatMap((r) => (recallByItemId.has(r.itemId) ? [{ recallCheckId: recallByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
     // Auffällige Varianten in die Prüfliste legen (best effort, blockiert die Auswertung nie).
-    await flagOutlierVariants(results.map((r) => r.questionId)).catch((error) => console.error("Varianten-Prüfung fehlgeschlagen:", error));
+    await afterCommit(() => flagOutlierVariants(results.map((r) => r.questionId)).catch((error) => console.error("Varianten-Prüfung fehlgeschlagen:", error)));
   }
 
   await db
@@ -991,14 +1035,15 @@ export async function completeStudySession(
     .set({ status: "completed", completedAt: timing?.completedAt ?? new Date(), pausedAt: null, draft: null, updatedAt: new Date() })
     .where(eq(studySessions.id, sessionId));
 
-  // Verstehens-Modus (Flag understanding_mode): Muster erkennen, best effort, blockiert die Auswertung nie.
+  // Nachgelagert und best effort: läuft nach dem Commit, ein Fehler hier rollt die Verbuchung nicht zurück.
+  // Verstehens-Modus (Flag understanding_mode): Muster erkennen.
   if (results.length > 0 && isFeatureEnabled("understanding_mode", userId)) {
-    await detectStruggles(userId, results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => r.questionId)).catch((error) => console.error("Verstehens-Erkennung fehlgeschlagen:", error));
+    await afterCommit(() => detectStruggles(userId, results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => r.questionId)).catch((error) => console.error("Verstehens-Erkennung fehlgeschlagen:", error)));
   }
 
-  await recordObjectiveSnapshot(userId, session.certificationId).catch((error) => console.error("Fortschritts-Stand fehlgeschlagen:", error));
+  await afterCommit(() => recordObjectiveSnapshot(userId, session.certificationId).catch((error) => console.error("Fortschritts-Stand fehlgeschlagen:", error)));
 
-  if (session.deescalated) await afterDeescalatedSession(userId, timing?.completedAt).catch((error) => console.error("Frühwarnung (Abschluss) fehlgeschlagen:", error));
+  if (session.deescalated) await afterCommit(() => afterDeescalatedSession(userId, timing?.completedAt).catch((error) => console.error("Frühwarnung (Abschluss) fehlgeschlagen:", error)));
 
   const score = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
   return { score, results, ...(skipped > 0 ? { skipped } : {}) };
