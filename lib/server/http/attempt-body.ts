@@ -29,6 +29,8 @@ const answerPayload = z.discriminatedUnion("kind", [
 ]);
 
 const confidence = z.enum(ANSWER_CONFIDENCES);
+/** Grobe Größenklasse des Bildschirms (Aufgabe 16); ein anderer Wert ist ein 400. */
+const deviceClass = z.enum(["narrow", "wide"]);
 
 const answerFields = {
   selectedOptionId: optionId,
@@ -52,9 +54,9 @@ export const sectionAnswerSchema = z.object({ questionId: id, ...answerFields, w
 const list = <T extends z.ZodType>(schema: T) => z.array(schema).max(MAX_ANSWERS_PER_ATTEMPT);
 
 /** POST /api/study-sessions/:id/attempt */
-export const studySessionAttemptBody = z.object({ answers: list(studySessionAnswerSchema).default([]) });
+export const studySessionAttemptBody = z.object({ answers: list(studySessionAnswerSchema).default([]), deviceClass: deviceClass.optional() });
 /** POST /api/study-sessions/:id/exit */
-export const studySessionExitBody = z.object({ answers: list(studySessionAnswerSchema).default([]), openItemId: id.nullish() });
+export const studySessionExitBody = z.object({ answers: list(studySessionAnswerSchema).default([]), openItemId: id.nullish(), deviceClass: deviceClass.optional() });
 /** POST /api/sections/:id/attempt und /api/chapters/:id/attempt */
 export const sectionAttemptBody = z.object({ answers: list(sectionAnswerSchema) });
 /** POST /api/sections/:id/exit */

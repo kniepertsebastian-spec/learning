@@ -12,6 +12,7 @@ import { ConfidenceBar } from "@/components/quiz/ConfidenceBar";
 import { FormatQuestionCard, type FormatEvaluation } from "@/components/quiz/FormatQuestionCard";
 import { useThinkFirst } from "@/lib/client/use-think-first";
 import { useResponseTimer } from "@/lib/client/use-response-timer";
+import { currentDeviceClass } from "@/lib/client/device-class";
 import { isSelfExplainType } from "@/lib/questions/self-explain";
 import { buildPrompt, buildSolution, gradeAnswer, type AnswerData, type AnswerFormat, type AnswerPayload, type AnswerPrompt, type AnswerSolution } from "@/lib/questions/answer-formats";
 import { FeedbackPanel } from "@/components/quiz/FeedbackPanel";
@@ -366,6 +367,7 @@ export function StudySession({
         headers: { "Content-Type": "application/json" },
         // Nur beantwortete Aufgaben: die übrigen bekommen kein Rating und bleiben fällig.
         body: JSON.stringify({
+          deviceClass: currentDeviceClass(),
           openItemId: item.itemId,
           answers: questionItems.flatMap((q, i) => (answers[i] ? [{ itemId: q.itemId, selectedOptionId: payloads[i] ? "" : answers[i], answer: payloads[i] ?? undefined, confidence: confidences[i] ?? undefined, thinkFirst: thinkFirst && !payloads[i] ? true : undefined, responseTimeMs: timer.get(i) }] : [])),
         }),
@@ -388,6 +390,8 @@ export function StudySession({
     setSubmitting(true);
     setError(null);
     const payload = {
+      // Grobe Größenklasse des Bildschirms (Aufgabe 16); der Server speichert sie nur bei eingeschaltetem Flag.
+      deviceClass: currentDeviceClass(),
       answers: questionItems.map((item, i) => ({
         itemId: item.itemId,
         selectedOptionId: payloads[i] ? "" : (answers[i] ?? ""),
@@ -410,7 +414,7 @@ export function StudySession({
       await enqueueSyncEvent(
         offline.userId,
         "study_session",
-        { sessionId, answers: payload.answers.map((a, i) => ({ ...a, answeredAt: answeredAtRef.current[i] })) },
+        { sessionId, deviceClass: payload.deviceClass, answers: payload.answers.map((a, i) => ({ ...a, answeredAt: answeredAtRef.current[i] })) },
         c_studySession(locale).todaySSession,
       ).catch(() => {});
       setResult({ score, results });

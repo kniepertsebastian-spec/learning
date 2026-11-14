@@ -19,7 +19,7 @@ Jede Kennzahl gibt es gesamt, je Evaluationsgruppe und **je Feature-Flag mit und
 1. **Ausgangswert festhalten, bevor eine Mechanik eingeschaltet wird oder eine Kontrollgruppe startet:**
    `npm run psrp:baseline -- save "Vor dem Pilot"`
    Die Momentaufnahme (Tabelle `metric_snapshots`) enthält nur Aggregate, keine Personen, dazu die Flag-Anteile zu diesem Zeitpunkt und die Größe der Datenbasis.
-2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
+2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`, `reading_time`, `device_class`. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
 3. **Später vergleichen:**
    `npm run psrp:baseline -- compare latest` (letzte Momentaufnahme gegen jetzt) oder `compare <id-a> <id-b>`; `list` zeigt alle Momentaufnahmen.
 4. **Ziele festlegen**, erst nachdem Ausgangswerte vorliegen und genug Personen dabei sind (Richtwert: mindestens 20 im Nenner der jeweiligen Kennzahl). Ziele gehören in diesen Abschnitt, mit Datum.
@@ -68,6 +68,35 @@ Zu diesen drei Faktoren gibt es **nur Auswertung**: Der Export (`npm run psrp:me
 | H6 | Ein Rückblick nach einer Nacht wird besser beantwortet als einer am selben Tag | `sleep.difference` | mit/ohne Nacht |
 
 **Empfehlung aus 4.11:** Die Empfehlung „abends lernen, morgens abrufen“ darf erst erscheinen, wenn `sleep.recommendationSupported` wahr ist: beide Seiten haben mindestens 20 beantwortete Rückblicke, und die Trefferquote mit Nacht liegt mindestens 10 Prozentpunkte über der ohne. Bis dahin zeigt die App nichts dazu, und auch dann nur im Rückblick. Die Schwellen sind Vorschläge (`SLEEP_EFFECT_MIN_N`, `SLEEP_EFFECT_MIN_DIFFERENCE` in `lib/server/psrp/human-factors.ts`); ein Unterschied dieser Größe ist keine Signifikanzprüfung, und Personen, die abends lernen, unterscheiden sich auch sonst von denen, die morgens lernen.
+
+## Menschliche Faktoren: Lesetiefe, Durchhalten, Gerät (Stufe 1)
+Auch hier **nur Auswertung**: Der Export (`npm run psrp:metrics`) enthält den Abschnitt `sessionContext` (gesamt und je Evaluationsgruppe). Der Hinweis vor dem Lektionstest (4.9) und die leichtere Frage nach Fehlern (4.10) sind noch **nicht** gebaut; sie kommen erst, wenn diese Zahlen einen Effekt zeigen. Zwei Werte brauchen neue Angaben und haben deshalb ein Flag (`reading_time`, `device_class`, beide standardmäßig für alle an, `FEATURE_<NAME>=0` schaltet ab; bei ausgeschaltetem Flag speichert der Server nichts).
+
+| Faktor | Wert im Export | Nenner `n` | Was gemessen wird |
+|---|---|---|---|
+| 4.9 Lesetiefe | `reading.skimmed` | Lektionen mit Text | Anteil der Lektionen, die kaum gelesen wurden: Tempo über 600 Wörter pro Minute oder ohne Lesezeit geöffnet |
+| | `reading.medianWordsPerMinute`, `reading.reopened` | Lektionen | Mittleres Lesetempo; Anteil der Lektionen, die mehr als einmal geöffnet wurden |
+| | `reading.firstQuizScore` | Lektionen mit Test | Ergebnis des ersten Lektionstests, getrennt nach „kaum gelesen“ und „gelesen“, mit Unterschied |
+| 4.10 Durchhalten | `persistence.continued`, `.exited`, `.ended` | Sitzungen mit einer Fehlerserie | Nach der ersten Serie von drei „nochmal“-Antworten in Folge: es geht weiter, Notausstieg „Heute reicht’s“, oder die Sitzung endet ohne Ausstieg (abgebrochen oder pausiert) |
+| 4.12 Gerät | `device.narrow`, `device.wide` | abgeschlossene Sitzungen | Antworten, richtige Antworten und Trefferquote je Größenklasse; `device.unknown` zählt Sitzungen ohne Angabe |
+
+**Was gespeichert wird:**
+- **Lesezeit** (`lesson_reading_time`): aktive Sekunden je Person und Lektion und wie oft sie geöffnet wurde. Gezählt wird wie bei der Lernzeit nur bei sichtbarer Seite und nach Eingaben in den letzten zwei Minuten (`lib/client/learning-time.ts`), nur im Lektionstext, nicht im Test. **Offline gelesene Lektionen fehlen**, weil die Zeit nur bei Verbindung gemeldet wird; die Lesetiefe-Zahlen gelten daher für online gelesene Lektionen.
+- **Größenklasse** (`study_sessions.device_class`): nur `narrow` (unter 640 Pixel) oder `wide`, beim Abschluss der Sitzung. Keine Gerätekennung, kein Modell, keine genaue Breite; die Datenbank erlaubt nur diese beiden Werte. Sie wird nur mitgeschickt, wenn die Sitzung online oder über die Sync-Warteschlange abgeschlossen wird.
+- Beides steht im Datenexport und in der Datenschutzerklärung.
+
+**Grenzen:**
+- 4.9: 600 Wörter pro Minute ist eine Schwelle als Vorschlag (aufmerksames Lesen liegt bei etwa 200 bis 300). Wer die Lektion außerhalb der App liest, wirkt wie jemand, der nur überflogen hat. Das Ergebnis des ersten Tests hängt auch vom Vorwissen ab; ein Unterschied ist kein Beleg für eine Wirkung des Lesens.
+- 4.10: „Fehler“ heißt Rating 1 („nochmal“). Ob eine Sitzung nach der Serie pausiert wurde oder abbrach, lässt sich aus den Daten nicht trennen (beides ist `ended`). Es zählt nur die erste Serie einer Sitzung.
+- 4.12: Die Auswertung trennt nicht nach online oder offline und nicht nach installierter App oder Browser; das ist bewusst offen geblieben, damit nicht mehr Angaben zur Lage gespeichert werden als nötig.
+
+**Hypothesen (Annahmen, keine Zusagen, keine Zielwerte):**
+
+| Nr. | Annahme | Gemessen mit | Vergleich |
+|---|---|---|---|
+| H7 | Wer eine Lektion kaum liest, schneidet im ersten Lektionstest schlechter ab | `reading.firstQuizScore` | gelesen gegen kaum gelesen, ab 20 Lektionen je Seite |
+| H8 | Nach drei Fehlern in Folge steigt der Anteil, der aufhört, ohne dass ein Ausstieg gewählt wird | `persistence.ended` gegen `exited` | beschreibend, ab 20 Sitzungen mit Serie |
+| H9 | Am Smartphone ist die Trefferquote je Sitzung niedriger oder die Sitzung kürzer als am großen Bildschirm | `device.narrow` gegen `device.wide` | beschreibend, ab 20 Sitzungen je Seite |
 
 ## Grenzen
 - Reaktivierung per Push gibt es nicht, nur per E-Mail (siehe Web Push in `umsetzungsplan.md`, Stufe 5).

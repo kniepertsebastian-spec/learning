@@ -46,6 +46,8 @@ interface SimulationResultPayload {
 interface StudySessionPayload {
   sessionId: string;
   answers: StudySessionAnswerInput[];
+  /** Größenklasse des Bildschirms beim Abschluss (Aufgabe 16); fehlt bei älteren Geräten. */
+  deviceClass?: unknown;
 }
 
 /**
@@ -236,6 +238,7 @@ async function applyEvent(userId: string, event: SyncEventInput): Promise<unknow
     if (await isStudySessionHidden(userId, payload.sessionId)) throw new StudySessionNotFoundError(payload.sessionId);
     return completeStudySession(payload.sessionId, userId, payload.answers, {
       countIfFinished: true,
+      deviceClass: payload.deviceClass,
       timing: (session) => createReviewTiming({ eventTime: event.clientCreatedAt, notBefore: session.createdAt }),
     });
   }

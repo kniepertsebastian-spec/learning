@@ -848,6 +848,9 @@ export interface StudySessionDraft {
   currentIndex: number;
 }
 
+/** Grobe Größenklasse des Bildschirms (Aufgabe 16, Faktor 4.12): schmal (Smartphone) oder breit. */
+export type DeviceClass = "narrow" | "wide";
+
 export const studySessions = pgTable(
   "study_sessions",
   {
@@ -885,6 +888,11 @@ export const studySessions = pgTable(
     plannedAt: timestamp("planned_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    /**
+     * Grobe Größenklasse des Bildschirms beim Abschluss (Flag `device_class`, Aufgabe 16): `narrow` unter 640 px, sonst `wide`.
+     * Keine Gerätekennung, kein Modell, keine genaue Breite. Nur für die Auswertung je Lage.
+     */
+    deviceClass: text("device_class").$type<DeviceClass>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -901,6 +909,7 @@ export const studySessions = pgTable(
       "study_sessions_energy_level_check",
       sql`${table.energyLevel} is null or ${table.energyLevel} in ('low', 'medium', 'high')`,
     ),
+    check("study_sessions_device_class_check", sql`${table.deviceClass} is null or ${table.deviceClass} in ('narrow', 'wide')`),
   ],
 );
 
@@ -3228,6 +3237,31 @@ export const learningTime = pgTable(
     seconds: integer("seconds").notNull().default(0),
   },
   (table) => [primaryKey({ columns: [table.userId, table.certificationId, table.day] }), check("learning_time_seconds_check", sql`${table.seconds} between 0 and 86400`)],
+);
+
+/**
+ * Lesezeit je Lektion (Flag `reading_time`, Aufgabe 16, Faktor 4.9): aktive Sekunden, in denen der Text der Lektion angezeigt war
+ * (ohne Hintergrund und ohne Untätigkeit, wie `learning_time`), und wie oft die Lektion geöffnet wurde. Nur für die Auswertung der
+ * Lesetiefe gegen das Ergebnis des Lektionstests; die Person bekommt sie im Datenexport.
+ */
+export const lessonReadingTime = pgTable(
+  "lesson_reading_time",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id")
+      .notNull()
+      .references(() => sections.id, { onDelete: "cascade" }),
+    seconds: integer("seconds").notNull().default(0),
+    opens: integer("opens").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.sectionId] }),
+    check("lesson_reading_time_seconds_check", sql`${table.seconds} between 0 and 86400`),
+    check("lesson_reading_time_opens_check", sql`${table.opens} >= 0`),
+  ],
 );
 
 export type CourseCompletionKind = "final_exam_passed" | "certified";

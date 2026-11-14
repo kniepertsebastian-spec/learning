@@ -20,6 +20,11 @@ export const USERS = {
   pauser: { email: "e2e-pauser@test.example", role: "learner" },
   /** Prüft die Antwortzeit einer Frage der Tages-Session (Aufgabe 06a); eigener Nutzer, damit der Test nicht mit „Pause für heute“ kollidiert. */
   responseTimer: { email: "e2e-response-timer@test.example", role: "learner" },
+  /** Beenden die Tages-Session am Smartphone bzw. am großen Bildschirm (Aufgabe 16, Gerätegröße). */
+  deviceNarrow: { email: "e2e-device-narrow@test.example", role: "learner" },
+  deviceWide: { email: "e2e-device-wide@test.example", role: "learner" },
+  /** Liest eine Lektion (Aufgabe 16, Lesezeit). */
+  reader: { email: "e2e-reader@test.example", role: "learner" },
   /** Durchläuft den Einstiegstest direkt nach der Kurswahl (alle anderen haben ihn schon übersprungen). */
   preAssessment: { email: "e2e-pre-assessment@test.example", role: "learner" },
   preAssessmentSkip: { email: "e2e-pre-assessment-skip@test.example", role: "learner" },
@@ -73,6 +78,8 @@ export default async function globalSetup() {
   await resetFormatsSessionUser(passwordHash);
   await resetPauseUser(passwordHash);
   await resetPauseUser(passwordHash, USERS.responseTimer.email);
+  await resetPauseUser(passwordHash, USERS.deviceNarrow.email);
+  await resetPauseUser(passwordHash, USERS.deviceWide.email);
 
   // Prüfer-Nutzer: genau dem E2E-Kurs zugewiesen.
   const [reviewer] = await db.select({ id: users.id }).from(users).where(eq(users.email, USERS.reviewer.email)).limit(1);

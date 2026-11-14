@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { afterCommit, getDb, inTransaction } from "@/lib/server/db/client";
 import { parseConfidence } from "@/lib/answer-confidence";
+import { parseDeviceClass } from "@/lib/device-class";
 import {
   domains,
   lessons,
@@ -843,6 +844,8 @@ interface CompleteStudySessionOptions {
   timing?: (session: { createdAt: Date }) => ReviewTiming;
   /** Sync-Pfad: eine inzwischen abgeschlossene oder ausgesetzte Session ist kein Fehler, die Antworten zählen trotzdem als Wiederholungen. */
   countIfFinished?: boolean;
+  /** Grobe Größenklasse des Bildschirms (Aufgabe 16, Flag `device_class`); unbekannte Werte werden verworfen. */
+  deviceClass?: unknown;
 }
 
 /**
@@ -910,6 +913,8 @@ async function completeStudySessionInTransaction(
 
   // Offline beantwortet, später synchronisiert: Zeitpunkte der Antworten, begrenzt ab Erstellung der Session.
   const timing = options.timing?.(session);
+  // Gerätegröße nur, wenn das Flag für die Person gilt (Kontrollgruppe: nichts speichern); unbekannte Werte entfallen.
+  const deviceClass = isFeatureEnabled("device_class", userId) ? parseDeviceClass(options.deviceClass) : null;
 
   const items = await db
     .select()
@@ -1040,7 +1045,14 @@ async function completeStudySessionInTransaction(
 
   await db
     .update(studySessions)
-    .set({ status: "completed", completedAt: timing?.completedAt ?? new Date(), pausedAt: null, draft: null, updatedAt: new Date() })
+    .set({
+      status: "completed",
+      completedAt: timing?.completedAt ?? new Date(),
+      pausedAt: null,
+      draft: null,
+      updatedAt: new Date(),
+      ...(deviceClass ? { deviceClass } : {}),
+    })
     .where(eq(studySessions.id, sessionId));
 
   // Nachgelagert und best effort: läuft nach dem Commit, ein Fehler hier rollt die Verbuchung nicht zurück.
@@ -1138,13 +1150,13 @@ export interface StudySessionExitResult extends StudySessionAttemptResult {
  * bekommen kein Rating und bleiben fällig. Danach höchstens drei Erfolgsaufgaben (sehr wahrscheinlich gekonnt, ohnehin bald fällig)
  * als kurze Folge-Session. Der Notausstieg zählt als Signal für die Frühwarnung.
  */
-export async function exitStudySession(sessionId: string, userId: string, answers: StudySessionAnswerInput[], openItemId?: string | null): Promise<StudySessionExitResult> {
+export async function exitStudySession(sessionId: string, userId: string, answers: StudySessionAnswerInput[], openItemId?: string | null, options: { deviceClass?: unknown } = {}): Promise<StudySessionExitResult> {
   const db = getDb();
   const [session] = await db.select().from(studySessions).where(and(eq(studySessions.id, sessionId), eq(studySessions.userId, userId))).limit(1);
   if (!session) throw new StudySessionNotFoundError(`Session ${sessionId} nicht gefunden.`);
   const answered = answers.filter((a) => a.selectedOptionId || a.answer);
   const items = await db.select({ id: studySessionItems.id, referenceId: studySessionItems.referenceId }).from(studySessionItems).where(eq(studySessionItems.sessionId, sessionId));
-  const result = await completeStudySession(sessionId, userId, answered);
+  const result = await completeStudySession(sessionId, userId, answered, { deviceClass: options.deviceClass });
   await db.update(studySessions).set({ exitedAt: new Date() }).where(eq(studySessions.id, sessionId));
   const open = openItemId ? items.find((i) => i.id === openItemId && !answered.some((a) => a.itemId === i.id)) : undefined;
   await recordExit({ userId, source: "session", sessionId, questionId: open?.referenceId ?? null });

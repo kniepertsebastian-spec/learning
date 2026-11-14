@@ -34,7 +34,7 @@ export async function POST(
   if (!body.ok) return body.response;
 
   try {
-    const result = await completeStudySession(sessionId, session.user.id, body.data.answers);
+    const result = await completeStudySession(sessionId, session.user.id, body.data.answers, { deviceClass: body.data.deviceClass });
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof StudySessionNotFoundError) {
