@@ -33,6 +33,20 @@ function stripHtml(html: string): string {
 
 export class SourceNotFoundError extends Error {}
 
+/** Meldung, die an die Oberfläche geht, wenn die Extraktion aus einem unerwarteten Grund scheitert (Einzelheiten stehen im Server-Log). */
+export const GENERIC_EXTRACTION_ERROR = "Die Textextraktion ist fehlgeschlagen. Einzelheiten stehen im Server-Log.";
+
+/**
+ * Fehler, dessen Text für die Admin-Oberfläche bestimmt ist (zum Beispiel „kein Text in der PDF-Datei“). Alles andere (Dateisystem,
+ * Datenbank, Parser) kann Pfade, Hostnamen oder Zugangsdaten enthalten und geht nur ins Server-Log (Aufgabe 11, Review 12.11.2026).
+ */
+export class SourceExtractionError extends Error {}
+
+/** Der Text, den die Oberfläche zeigen darf: der eigene Text bei einem SourceExtractionError, sonst die generische Meldung. */
+export function publicExtractionMessage(error: unknown): string {
+  return error instanceof SourceExtractionError ? error.message : GENERIC_EXTRACTION_ERROR;
+}
+
 /**
  * Extrahiert Text aus einer bereits hochgeladenen Quelle und speichert ihn
  * mit Seitenbezug in source_chunks. Idempotent: ein erneuter Aufruf
@@ -61,7 +75,7 @@ export async function extractSourceContent(sourceId: string): Promise<void> {
     }
 
     if (pages.length === 0 || pages.every((page) => !page.text.trim())) {
-      throw new Error(
+      throw new SourceExtractionError(
         isPdf
           ? "Aus der PDF-Datei konnte kein Text extrahiert werden (evtl. eingescannt/nur Bilder ohne OCR)."
           : isMarkdown
@@ -97,10 +111,11 @@ export async function extractSourceContent(sourceId: string): Promise<void> {
         .where(eq(certificationSources.id, sourceId));
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    if (!(error instanceof SourceExtractionError)) console.error(`Textextraktion der Quelle ${sourceId} fehlgeschlagen:`, error);
+    // Auch der gespeicherte Text (die Oberfläche zeigt ihn an) enthält nur die freigegebene Meldung, nie die Einzelheiten.
     await db
       .update(certificationSources)
-      .set({ status: "failed", parseError: message.slice(0, 4_000) })
+      .set({ status: "failed", parseError: publicExtractionMessage(error).slice(0, 4_000) })
       .where(eq(certificationSources.id, sourceId));
     throw error;
   }

@@ -67,9 +67,9 @@ export async function POST(
     if (error instanceof SourceNotParsedError || error instanceof BlueprintLockedError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
-    const message = error instanceof Error ? error.message : "Blueprint-Extraktion fehlgeschlagen.";
+    // Die Einzelheiten (KI-Dienst, Datenbank) gehören ins Server-Log, nicht an den Client (Aufgabe 11).
     console.error("Blueprint extraction failed:", error);
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: "Die Blueprint-Extraktion ist fehlgeschlagen. Einzelheiten stehen im Server-Log." }, { status: 502 });
   }
 }
 

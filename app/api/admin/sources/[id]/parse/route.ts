@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/server/auth-guards";
-import { extractSourceContent, SourceNotFoundError } from "@/lib/server/admin/source-extraction";
+import { extractSourceContent, publicExtractionMessage, SourceNotFoundError } from "@/lib/server/admin/source-extraction";
 import { getCertificationSource } from "@/lib/server/admin/sources";
 
 export const dynamic = "force-dynamic";
@@ -29,9 +29,9 @@ export async function POST(
     if (error instanceof SourceNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    const message = error instanceof Error ? error.message : "Extraktion fehlgeschlagen.";
+    // Die Einzelheiten stehen im Server-Log (extractSourceContent); der Client bekommt nur die freigegebene Meldung.
     const source = await getCertificationSource(id);
-    return NextResponse.json({ error: message, source }, { status: 502 });
+    return NextResponse.json({ error: publicExtractionMessage(error), source }, { status: 502 });
   }
 
   const source = await getCertificationSource(id);
