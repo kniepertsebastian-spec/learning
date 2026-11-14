@@ -48,9 +48,4 @@ Grundlage ist `../../PWA-REVIEW-2026-11-12.md`, ergänzt um eine Nachprüfung de
 | 21b | [21b-lint-warnungen.md](21b-lint-warnungen.md) | Lint-Warnungen entfernen | Phase 7 | nach Bedarf |
 
 ## Reihenfolge
-1. Aufgabe 01 sofort.
-2. Aufgaben 02a bis 06c vor dem Pilot. Ohne 06 fehlen der Planung und der Frühwarnung ihre Eingangsdaten. 05a vor allen Messungen.
-3. Aufgaben 07a bis 10 vor den ersten Personen außerhalb des eigenen Tests.
-4. Aufgaben 12 bis 16 ab den ersten Echtdaten, zuerst die reinen Auswertungen.
-5. Aufgaben 17 und 18 erst, wenn Phase 4 zeigt, welche Fragen das Verhalten nicht beantwortet.
-6. Aufgabe 19 begleitend, die übrigen nach Bedarf.
+Die Blöcke mit Schwierigkeit und Abhängigkeiten stehen in [REIHENFOLGE.md](REIHENFOLGE.md).
