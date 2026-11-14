@@ -554,6 +554,10 @@ export const quizAnswers = pgTable("quiz_answers", {
    * exam_answers übertragen: die Abschlussprüfung soll eine realistische,
    * zeitkritische Simulation bleiben statt einer reflektierenden Übung. */
   confidence: text("confidence").$type<AnswerConfidence>(),
+  /** Zeit bis zur Antwort in ms (Aufgabe 13, Grenzen aus Aufgabe 06b); Grundlage der Gewichtung beim Durchklicken (Flag `guess_weighting`). */
+  responseTimeMs: integer("response_time_ms"),
+  /** Die Antwort wurde vor dem Absenden geändert (Aufgabe 13, Faktor 4.6); null bei älteren Clients. */
+  changedAnswer: boolean("changed_answer"),
 },
 (table) => [check("quiz_answers_confidence_check", sql`${table.confidence} is null or ${table.confidence} in ('guessed', 'unsure', 'sure')`)],
 );
@@ -847,6 +851,8 @@ export interface StudySessionDraft {
     answeredAt?: string;
     /** Bisher gemessene Zeit bis zur Antwort (ms, roh); der Client rechnet beim Fortsetzen weiter (Aufgabe 06b). */
     responseTimeMs?: number;
+    /** Antwort vor der Pause schon einmal geändert (Aufgabe 13). */
+    changedAnswer?: boolean;
   }>;
   currentIndex: number;
   /** Unterbrechungen bis zur Pause (Aufgabe 12); der Client zählt beim Fortsetzen weiter. Die Pause selbst zählt nicht. */
@@ -966,6 +972,8 @@ export const studySessionItems = pgTable("study_session_items", {
   selectedOptionId: uuid("selected_option_id").references((): AnyPgColumn => questionOptions.id, { onDelete: "set null" }),
   /** Antwort bei den neuen Formaten (Reihenfolge, Kurzantwort, Zuordnung). */
   answer: jsonb("answer").$type<AnswerPayload>(),
+  /** Die Antwort wurde vor dem Absenden geändert (Aufgabe 13, Faktor 4.6); null bei älteren Clients und unbeantworteten Items. */
+  changedAnswer: boolean("changed_answer"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 },
 (table) => [check("study_session_items_confidence_check", sql`${table.confidence} is null or ${table.confidence} in ('guessed', 'unsure', 'sure')`)],

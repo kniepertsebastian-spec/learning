@@ -89,9 +89,11 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
     answeredAt?: string;
     /** Antwortzeit in Millisekunden ohne Zeit im Hintergrund (Aufgabe 06a). */
     responseTimeMs?: number;
+    /** Aufgabe 13: im Lektionstest ist die Auswahl nach dem Wählen gesperrt, also nie geändert. */
+    changedAnswer?: boolean;
   } | null>(null);
   const [answers, setAnswers] = useState<
-    Array<{ questionId: string; selectedOptionId: string; answer?: AnswerPayload; confidence?: AnswerConfidence; woven?: boolean; thinkFirst?: boolean; answeredAt?: string; responseTimeMs?: number }>
+    Array<{ questionId: string; selectedOptionId: string; answer?: AnswerPayload; confidence?: AnswerConfidence; woven?: boolean; thinkFirst?: boolean; answeredAt?: string; responseTimeMs?: number; changedAnswer?: boolean }>
   >([]);
 
   function mapQuestion(q: SectionQuizQuestion): QuizQuestion {
@@ -125,6 +127,7 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
       thinkFirst,
       answeredAt: new Date().toISOString(),
       responseTimeMs: timer.get(quizIndex),
+      changedAnswer: false,
     });
   }
 
@@ -132,7 +135,7 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
     setResults((r) => [...r, correct]);
     setHasAnsweredCurrent(true);
     const q = questions[quizIndex];
-    setPendingAnswer({ questionId: q.id, selectedOptionId: "", answer, confidence, woven: q.woven || undefined, answeredAt: new Date().toISOString(), responseTimeMs: timer.get(quizIndex) });
+    setPendingAnswer({ questionId: q.id, selectedOptionId: "", answer, confidence, woven: q.woven || undefined, answeredAt: new Date().toISOString(), responseTimeMs: timer.get(quizIndex), changedAnswer: false });
   }
 
   function handleNext() {

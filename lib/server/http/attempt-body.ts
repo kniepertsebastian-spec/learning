@@ -46,6 +46,8 @@ const answerFields = {
    * die Antwort: er entfällt. Die Grenzen 300 ms bis 10 Minuten setzt `recordReviewOutcomes`.
    */
   responseTimeMs: z.number().min(0).optional().catch(undefined),
+  /** Antwort vor dem Absenden geändert (Aufgabe 13); fehlt bei älteren Clients, ein unbrauchbarer Wert entfällt. */
+  changedAnswer: z.boolean().optional().catch(undefined),
 };
 
 /** Antwort einer Sitzung (`StudySessionAnswerInput`). */

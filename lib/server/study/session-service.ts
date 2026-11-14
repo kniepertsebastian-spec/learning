@@ -830,6 +830,8 @@ export interface StudySessionAnswerInput {
   answeredAt?: string;
   /** Zeit bis zur Antwort in ms, roh vom Client (Aufgabe 06a); fehlt bei älteren Clients. */
   responseTimeMs?: number;
+  /** Antwort vor dem Absenden geändert (Aufgabe 13); fehlt bei älteren Clients. */
+  changedAnswer?: boolean;
 }
 
 export interface StudySessionAttemptResult {
@@ -1004,6 +1006,7 @@ async function completeStudySessionInTransaction(
     const selectedByItemId = new Map(answers.map((a) => [a.itemId, a.selectedOptionId]));
     const answeredAtByItemId = new Map(answers.map((a) => [a.itemId, a.answeredAt]));
     const responseTimeByItemId = new Map(answers.map((a) => [a.itemId, a.responseTimeMs]));
+    const changedByItemId = new Map(answers.map((a) => [a.itemId, typeof a.changedAnswer === "boolean" ? a.changedAnswer : null]));
     const payloadByItemId = new Map(answers.map((a) => [a.itemId, sanitizeAnswer(a.answer)]));
     await Promise.all(
       results.map((r) =>
@@ -1014,6 +1017,7 @@ async function completeStudySessionInTransaction(
             confidence: confidenceByItemId.get(r.itemId) ?? null,
             selectedOptionId: selectedByItemId.get(r.itemId) || null,
             answer: payloadByItemId.get(r.itemId) ?? null,
+            changedAnswer: changedByItemId.get(r.itemId) ?? null,
           })
           .where(eq(studySessionItems.id, r.itemId)),
       ),
@@ -1225,6 +1229,7 @@ export async function pauseStudySession(
       ...(a.thinkFirst ? { thinkFirst: true } : {}),
       ...(typeof a.answeredAt === "string" ? { answeredAt: a.answeredAt } : {}),
       ...(rawResponseTimeMs(a.responseTimeMs) !== undefined ? { responseTimeMs: rawResponseTimeMs(a.responseTimeMs) } : {}),
+      ...(a.changedAnswer === true ? { changedAnswer: true } : {}),
     });
   }
   const draft: StudySessionDraft = {

@@ -7,6 +7,9 @@ import {
   questions,
   quizAttempts,
 } from "@/lib/server/db/schema";
+import { isFeatureEnabled } from "@/lib/server/feature-flags";
+import { isRushed, RUSHED_ANSWER_WEIGHT } from "@/lib/server/psrp/guessing";
+import { itemBaseTimes } from "@/lib/server/psrp/guessing-db";
 
 export interface MasteryData {
   objectiveId: string;
@@ -49,6 +52,8 @@ export class ObjectiveProgressService {
     const answers = await db
       .select({
         isCorrect: quizAnswers.isCorrect,
+        questionId: quizAnswers.questionId,
+        responseTimeMs: quizAnswers.responseTimeMs,
         attemptId: quizAttempts.id,
         completedAt: quizAttempts.completedAt,
         difficulty: questions.difficulty,
@@ -80,6 +85,9 @@ export class ObjectiveProgressService {
       };
     }
 
+    // Aufgabe 13 (Faktor 4.2), nur mit Flag guess_weighting (standardmäßig aus): durchgeklickte Antworten zählen halb. Nie in FSRS.
+    const bases = isFeatureEnabled("guess_weighting", userId) ? await itemBaseTimes(answers.map((a) => a.questionId)) : null;
+
     // Calculate weighted mastery score
     let weightedCorrectness = 0;
     let totalWeight = 0;
@@ -88,8 +96,9 @@ export class ObjectiveProgressService {
       const recencyWeight = this.calculateRecencyWeight(index, totalAttempts);
       const difficultyWeight = this.calculateDifficultyWeight(answer.difficulty);
       const correctness = answer.isCorrect ? 1 : 0;
+      const guessWeight = bases && isRushed(answer.responseTimeMs, bases.get(answer.questionId)) ? RUSHED_ANSWER_WEIGHT : 1;
 
-      const weight = recencyWeight * difficultyWeight;
+      const weight = recencyWeight * difficultyWeight * guessWeight;
       weightedCorrectness += correctness * weight;
       totalWeight += weight;
     });

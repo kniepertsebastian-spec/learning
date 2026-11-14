@@ -19,7 +19,7 @@ Jede Kennzahl gibt es gesamt, je Evaluationsgruppe und **je Feature-Flag mit und
 1. **Ausgangswert festhalten, bevor eine Mechanik eingeschaltet wird oder eine Kontrollgruppe startet:**
    `npm run psrp:baseline -- save "Vor dem Pilot"`
    Die Momentaufnahme (Tabelle `metric_snapshots`) enthält nur Aggregate, keine Personen, dazu die Flag-Anteile zu diesem Zeitpunkt und die Größe der Datenbasis.
-2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`, `reading_time`, `device_class`, `interruptions`. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
+2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`, `reading_time`, `device_class`, `interruptions`. Ausnahme: `guess_weighting` ist standardmäßig **aus** und wird mit `FEATURE_GUESS_WEIGHTING=1` oder `FEATURE_GUESS_WEIGHTING_ROLLOUT` eingeschaltet, weil es in eine Bewertung eingreift. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
 3. **Später vergleichen:**
    `npm run psrp:baseline -- compare latest` (letzte Momentaufnahme gegen jetzt) oder `compare <id-a> <id-b>`; `list` zeigt alle Momentaufnahmen.
 4. **Ziele festlegen**, erst nachdem Ausgangswerte vorliegen und genug Personen dabei sind (Richtwert: mindestens 20 im Nenner der jeweiligen Kennzahl). Ziele gehören in diesen Abschnitt, mit Datum.
@@ -132,6 +132,34 @@ Die Sätze sind Beobachtungen und ändern nichts am Plan.
 | H12 | Wer oft unterbrochen wird, schließt kürzere Sitzungen häufiger ab | `interruptions` gegen `medianSessionLength` je Person | beschreibend; Voraussetzung für „kürzere Sitzungen anbieten“ |
 
 **Persönliche Sitzungslänge:** erst, wenn H10 mit gemischter Reihenfolge einen Effekt zeigt. Bis dahin schlägt die App keine Länge vor.
+
+## Menschliche Faktoren: Raten und Unsicherheit (Stufe 1)
+**Nur Auswertung**, bis auf eine Gewichtung hinter einem Flag, das standardmäßig aus ist. Der Export (`npm run psrp:metrics`) enthält den Abschnitt `guessing` (gesamt und je Evaluationsgruppe).
+
+**Schwelle für Durchklicken (4.2), vorab festgelegt:** Eine Antwort gilt als durchgeklickt, wenn sie schneller kam als **ein Drittel der Basiszeit** der Frage (`RUSH_FRACTION` in `lib/server/psrp/guessing.ts`). Die Basiszeit ist der Median aller gemessenen Antwortzeiten dieser Frage (alle Personen, bis zum Stichtag) und gilt erst ab **20 Messungen** als stabil (`STABLE_BASE_MIN_N`). Fragen mit weniger Messungen werden nicht beurteilt. „Gehäuft“ heißt: mindestens 3 durchgeklickte Antworten in einer Sitzung (`RUSH_CLUSTER`). Die Schwelle wird nicht nachträglich an die Daten angepasst; wer sie ändern will, trägt die neue Zahl hier ein, bevor er neu auswertet.
+
+| Faktor | Wert im Export | Nenner `n` | Was gemessen wird |
+|---|---|---|---|
+| 4.2 Durchklicken | `rushing.rushed` | Reviews mit Zeit und stabiler Basiszeit (`judged`) | Anteil der durchgeklickten Antworten |
+| | `rushing.accuracy.rushed`, `.normal` | Reviews je Seite | Trefferquote durchgeklickt gegen normal (Rating 1 ist falsch) |
+| | `rushing.clusteredSessions` | Sitzungen mit mindestens 3 beurteilten Reviews | Anteil mit mindestens 3 durchgeklickten Antworten |
+| 4.6 Unsicherheit | `changedAnswer.changed` | Antworten mit Angabe | Anteil der Antworten, die vor dem Absenden geändert wurden |
+| | `changedAnswer.accuracy.changed`, `.unchanged` | Antworten je Seite | Trefferquote geändert gegen nicht geändert |
+
+**Was gespeichert wird:** `changed_answer` an `study_session_items` und `quiz_answers` (null bei älteren Clients), dazu die Antwortzeit an `quiz_answers` (`response_time_ms`, Grenzen wie in `review_log`). Beides steht im Datenexport und in der Datenschutzerklärung. Die Zeit zwischen erster Auswahl und Absenden wird noch nicht gespeichert.
+
+**Gewichtung (Flag `guess_weighting`, standardmäßig aus):** Ist das Flag an, zählt eine durchgeklickte Antwort im Lernzielstand (`objective_progress`, Lektionstests) nur halb (`RUSHED_ANSWER_WEIGHT`). FSRS bekommt die Antwort unverändert. **Erst einschalten, wenn die Basiszeiten stabil sind** (nach einigen Wochen Echtbetrieb, die meisten Fragen mit mindestens 20 Messungen) und H13 einen Unterschied zeigt.
+
+**Grenzen:**
+- 4.2: Schnell heißt nicht geraten: wer die Antwort sicher weiß, ist auch schnell. Deshalb steht die Trefferquote daneben; nur wenn durchgeklickte Antworten deutlich seltener richtig sind, ist „Raten“ eine gute Deutung. Die Basiszeit enthält auch die Antworten der beurteilten Person.
+- 4.6: Ändern lässt sich eine Antwort nur, wenn die Rückmeldung erst am Ende der Sitzung kommt. Bei sofortiger Rückmeldung und im Lektionstest ist die Auswahl nach dem Wählen gesperrt; dort ist der Wert immer „nicht geändert“. Bei Reihenfolge, Kurzantwort und Zuordnung zählt erst das Prüfen als Auswahl. Eine Auswertung je Person sollte deshalb nur Sitzungen mit Rückmeldung am Ende vergleichen.
+
+**Hypothesen (Annahmen, keine Zusagen, keine Zielwerte):**
+
+| Nr. | Annahme | Gemessen mit | Vergleich |
+|---|---|---|---|
+| H13 | Durchgeklickte Antworten sind seltener richtig als normal schnelle | `rushing.accuracy` | durchgeklickt gegen normal, ab 20 Reviews je Seite; Voraussetzung für `guess_weighting` |
+| H14 | Geänderte Antworten sind seltener richtig als nicht geänderte; die Änderungsquote ergänzt die Kalibrierung bei Personen ohne Sicherheitsangabe | `changedAnswer.accuracy` | geändert gegen nicht geändert, ab 20 Antworten je Seite |
 
 ## Grenzen
 - Reaktivierung per Push gibt es nicht, nur per E-Mail (siehe Web Push in `umsetzungsplan.md`, Stufe 5).
