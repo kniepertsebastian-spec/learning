@@ -12,7 +12,7 @@
 `npm run lint` meldet keine Warnungen mehr.
 
 ## Umsetzung (14.11.2026)
-- `npm run lint` meldet jetzt **keine Warnungen mehr** (vorher 22, davon 20 aus dem Stand vom Review und 2, die später dazugekommen waren). Keine neuen eingeführt.
+- `npm run lint` meldet jetzt **keine Warnungen mehr** (vorher 22). Keine neuen eingeführt.
 - **16 ungenutzte Importe oder Variablen** einfach entfernt (`getCourseGenerationJob`, `questions`, `questionOptions`, `ExamScoringService`, `locale`, `and`, `allObjectiveIds`, `inArray`, `domains`, `FEEDBACK_TONE_PROMPT`, `ne`, `sections` u. a.).
 - **Mit Bedacht umgebaut** (Verhalten gleich, Tests grün):
   - `generateRemediationForObjective` (`lib/server/ai/service.ts`): Der Parameter `objectiveDescription` war nie im Prompt. Ich habe ihn samt Aufruf in `lib/server/remediation/service.ts` entfernt, statt den Prompt zu ändern. Soll die Beschreibung des Lernziels in die Wiederholungsinhalte einfließen, ist das eine eigene Entscheidung.
