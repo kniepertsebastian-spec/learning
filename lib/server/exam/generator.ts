@@ -8,7 +8,6 @@ import {
   objectives,
   quizAnswers,
   quizAttempts,
-  domains,
 } from "@/lib/server/db/schema";
 import { buildExamBlueprint, type ExamBlueprint } from "./blueprint";
 

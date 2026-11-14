@@ -4,9 +4,7 @@ import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
-import { examAttempts, exams, questions, questionOptions } from "@/lib/server/db/schema";
-import { ExamScoringService } from "@/lib/server/exam/scoring";
-import { getServerLocale } from "@/lib/server/locale";
+import { examAttempts, exams } from "@/lib/server/db/schema";
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +20,6 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   const db = getDb();
-  const locale = await getServerLocale();
 
   try {
     // Fetch attempt

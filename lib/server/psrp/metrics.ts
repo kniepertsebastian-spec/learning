@@ -301,7 +301,18 @@ export async function exportMetrics(options: { asOf?: Date; salt?: string } = {}
     .orderBy(asc(recallChecks.createdAt));
   const recallMetrics = recallRows
     .filter((r) => r.createdAt <= asOf)
-    .map(({ userId, createdAt: _createdAt, ...rest }) => ({ user: anonymize(userId, salt), ...rest }));
+    .map((r) => ({
+      user: anonymize(r.userId, salt),
+      group: r.group,
+      status: r.status,
+      questionCount: r.questionCount,
+      correctCount: r.correctCount,
+      hoursSinceLesson: r.hoursSinceLesson,
+      phiAtLearning: r.phiAtLearning,
+      hourAtLearning: r.hourAtLearning,
+      phiAtRecall: r.phiAtRecall,
+      hourAtRecall: r.hourAtRecall,
+    }));
 
   const planRows = await db
     .select({ userId: examPlans.userId, certificationId: examPlans.certificationId, status: examPlans.status, scheduledAt: examPlans.scheduledAt, group: users.evaluationGroup })

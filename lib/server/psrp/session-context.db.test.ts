@@ -9,7 +9,7 @@ const authMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/server/auth", () => ({ auth: authMock }));
 
 import { getDb } from "@/lib/server/db/client";
-import { learningExits, lessonReadingTime, questionOptions, quizAttempts, quizzes, reviewLog, sections, studySessionItems, studySessions, users } from "@/lib/server/db/schema";
+import { learningExits, lessonReadingTime, questionOptions, quizAttempts, quizzes, reviewLog, studySessionItems, studySessions, users } from "@/lib/server/db/schema";
 import { seedCourse, seedLessons, seedUser } from "@/lib/server/psrp/test-db";
 import { exportAccountData } from "@/lib/server/account/export";
 import { completeStudySession } from "@/lib/server/study/session-service";

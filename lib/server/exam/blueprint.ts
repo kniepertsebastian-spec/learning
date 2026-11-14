@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { certifications, domains } from "@/lib/server/db/schema";
 

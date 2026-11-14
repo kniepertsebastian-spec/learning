@@ -235,7 +235,12 @@ export async function listMyPracticeTasks(organizationId: string, userId: string
   const done = await completedSectionIds(userId, [...new Set(gated)]);
   return rows
     .filter((r) => !r.unlockSectionId || done.has(r.unlockSectionId) || r.status !== null)
-    .map(({ unlockSectionId: _unlock, ...r }) => ({ ...r, status: r.status ?? ("open" as const) }));
+    .map((r) => {
+      // Die Freischaltung dient nur dem Filter oben und gehört nicht in die Antwort.
+      const row: Partial<typeof r> = { ...r };
+      delete row.unlockSectionId;
+      return { ...(row as Omit<typeof r, "unlockSectionId">), status: r.status ?? ("open" as const) };
+    });
 }
 
 /**

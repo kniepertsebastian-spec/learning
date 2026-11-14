@@ -35,7 +35,7 @@ function pickData(props: Record<string, unknown>): Record<string, string> {
 const baseComponents: Components = {
   a: ({ children }) => <span className="underline">{children}</span>,
   img: () => null,
-  pre: ({ children, ...props }) => {
+  pre: ({ children }) => {
     const code = React.Children.toArray(children).find((c): c is React.ReactElement<{ className?: string; children?: React.ReactNode }> => React.isValidElement(c));
     if (!code) return <pre className="my-2 max-w-full overflow-x-auto rounded-md bg-surface-inset p-3 text-xs leading-relaxed">{children}</pre>;
     // mdast-util-to-hast legt die Daten aus dem Plugin auf das <code>-Element, nicht auf <pre>.

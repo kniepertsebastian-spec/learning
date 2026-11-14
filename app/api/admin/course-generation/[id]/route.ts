@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { isPricingConfigured } from "@/lib/server/admin/ai-cost";
 import { requireAdminApi } from "@/lib/server/auth-guards";
 import {
-  getCourseGenerationJob,
   getOperatorCourseGenerationJob,
   listCourseGenerationObjectives,
 } from "@/lib/server/course-generation/job-service";

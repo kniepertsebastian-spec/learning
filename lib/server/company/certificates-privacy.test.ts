@@ -94,7 +94,12 @@ run("Zertifikats-Register: Datenschutz (echte DB)", () => {
     const keys = new Set<string>();
     const collect = (v: unknown) => {
       if (Array.isArray(v)) v.forEach(collect);
-      else if (v && typeof v === "object" && !(v instanceof Date)) for (const [k, x] of Object.entries(v)) (keys.add(k), collect(x));
+      else if (v && typeof v === "object" && !(v instanceof Date)) {
+        for (const [k, x] of Object.entries(v)) {
+          keys.add(k);
+          collect(x);
+        }
+      }
     };
     collect(await getRegisterOverview(orgA));
     expect([...keys].filter((k) => /score|attempt|mastery|evidence|share|reminder|userId/i.test(k))).toEqual([]);
