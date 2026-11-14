@@ -12,11 +12,12 @@ Offen, und laut Betreiber arbeitet gerade niemand daran.
 
 - [ ] **CI: Vitest und Playwright gegen einen Produktions-Build ausführen** (`pwa-hardening-review.md`, Phase 4). Hinweis: `.github/workflows/ci.yml` führt `npm test` und `npm run test:e2e` bereits aus. Zu klären ist, was an dem Punkt noch fehlt, bevor er abgehakt wird.
 - [ ] **Externer Penetrationstest** und Behebung der Befunde (`ROADMAP-TECHNISCH.md`, Phase 7).
-- [ ] **Web Push** (`roadmap_pwa.md`, Phase 6). Derselbe Punkt steht auch in `ROADMAP-UI.md` („Später“), `pwa-hardening-review.md` (Phase 4) und `umsetzungsplan.md` (Stufe 5).
-  - [ ] VAPID-Push für Prüfungs- und Wiederholungserinnerungen, Abo-Tabelle pro Gerät, Opt-in in den Einstellungen, Abmeldung beim Logout.
-  - [ ] Erinnerungszeitpunkte aus der PSRP-HR-Planungsschicht ableiten (Tageszeit, Arbeitstag).
-  - [ ] Hinweis in der Oberfläche: Auf iOS nur für installierte PWAs ab iOS 16.4.
-  - [ ] CSP prüfen.
+- [ ] **Web Push** (`roadmap_pwa.md`, Phase 6). Umgesetzt, offen ist nur der Versuch auf einem echten Gerät. Derselbe Punkt steht auch in `ROADMAP-UI.md` („Später“), `pwa-hardening-review.md` (Phase 4) und `umsetzungsplan.md` (Stufe 5). Beschrieben in `docs/PWA.md`, Abschnitt „Web Push“.
+  - [x] VAPID-Push für Prüfungs- und Wiederholungserinnerungen, Abo-Tabelle pro Gerät, Opt-in in den Einstellungen, Abmeldung beim Logout. (`app/sw.ts`, `app/api/push/*`, Tabelle `push_subscriptions`, `lib/server/push/`, `components/PushSettings.tsx`, `lib/client/use-sign-out.ts`)
+  - [x] Erinnerungszeitpunkte aus der PSRP-HR-Planungsschicht ableiten (Tageszeit, Arbeitstag). (`lib/server/push/service.ts`: Median der lokalen Stunde der Reviews, Lerntage, Zeitzone der Person)
+  - [x] Hinweis in der Oberfläche: Auf iOS nur für installierte PWAs ab iOS 16.4. (`components/PushSettings.tsx`)
+  - [x] CSP prüfen. (`connect-src 'self'` und `worker-src 'self' blob:` genügen, keine Änderung nötig)
+  - [ ] **Versuch auf einem echten Gerät** (FCM, Mozilla, Apple): die Zustellung über einen echten Push-Dienst ist in der Pipeline nicht getestet, die Tests laufen mit einem Fake-Sender.
 - [ ] **Prüfer** (`roadmap_pruefer.md`)
   - [ ] Phase 6: Kennzahlen je Prüfer und Freigabe (nur Admin).
   - [ ] Phase 6: Zweitprüfung als Stichprobe, Abweichungen landen beim Admin.
@@ -113,7 +114,7 @@ Quelle für alle Punkte dieses Abschnitts ist `ROADMAP-TECHNISCH.md`, sofern nic
 
 **Motivation (`roadmap_motivation.md`, `umsetzungsplan.md`)**
 - [ ] Optional: Pausen-Grafik als Admin- oder Demo-Seite mit Schiebereglern.
-- [ ] Phase 10: Ziele für die Kennzahlen festlegen (erst nach den ersten Daten) und Reaktivierung zusätzlich per Push. Die Kennzahlen selbst gibt es im Export (Abschnitt `engagement`).
+- [ ] Phase 10: Ziele für die Kennzahlen festlegen (erst nach den ersten Daten) und Reaktivierung zusätzlich per Push (Web Push selbst gibt es, die Reaktivierung nutzt es noch nicht). Die Kennzahlen selbst gibt es im Export (Abschnitt `engagement`).
 
 **Aus der v2-Neuarchitektur (`roadmap2.md`)**
 

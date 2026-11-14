@@ -160,7 +160,7 @@ Höchstens eine Frage je Session, jede mit einem Tipp zu beantworten, jede unter
 
 ## Phase 7: Aufräumen
 
-- [ ] `roadmap_sammel.md` aktualisieren: Web Push ist umgesetzt, offen ist nur der Versuch auf einem echten Gerät. _Befund 9._
+- [x] `roadmap_sammel.md` aktualisieren: Web Push ist umgesetzt, offen ist nur der Versuch auf einem echten Gerät. _Befund 9._
 - [ ] Entscheidung zum Logout: `sessionVersion` beim Abmelden erhöhen oder „Überall abmelden“ anbieten. _Befund 10._
 - [ ] Die 22 Lint-Warnungen (ungenutzte Importe) entfernen.
 - [ ] Prüfung auf echten Geräten (iOS Safari, Android Chromium) und externer Penetrationstest bleiben wie in `roadmap_sammel.md`.
