@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { SelfReportKind, SelfReportRefType } from "@/lib/self-reports";
 import {
   date,
   type AnyPgColumn,
@@ -3686,6 +3687,53 @@ export const userCheckinFlags = pgTable("user_checkin_flags", {
   monotone: boolean("monotone").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Freiwillige Selbstauskünfte (Aufgabe 17). Eine Zeile je gestellter Frage: `value` ist die Antwort, null heißt übersprungen.
+ * Höchstens eine Frage je Lernsitzung (eindeutiger Index auf `session_id`). Arten und Werte: `lib/self-reports.ts`.
+ */
+export const selfReports = pgTable(
+  "self_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<SelfReportKind>().notNull(),
+    value: text("value"),
+    refType: text("ref_type").$type<SelfReportRefType>(),
+    refId: uuid("ref_id"),
+    sessionId: uuid("session_id").references(() => studySessions.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("self_reports_user_kind_time_idx").on(table.userId, table.kind, table.createdAt),
+    uniqueIndex("self_reports_session_unique").on(table.sessionId).where(sql`${table.sessionId} is not null`),
+    check("self_reports_kind_check", sql`${table.kind} in ('effort', 'retention_forecast', 'exam_confidence', 'learning_reason', 'work_relevance', 'learning_environment')`),
+    check("self_reports_ref_type_check", sql`${table.refType} is null or ${table.refType} in ('section', 'course', 'session')`),
+  ],
+);
+
+/** Schalter je Art und Regel gegen Fragemüdigkeit (Aufgabe 17, Muster wie `user_checkin_flags`). Ohne Zeile: an, nicht pausiert. */
+export const selfReportSettings = pgTable(
+  "self_report_settings",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<SelfReportKind>().notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    /** Übersprungen in Folge; bei `SKIP_PAUSE_STREAK` pausiert die Frage und der Zähler beginnt neu. */
+    skipStreak: integer("skip_streak").notNull().default(0),
+    pausedUntil: timestamp("paused_until", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.kind] }),
+    check("self_report_settings_kind_check", sql`${table.kind} in ('effort', 'retention_forecast', 'exam_confidence', 'learning_reason', 'work_relevance', 'learning_environment')`),
+    check("self_report_settings_skip_streak_check", sql`${table.skipStreak} >= 0`),
+  ],
+);
 
 /** Phase 2: persönliche FSRS-Parameter nach dem Fit (Optimizer-Job). */
 export const userFsrsParams = pgTable("user_fsrs_params", {

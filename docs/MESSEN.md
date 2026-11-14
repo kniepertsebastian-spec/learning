@@ -19,7 +19,7 @@ Jede Kennzahl gibt es gesamt, je Evaluationsgruppe und **je Feature-Flag mit und
 1. **Ausgangswert festhalten, bevor eine Mechanik eingeschaltet wird oder eine Kontrollgruppe startet:**
    `npm run psrp:baseline -- save "Vor dem Pilot"`
    Die Momentaufnahme (Tabelle `metric_snapshots`) enthält nur Aggregate, keine Personen, dazu die Flag-Anteile zu diesem Zeitpunkt und die Größe der Datenbasis.
-2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`, `reading_time`, `device_class`, `interruptions`, `error_type_gate`. Ausnahme: `guess_weighting` ist standardmäßig **aus** und wird mit `FEATURE_GUESS_WEIGHTING=1` oder `FEATURE_GUESS_WEIGHTING_ROLLOUT` eingeschaltet, weil es in eine Bewertung eingreift. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
+2. **Kontrollgruppe schaffen, wenn man eine Mechanik prüfen will.** Alle Flags sind standardmäßig für alle an. `FEATURE_<NAME>_ROLLOUT=50` (0 bis 100) gibt nur der Hälfte der Personen die Mechanik, stabil je Person (Hash aus Nutzer-ID); `FEATURE_<NAME>=0` schaltet hart ab. Flags: `pretest_questions`, `recall_check`, `understanding_mode`, `dropout_guard`, `exit_with_win`, `energy_modes`, `reactivation`, `woven_reviews`, `reading_time`, `device_class`, `interruptions`, `error_type_gate`, `self_reports`. Ausnahme: `guess_weighting` ist standardmäßig **aus** und wird mit `FEATURE_GUESS_WEIGHTING=1` oder `FEATURE_GUESS_WEIGHTING_ROLLOUT` eingeschaltet, weil es in eine Bewertung eingreift. Ohne Kontrollgruppe fehlt die Seite „disabled“, dann bleibt nur der Vorher-Nachher-Vergleich.
 3. **Später vergleichen:**
    `npm run psrp:baseline -- compare latest` (letzte Momentaufnahme gegen jetzt) oder `compare <id-a> <id-b>`; `list` zeigt alle Momentaufnahmen.
 4. **Ziele festlegen**, erst nachdem Ausgangswerte vorliegen und genug Personen dabei sind (Richtwert: mindestens 20 im Nenner der jeweiligen Kennzahl). Ziele gehören in diesen Abschnitt, mit Datum.
@@ -200,6 +200,13 @@ Fragen ohne Fehler bekommen keine Klasse. Die Prüfung läuft in dieser Reihenfo
 | H15 | Mit `error_type_gate` löst der Verstehens-Modus seltener aus, aber die ausgelösten Fälle enden häufiger mit „resolved“ | `concept_struggle.status`, `understandingMode` | Flag an gegen aus (`FEATURE_ERROR_TYPE_GATE_ROLLOUT=50`), ab 20 ausgelösten Konzepten je Seite |
 | H16 | Fragen mit Fehlvorstellung werden nach der Verstehens-Aufgabe öfter richtig beantwortet als Fragen mit Lücke nach normaler Wiederholung | `errorTypes.byQuestion` und `review_log` danach | beschreibend, ab 20 Person-Frage-Paaren je Klasse; Voraussetzung für „Lücke: Lektion zeigen“ |
 | H17 | Wer Hilfe sucht, bricht seltener ab als wer überspringt | `helpBehavior.people` gegen `engagement` | beschreibend, ab 20 Personen je Seite |
+
+## Freiwillige Selbstauskünfte (Grundlage, Stufe 2)
+Speicher und Regeln für Fragen, die sich aus dem Verhalten nicht ablesen lassen (Aufgabe 17). Die Fragen selbst kommen mit Aufgabe 18, hinter dem Flag `self_reports` (Kontrollgruppe mit `FEATURE_SELF_REPORTS_ROLLOUT=50`).
+
+- **Speicher:** `self_reports` (Art, Wert, Bezug, Sitzung, Zeitpunkt; Wert null = übersprungen) und `self_report_settings` (Schalter je Art, Zähler fürs Überspringen, Pause). Arten und erlaubte Werte: `lib/self-reports.ts`.
+- **Regeln:** jede Art einzeln unter „Wie ich lerne“ abschaltbar; dreimal in Folge übersprungen pausiert die Art 30 Tage, danach zählt es neu; höchstens eine Frage je Lernsitzung (eindeutiger Index). Vor dem Zeigen einer Frage fragt Aufgabe 18 `canAskSelfReport`.
+- **Fragemüdigkeit messen:** Anteil übersprungener Fragen je Art (`value` null) und Zahl der Pausen. Steigt das Überspringen über die Zeit, sind es zu viele Fragen.
 
 ## Grenzen
 - Reaktivierung per Push gibt es nicht, nur per E-Mail (siehe Web Push in `umsetzungsplan.md`, Stufe 5).
