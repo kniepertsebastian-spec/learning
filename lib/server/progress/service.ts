@@ -1,6 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import { syncAssignmentsForObjective } from "@/lib/server/assignments/sync";
-import { getDb } from "@/lib/server/db/client";
+import { afterCommit, getDb } from "@/lib/server/db/client";
 import {
   objectiveProgress,
   quizAnswers,
@@ -161,8 +161,11 @@ export class ObjectiveProgressService {
     }
 
     // Firmenzuweisungen nachziehen (in_progress/completed). Ein Fehler hier darf das Lernen nicht stören.
-    await syncAssignmentsForObjective(userId, objectiveId).catch((err) =>
-      console.error("Zuweisungsstatus konnte nicht aktualisiert werden:", err),
+    // Nach dem Commit, falls in einer Transaktion: ein Fehler darf die Verbuchung nicht zurückrollen.
+    await afterCommit(() =>
+      syncAssignmentsForObjective(userId, objectiveId).catch((err) =>
+        console.error("Zuweisungsstatus konnte nicht aktualisiert werden:", err),
+      ),
     );
   }
 

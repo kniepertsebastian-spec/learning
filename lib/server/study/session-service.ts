@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, inArray, isNull, notInArray, sql } from "drizzle-orm";
-import { getDb } from "@/lib/server/db/client";
+import { afterCommit, getDb } from "@/lib/server/db/client";
 import {
   domains,
   lessons,
@@ -980,10 +980,10 @@ export async function completeStudySession(
         prereqResults.set(struggleId, [...(prereqResults.get(struggleId) ?? []), { questionId: r.questionId, isCorrect: r.isCorrect }]);
       }
     }
-    for (const [struggleId, list] of prereqResults) await recordPrereqResults(struggleId, list, timing?.completedAt).catch((error) => console.error("Grundlagen-Check (Auswertung) fehlgeschlagen:", error));
+    for (const [struggleId, list] of prereqResults) await afterCommit(() => recordPrereqResults(struggleId, list, timing?.completedAt).catch((error) => console.error("Grundlagen-Check (Auswertung) fehlgeschlagen:", error)));
     await recordRecallResults(results.flatMap((r) => (recallByItemId.has(r.itemId) ? [{ recallCheckId: recallByItemId.get(r.itemId)!, isCorrect: r.isCorrect }] : [])));
     // Auffällige Varianten in die Prüfliste legen (best effort, blockiert die Auswertung nie).
-    await flagOutlierVariants(results.map((r) => r.questionId)).catch((error) => console.error("Varianten-Prüfung fehlgeschlagen:", error));
+    await afterCommit(() => flagOutlierVariants(results.map((r) => r.questionId)).catch((error) => console.error("Varianten-Prüfung fehlgeschlagen:", error)));
   }
 
   await db
@@ -991,14 +991,15 @@ export async function completeStudySession(
     .set({ status: "completed", completedAt: timing?.completedAt ?? new Date(), pausedAt: null, draft: null, updatedAt: new Date() })
     .where(eq(studySessions.id, sessionId));
 
-  // Verstehens-Modus (Flag understanding_mode): Muster erkennen, best effort, blockiert die Auswertung nie.
+  // Nachgelagert und best effort: läuft nach dem Commit, ein Fehler hier rollt die Verbuchung nicht zurück.
+  // Verstehens-Modus (Flag understanding_mode): Muster erkennen.
   if (results.length > 0 && isFeatureEnabled("understanding_mode", userId)) {
-    await detectStruggles(userId, results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => r.questionId)).catch((error) => console.error("Verstehens-Erkennung fehlgeschlagen:", error));
+    await afterCommit(() => detectStruggles(userId, results.filter((r) => !understandByItemId.has(r.itemId)).map((r) => r.questionId)).catch((error) => console.error("Verstehens-Erkennung fehlgeschlagen:", error)));
   }
 
-  await recordObjectiveSnapshot(userId, session.certificationId).catch((error) => console.error("Fortschritts-Stand fehlgeschlagen:", error));
+  await afterCommit(() => recordObjectiveSnapshot(userId, session.certificationId).catch((error) => console.error("Fortschritts-Stand fehlgeschlagen:", error)));
 
-  if (session.deescalated) await afterDeescalatedSession(userId, timing?.completedAt).catch((error) => console.error("Frühwarnung (Abschluss) fehlgeschlagen:", error));
+  if (session.deescalated) await afterCommit(() => afterDeescalatedSession(userId, timing?.completedAt).catch((error) => console.error("Frühwarnung (Abschluss) fehlgeschlagen:", error)));
 
   const score = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
   return { score, results, ...(skipped > 0 ? { skipped } : {}) };

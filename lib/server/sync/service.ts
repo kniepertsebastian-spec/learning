@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { isSectionHidden, isStudySessionHidden } from "@/lib/server/catalog/access";
-import { getDb } from "@/lib/server/db/client";
+import { getDb, inTransaction } from "@/lib/server/db/client";
 import { syncEvents, type SyncEventStatus, type SyncEventType } from "@/lib/server/db/schema";
 import {
   recordSectionQuizAttempt,
@@ -57,10 +57,11 @@ interface StudySessionPayload {
 export async function processSyncEvents(
   userId: string,
   events: SyncEventInput[],
+  options: { now?: Date } = {},
 ): Promise<SyncEventResult[]> {
   const results: SyncEventResult[] = [];
   for (const event of events) {
-    results.push(await processSingleEvent(userId, event));
+    results.push(await processSingleEvent(userId, event, options.now ?? new Date()));
   }
   return results;
 }
@@ -68,8 +69,44 @@ export async function processSyncEvents(
 /** Platzhalter der Claim-Zeile, solange das Ereignis verarbeitet wird (kein endgültiges Ergebnis). */
 const PROCESSING_MESSAGE = "wird verarbeitet";
 
+/**
+ * Ab diesem Alter gilt eine Claim-Zeile mit PROCESSING_MESSAGE als verwaist (Prozess während der Verbuchung beendet, z. B. durch
+ * einen Deploy) und wird übernommen. Die Schwelle schützt nicht allein vor doppelter Verbuchung: die Verbuchung hält die
+ * Claim-Zeile bis zum Commit gesperrt, eine noch laufende Verbuchung wird also nie übernommen, auch wenn sie länger dauert.
+ */
+export const STALE_CLAIM_MS = 5 * 60_000;
+
+/** Die Claim-Zeile wurde zwischen Anlegen und Verbuchen von einer anderen Anfrage übernommen. */
+class ClaimLostError extends Error {}
+
+const BUSY_MESSAGE = "Wird bereits von einer anderen Anfrage synchronisiert - bitte erneut versuchen.";
+
 function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+}
+
+function busy(event: SyncEventInput): SyncEventResult {
+  return { clientEventId: event.clientEventId, status: "error", error: BUSY_MESSAGE };
+}
+
+/**
+ * Gibt eine verwaiste Claim-Zeile frei: löscht sie nur, wenn sie noch „wird verarbeitet“ sagt und älter als STALE_CLAIM_MS ist.
+ * Hält eine laufende Verbuchung die Zeile gesperrt, wartet das DELETE auf deren Ende und prüft die Bedingung danach erneut; die
+ * dann abgeschlossene Zeile wird nicht gelöscht.
+ */
+async function releaseStaleClaim(claimId: string, now: Date): Promise<boolean> {
+  const released = await getDb()
+    .delete(syncEvents)
+    .where(
+      and(
+        eq(syncEvents.id, claimId),
+        eq(syncEvents.status, "error"),
+        eq(syncEvents.errorMessage, PROCESSING_MESSAGE),
+        lt(syncEvents.createdAt, new Date(now.getTime() - STALE_CLAIM_MS)),
+      ),
+    )
+    .returning({ id: syncEvents.id });
+  return released.length > 0;
 }
 
 /**
@@ -82,8 +119,12 @@ function isUniqueViolation(error: unknown): boolean {
  * Anfrage den Unique-Constraint-Wettlauf, wendet sie das Ereignis gar nicht
  * erst an, sondern meldet einen transienten Fehler (Client versucht es
  * gleich erneut - dann greift der already_applied-Pfad oben).
+ *
+ * Verbuchung und Abschluss der Claim-Zeile laufen in EINER Transaktion (Aufgabe 02a, Review 12.11.2026). Bricht der Prozess
+ * mittendrin ab, ist nichts verbucht und nur die Claim-Zeile bleibt stehen; nach STALE_CLAIM_MS wird sie übernommen und das
+ * Ereignis beim nächsten Senden neu verarbeitet, ohne doppelte Verbuchung.
  */
-async function processSingleEvent(userId: string, event: SyncEventInput): Promise<SyncEventResult> {
+async function processSingleEvent(userId: string, event: SyncEventInput, now: Date): Promise<SyncEventResult> {
   const db = getDb();
 
   const [existing] = await db
@@ -94,13 +135,16 @@ async function processSingleEvent(userId: string, event: SyncEventInput): Promis
   // Frühere Konflikte (Session anderswo abgeschlossen) wurden nie verbucht: der erneute Versuch wird mit der heutigen Logik verarbeitet.
   if (existing?.status === "conflict") {
     await db.delete(syncEvents).where(eq(syncEvents.id, existing.id));
+  } else if (existing?.status === "error" && existing.errorMessage === PROCESSING_MESSAGE) {
+    // Läuft noch (jung) oder wurde gerade von jemand anderem abgeschlossen: erneut versuchen lassen.
+    if (!(await releaseStaleClaim(existing.id, now))) return busy(event);
   } else if (existing) {
     return {
       clientEventId: event.clientEventId,
       status: existing.status === "applied" ? "already_applied" : existing.status,
       resultSummary: existing.resultSummary,
       error: existing.errorMessage ?? undefined,
-      ...(existing.status === "error" && existing.errorMessage !== PROCESSING_MESSAGE ? { terminal: true } : {}),
+      ...(existing.status === "error" ? { terminal: true } : {}),
     };
   }
 
@@ -119,26 +163,28 @@ async function processSingleEvent(userId: string, event: SyncEventInput): Promis
       .returning({ id: syncEvents.id });
     claimId = claimed.id;
   } catch (error) {
-    if (isUniqueViolation(error)) {
-      return {
-        clientEventId: event.clientEventId,
-        status: "error",
-        error: "Wird bereits von einer anderen Anfrage synchronisiert - bitte erneut versuchen.",
-      };
-    }
+    if (isUniqueViolation(error)) return busy(event);
     throw error;
   }
 
   try {
-    const resultSummary = await applyEvent(userId, event);
-    const partial = typeof resultSummary === "object" && resultSummary !== null && "partial" in resultSummary && resultSummary.partial === true;
-    const status: SyncEventStatus = partial ? "applied_partial" : "applied";
-    await db
-      .update(syncEvents)
-      .set({ status, resultSummary, errorMessage: null })
-      .where(eq(syncEvents.id, claimId));
-    return { clientEventId: event.clientEventId, status, resultSummary };
+    return await inTransaction(async () => {
+      const tx = getDb();
+      // Sperrt die Claim-Zeile bis zum Commit: eine Übernahme durch releaseStaleClaim() wartet, bis hier alles entschieden ist.
+      const [claim] = await tx.select({ id: syncEvents.id }).from(syncEvents).where(eq(syncEvents.id, claimId)).for("update");
+      if (!claim) throw new ClaimLostError();
+      const resultSummary = await applyEvent(userId, event);
+      const partial = typeof resultSummary === "object" && resultSummary !== null && "partial" in resultSummary && resultSummary.partial === true;
+      const status: SyncEventStatus = partial ? "applied_partial" : "applied";
+      await tx
+        .update(syncEvents)
+        .set({ status, resultSummary, errorMessage: null })
+        .where(eq(syncEvents.id, claimId));
+      return { clientEventId: event.clientEventId, status, resultSummary };
+    });
   } catch (error) {
+    // Die Transaktion ist zurückgerollt: es wurde nichts verbucht.
+    if (error instanceof ClaimLostError) return busy(event);
     // "Konflikte nach Ereigniszeit und Serverstatus nachvollziehbar lösen":
     // ein Konflikt (Session anderswo bereits abgeschlossen) oder eine
     // eindeutig ungültige Referenz (Session/Section nicht mehr vorhanden)
