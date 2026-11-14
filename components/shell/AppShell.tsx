@@ -4,6 +4,7 @@ import { CalendarCheck, Flame, Languages, Menu, Moon, ShieldAlert, Sun } from "l
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { LegalLinks } from "@/components/LegalLinks";
 import { BackBar } from "@/components/shell/BackBar";
 import { CommandPalette } from "@/components/shell/CommandPalette";
 import { LogoMark } from "@/components/shell/Logo";
@@ -44,6 +45,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:px-6">{children}</main>
+      <footer className="px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6"><LegalLinks /></footer>
     </div>
   );
 }
@@ -120,6 +122,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
           </div>
           <div className="mx-auto w-full max-w-[1200px] px-4 pt-4 empty:hidden sm:px-6 lg:px-8"><UnsyncedNotice userId={shell.user.id} locale={locale} /></div>
           <main id="main" className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8">{children}</main>
+          <footer className="px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8"><LegalLinks /></footer>
         </div>
       </div>
     </div>
