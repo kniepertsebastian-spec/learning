@@ -25,6 +25,9 @@ export const USERS = {
   deviceWide: { email: "e2e-device-wide@test.example", role: "learner" },
   /** Liest eine Lektion (Aufgabe 16, Lesezeit). */
   reader: { email: "e2e-reader@test.example", role: "learner" },
+  /** Beantwortet bzw. überspringt die freiwilligen Fragen aus Aufgabe 18 (Kursseite, nach dem Lektionstest). */
+  selfReportCourse: { email: "e2e-self-report-course@test.example", role: "learner" },
+  selfReportLesson: { email: "e2e-self-report-lesson@test.example", role: "learner" },
   /** Durchläuft den Einstiegstest direkt nach der Kurswahl (alle anderen haben ihn schon übersprungen). */
   preAssessment: { email: "e2e-pre-assessment@test.example", role: "learner" },
   preAssessmentSkip: { email: "e2e-pre-assessment-skip@test.example", role: "learner" },

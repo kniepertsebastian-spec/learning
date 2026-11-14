@@ -1,7 +1,7 @@
 import { isCertificationHidden } from "@/lib/server/catalog/access";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db/client";
 import {
@@ -44,7 +44,6 @@ export async function GET(
   }
 
   // Get progress for all touched objectives
-  const allObjectiveIds = domainData.map((d) => d.objectiveId);
   const progress = await db
     .select()
     .from(objectiveProgress)

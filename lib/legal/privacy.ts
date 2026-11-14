@@ -164,12 +164,12 @@ export const PRIVACY_ENTRIES: PrivacyEntry[] = [
     id: "selbstauskuenfte",
     title: { de: "Freiwillige Selbstauskünfte", en: "Optional self-reports" },
     data: {
-      de: "Antworten auf kurze Fragen, etwa wie anstrengend eine Lektion war, wie viel du davon behalten wirst, wie sicher du die Prüfung bestehst, warum du lernst, ob du den Stoff bei der Arbeit brauchst und wo du lernst. Dazu der Bezug (Lektion, Kurs oder Lernsitzung), der Zeitpunkt, ob du eine Frage übersprungen hast, und je Art, ob sie eingeschaltet oder nach dreimaligem Überspringen pausiert ist.",
-      en: "Answers to short questions, such as how demanding a lesson was, how much of it you will remember, how confident you are about passing the exam, why you are learning, whether you need the material at work and where you learn. Plus the reference (lesson, course or study session), the time, whether you skipped a question, and for each kind whether it is switched on or paused after three skips.",
+      de: "Antworten auf kurze Fragen, etwa wie anstrengend eine Lektion war, wie viel du davon behalten wirst, wie sicher du die Prüfung bestehst, warum du lernst und wo du lernst. Dazu der Bezug (Lektion, Kurs oder Lernsitzung), der Zeitpunkt, ob du eine Frage übersprungen hast, und je Art, ob sie eingeschaltet oder nach dreimaligem Überspringen pausiert ist.",
+      en: "Answers to short questions, such as how demanding a lesson was, how much of it you will remember, how confident you are about passing the exam, why you are learning and where you learn. Plus the reference (lesson, course or study session), the time, whether you skipped a question, and for each kind whether it is switched on or paused after three skips.",
     },
     purpose: {
-      de: "Dinge berücksichtigen, die sich aus dem Lernverhalten nicht ablesen lassen, und messen, ob die Fragen stören. Freiwillig: jede Frage lässt sich überspringen und unter „Wie ich lerne“ je Art abschalten. Höchstens eine Frage je Lernsitzung.",
-      en: "Taking into account what your learning behaviour does not show, and measuring whether the questions get in the way. Optional: every question can be skipped and each kind switched off under “How I learn”. At most one question per study session.",
+      de: "Auswerten, was sich aus dem Lernverhalten nicht ablesen lässt, und messen, ob die Fragen stören. Die Antworten ändern bisher nichts an deinem Plan. Freiwillig: jede Frage lässt sich überspringen und unter „Wie ich lerne“ je Art abschalten. Höchstens eine Frage je Lernsitzung und nach einer Lektion höchstens eine am Tag.",
+      en: "Evaluating what your learning behaviour does not show, and measuring whether the questions get in the way. The answers do not change your plan so far. Optional: every question can be skipped and each kind switched off under “How I learn”. At most one question per study session and at most one a day after a lesson.",
     },
     retention: UNTIL_DELETION,
     recipients: NO_RECIPIENT,

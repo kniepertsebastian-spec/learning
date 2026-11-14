@@ -8,7 +8,7 @@ if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 
 import { getDb } from "@/lib/server/db/client";
 import {
-  companyAssignments, domains, itemStates, lessonCompletions, lessonSkips, mandatoryRules, objectives, organizationMemberships, organizations,
+  companyAssignments, itemStates, lessonCompletions, lessonSkips, mandatoryRules, objectives, organizationMemberships, organizations,
   questionOptions, questions, users,
 } from "@/lib/server/db/schema";
 import { seedCourse, seedLessons, seedUser } from "@/lib/server/psrp/test-db";

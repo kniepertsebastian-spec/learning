@@ -2,7 +2,7 @@
  * Häufung (roadmap_didaktik Phase 9.4): scheitern viele Lernende am selben Konzept, landet es automatisch in der Prüfliste der
  * Werkstatt (`ContentReportQueue`, Grund `concept_struggle`) - mit der am häufigsten gewählten falschen Option. Anonym: nur Zahlen.
  */
-import { and, desc, eq, inArray, ne, sql, notInArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql, notInArray } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import {
   conceptStruggles,

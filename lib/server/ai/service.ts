@@ -25,7 +25,6 @@ export type BlueprintExtraction = z.infer<typeof blueprintExtractionSchema>;
 export async function generateRemediationForObjective(
   certificationName: string,
   objectiveTitle: string,
-  objectiveDescription: string,
 ): Promise<RemediationResponse> {
   const systemPrompt = [
     `Du bist ein Lern-Therapeut für die Zertifizierung "${certificationName}".`,

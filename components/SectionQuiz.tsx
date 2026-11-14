@@ -15,6 +15,7 @@ import type { SegmentState } from "@/components/ui/progress";
 import type { AnswerConfidence, QuizQuestion, Locale } from "@/lib/types";
 import { enqueueSyncEvent } from "@/lib/client/sync-queue";
 import { useResponseTimer } from "@/lib/client/use-response-timer";
+import { SelfReportPrompt } from "@/components/SelfReportPrompt";
 
 export interface SectionQuizQuestion {
   id: string;
@@ -218,6 +219,8 @@ export function SectionQuiz({ sectionId, attemptUrl, passPercent, resultActions,
           offlineNote={Boolean(offline)}
           actions={resultActions ?? [{ href: `/cert/${certSlug}`, label: t.quiz.backToCourse, primary: true }]}
         />
+        {/* Aufgabe 18: eine freiwillige Frage nach der Lektion (nur beim Lektionstest, nicht im Kapitel-Quiz oder offline). */}
+        {sectionId && !attemptUrl && !offline && <SelfReportPrompt context="lesson" refId={sectionId} locale={locale} />}
       </FocusFrame>
     );
   }

@@ -47,6 +47,8 @@ import { getProgressView, type ProgressView } from "@/lib/server/progress/snapsh
 import { ProgressReviewCard } from "@/components/ProgressReviewCard";
 import { getLearningContext } from "@/lib/server/study/learning-context";
 import { StartSessionPicker } from "@/components/StartSessionPicker";
+import { SelfReportPrompt } from "@/components/SelfReportPrompt";
+import { nextSelfReportQuestion } from "@/lib/server/self-reports/ask";
 import { CourseSources } from "@/components/CourseSources";
 import { ExamDateInline } from "@/components/ExamDateInline";
 import { FeedbackButton } from "@/components/FeedbackButton";
@@ -176,6 +178,7 @@ export default async function CertDetailPage({
   let learningIntro = { firstSession: false, offerCheckin: true };
   let learningWelcomeBack = false;
   let energyModesOn = false;
+  let environmentQuestion = false;
   let progressView: ProgressView | null = null;
   let deescalatedNow = false;
   let selfAssessment: SelfAssessmentTopic[] = [];
@@ -209,6 +212,8 @@ export default async function CertDetailPage({
     learningIntro = { firstSession: learning.intro.firstSession, offerCheckin: learning.intro.offerCheckin };
     learningWelcomeBack = learning.welcomeBack;
     energyModesOn = isFeatureEnabled("energy_modes", session.user.id);
+    // Aufgabe 18, 5.6: Die Frage nach der Lernumgebung gehört in den Check-in; ob sie dran ist, entscheidet der Server.
+    environmentQuestion = learningIntro.offerCheckin && Boolean(await nextSelfReportQuestion(session.user.id, { context: "checkin" }).catch(() => null));
     progressView = await getProgressView(session.user.id, cert.id).catch(() => null);
     deescalatedNow = await isDeescalated(session.user.id).catch(() => false);
     progressData = Object.fromEntries(
@@ -345,9 +350,11 @@ export default async function CertDetailPage({
 
       <div className={cn("grid items-start gap-6", sideColumn && "xl:grid-cols-3")}>
         <div className={cn("flex min-w-0 flex-col gap-6", sideColumn && "xl:col-span-2")}>
+          {/* Aufgabe 18, 5.3 und 5.4: Zuversicht für die Prüfung, Grund fürs Lernen (freiwillig, der Server entscheidet, ob eine Frage dran ist). */}
+          {session && quizzes && <SelfReportPrompt context="course" refId={cert.id} locale={locale} />}
           {session && quizzes && todayDashboard && <TodayDashboard certSlug={slug} locale={locale} data={todayDashboard} />}
           {session && quizzes && !todayDashboard && (
-            <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} intro={learningIntro} welcomeBack={learningWelcomeBack} energyModes={energyModesOn} deescalated={deescalatedNow} />
+            <StartSessionPicker certSlug={slug} certificationId={cert.id} locale={locale} intro={learningIntro} welcomeBack={learningWelcomeBack} energyModes={energyModesOn} deescalated={deescalatedNow} environmentQuestion={environmentQuestion} />
           )}
 
           {quizzes && needsRemediation.length > 0 && (

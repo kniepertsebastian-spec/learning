@@ -208,6 +208,32 @@ Speicher und Regeln für Fragen, die sich aus dem Verhalten nicht ablesen lassen
 - **Regeln:** jede Art einzeln unter „Wie ich lerne“ abschaltbar; dreimal in Folge übersprungen pausiert die Art 30 Tage, danach zählt es neu; höchstens eine Frage je Lernsitzung (eindeutiger Index). Vor dem Zeigen einer Frage fragt Aufgabe 18 `canAskSelfReport`.
 - **Fragemüdigkeit messen:** Anteil übersprungener Fragen je Art (`value` null) und Zahl der Pausen. Steigt das Überspringen über die Zeit, sind es zu viele Fragen.
 
+### Die Fragen (Aufgabe 18)
+Die Fragen laufen hinter dem Flag `self_reports` (Kontrollgruppe: `FEATURE_SELF_REPORTS_ROLLOUT=50`; wer nicht im Anteil ist, bekommt keine Frage). Sie werden **gestellt und gespeichert, nichts in der App ändert sich durch die Antworten**. Hilfe nach hoher Anstrengung, Verkürzen, Probeprüfung bei großer Abweichung und die Formatwahl „unterwegs“ kommen erst, wenn die Auswertung unten einen Effekt zeigt. Der Server entscheidet je Ort, ob eine Frage dran ist (`lib/server/self-reports/ask.ts`); jede lässt sich überspringen.
+
+| Faktor | Wo und wann | Regel zusätzlich zu Aufgabe 17 |
+|---|---|---|
+| 5.1 Anstrengung, 5.2 Vorhersage des Behaltens | Nach einer Lektion (beim Abschluss ohne Test, im Ergebnis nach dem Lektionstest) | Im Wechsel, angefangen mit 5.1; je Lektion nur einmal (auch übersprungen); nach einer Lektion höchstens eine Frage am Tag |
+| 5.3 Zuversicht für die Prüfung | Kursseite | Wöchentlich, solange ein Prüfungstermin in der Zukunft liegt |
+| 5.4 Grund fürs Lernen | Kursseite | Einmal je Kurs, solange noch keine Lektion des Kurses abgeschlossen ist |
+| 5.6 Lernumgebung | Check-in vor der Sitzung (nur wenn der Check-in angeboten wird) | Höchstens einmal am Tag; ohne Wahl beim Start gilt die Frage als übersprungen |
+| 5.5 Nutzen für die Arbeit | noch nicht gefragt (nicht in Aufgabe 18) | |
+
+**Auswertung** (`npm run psrp:metrics`, Abschnitt `selfReports`):
+- `answers.byKind`: gefragt, beantwortet, übersprungen je Art, mit Anteil übersprungen (Fragemüdigkeit).
+- `answers.retentionForecast` (5.2): Vorhersage gegen das Ergebnis des Rückblicks derselben Lektion, mittlere Lücke in Prozentpunkten, Zahl der Überschätzungen (ab 10 Punkten).
+- `answers.effort` (5.1): Ergebnis des ersten Lektionstests nach „leicht“ (1 bis 2) und „schwer“ (4 bis 5).
+- `answers.learningReason` (5.4): Verteilung der Gründe.
+- **Abnahme „die Abbruchquote bleibt gleich“:** `selfReports.arms` (Behaltensquote mit und ohne Flag) und `engagement.byFlag.self_reports.enabled|disabled` (`churn7`, `churn30`, Rückkehr nach Pause) vergleichen die Gruppe mit Fragen mit der ohne. Der Vergleich ist beschreibend und gilt erst ab 20 Personen je Seite. Vor dem Einschalten für alle den Ausgangswert festhalten (`npm run psrp:baseline -- save "Vor den Fragen"`).
+
+**Hypothesen (Annahmen, keine Zusagen):**
+
+| Nr. | Annahme | Gemessen mit |
+|---|---|---|
+| H10 | Die freiwilligen Fragen erhöhen die Abbruchquote nicht | `engagement.byFlag.self_reports` mit/ohne |
+| H11 | Wer sein Behalten nach der Lektion höher einschätzt, als der Rückblick zeigt, ist ein Muster, das sich über mehrere Lektionen wiederholt | `retentionForecast.meanGap`, `overconfident` |
+| H12 | Wer eine Lektion als anstrengend empfindet, schneidet im ersten Test schlechter ab | `effort.difference` |
+
 ## Grenzen
 - Reaktivierung per Push gibt es nicht, nur per E-Mail (siehe Web Push in `umsetzungsplan.md`, Stufe 5).
 - Kleine Stichproben: Veränderungen von wenigen Prozentpunkten bei n unter 20 sind Rauschen.

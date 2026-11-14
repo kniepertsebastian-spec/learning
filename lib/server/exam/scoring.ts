@@ -4,7 +4,6 @@ import {
   objectives,
   domains,
   questions,
-  questionOptions,
   objectiveProgress,
 } from "@/lib/server/db/schema";
 

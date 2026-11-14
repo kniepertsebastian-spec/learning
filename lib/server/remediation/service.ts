@@ -5,8 +5,6 @@ import {
   objectives,
   domains,
   certifications,
-  questionOptions,
-  questions,
 } from "@/lib/server/db/schema";
 import { ObjectiveProgressService } from "@/lib/server/progress/service";
 import { generateRemediationForObjective } from "@/lib/server/ai/service";
@@ -140,7 +138,6 @@ export class RemediationService {
     const remediation = await withAiCost({ source: "other", detail: "remediation" }, () => generateRemediationForObjective(
       objData.certificationName,
       objData.title,
-      objData.description || "",
     ));
 
     const sessionInserted = await db
