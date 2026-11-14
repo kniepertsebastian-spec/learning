@@ -36,11 +36,11 @@ export async function loadHumanFactorsUsers(asOf: Date, hash: (userId: string) =
     group: p.group as EvaluationGroup,
     timeZone: p.timeZone,
     weeklyGoalDays: goalOf.get(p.id) ?? 4,
-    reviews: reviews.filter((r) => r.userId === p.id).map(({ userId: _u, ...r }) => r),
+    reviews: reviews.filter((r) => r.userId === p.id).map((r) => ({ at: r.at, localHour: r.localHour, weekday: r.weekday, predictedR: r.predictedR, certificationId: r.certificationId })),
     // Tage seit der Fälligkeit, ganze Tage nach unten: heute fällig und nicht wiederholt ist 0 Tage überfällig.
     overdueDays: overdue.filter((o) => o.userId === p.id).map((o) => Math.floor((asOf.getTime() - o.due.getTime()) / DAY_MS)),
     exams: plans.filter((x) => x.userId === p.id && x.at).map((x) => ({ certificationId: x.certificationId, at: x.at as Date })),
-    recallChecks: recalls.filter((r) => r.userId === p.id).map(({ userId: _u, ...r }) => r),
+    recallChecks: recalls.filter((r) => r.userId === p.id).map((r) => ({ lessonCompletedAt: r.lessonCompletedAt, hoursSinceLesson: r.hoursSinceLesson, status: r.status, questionCount: r.questionCount, correctCount: r.correctCount })),
   }));
 }
 
