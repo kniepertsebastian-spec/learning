@@ -37,6 +37,11 @@ const answerFields = {
   thinkFirst: z.boolean().optional(),
   /** ISO-Zeitpunkt vom Gerät; nur im Sync-Pfad ausgewertet. */
   answeredAt: z.string().max(40).optional(),
+  /**
+   * Zeit bis zur Antwort in ms (Aufgabe 06a/06b), roh vom Client. Fehlt bei älteren Clients. Ein unbrauchbarer Wert kostet nicht
+   * die Antwort: er entfällt. Die Grenzen 300 ms bis 10 Minuten setzt `recordReviewOutcomes`.
+   */
+  responseTimeMs: z.number().min(0).optional().catch(undefined),
 };
 
 /** Antwort einer Sitzung (`StudySessionAnswerInput`). */

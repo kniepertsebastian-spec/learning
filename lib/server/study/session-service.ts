@@ -53,6 +53,7 @@ import { DEFAULT_PSRP_CONFIG } from "@/lib/server/psrp/config";
 import { moreStudyExtra } from "@/lib/server/psrp/planner";
 import { interleaveProbes, probeVariantsByQuestion, selectProbes } from "@/lib/server/psrp/probes";
 import { getDueReviewCount, getDueReviewItems, recordReviewOutcomes } from "@/lib/server/review/service";
+import { rawResponseTimeMs } from "@/lib/server/review/response-time";
 import { answerTime, type ReviewTiming } from "@/lib/server/sync/effective-time";
 import {
   computeLessonFallbackCount,
@@ -825,6 +826,8 @@ export interface StudySessionAnswerInput {
   thinkFirst?: boolean;
   /** Zeitpunkt der Antwort auf dem Gerät (ISO); nur im Sync-Pfad ausgewertet, siehe lib/server/sync/effective-time.ts. */
   answeredAt?: string;
+  /** Zeit bis zur Antwort in ms, roh vom Client (Aufgabe 06a); fehlt bei älteren Clients. */
+  responseTimeMs?: number;
 }
 
 export interface StudySessionAttemptResult {
@@ -973,6 +976,7 @@ async function completeStudySessionInTransaction(
           isCorrect: r.isCorrect,
           confidence: parseConfidence(answerOf.get(r.itemId)?.confidence),
           thinkFirst: answerOf.get(r.itemId)?.thinkFirst === true,
+          responseTimeMs: answerOf.get(r.itemId)?.responseTimeMs,
           variantQuestionId: variantByItemId.get(r.itemId) ?? null,
           reviewType: recallByItemId.has(r.itemId) ? ("recall_check" as const) : undefined,
           ...(timing ? answerTime(timing, answerOf.get(r.itemId)?.answeredAt) : {}),
@@ -990,6 +994,7 @@ async function completeStudySessionInTransaction(
     const thinkFirstByItemId = new Set(answers.filter((a) => a.thinkFirst === true).map((a) => a.itemId));
     const selectedByItemId = new Map(answers.map((a) => [a.itemId, a.selectedOptionId]));
     const answeredAtByItemId = new Map(answers.map((a) => [a.itemId, a.answeredAt]));
+    const responseTimeByItemId = new Map(answers.map((a) => [a.itemId, a.responseTimeMs]));
     const payloadByItemId = new Map(answers.map((a) => [a.itemId, sanitizeAnswer(a.answer)]));
     await Promise.all(
       results.map((r) =>
@@ -1011,6 +1016,7 @@ async function completeStudySessionInTransaction(
         isCorrect: r.isCorrect,
         confidence: confidenceByItemId.get(r.itemId) ?? null,
         thinkFirst: thinkFirstByItemId.has(r.itemId),
+        responseTimeMs: responseTimeByItemId.get(r.itemId),
         variantQuestionId: variantByItemId.get(r.itemId) ?? null,
         reviewType: recallByItemId.has(r.itemId) ? ("recall_check" as const) : undefined,
         ...(timing ? answerTime(timing, answeredAtByItemId.get(r.itemId)) : {}),
@@ -1201,6 +1207,7 @@ export async function pauseStudySession(
       ...(a.confidence ? { confidence: a.confidence } : {}),
       ...(a.thinkFirst ? { thinkFirst: true } : {}),
       ...(typeof a.answeredAt === "string" ? { answeredAt: a.answeredAt } : {}),
+      ...(rawResponseTimeMs(a.responseTimeMs) !== undefined ? { responseTimeMs: rawResponseTimeMs(a.responseTimeMs) } : {}),
     });
   }
   const draft: StudySessionDraft = {

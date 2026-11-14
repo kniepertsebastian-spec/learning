@@ -51,7 +51,7 @@ Folgende Punkte sind noch nicht final entschieden. Implementiere sie mit dem ang
   - `session_checkin`: session_id, user_id, energy_level (1–5), time_budget_min, had_workday (bool), timestamp
   - `session_derived`: session_id, phi, r_target, daily_limit (getrennt von Rohdaten)
 - [x] `review_log` technisch gegen Update/Delete absichern (außer DSGVO-Löschung des gesamten Nutzers)
-- [x] Basiszeit pro Item berechnen: Median der Antwortzeiten aller Nutzer für dieses Item, Fallback auf Kursdurchschnitt
+- [x] Basiszeit pro Item berechnen: Median der Antwortzeiten aller Nutzer für dieses Item, Fallback auf Kursdurchschnitt *(Vermerk 14.11.2026, Review-Aufgabe 06a/06b: Bis dahin hat kein Client eine Antwortzeit gemessen, die Basiszeit war mangels Daten immer `null`. Seit 06a misst der Client die Zeit, seit 06b schreibt der Server sie in `review_log.response_time_ms`, Werte unter 300 ms oder über 10 Minuten als `null`.)*
 - [x] Löschfunktion: Nutzer löschen entfernt alle zugehörigen Daten inkl. Check-ins und abgeleiteter Werte
 
 **Akzeptanzkriterium:** Ein Review erzeugt genau einen Log-Eintrag; Tests belegen, dass Logs nicht verändert werden können.
@@ -77,7 +77,7 @@ Folgende Punkte sind noch nicht final entschieden. Implementiere sie mit dem ang
 ## Phase 3 – Planungsschicht
 
 - [x] Funktion `buildDailyQueue(user, now, timeBudgetMin, phi) -> Item[]`
-- [x] Tageslimit aus Zeitbudget: `limit = floor(timeBudgetMin * 60 / avgSecondsPerReview)`, mit persönlichem Durchschnitt, Fallback 60 s (eine volle Frage mit Feedback; vorher 15 s ergab 40 Fragen für 10 Minuten), gemessene Antwortzeit plus 20 s für Feedback
+- [x] Tageslimit aus Zeitbudget: `limit = floor(timeBudgetMin * 60 / avgSecondsPerReview)`, mit persönlichem Durchschnitt, Fallback 60 s (eine volle Frage mit Feedback; vorher 15 s ergab 40 Fragen für 10 Minuten), gemessene Antwortzeit plus 20 s für Feedback *(Vermerk 14.11.2026, Review-Aufgabe 06a/06b: Bis dahin war der persönliche Durchschnitt immer `null`, es galt also stets der Rückfall von 60 s. Seit 06b liegt ab zehn gemessenen Antworten ein Wert vor.)*
 - [x] Priorisierung fälliger Karten: niedrigste aktuelle Retrievability zuerst; bei aktivem Prüfungsdatum prüfungsrelevante Items höher gewichten (Gewicht konfigurierbar)
 - [x] Nicht gezeigte fällige Karten bleiben fällig (kein künstliches Neusetzen von `due`)
 - [x] Load Balancing: bei der Intervallberechnung das Intervall innerhalb ±5 % (min. ±1 Tag ab Intervall ≥ 7) auf den Tag mit der geringsten bereits geplanten Last legen
