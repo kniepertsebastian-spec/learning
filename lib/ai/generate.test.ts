@@ -148,7 +148,18 @@ describe("isRetryableError", () => {
 
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
-import { generateStructured, isSchemaRejection, toGeminiJsonSchema } from "./generate";
+import { vi } from "vitest";
+import {
+  AIResponseBlockedError,
+  AIResponseTruncatedError,
+  activeConfigFallback,
+  configFallbackNote,
+  finishReasonOf,
+  generateStructured,
+  isPermanentAiResponseError,
+  isSchemaRejection,
+  toGeminiJsonSchema,
+} from "./generate";
 import { groundedLessonsAndQuestionsResponseSchema } from "@/lib/server/ai/schemas";
 import { courseBlueprintAiResponseSchema, objectiveContentAiResponseSchema, objectiveContentNoQuestionsAiResponseSchema, objectiveContentNoQuestionsResponseSchema, objectiveContentResponseSchema, questionsOnlyAiResponseSchema } from "@/lib/server/course-generation/schemas";
 
@@ -257,31 +268,67 @@ describe("generateStructured mit Antwortschema", () => {
     expect(second.calls[0].config.responseJsonSchema).toBeUndefined();
   });
 
-  it("lehnt ein Modell die Anfrage allgemein ab (z. B. Denkbudget 0 bei Flash-Lite), geht es ohne Denkbudget und Ausgabe-Limit weiter, das Schema bleibt", async () => {
+  it("lehnt ein Modell die Anfrage allgemein ab (z. B. Denkbudget 0 bei Flash-Lite), fällt nur die Denk-Einstellung weg: Ausgabe-Limit und Schema bleiben", async () => {
     const invalid = new Error('{"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}');
     const first = fakeClient((c) => (c.config.thinkingConfig ? invalid : '{"name":"a","count":1}'));
     await expect(generateStructured("sys", "user", small, "lite-a", undefined, first.client)).resolves.toEqual({ name: "a", count: 1 });
     expect(first.calls.map((c) => [Boolean(c.config.thinkingConfig), c.config.maxOutputTokens ?? null, Boolean(c.config.responseJsonSchema)])).toEqual([
       [true, 65536, true],
-      [false, null, true],
+      [false, 65536, true],
     ]);
-    // Für dieses Modell künftig gleich ohne; andere Modelle sind nicht betroffen.
+    // Für dieses Modell vorerst gleich ohne Denk-Einstellung, mit Limit; andere Modelle sind nicht betroffen.
     const again = fakeClient(() => '{"name":"b","count":2}');
     await generateStructured("sys", "user", small, "lite-a", undefined, again.client);
     expect(again.calls[0].config.thinkingConfig).toBeUndefined();
+    expect(again.calls[0].config.maxOutputTokens).toBe(65536);
+    expect(configFallbackNote("lite-a")).toMatch(/ohne Denk-Einstellung/);
     const other = fakeClient(() => '{"name":"c","count":3}');
     await generateStructured("sys", "user", small, "flash-b", undefined, other.client);
     expect(other.calls[0].config.thinkingConfig).toEqual({ thinkingBudget: 0 });
+    expect(configFallbackNote("flash-b")).toBeNull();
+  });
+
+  it("das Ausgabe-Limit fällt erst weg, wenn es ohne Denk-Einstellung weiter abgelehnt wird", async () => {
+    const invalid = new Error('{"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}');
+    const { client, calls } = fakeClient((c) => (c.config.maxOutputTokens ? invalid : '{"name":"a","count":1}'));
+    await expect(generateStructured("sys", "user", small, "lite-d", undefined, client)).resolves.toEqual({ name: "a", count: 1 });
+    expect(calls.map((c) => [Boolean(c.config.thinkingConfig), c.config.maxOutputTokens ?? null])).toEqual([
+      [true, 65536],
+      [false, 65536],
+      [false, null],
+    ]);
+    expect(configFallbackNote("lite-d")).toMatch(/ohne Ausgabe-Limit/);
+  });
+
+  it("die abgeschwächte Einstellung gilt nur eine Stunde, nicht bis zum Neustart", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const invalid = new Error('{"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}');
+      let reject = true;
+      const first = fakeClient((c) => (reject && c.config.thinkingConfig ? invalid : '{"name":"a","count":1}'));
+      await generateStructured("sys", "user", small, "flaky-e", undefined, first.client);
+      expect(activeConfigFallback("flaky-e")?.level).toBe("no_thinking");
+      reject = false;
+      vi.setSystemTime(Date.now() + 61 * 60 * 1000);
+      expect(activeConfigFallback("flaky-e")).toBeNull();
+      const later = fakeClient(() => '{"name":"b","count":2}');
+      await generateStructured("sys", "user", small, "flaky-e", undefined, later.client);
+      expect(later.calls[0].config.thinkingConfig).toEqual({ thinkingBudget: 0 });
+      expect(later.calls[0].config.maxOutputTokens).toBe(65536);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("hilft auch das nicht, geht es zusätzlich ohne Schema weiter; danach kommt der Fehler, statt endlos zu wiederholen", async () => {
     const invalid = new Error('{"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}');
     const stillBad = fakeClient(() => invalid);
     await expect(generateStructured("sys", "user", z.object({ x: z.string() }), "lite-c", undefined, stillBad.client)).rejects.toThrow(/invalid argument/);
-    expect(stillBad.calls.map((c) => [Boolean(c.config.thinkingConfig), Boolean(c.config.responseJsonSchema)])).toEqual([
-      [true, true],
-      [false, true],
-      [false, false],
+    expect(stillBad.calls.map((c) => [Boolean(c.config.thinkingConfig), Boolean(c.config.maxOutputTokens), Boolean(c.config.responseJsonSchema)])).toEqual([
+      [true, true, true],
+      [false, true, true],
+      [false, false, true],
+      [false, false, false],
     ]);
   });
 
@@ -330,5 +377,73 @@ describe("vorübergehende Fehler: Wiederholen statt Aufgeben", () => {
     const { client, calls } = fakeClient(() => new Error("429 RESOURCE_EXHAUSTED"));
     await expect(generateStructured("sys", "user", small, "m", undefined, client)).rejects.toThrow(/429/);
     expect(calls).toHaveLength(4);
+  });
+});
+
+describe("finishReason (R1): abgeschnittene und blockierte Antworten", () => {
+  const prevBase = process.env.GEMINI_RETRY_BASE_MS;
+  beforeAll(() => {
+    process.env.GEMINI_RETRY_BASE_MS = "0";
+  });
+  afterAll(() => {
+    if (prevBase === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
+    else process.env.GEMINI_RETRY_BASE_MS = prevBase;
+  });
+
+  function clientReturning(response: Record<string, unknown>) {
+    let calls = 0;
+    const client = {
+      models: {
+        generateContent: async () => {
+          calls++;
+          return { usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 }, ...response };
+        },
+      },
+    } as unknown as GoogleGenAI;
+    return { client, calls: () => calls };
+  }
+
+  it("liest finishReason und blockReason", () => {
+    expect(finishReasonOf({ candidates: [{ finishReason: "STOP" }] })).toBe("STOP");
+    expect(finishReasonOf({ promptFeedback: { blockReason: "SAFETY" } })).toBe("BLOCKED:SAFETY");
+    expect(finishReasonOf(undefined)).toBe("UNKNOWN");
+  });
+
+  it("MAX_TOKENS: eigener Fehler, kein neuer Versuch und kein Reparaturversuch", async () => {
+    const { client, calls } = clientReturning({ text: '{"name":"a","cou', candidates: [{ finishReason: "MAX_TOKENS" }] });
+    const error = await generateStructured("sys", "user", small, "m", undefined, client).catch((e) => e);
+    expect(error).toBeInstanceOf(AIResponseTruncatedError);
+    expect(isPermanentAiResponseError(error)).toBe(true);
+    expect(calls()).toBe(1);
+  });
+
+  it("SAFETY/RECITATION: blockiert, ohne bezahlte Wiederholungen", async () => {
+    for (const reason of ["SAFETY", "RECITATION"]) {
+      const { client, calls } = clientReturning({ text: undefined, candidates: [{ finishReason: reason }] });
+      const error = await generateStructured("sys", "user", small, "m", undefined, client).catch((e) => e);
+      expect(error).toBeInstanceOf(AIResponseBlockedError);
+      expect((error as Error).message).toContain(reason);
+      expect(calls()).toBe(1);
+    }
+  });
+
+  it("schon die Anfrage blockiert (promptFeedback.blockReason): kein neuer Versuch", async () => {
+    const { client, calls } = clientReturning({ text: undefined, promptFeedback: { blockReason: "PROHIBITED_CONTENT" } });
+    await expect(generateStructured("sys", "user", small, "m", undefined, client)).rejects.toBeInstanceOf(AIResponseBlockedError);
+    expect(calls()).toBe(1);
+  });
+
+  it("STOP mit gültiger Antwort läuft wie bisher, die Kosten werden trotzdem gezählt", async () => {
+    const { client } = clientReturning({ text: '{"name":"a","count":1}', candidates: [{ finishReason: "STOP" }] });
+    const usages: unknown[] = [];
+    await expect(generateStructured("sys", "user", small, "m", (u) => usages.push(u), client)).resolves.toEqual({ name: "a", count: 1 });
+    expect(usages).toHaveLength(1);
+  });
+
+  it("auch eine abgeschnittene Antwort wird im Kostenbuch gezählt (sie wurde bezahlt)", async () => {
+    const { client } = clientReturning({ text: "{", candidates: [{ finishReason: "MAX_TOKENS" }] });
+    const usages: unknown[] = [];
+    await generateStructured("sys", "user", small, "m", (u) => usages.push(u), client).catch(() => undefined);
+    expect(usages).toHaveLength(1);
   });
 });

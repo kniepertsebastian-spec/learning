@@ -17,6 +17,57 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * Gemini hat die Antwort blockiert (Sicherheitsfilter, Zitat-Schutz, Sperrliste …). Dieselbe Anfrage wird fast immer
+ * wieder blockiert: kein bezahlter neuer Versuch, keine Reparatur.
+ */
+export class AIResponseBlockedError extends AIGenerationError {
+  constructor(readonly reason: string) {
+    super(
+      `Gemini hat die Antwort blockiert (${reason}). Ein neuer Versuch mit derselben Anfrage wird meist wieder blockiert: Quelltext und Lernziel prüfen.`,
+    );
+    this.name = "AIResponseBlockedError";
+  }
+}
+
+/**
+ * Die Antwort hat das Ausgabe-Limit erreicht und ist abgeschnitten (`MAX_TOKENS`). Ein Reparaturversuch schickt die halbe
+ * Antwort samt Anfrage erneut und wird wieder zu lang: kein neuer Versuch, das Lernziel muss kleiner werden.
+ */
+export class AIResponseTruncatedError extends AIGenerationError {
+  constructor() {
+    super("Gemini-Antwort hat das Ausgabe-Limit erreicht und wurde abgeschnitten (MAX_TOKENS). Lernziel kleiner schneiden oder weniger Fragen anfordern.");
+    this.name = "AIResponseTruncatedError";
+  }
+}
+
+/** Fehler, bei denen ein neuer Versuch mit derselben Anfrage nichts bringt, aber bezahlt wird. */
+export function isPermanentAiResponseError(error: unknown): boolean {
+  return error instanceof AIResponseBlockedError || error instanceof AIResponseTruncatedError;
+}
+
+/** finishReason-Werte, bei denen Gemini die Ausgabe aus inhaltlichen Gründen gestoppt hat. */
+const BLOCKING_FINISH_REASONS = new Set(["SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "LANGUAGE", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT"]);
+
+interface ResponseMeta {
+  candidates?: Array<{ finishReason?: string }>;
+  promptFeedback?: { blockReason?: string };
+}
+
+/** `finishReason` des ersten Kandidaten bzw. `BLOCKED:<Grund>`, wenn schon die Anfrage blockiert wurde. */
+export function finishReasonOf(response: ResponseMeta | undefined): string {
+  const blockReason = response?.promptFeedback?.blockReason;
+  if (blockReason) return `BLOCKED:${blockReason}`;
+  return response?.candidates?.[0]?.finishReason ?? "UNKNOWN";
+}
+
+/** Wirft für abgeschnittene oder blockierte Antworten den passenden Fehler; alles andere geht normal weiter. */
+export function assertUsableFinish(finishReason: string): void {
+  if (finishReason === "MAX_TOKENS") throw new AIResponseTruncatedError();
+  if (finishReason.startsWith("BLOCKED:")) throw new AIResponseBlockedError(finishReason.slice("BLOCKED:".length));
+  if (BLOCKING_FINISH_REASONS.has(finishReason)) throw new AIResponseBlockedError(finishReason);
+}
+
 export function isStructuredOutputParseFailure(error: unknown): boolean {
   return error instanceof Error && /Failed to parse structured output|JSON/i.test(error.message);
 }
@@ -71,12 +122,60 @@ export function toGeminiJsonSchema(schema: ZodType): Record<string, unknown> | u
 
 /** Schemas (nach Fingerabdruck), die Gemini abgelehnt hat (zu komplex o. ä.): für sie läuft die Anfrage ohne Schema weiter. */
 const rejectedSchemas = new Set<string>();
+
 /**
- * Modelle, die `thinkingBudget: 0` oder das Ausgabe-Limit von 65536 Token ablehnen (z. B. Flash-Lite-Modelle mit
- * Mindest-Denkbudget oder kleinerem Ausgabe-Limit): für sie gehen beide Angaben nicht mehr mit, es gelten die
- * Standardwerte des Modells.
+ * Abgeschwächte Einstellungen je Modell, nachdem Gemini eine Anfrage allgemein abgelehnt hat (HTTP 400 ohne Hinweis aufs
+ * Schema). Stufe `no_thinking`: ohne Denk-Einstellung, das Ausgabe-Limit bleibt. Stufe `no_limits`: zusätzlich ohne
+ * Ausgabe-Limit (es gilt die Vorgabe des Modells). Gemerkt nur für CONFIG_FALLBACK_TTL_MS: Ein einzelner Fehler, der mit den
+ * Limits nichts zu tun hat, nimmt späteren Aufrufen so nicht dauerhaft die Obergrenze.
  */
-const modelsWithoutLimits = new Set<string>();
+export type ConfigFallbackLevel = "no_thinking" | "no_limits";
+interface ConfigFallback {
+  level: ConfigFallbackLevel;
+  until: number;
+  reason: string;
+}
+const configFallbacks = new Map<string, ConfigFallback>();
+const CONFIG_FALLBACK_TTL_MS = 60 * 60 * 1000;
+
+/** Aktuell abgeschwächte Einstellung eines Modells (oder null). Für den Hinweis im Auftrag der Kursgenerierung. */
+export function activeConfigFallback(model: string): { level: ConfigFallbackLevel; reason: string } | null {
+  const key = model || DEFAULT_GEMINI_MODEL;
+  const entry = configFallbacks.get(key);
+  if (!entry) return null;
+  if (entry.until <= Date.now()) {
+    configFallbacks.delete(key);
+    return null;
+  }
+  return { level: entry.level, reason: entry.reason };
+}
+
+/** Lesbarer Hinweis für Auftrag und Admin-Ansicht, wenn ein Modell mit abgeschwächten Einstellungen läuft. */
+export function configFallbackNote(model: string): string | null {
+  const fallback = activeConfigFallback(model);
+  if (!fallback) return null;
+  return fallback.level === "no_thinking"
+    ? `${model || DEFAULT_GEMINI_MODEL} lief ohne Denk-Einstellung, weil Gemini sie abgelehnt hat.`
+    : `${model || DEFAULT_GEMINI_MODEL} lief ohne Denk-Einstellung und ohne Ausgabe-Limit, weil Gemini beides abgelehnt hat.`;
+}
+
+/** Hinweise für alle Modelle, die gerade mit abgeschwächten Einstellungen laufen (leer im Normalfall). */
+export function configFallbackNotes(): string[] {
+  return [...configFallbacks.keys()].map((model) => configFallbackNote(model)).filter((note): note is string => note !== null);
+}
+
+/** Nur für Tests: gemerkte Ablehnungen vergessen. */
+export function resetGeminiFallbacksForTests(): void {
+  configFallbacks.clear();
+  rejectedSchemas.clear();
+}
+
+function setConfigFallback(model: string, level: ConfigFallbackLevel, reason: string): void {
+  // Eine parallele Anfrage hat schon eine strengere Stufe gesetzt: die bleibt.
+  if (level === "no_thinking" && activeConfigFallback(model)?.level === "no_limits") return;
+  configFallbacks.set(model, { level, reason, until: Date.now() + CONFIG_FALLBACK_TTL_MS });
+}
+
 const schemaKey = (schema: Record<string, unknown>) => JSON.stringify(schema);
 
 /**
@@ -306,6 +405,7 @@ function thinkingConfigFor(model: string, thinkingLevel?: ThinkingLevelName) {
  */
 export function generationConfig(systemPrompt: string, model: string, jsonSchema?: Record<string, unknown>, useSchema = true, options: GenerationOptions = {}) {
   const thinkingConfig = thinkingConfigFor(model || DEFAULT_GEMINI_MODEL, options.thinkingLevel);
+  const fallback = activeConfigFallback(model)?.level;
   return {
     systemInstruction: systemPrompt,
     // Gemini 4 ignoriert die Temperatur (laut Modellseite); ältere Modelle antworten damit gleichmäßiger.
@@ -313,7 +413,9 @@ export function generationConfig(systemPrompt: string, model: string, jsonSchema
     // 65536 ist das Ausgabe-Limit je Antwort (gemini-2.5/3.x-flash, Gemini 4 Hydrogen je „foreground segment“). Eine zu
     // knappe Grenze hat nachweislich zu mitten im JSON abgeschnittenen Antworten geführt (siehe Git-Historie). Bei Gemini 4
     // zählen die Denk-Token mit hinein.
-    ...(modelsWithoutLimits.has(model || DEFAULT_GEMINI_MODEL) ? {} : { maxOutputTokens: 65536, ...(thinkingConfig ? { thinkingConfig } : {}) }),
+    // Lehnt ein Modell die Denk-Einstellung ab, fällt zuerst nur sie weg; das Ausgabe-Limit erst, wenn auch das nicht hilft.
+    ...(fallback === "no_limits" ? {} : { maxOutputTokens: 65536 }),
+    ...(fallback || !thinkingConfig ? {} : { thinkingConfig }),
     responseMimeType: "application/json",
     ...(useSchema && jsonSchema && !rejectedSchemas.has(schemaKey(jsonSchema)) ? { responseJsonSchema: jsonSchema } : {}),
   };
@@ -338,6 +440,8 @@ export async function requestJson(
   let useSchema = Boolean(jsonSchema) && !rejectedSchemas.has(schemaKey(jsonSchema!));
   const modelKey = model || DEFAULT_GEMINI_MODEL;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    // Stufe, mit der diese Anfrage rausgeht: Bei parallelen Anfragen kann eine andere die Stufe inzwischen erhöht haben.
+    const sentLevel = activeConfigFallback(modelKey)?.level;
     try {
       const response = await client.models.generateContent({
         model: modelKey,
@@ -357,11 +461,16 @@ export async function requestJson(
       // Denk-Token werden wie Ausgabe-Token abgerechnet und stehen nicht in candidatesTokenCount.
       const completionTokens = (usage?.candidatesTokenCount ?? 0) + (usage?.thoughtsTokenCount ?? 0);
       const cachedTokens = usage?.cachedContentTokenCount ?? 0;
+      const finishReason = finishReasonOf(response);
+      const fallback = activeConfigFallback(modelKey)?.level ?? "none";
       console.log(
-        `USAGE model=${model} promptTokens=${promptTokens} completionTokens=${completionTokens} totalTokens=${promptTokens + completionTokens} cachedTokens=${cachedTokens}`,
+        `USAGE model=${model} promptTokens=${promptTokens} completionTokens=${completionTokens} totalTokens=${promptTokens + completionTokens} cachedTokens=${cachedTokens} finishReason=${finishReason} configFallback=${fallback}`,
       );
       await recordAiUsage({ model, promptTokens, completionTokens, cachedTokens }, { byok: clientOverride !== undefined });
       onUsage?.({ model, promptTokens, completionTokens, cachedTokens });
+
+      // Abgeschnitten oder blockiert: ein neuer Versuch mit derselben Anfrage kostet wieder und endet fast immer gleich.
+      assertUsableFinish(finishReason);
 
       if (!response.text) {
         // Leere Antwort (z. B. abgebrochene Ausgabe): beim nächsten Versuch meist da. Erst nach dem letzten Versuch ein Fehler.
@@ -375,20 +484,25 @@ export async function requestJson(
     } catch (error) {
       if (error instanceof AIGenerationError) throw error;
       if (isSchemaRejection(error)) {
-        // Nennt die Ablehnung das Schema, liegt es daran. Sonst (allgemeines „invalid argument“) zuerst ohne Denkbudget
-        // und Ausgabe-Limit, die nicht jedes Modell annimmt, danach erst ohne Schema.
-        const namesSchema = /schema|constraint/i.test(errorMessage(error));
-        if (useSchema && (namesSchema || modelsWithoutLimits.has(modelKey))) {
+        // Nennt die Ablehnung das Schema, liegt es daran. Sonst (allgemeines „invalid argument“) zuerst ohne Denk-Einstellung,
+        // dann zusätzlich ohne Ausgabe-Limit (beides nimmt nicht jedes Modell an), danach erst ohne Schema.
+        const message = errorMessage(error);
+        const namesSchema = /schema|constraint/i.test(message);
+        if (useSchema && (namesSchema || sentLevel === "no_limits")) {
           // Gemini nimmt dieses Schema nicht an: einmal ohne Schema weitermachen (wie früher) und es nicht erneut versuchen.
-          console.warn("Gemini hat das Antwortschema abgelehnt, weiter ohne Schema:", errorMessage(error).slice(0, 300));
+          console.warn("Gemini hat das Antwortschema abgelehnt, weiter ohne Schema:", message.slice(0, 300));
           rejectedSchemas.add(schemaKey(jsonSchema!));
           useSchema = false;
           attempt--;
           continue;
         }
-        if (!modelsWithoutLimits.has(modelKey)) {
-          console.warn(`Gemini (${modelKey}) hat die Anfrage abgelehnt, weiter ohne Denkbudget und Ausgabe-Limit:`, errorMessage(error).slice(0, 300));
-          modelsWithoutLimits.add(modelKey);
+        if (!namesSchema && sentLevel !== "no_limits") {
+          const next: ConfigFallbackLevel = sentLevel === "no_thinking" ? "no_limits" : "no_thinking";
+          console.warn(
+            `Gemini (${modelKey}) hat die Anfrage abgelehnt, weiter ${next === "no_thinking" ? "ohne Denk-Einstellung" : "auch ohne Ausgabe-Limit"} (gemerkt für ${CONFIG_FALLBACK_TTL_MS / 60_000} Minuten):`,
+            message.slice(0, 300),
+          );
+          setConfigFallback(modelKey, next, message.slice(0, 300));
           attempt--;
           continue;
         }

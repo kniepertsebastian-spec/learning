@@ -15,6 +15,10 @@
 #           MONITOR_BACKUP_MAX_HOURS (26), MONITOR_DISK_MAX_PERCENT (85),
 #           MONITOR_FAILS_BEFORE_ALARM (2), MONITOR_REMIND_HOURS (24), MONITOR_STATE_DIR (./.monitor-state),
 #           MONITOR_CACERT (zusätzliche CA-Datei für den SMTP-Server, nur für Tests)
+# App-Kennzahlen (R5), nur mit MONITOR_TOKEN (gleicher Wert in der .env der App, mindestens 16 Zeichen):
+#           MONITOR_ERRORS_MAX (3: so viele Serverfehler in 15 Minuten lösen den Alarm aus),
+#           MONITOR_BUDGET_WARN_PERCENT (80: Anteil des KI-Budgets GEMINI_BUDGET_USD),
+#           MONITOR_EVENT_LOOP_MAX_MS (500: Event-Loop-Verzögerung p99 der App, R3)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -41,6 +45,8 @@ BACKUP_MAX_HOURS="$(cfg MONITOR_BACKUP_MAX_HOURS 26)"; DISK_MAX="$(cfg MONITOR_D
 FAILS_BEFORE="$(cfg MONITOR_FAILS_BEFORE_ALARM 2)"; REMIND_HOURS="$(cfg MONITOR_REMIND_HOURS 24)"
 STATE_DIR="$(cfg MONITOR_STATE_DIR ./.monitor-state)"; CACERT="$(cfg MONITOR_CACERT)"
 HOST_NAME="$(hostname 2>/dev/null || echo server)"
+MONITOR_TOKEN="$(cfg MONITOR_TOKEN)"; ERRORS_MAX="$(cfg MONITOR_ERRORS_MAX 3)"; BUDGET_WARN="$(cfg MONITOR_BUDGET_WARN_PERCENT 80)"
+LOOP_MAX="$(cfg MONITOR_EVENT_LOOP_MAX_MS 500)"
 
 for pair in MONITOR_MAIL_TO:MAIL_TO MAIL_SMTP_HOST:SMTP_HOST MAIL_SMTP_USER:SMTP_USER MAIL_SMTP_PASSWORD:SMTP_PASSWORD MAIL_FROM:MAIL_FROM; do
   var="${pair#*:}"
@@ -108,6 +114,63 @@ check_containers() {
   if [ -n "$down" ]; then result=fail; detail="Container laufen nicht:$down"; else result=ok; detail="Container laufen"; fi
 }
 
+# R5: Kennzahlen der App (GET /api/monitor). Das Token geht über eine Konfiguration auf stdin, nie in die Prozessliste.
+APP_REPORT=""
+fetch_app_report() {
+  local t="${MONITOR_TOKEN//\\/\\\\}"; t="${t//\"/\\\"}"
+  APP_REPORT="$(printf 'header = "Authorization: Bearer %s"\n' "$t" | curl -sS -f -m 10 -K - "$URL/api/monitor?format=text" 2>/dev/null)" || APP_REPORT=""
+}
+check_app_report() {
+  if [ -z "$APP_REPORT" ]; then result=fail; detail="$URL/api/monitor antwortet nicht (MONITOR_TOKEN in der .env der App gesetzt und gleich?)"
+  else result=ok; detail="Kennzahlen abrufbar"; fi
+}
+check_errors() {
+  local count latest
+  count="$(printf '%s\n' "$APP_REPORT" | awk -F'\t' '$1=="request_errors" {print $2}')"
+  latest="$(printf '%s\n' "$APP_REPORT" | awk -F'\t' '$1=="request_error" {print "  " $2 " " $3 " " $4 ": " $5}')"
+  if [ -z "$count" ]; then result=ok; detail="keine Angabe"
+  elif [ "$count" -ge "$ERRORS_MAX" ]; then result=fail; detail="$count Serverfehler in den letzten 15 Minuten (Grenze $ERRORS_MAX). Neueste:"$'\n'"$latest"$'\n'"Alle: docker compose logs app | grep request_error"
+  else result=ok; detail="$count Serverfehler in 15 Minuten"; fi
+}
+check_budget() {
+  local line percent spent limit
+  line="$(printf '%s\n' "$APP_REPORT" | awk -F'\t' '$1=="ai_budget"')"
+  if [ -z "$line" ]; then result=ok; detail="kein KI-Budget gesetzt"; return; fi
+  percent="$(printf '%s' "$line" | cut -f2)"; spent="$(printf '%s' "$line" | cut -f3)"; limit="$(printf '%s' "$line" | cut -f4)"
+  if [ "$percent" -ge "$BUDGET_WARN" ]; then result=fail; detail="KI-Budget zu ${percent}% verbraucht (${spent} von ${limit} USD, Warnschwelle ${BUDGET_WARN}%). Ab 100% lehnen KI-Bearbeitung und Sammelläufe neue Aufrufe ab."
+  else result=ok; detail="KI-Budget zu ${percent}% verbraucht"; fi
+}
+check_process() {
+  local line p99 max rss jobs
+  line="$(printf '%s\n' "$APP_REPORT" | awk -F'\t' '$1=="process"')"
+  if [ -z "$line" ]; then result=ok; detail="keine Angabe"; return; fi
+  p99="$(printf '%s' "$line" | cut -f2)"; max="$(printf '%s' "$line" | cut -f3)"; rss="$(printf '%s' "$line" | cut -f4)"; jobs="$(printf '%s' "$line" | cut -f6)"
+  detail="Event-Loop p99 ${p99} ms (max ${max} ms), Speicher ${rss} MB, laufende Kursgenerierungen: ${jobs}"
+  if [ "$p99" -ge "$LOOP_MAX" ]; then result=fail; detail="App reagiert träge: $detail (Grenze ${LOOP_MAX} ms). Läuft eine Kursgenerierung, ist ein eigener Worker-Container der nächste Schritt (docs/MONITORING.md)."
+  else result=ok; fi
+}
+# Gescheiterte Kursgenerierungen sind Ereignisse, kein Zustand: jede wird einmal gemeldet (sofort, ohne zweite Prüfung).
+report_failed_jobs() {
+  local seen="$STATE_DIR/failed-jobs.seen" new="" ids="" key id status code title body
+  touch "$seen"
+  while IFS=$'\t' read -r key id status code title; do
+    [ "$key" = failed_job ] || continue
+    grep -qx "$id" "$seen" && continue
+    new="$new"$'\n'"- $title: $status ($code), Auftrag $id"
+    ids="$ids $id"
+  done <<< "$APP_REPORT"
+  if [ -z "$new" ]; then echo "kursgenerierung: ok - keine neue gescheiterte Kursgenerierung"; return; fi
+  body="Kursgenerierung gescheitert:$new"$'\n\n'"Details in der Admin-Ansicht unter Kursgenerierung."
+  # Erst nach erfolgreichem Versand als gemeldet merken, sonst geht die Meldung verloren.
+  if send_mail "[Learning] Kursgenerierung gescheitert auf $HOST_NAME" "$body"; then
+    for id in $ids; do echo "$id" >> "$seen"; done
+    tail -n 500 "$seen" > "$seen.tmp" && mv "$seen.tmp" "$seen"
+  else
+    exit_code=1
+  fi
+  echo "kursgenerierung: fail -${new//$'\n'/ }"
+}
+
 mkdir -p "$STATE_DIR"
 exit_code=0
 handle() {
@@ -134,4 +197,14 @@ result=; detail=; check_ready; handle ready
 if [ "$BACKUP_CHECK" = 1 ]; then check_backup; handle backup; fi
 check_disk; handle disk
 if [ -n "$CONTAINERS" ]; then check_containers; handle containers; fi
+if [ -n "$MONITOR_TOKEN" ]; then
+  fetch_app_report
+  check_app_report; handle app-kennzahlen
+  if [ -n "$APP_REPORT" ]; then
+    check_errors; handle serverfehler
+    check_budget; handle ki-budget
+    check_process; handle app-last
+    report_failed_jobs
+  fi
+fi
 exit "$exit_code"

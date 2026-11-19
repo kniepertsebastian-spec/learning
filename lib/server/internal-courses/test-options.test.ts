@@ -33,6 +33,7 @@ import { executeCourseGenerationJob } from "@/lib/server/course-generation/worke
 import type { CourseBlueprintV1, ObjectiveContentResponse } from "@/lib/server/course-generation/schemas";
 import { POST as startRoute } from "@/app/api/internal-courses/route";
 import { startInternalCourse } from "./service";
+import { AIResponseTruncatedError } from "@/lib/ai/generate";
 
 const run = TEST_DB ? describe : describe.skip;
 
@@ -154,6 +155,34 @@ run("Interne Lernpfade: Tests ein/aus und Erzeugungsmodi (echte DB, Fake-KI)", (
   it("mit Fragen angefordert, aber keine geliefert: der Auftrag scheitert (Reparatur, dann Abbruch)", async () => {
     const job = await generate(docProse, {}, lessonOnly);
     expect(job.status).not.toBe("published");
+  });
+
+  it("R1: abgeschnittene Antwort (MAX_TOKENS) kostet keine Reparatur und keinen zweiten Durchgang", async () => {
+    const { jobId } = await startInternalCourse({ organizationId: orgA, userId, documentId: docProse, title: `Kurs ${randomUUID().slice(0, 6)}`, language: "de", startWorker: false });
+    const two = blueprint();
+    const first = two.domains[0].objectives[0];
+    two.domains[0].objectives.push({ ...first, id: "obj-2", code: "1.2", title: "Trunk" });
+    const base = createFakeContentProvider("fake", { "obj-1": { result: withQuestions } });
+    const calls = { generate: 0, repair: 0 };
+    const contentProvider = {
+      ...base,
+      async generateObjective(input: ObjectiveGenerationInput, onUsage: Parameters<typeof base.generateObjective>[1]) {
+        if (input.objective.id === "obj-2") {
+          calls.generate++;
+          throw new AIResponseTruncatedError();
+        }
+        return base.generateObjective(input, onUsage);
+      },
+      async repairObjective(...args: Parameters<typeof base.repairObjective>) {
+        if (args[0].objective.id === "obj-2") calls.repair++;
+        return base.repairObjective(...args);
+      },
+    };
+    await executeCourseGenerationJob(jobId, { blueprintProvider: createFakeBlueprintProvider(two), contentProvider, repairProvider: contentProvider });
+    const job = (await getCourseGenerationJob(jobId))!;
+    expect(job.status).not.toBe("published");
+    expect(job.errorMessage).toMatch(/MAX_TOKENS/);
+    expect(calls).toEqual({ generate: 1, repair: 0 });
   });
 
   it("Stichwortliste wird erkannt: Blueprint und Inhalte bekommen den Stichwortmodus, der Auftrag weist darauf hin", async () => {

@@ -160,6 +160,25 @@ describe("pollBatch", () => {
     ]);
   });
 
+  it("fertig: abgeschnittene (MAX_TOKENS) und blockierte Antworten zählen als Fehler, nicht als halbes JSON", async () => {
+    const { client } = fakeClient({
+      state: "JOB_STATE_SUCCEEDED",
+      dest: {
+        inlinedResponses: [
+          { metadata: { key: "a" }, response: { candidates: [{ content: { parts: [{ text: '{"a":' }] }, finishReason: "MAX_TOKENS" }] } },
+          { metadata: { key: "b" }, response: { candidates: [{ finishReason: "SAFETY" }] } },
+          { metadata: { key: "c" }, response: { promptFeedback: { blockReason: "OTHER" } } },
+        ],
+      },
+    });
+    const outcome = await pollBatch(client, "batches/x", ["a", "b", "c"]);
+    const results = (outcome as { results: Array<{ key: string; text: string | null; error: string | null }> }).results;
+    expect(results.map((r) => r.text)).toEqual([null, null, null]);
+    expect(results[0].error).toMatch(/MAX_TOKENS/);
+    expect(results[1].error).toMatch(/SAFETY/);
+    expect(results[2].error).toMatch(/OTHER/);
+  });
+
   it("fertig, aber ohne Inline-Antworten (Datei oder leer): failed", async () => {
     const { client: file } = fakeClient({ state: "JOB_STATE_SUCCEEDED", dest: { fileName: "files/1" } });
     expect(await pollBatch(file, "batches/x", ["a"])).toMatchObject({ state: "failed", message: expect.stringContaining("Datei") });

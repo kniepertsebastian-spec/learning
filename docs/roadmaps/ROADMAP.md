@@ -17,16 +17,18 @@
 
 Begründung und Nachweise je Punkt in [`review-2026-11-19.md`](review-2026-11-19.md).
 
-- [ ] **R1** Gemini-Antworten: `finishReason` auswerten. `MAX_TOKENS` als eigener Fehler statt Reparaturversuch, `SAFETY`/`RECITATION` ohne bezahlte Wiederholungen (`lib/ai/generate.ts`).
-- [ ] **R2** Kein stiller, prozessweiter Wegfall von `maxOutputTokens` und Denkbudget nach einem allgemeinen „invalid argument“ (`modelsWithoutLimits`); den Wechsel im Auftrag anzeigen.
-- [ ] **Erster echter Lauf der neuen Kursgenerierung (PR #213)** mit kleinem Kurs und niedrigem Kostenlimit: `USAGE`-Zeilen und `finishReason` mitschreiben, Kosten mit der Google-Abrechnung abgleichen, dabei R3 beobachten.
+- [x] **R1** Gemini-Antworten: `finishReason` auswerten. `MAX_TOKENS` als eigener Fehler statt Reparaturversuch, `SAFETY`/`RECITATION` ohne bezahlte Wiederholungen (`lib/ai/generate.ts`). Erledigt: kein neuer Versuch, keine Reparatur, kein zweiter Durchgang; gilt auch für Batch-Antworten; `finishReason` steht in der `USAGE`-Zeile.
+- [x] **R2** Kein stiller, prozessweiter Wegfall von `maxOutputTokens` und Denkbudget nach einem allgemeinen „invalid argument“ (`modelsWithoutLimits`); den Wechsel im Auftrag anzeigen. Erledigt: erst nur ohne Denk-Einstellung, dann ohne Limit, gemerkt 1 Stunde; Hinweis in der Meldung des Auftrags und `configFallback=` in der `USAGE`-Zeile.
+- [ ] **Erster echter Lauf der neuen Kursgenerierung (PR #213)** mit kleinem Kurs und niedrigem Kostenlimit: `USAGE`-Zeilen und `finishReason` mitschreiben, Kosten mit der Google-Abrechnung abgleichen, dabei R3 beobachten (`PROCESS`-Zeilen im Log, Anleitung in [`docs/MONITORING.md`](../MONITORING.md), Abschnitt „Erster echter Kurslauf“).
 
 ## 2a. Aus dem Review vom 19.11.2026: Betrieb
 
-- [ ] **R3** Kursgenerierung im Web-Prozess: beim ersten Lauf Antwortzeit und Speicher messen; bei Bedarf eigener Worker-Container aus demselben Image. Datenbank-Pool ausdrücklich setzen (`max`, `idle_timeout`, `statement_timeout`).
+- [x] **R3a** Messen und Pool: Event-Loop-Verzögerung, Speicher und laufende Aufträge in `/api/monitor` und als `PROCESS`-Zeile während einer Kursgenerierung; `monitor.sh` meldet ab 500 ms. Pool mit `max`, `idle_timeout`, `statement_timeout` und `idle_in_transaction_session_timeout` (`lib/server/db/client.ts`).
+- [ ] **R3b** Nur wenn der erste Lauf es zeigt: zuerst `COURSE_GEN_CONCURRENCY` senken, dann eigener Worker-Container aus demselben Image.
 - [x] **R4a** Fehlende Cron-Jobs auf der VM nachgetragen: `reactivation:run`, `reviewers:remind`, `mandatory:run`, `exams:remind` (am 19.11.2026; vorher liefen nur `fsrs:optimize` und `push:remind`).
 - [ ] **R4b** Alle wiederkehrenden Jobs als systemd-Timer nach `deploy/` mit Übersicht in `docs/`; jeder Lauf schreibt einen Zeitstempel, `scripts/monitor.sh` meldet, wenn einer zu alt ist.
-- [ ] **R5** Fehler sichtbar machen: `onRequestError` in `instrumentation.ts`, Fehler als JSON-Zeile; Monitor zusätzlich für fehlgeschlagene Kursgenerierungen, KI-Budget über 80 % und 5xx.
+- [x] **R5** Fehler sichtbar machen: `onRequestError` in `instrumentation.ts`, Fehler als JSON-Zeile; Monitor zusätzlich für fehlgeschlagene Kursgenerierungen, KI-Budget über 80 % und 5xx. Erledigt über `/api/monitor` (nur mit `MONITOR_TOKEN`).
+- [ ] **R5 auf der VM einschalten:** `MONITOR_TOKEN` in der `.env` setzen, App neu starten (Schritt 5 in [`docs/MONITORING.md`](../MONITORING.md)).
 - [ ] **R13** Branch-Schutz: CI muss vor dem Merge grün sein (`main` war nach #208 rot). Lint und Unit-Tests als eigener schneller Job.
 
 ## 2. Vor dem Pilot
@@ -92,8 +94,9 @@ Begründung und Nachweise je Punkt in [`review-2026-11-19.md`](review-2026-11-19
 
 Keine Pilot-Blocker, aber vor dem ersten Firmenkunden sinnvoll. Einzelheiten in [`review-2026-11-19.md`](review-2026-11-19.md).
 
-- [ ] **R6** Nutzer je Anfrage nur einmal laden: `getCurrentUser` und `auth` mit React `cache()` merken (heute rund sieben gleiche Abfragen auf `/cert/[id]`).
-- [ ] **R9** `app/not-found.tsx` und `app/global-error.tsx` im App-Design; `loading.tsx` für Dashboard, Kurs, Lernsession und Firmenbereich.
+- [x] **R6** Nutzer je Anfrage nur einmal laden: `getCurrentUser` und `auth` mit React `cache()` merken (heute rund sieben gleiche Abfragen auf `/cert/[id]`).
+- [x] **R9a** `app/not-found.tsx` und `app/global-error.tsx` im App-Design.
+- [ ] **R9b** `loading.tsx` für Dashboard, Kurs, Lernsession und Firmenbereich. Erster Versuch (PR #215) zurückgenommen: Mit Ladegrenze standen Teile der Seite doppelt im DOM, einmal deutsch und einmal englisch (E2E `pause-session`, `unlock`). Ursache vermutlich ein Sprach-Unterschied zwischen Server und Client beim Hydrieren; erst den beheben, dann die Ladezustände wieder einbauen.
 - [ ] **R7** Bundle messen; KaTeX und Highlighting in `components/RichText.tsx` nur bei Bedarf laden, Markdown wo möglich auf dem Server rendern.
 - [ ] **R8** `output: "standalone"` im Image wirklich nutzen oder entfernen; `cloudflared` auf eine Version festlegen.
 - [ ] **R10** Ein Weg für Übersetzungen, dazu ein Test, der jeden Text auf Deutsch und Englisch verlangt.

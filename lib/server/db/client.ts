@@ -25,12 +25,40 @@ function activeScope(): TransactionScope | null {
   return scope?.open ? scope : null;
 }
 
+function envInt(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return process.env[name] !== undefined && process.env[name] !== "" && Number.isInteger(value) && value >= 0 ? value : fallback;
+}
+
+/**
+ * Pool-Einstellungen ausdrücklich statt der Voreinstellung von `postgres` (R3, Review vom 19.11.2026). Web-Anfragen,
+ * Kursgenerierung (parallele Lernziele) und Hintergrundläufe teilen sich den Pool. Eine hängende Abfrage soll nicht
+ * unbegrenzt eine Verbindung halten, und eine vergessene offene Transaktion keine Sperren.
+ * - DB_POOL_MAX (10): Verbindungen je Prozess. Postgres erlaubt standardmäßig 100.
+ * - DB_IDLE_TIMEOUT_S (60): ungenutzte Verbindungen schließen.
+ * - DB_STATEMENT_TIMEOUT_MS (60000, 0 = aus): Höchstdauer einer Abfrage.
+ * - DB_IDLE_IN_TRANSACTION_TIMEOUT_MS (60000, 0 = aus): offene Transaktion ohne Abfrage.
+ */
+export function poolOptions() {
+  const statementTimeout = envInt("DB_STATEMENT_TIMEOUT_MS", 60_000);
+  const idleInTransaction = envInt("DB_IDLE_IN_TRANSACTION_TIMEOUT_MS", 60_000);
+  return {
+    max: Math.max(1, envInt("DB_POOL_MAX", 10)),
+    idle_timeout: envInt("DB_IDLE_TIMEOUT_S", 60),
+    connect_timeout: 10,
+    connection: {
+      ...(statementTimeout > 0 ? { statement_timeout: statementTimeout } : {}),
+      ...(idleInTransaction > 0 ? { idle_in_transaction_session_timeout: idleInTransaction } : {}),
+    },
+  };
+}
+
 function baseDb(): Db {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL ist nicht gesetzt (siehe .env.example / .env.local).");
   }
   if (!client) {
-    client = drizzle(postgres(process.env.DATABASE_URL), { schema });
+    client = drizzle(postgres(process.env.DATABASE_URL, poolOptions()), { schema });
   }
   return client;
 }
