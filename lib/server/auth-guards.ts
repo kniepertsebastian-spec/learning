@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { cache } from "react";
+import type { Session } from "next-auth";
 import { forbidden, redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/server/auth";
-import { getDb } from "@/lib/server/db/client";
-import { users, type UserRole } from "@/lib/server/db/schema";
+import { type UserRole } from "@/lib/server/db/schema";
+import { loadAuthUserRow } from "@/lib/server/session-validity";
 
 export type SessionUser = { id: string; email: string; role: UserRole };
 
@@ -13,17 +14,15 @@ export type SessionUser = { id: string; email: string; role: UserRole };
  * `npm run user:set-role` script - see R0.2) takes effect on the very next
  * request instead of waiting for the session token to expire.
  */
-export async function getCurrentUser(): Promise<SessionUser | null> {
-  const session = await auth();
+async function userForSession(session: Session | null): Promise<SessionUser | null> {
   if (!session?.user?.id) return null;
-
-  const [user] = await getDb()
-    .select({ id: users.id, email: users.email, role: users.role })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  return user ?? null;
+  // Dieselbe, je Anfrage gemerkte Zeile wie im jwt-Callback (lib/server/session-validity.ts).
+  const row = await loadAuthUserRow(session.user.id);
+  return row ? { id: row.id, email: row.email, role: row.role } : null;
 }
+
+/** Einmal je Anfrage (React `cache`, R6); die Rolle kommt trotzdem bei jeder Anfrage frisch aus der Datenbank. */
+export const getCurrentUser = cache(async (): Promise<SessionUser | null> => userForSession(await auth()));
 
 /**
  * Guard for admin Server Components/Server Actions (R0.2): redirects
@@ -37,7 +36,7 @@ export async function requireAdminPage(fromPath?: string): Promise<SessionUser> 
     redirect(fromPath ? `/login?from=${encodeURIComponent(fromPath)}` : "/login");
   }
 
-  const user = await getCurrentUser();
+  const user = await userForSession(session);
   if (!user || user.role !== "admin") {
     forbidden();
   }
@@ -57,7 +56,7 @@ export async function requireAdminApi(): Promise<
     return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
 
-  const user = await getCurrentUser();
+  const user = await userForSession(session);
   if (!user || user.role !== "admin") {
     return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }

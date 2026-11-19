@@ -1,4 +1,6 @@
-import { monitorEventLoopDelay, type IntervalHistogram } from "node:perf_hooks";
+import { monitorEventLoopDelay } from "node:perf_hooks";
+
+type IntervalHistogram = ReturnType<typeof monitorEventLoopDelay>;
 
 /**
  * R3 (Review vom 19.11.2026): Die Kursgenerierung läuft im Web-Prozess, mit parallelen Lektionen und großem Kontext. Ob das

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { checkLoginRateLimit, clientIp } from "./auth-rate-limit";
@@ -11,7 +12,7 @@ import { consumeLoginTicket } from "./sso/service";
  * nötig (die wären nur für OAuth/DB-Sessions/Magic-Link erforderlich). Siehe
  * roadmap2.md Dev-Order Schritt 2.
  */
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuth = NextAuth({
   session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET,
   // Läuft hinter dem cloudflared-Tunnel (siehe docker-compose.yml), nicht hinter
@@ -74,3 +75,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+export const { handlers, signIn, signOut } = nextAuth;
+
+/**
+ * Die Sitzung, einmal je Anfrage gelesen (React `cache`, R6): Root-Layout, Kurs-Layout und Seite rufen `auth()` jeweils
+ * selbst auf, und jeder Aufruf führt den jwt-Callback samt Datenbankabfrage aus. Außerhalb des Renderns ruft `cache` durch.
+ */
+export const auth = cache(() => nextAuth.auth());
