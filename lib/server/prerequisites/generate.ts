@@ -6,7 +6,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured } from "@/lib/ai/generate";
-import { TAGGING_MODEL } from "@/lib/gemini";
+import { TAGGING_MODEL, thinkingLevelFor } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
 import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import { conceptPrerequisites, concepts } from "@/lib/server/db/schema";
@@ -42,7 +42,7 @@ const SYSTEM_PROMPT = [
 export function createPrerequisiteGenerator(client?: GoogleGenAI): PrerequisiteGenerator {
   return async (list) => {
     const user = list.map((c, i) => `${i}: ${c.name} (${c.topicArea})`).join("\n");
-    return (await generateStructured(SYSTEM_PROMPT, user, responseSchema, TAGGING_MODEL, undefined, client)).prerequisites;
+    return (await generateStructured(SYSTEM_PROMPT, user, responseSchema, TAGGING_MODEL, undefined, client, { thinkingLevel: thinkingLevelFor("tagging") })).prerequisites;
   };
 }
 

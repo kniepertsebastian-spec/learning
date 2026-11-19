@@ -1,5 +1,5 @@
 import type { GoogleGenAI, InlinedRequest } from "@google/genai";
-import { generationConfig } from "./generate";
+import { generationConfig, type GenerationOptions } from "./generate";
 
 /**
  * Dünne Hülle um die Gemini Batch API (Gemini Developer API, Anfragen inline): viele Anfragen in einem Auftrag, Google
@@ -62,14 +62,14 @@ export function splitIntoBatches(requests: BatchRequest[]): BatchRequest[][] {
 }
 
 /** Reicht die Anfragen als einen Auftrag ein und gibt dessen Namen zurück („batches/…“). */
-export async function submitBatch(client: BatchClient, model: string, requests: BatchRequest[], displayName: string): Promise<string> {
+export async function submitBatch(client: BatchClient, model: string, requests: BatchRequest[], displayName: string, options: GenerationOptions = {}): Promise<string> {
   if (requests.length === 0) throw new Error("Ein Batch braucht mindestens eine Anfrage.");
   const keys = new Set(requests.map((r) => r.key));
   if (keys.size !== requests.length) throw new Error("Die Schlüssel der Anfragen eines Batches müssen eindeutig sein.");
   const src: InlinedRequest[] = requests.map((r) => ({
     contents: r.user,
     metadata: { key: r.key },
-    config: generationConfig(r.system, model, r.jsonSchema),
+    config: generationConfig(r.system, model, r.jsonSchema, true, options),
   }));
   const job = await client.batches.create({ model, src, config: { displayName: displayName.slice(0, 120) } });
   if (!job.name) throw new Error("Gemini hat dem Batch keinen Namen zugewiesen.");

@@ -41,7 +41,7 @@ services:
 
       # Google Gemini API
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-4-hydrogen}
       # lib/gemini.ts liest diese beiden zusätzlich (CURRICULUM_MODEL und
       # LESSONS_MODEL fallen beide auf GEMINI_MODEL zurück, wenn nicht
       # gesetzt) - ohne Weiterleitung hier lässt sich das Lessons-Modell
@@ -53,6 +53,19 @@ services:
       GEMINI_TRANSLATION_MODEL: ${GEMINI_TRANSLATION_MODEL:-}
       # Übersetzung fertiger Kurse nach jeder Veröffentlichung (0 = aus).
       COURSE_AUTO_TRANSLATE: ${COURSE_AUTO_TRANSLATE:-}
+      COURSE_TRANSLATION_DO_NOT_TRANSLATE: ${COURSE_TRANSLATION_DO_NOT_TRANSLATE:-}
+      # Denkstufen je Schritt (low|medium|high|xhigh, leer = Vorgabe: Curriculum/Lektionen/Audit high, Übersetzung/Tagging low).
+      GEMINI_THINKING_CURRICULUM: ${GEMINI_THINKING_CURRICULUM:-}
+      GEMINI_THINKING_LESSONS: ${GEMINI_THINKING_LESSONS:-}
+      GEMINI_THINKING_AUDIT: ${GEMINI_THINKING_AUDIT:-}
+      GEMINI_THINKING_TRANSLATION: ${GEMINI_THINKING_TRANSLATION:-}
+      GEMINI_THINKING_TAGGING: ${GEMINI_THINKING_TAGGING:-}
+      # Kursgenerierung (docs/roadmaps/token-architektur.md): Quellenpaket oder Auszüge, Parallelität, Audit, Länge.
+      COURSE_GEN_CONTEXT_MODE: ${COURSE_GEN_CONTEXT_MODE:-}
+      COURSE_GEN_FULL_CONTEXT_MAX_CHARS: ${COURSE_GEN_FULL_CONTEXT_MAX_CHARS:-}
+      COURSE_GEN_CONCURRENCY: ${COURSE_GEN_CONCURRENCY:-}
+      COURSE_GEN_AUDIT: ${COURSE_GEN_AUDIT:-}
+      COURSE_GEN_SECTION_WORDS: ${COURSE_GEN_SECTION_WORDS:-}
       # Batch-Modus (1 = an): Konzept-Tagging über die Gemini Batch API (halber Preis, Antwort später). Siehe lib/ai/batch.ts.
       GEMINI_BATCH: ${GEMINI_BATCH:-}
       GEMINI_BATCH_PRICE_FACTOR: ${GEMINI_BATCH_PRICE_FACTOR:-}

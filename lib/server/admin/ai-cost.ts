@@ -12,11 +12,14 @@ import { aiCostEntries } from "@/lib/server/db/schema";
  * Eingebaute Preise je Million Token (USD) für bekannte Modelle, damit die Kosten auch ohne Einträge in der .env laufen.
  * gemini-3.8-flash: 0,75 / 3,75 (Standardpreis lt. Google-Auskunft, vom Betreiber im Oktober 2026 bestätigt; Einführungspreis,
  * soll ab 1.1.2027 steigen). Die Variablen in der .env haben immer Vorrang.
- * Aus dem Kontext-Cache gelesene Eingabe-Token kosten bei Gemini 10 % des Eingabepreises (gemini-3.8-flash: 0,075 statt
- * 0,75); überschreibbar mit GEMINI_CACHED_PROMPT_PRICE_FACTOR.
+ * gemini-4-hydrogen: 1,50 / 7,50 (Denk-Token zählen als Ausgabe), aus dem impliziten Cache gelesene Eingabe 0,075 = 5 %
+ * (Roadmap des Betreibers vom 19.11.2026, mit mehreren Preisübersichten abgeglichen; nach der ersten Rechnung prüfen).
+ * Aus dem Kontext-Cache gelesene Eingabe-Token kosten sonst 10 % des Eingabepreises (gemini-3.8-flash: 0,075 statt
+ * 0,75); GEMINI_CACHED_PROMPT_PRICE_FACTOR überschreibt den Faktor für alle Modelle.
  */
-const BUILT_IN_PRICES: Record<string, { prompt: number; completion: number }> = {
+const BUILT_IN_PRICES: Record<string, { prompt: number; completion: number; cachedFactor?: number }> = {
   "gemini-3.8-flash": { prompt: 0.75, completion: 3.75 },
+  "gemini-4-hydrogen": { prompt: 1.5, completion: 7.5, cachedFactor: 0.05 },
 };
 
 /**
@@ -66,12 +69,13 @@ export function batchPriceFactor(): number {
   return raw !== undefined && raw !== "" && Number.isFinite(value) && value > 0 && value <= 1 ? value : 0.5;
 }
 
-function cachedPriceFactor(): number {
+function cachedPriceFactor(model: string): number {
+  const fallback = BUILT_IN_PRICES[model]?.cachedFactor ?? 0.1;
   const raw = process.env.GEMINI_CACHED_PROMPT_PRICE_FACTOR;
   // Leer zählt als nicht gesetzt (docker-compose reicht die Variable leer durch); Number("") wäre 0 und machte Cache-Token gratis.
-  if (raw === undefined || raw.trim() === "") return 0.1;
+  if (raw === undefined || raw.trim() === "") return fallback;
   const value = Number(raw);
-  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0.1;
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : fallback;
 }
 
 /**
@@ -90,7 +94,7 @@ export function estimateCostUsd(
   const cached = Math.min(Math.max(cachedTokens, 0), promptTokens);
   const cost =
     ((promptTokens - cached) / 1_000_000) * prices.prompt +
-    (cached / 1_000_000) * prices.prompt * cachedPriceFactor() +
+    (cached / 1_000_000) * prices.prompt * cachedPriceFactor(model) +
     (completionTokens / 1_000_000) * prices.completion;
   return options.batch ? cost * batchPriceFactor() : cost;
 }

@@ -1,6 +1,6 @@
 import { z, type ZodType } from "zod";
-import { GoogleGenAI } from "@google/genai";
-import { getGeminiClient } from "@/lib/gemini";
+import { GoogleGenAI, type ThinkingLevel } from "@google/genai";
+import { DEFAULT_GEMINI_MODEL, getGeminiClient, usesThinkingLevels, type ThinkingLevelName } from "@/lib/gemini";
 import { recordAiUsage } from "@/lib/server/admin/ai-ledger";
 
 export class AIGenerationError extends Error {
@@ -281,24 +281,39 @@ function sleep(ms: number): Promise<void> {
   return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 }
 
+/** Zusätzliche Angaben je Anfrage. */
+export interface GenerationOptions {
+  /**
+   * Denkstufe für Modelle mit Denkstufen (Gemini 4, siehe usesThinkingLevels). Ohne Angabe gilt die Vorgabe des Modells
+   * (`high`). Ältere Modelle ignorieren die Angabe und laufen wie bisher ohne Denken (thinkingBudget 0).
+   */
+  thinkingLevel?: ThinkingLevelName;
+}
+
+/**
+ * Denk-Einstellung einer Anfrage. Gemini 4: `thinkingLevel` (ein `thinkingBudget` beantwortet es mit HTTP 400). Das SDK
+ * kennt `XHIGH` noch nicht als Enum-Wert, die API nimmt den Wert trotzdem an; deshalb als Text.
+ */
+function thinkingConfigFor(model: string, thinkingLevel?: ThinkingLevelName) {
+  if (!usesThinkingLevels(model)) return { thinkingBudget: 0 };
+  return thinkingLevel ? { thinkingLevel: thinkingLevel.toUpperCase() as ThinkingLevel } : undefined;
+}
+
 /**
  * Die Erzeugungs-Einstellungen einer Anfrage (ohne Zeitlimit): Systemprompt, niedrige Temperatur, JSON-Antwort, Antwortschema,
- * Ausgabe-Limit und Denkbudget 0, sofern das Modell sie annimmt. Der Live-Aufruf (`requestJson`) und der Batch-Aufruf
+ * Ausgabe-Limit und Denk-Einstellung, sofern das Modell sie annimmt. Der Live-Aufruf (`requestJson`) und der Batch-Aufruf
  * (lib/ai/batch.ts) nutzen dieselbe Funktion, damit beide gleich antworten.
  */
-export function generationConfig(systemPrompt: string, model: string, jsonSchema?: Record<string, unknown>, useSchema = true) {
+export function generationConfig(systemPrompt: string, model: string, jsonSchema?: Record<string, unknown>, useSchema = true, options: GenerationOptions = {}) {
+  const thinkingConfig = thinkingConfigFor(model || DEFAULT_GEMINI_MODEL, options.thinkingLevel);
   return {
     systemInstruction: systemPrompt,
+    // Gemini 4 ignoriert die Temperatur (laut Modellseite); ältere Modelle antworten damit gleichmäßiger.
     temperature: 0.1,
-    // gemini-2.5-flash erlaubt laut Google-Doku max. 65536 Output-Tokens
-    // pro Antwort - das ist das tatsächliche Modell-Limit, keine
-    // willkürliche Schätzung. Bei Claude hat eine zu knappe Grenze
-    // (16000) nachweislich zu mitten im JSON abgeschnittenen Antworten
-    // geführt (siehe Git-Historie); da Gemini 2.5 Flash pro Mio. Token
-    // günstig ist, lohnt sich hier kein Sparen am Limit - volles
-    // Modell-Maximum ausschöpfen, um dasselbe Trunkierungsproblem
-    // sicher zu vermeiden.
-    ...(modelsWithoutLimits.has(model || "gemini-3.8-flash") ? {} : { maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: 0 } }),
+    // 65536 ist das Ausgabe-Limit je Antwort (gemini-2.5/3.x-flash, Gemini 4 Hydrogen je „foreground segment“). Eine zu
+    // knappe Grenze hat nachweislich zu mitten im JSON abgeschnittenen Antworten geführt (siehe Git-Historie). Bei Gemini 4
+    // zählen die Denk-Token mit hinein.
+    ...(modelsWithoutLimits.has(model || DEFAULT_GEMINI_MODEL) ? {} : { maxOutputTokens: 65536, ...(thinkingConfig ? { thinkingConfig } : {}) }),
     responseMimeType: "application/json",
     ...(useSchema && jsonSchema && !rejectedSchemas.has(schemaKey(jsonSchema)) ? { responseJsonSchema: jsonSchema } : {}),
   };
@@ -313,6 +328,7 @@ export async function requestJson(
   clientOverride?: GoogleGenAI,
   /** Antwortschema (siehe toGeminiJsonSchema): Gemini hält sich beim Erzeugen daran. */
   jsonSchema?: Record<string, unknown>,
+  options: GenerationOptions = {},
 ): Promise<string> {
   const client = clientOverride ?? getGeminiClient();
   // Vorübergehende Fehler (429/503, Netzwerk, Zeitüberschreitung, leere Antwort) mit wachsender Pause wiederholen,
@@ -320,17 +336,17 @@ export async function requestJson(
   const maxAttempts = transientAttempts();
 
   let useSchema = Boolean(jsonSchema) && !rejectedSchemas.has(schemaKey(jsonSchema!));
-  const modelKey = model || "gemini-3.8-flash";
+  const modelKey = model || DEFAULT_GEMINI_MODEL;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const response = await client.models.generateContent({
-        model: model || "gemini-3.8-flash",
+        model: modelKey,
         // Systemprompt als systemInstruction statt vorn an den Text geklebt: er steht so immer am Anfang der Anfrage,
         // und Geminis implizites Caching kann den gleichbleibenden Anfang (Systemprompt, ggf. gemeinsame Quelle)
         // über alle Lernziele eines Kurses zum Cache-Preis abrechnen.
         contents: userPrompt,
         config: {
-          ...generationConfig(systemPrompt, model, jsonSchema, useSchema),
+          ...generationConfig(systemPrompt, model, jsonSchema, useSchema, options),
           // Ohne Zeitlimit kann eine hängende Verbindung den ganzen Kurslauf für Stunden blockieren.
           abortSignal: AbortSignal.timeout(requestTimeoutMs()),
         },
@@ -411,9 +427,10 @@ export async function generateStructured<T>(
   model: string,
   onUsage?: (usage: AIUsage) => void,
   clientOverride?: GoogleGenAI,
+  options: GenerationOptions = {},
 ): Promise<T> {
   const jsonSchema = toGeminiJsonSchema(schema);
-  let rawText = await requestJson(systemPrompt, userPrompt, model, onUsage, clientOverride, jsonSchema);
+  let rawText = await requestJson(systemPrompt, userPrompt, model, onUsage, clientOverride, jsonSchema, options);
 
   // Seit Gemini das Antwortschema beim Erzeugen erzwingt (responseJsonSchema), sind JSON-Syntaxfehler selten. Ein
   // Korrekturversuch reicht; jeder weitere schickt die komplette alte Antwort samt Anfrage erneut (teuer). Inhaltliche
@@ -434,6 +451,7 @@ export async function generateStructured<T>(
         onUsage,
         clientOverride,
         jsonSchema,
+        options,
       );
       continue;
     }
@@ -453,6 +471,7 @@ export async function generateStructured<T>(
       onUsage,
       clientOverride,
       jsonSchema,
+      options,
     );
   }
 

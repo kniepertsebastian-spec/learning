@@ -1,5 +1,5 @@
 import { and, eq, inArray, type InferSelectModel } from "drizzle-orm";
-import { getGeminiClient, TAGGING_MODEL } from "@/lib/gemini";
+import { getGeminiClient, TAGGING_MODEL, thinkingLevelFor } from "@/lib/gemini";
 import { parseStructuredText } from "@/lib/ai/generate";
 import { splitIntoBatches, submitBatch, type BatchClient, type BatchResult } from "@/lib/ai/batch";
 import { recordAiUsage, withAiCost } from "@/lib/server/admin/ai-ledger";
@@ -64,7 +64,7 @@ export async function submitTaggingBatch(certificationId: string, client: BatchC
   });
   let jobs = 0;
   for (const group of splitIntoBatches(requests)) {
-    const geminiName = await submitBatch(client, TAGGING_MODEL, group, `tagging-${certificationId.slice(0, 8)}`);
+    const geminiName = await submitBatch(client, TAGGING_MODEL, group, `tagging-${certificationId.slice(0, 8)}`, { thinkingLevel: thinkingLevelFor("tagging") });
     await getDb()
       .insert(geminiBatchJobs)
       .values({
