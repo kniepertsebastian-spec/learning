@@ -5,7 +5,7 @@ config({ path: ".env.local", override: true });
 import { auditExamAttempts, type Range } from "../lib/server/exam/attempt-audit";
 
 /**
- * Aufgabe 05b (docs/roadmaps/review-2026-11-12/05b-pruefung-bestehende-versuche.md): bestandene Prüfungsversuche aus der Zeit
+ * Aufgabe 05b (docs/roadmaps/archiv/review-2026-11-12/05b-pruefung-bestehende-versuche.md): bestandene Prüfungsversuche aus der Zeit
  * vor der serverseitigen Prüfung nachrechnen. Liest nur, ändert nichts. Gibt nur Anzahlen und Zeiträume aus, keine Personen.
  *
  * Usage: npm run exams:audit-attempts

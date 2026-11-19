@@ -5,7 +5,7 @@ import type { Rate, RecallBand } from "@/lib/psrp/impact-report";
 import type { ImpactReport } from "@/lib/server/psrp/impact";
 import type { Locale } from "@/lib/types";
 
-/** Wirkungsbericht (docs/roadmaps/roadmap_didaktik.md, Phase 7) für Admins: reine Anzeige der Zahlen aus lib/server/psrp/impact.ts. */
+/** Wirkungsbericht (docs/roadmaps/archiv/roadmap_didaktik.md, Phase 7) für Admins: reine Anzeige der Zahlen aus lib/server/psrp/impact.ts. */
 export function ImpactReportPanel({ report, locale }: { report: ImpactReport; locale: Locale }) {
   const tx = c_adminImpactPage(locale) as Record<string, string>;
   const nf = new Intl.NumberFormat(locale === "de" ? "de-DE" : "en-GB", { maximumFractionDigits: 1 });

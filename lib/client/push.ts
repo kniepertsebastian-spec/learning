@@ -1,7 +1,7 @@
 import { urlBase64ToUint8Array } from "@/lib/pwa/vapid-key";
 
 /**
- * Web Push im Browser (docs/roadmaps/roadmap_pwa.md, Phase 6). Nichts hier fragt von selbst nach einer Berechtigung: `enablePush`
+ * Web Push im Browser (docs/roadmaps/archiv/roadmap_pwa.md, Phase 6). Nichts hier fragt von selbst nach einer Berechtigung: `enablePush`
  * läuft nur als Antwort auf den Klick „Auf diesem Gerät benachrichtigen“ in den Einstellungen.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Tastenkürzel im Quiz und in der Prüfung (docs/roadmaps/ROADMAP-UI.md U4): A–D bzw. 1–4 wählen, Enter weiter/bestätigen,
+ * Tastenkürzel im Quiz und in der Prüfung (docs/roadmaps/archiv/ROADMAP-UI.md U4): A–D bzw. 1–4 wählen, Enter weiter/bestätigen,
  * F markieren, Esc schließen. Aktiv nur, wenn kein Eingabefeld fokussiert ist, keine IME-Komposition läuft und
  * keine Strg-/Alt-/Meta-Taste gedrückt wird.
  */

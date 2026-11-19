@@ -11,7 +11,7 @@ const nf = (locale: Locale, value: number) => new Intl.NumberFormat(locale === "
 const day = (date: Date, locale: Locale) => date.toLocaleDateString(locale === "de" ? "de-DE" : "en-GB", { timeZone: "UTC" });
 
 /**
- * Qualität im Betrieb für Admins (docs/roadmaps/roadmap_pruefer.md, Phase 6): Kennzahlen je Prüfer im Vergleich zum Durchschnitt, Wiedervorlage und die
+ * Qualität im Betrieb für Admins (docs/roadmaps/archiv/roadmap_pruefer.md, Phase 6): Kennzahlen je Prüfer im Vergleich zum Durchschnitt, Wiedervorlage und die
  * Abweichungen der Zweitprüfung. Reine Anzeige; die Daten kommen aus lib/server/reviewers/quality.ts und second-review.ts. Nur auf der Admin-Seite eingebunden.
  */
 export function ReviewerQualityPanel({ report, second, locale }: { report: QualityReport; second: SecondReviewOverview; locale: Locale }) {

@@ -19,7 +19,7 @@ import { getWeaknessRadar } from "@/lib/server/weakness/radar";
 const MAX_TOPICS = 100;
 
 /**
- * „Meine Schwachstellen“ (docs/roadmaps/ROADMAP-UI.md, Später): alle Themen eines Kurses, bei denen die letzte Antwort in den
+ * „Meine Schwachstellen“ (docs/roadmaps/archiv/ROADMAP-UI.md, Später): alle Themen eines Kurses, bei denen die letzte Antwort in den
  * „Sitzt das?“-Quizzes falsch war, mit einem Klick auf die gezielte Übung. Die Sichtbarkeit des Kurses prüft das Layout von /cert/[id].
  */
 export default async function WeaknessesPage({ params }: { params: Promise<{ id: string }> }) {

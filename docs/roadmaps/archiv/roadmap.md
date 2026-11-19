@@ -453,7 +453,7 @@ Bereits umgesetzt:
 - Eingaben werden durchgängig mit Zod an den Servergrenzen validiert.
 - Sichere Uploadverarbeitung (PDF-Signaturprüfung, Checksummen-Dedup, `lib/server/admin/sources.ts`).
 - Kostenpflichtige/inhalts- und rollenändernde Aktionen sind auditierbar protokolliert: neue `audit_events`-Tabelle (append-only, `lib/server/audit/service.ts`), verdrahtet in Content-Generierung-Start, Blueprint-Extraktion-Start, Quellenfreigabe sowie den CLI-Skripten für Rollenänderung und Zertifizierungsanlage (letztere laufen mit direkter DB-Verbindung statt eingeloggter Session, daher `actorType: "cli"`).
-- Backup- und Wiederanlaufverfahren dokumentiert: [docs/BACKUP.md](../BACKUP.md) (logisches Postgres-Backup per `pg_dump`/`pg_restore`, Volume-Backup der hochgeladenen Quell-PDFs, Restore-Checkliste).
+- Backup- und Wiederanlaufverfahren dokumentiert: [docs/BACKUP.md](../../BACKUP.md) (logisches Postgres-Backup per `pg_dump`/`pg_restore`, Volume-Backup der hochgeladenen Quell-PDFs, Restore-Checkliste).
 
 R0 ist damit vollständig geschlossen.
 

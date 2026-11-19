@@ -151,7 +151,7 @@ Basis: **shadcn/ui** (MIT, Code liegt im Repo, Radix-Primitives darunter) – nu
 
 ### Gate U1
 
-**Stand: erfüllt (geprüft).** Geprüft: `tsc`, `eslint`, 605 Tests, `next build`; `/admin/ui` in Dunkel/Hell bei 1280 und 390 px ohne horizontales Scrollen, Fokusring per Tab sichtbar, Dialog/Sheet/Menü/Toast öffnen unter der CSP ohne Konsolenfehler; Kontrast: `npm run check:contrast` (68 Paare, Ergebnis in [UI-KONTRAST.md](../UI-KONTRAST.md)); Rohfarben-Ratchet: `npm run lint:ui` (Bestand 315 Treffer in 56 Dateien, darf nur sinken, Abbau mit U2–U9). Nicht geprüft: echte Screenreader.
+**Stand: erfüllt (geprüft).** Geprüft: `tsc`, `eslint`, 605 Tests, `next build`; `/admin/ui` in Dunkel/Hell bei 1280 und 390 px ohne horizontales Scrollen, Fokusring per Tab sichtbar, Dialog/Sheet/Menü/Toast öffnen unter der CSP ohne Konsolenfehler; Kontrast: `npm run check:contrast` (68 Paare, Ergebnis in [UI-KONTRAST.md](../../UI-KONTRAST.md)); Rohfarben-Ratchet: `npm run lint:ui` (Bestand 315 Treffer in 56 Dateien, darf nur sinken, Abbau mit U2–U9). Nicht geprüft: echte Screenreader.
 
 - Alle Komponenten existieren, nutzen nur Tokens und sind auf der Übersichtsseite in hell/dunkel geprüft.
 - Kontrast aller Textstufen auf `bg`, `surface`, `surface-2` gemessen und dokumentiert.

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 /**
- * Zweitprüfung als Stichprobe (docs/roadmaps/roadmap_pruefer.md, Phase 6): reine Auswahlregeln. Die Auswahl hängt nur von der Freigabe und
+ * Zweitprüfung als Stichprobe (docs/roadmaps/archiv/roadmap_pruefer.md, Phase 6): reine Auswahlregeln. Die Auswahl hängt nur von der Freigabe und
  * den Fragen ab (kein Zufall zur Laufzeit), damit ein zweiter Aufruf dieselben Fragen trifft.
  */
 

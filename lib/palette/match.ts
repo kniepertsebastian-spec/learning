@@ -1,5 +1,5 @@
 /**
- * Command-Palette (⌘K, docs/roadmaps/ROADMAP-UI.md „Später“): reine Such-Hilfen ohne Datenbank und Browser. Die Suche in der
+ * Command-Palette (⌘K, docs/roadmaps/archiv/ROADMAP-UI.md „Später“): reine Such-Hilfen ohne Datenbank und Browser. Die Suche in der
  * Datenbank steht in lib/server/palette/search.ts, die Oberfläche in components/shell/CommandPalette.tsx.
  */
 

@@ -134,7 +134,7 @@ self.addEventListener("sync", ((event: SyncLikeEvent) => {
   );
 }) as EventListener);
 
-// Web Push (docs/roadmaps/roadmap_pwa.md, Phase 6): Nachrichten des Servers anzeigen und beim Antippen die App öffnen. Ein Abo gibt es
+// Web Push (docs/roadmaps/archiv/roadmap_pwa.md, Phase 6): Nachrichten des Servers anzeigen und beim Antippen die App öffnen. Ein Abo gibt es
 // nur, wenn die Person es in den Einstellungen selbst eingeschaltet hat (components/PushSettings.tsx). Der Inhalt wird geprüft
 // (lib/pwa/push-payload.ts); das Ziel ist immer ein Pfad der eigenen App.
 self.addEventListener("push", (event) => {

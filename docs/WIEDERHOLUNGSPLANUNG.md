@@ -1,6 +1,6 @@
 # Wiederholungsplanung (PSRP-HR): Betrieb
 
-Die Wiederholungen werden mit FSRS geplant (`lib/server/psrp/`, Umsetzungsstand in `docs/roadmaps/roadmap_psrp_hr.md`). Für den Betrieb zählen drei Skripte.
+Die Wiederholungen werden mit FSRS geplant (`lib/server/psrp/`, Umsetzungsstand in `docs/roadmaps/archiv/roadmap_psrp_hr.md`). Für den Betrieb zählen drei Skripte.
 
 ## Persönliche Parameter fitten (wöchentlich)
 

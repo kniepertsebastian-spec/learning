@@ -4,7 +4,7 @@ import { flagRows, readinessCalibration, recallEvaluation, understandingSummary 
 import { baselineSource, exportMetrics } from "./metrics";
 
 /**
- * Wirkungsbericht für Admins (docs/roadmaps/roadmap_didaktik.md, Phase 7): beschreibend, aus den vorhandenen Messwerten (`exportMetrics`, die auch
+ * Wirkungsbericht für Admins (docs/roadmaps/archiv/roadmap_didaktik.md, Phase 7): beschreibend, aus den vorhandenen Messwerten (`exportMetrics`, die auch
  * `npm run psrp:metrics` ausgibt) und dem Verstehens-Modus (`concept_struggle`). Verändert nichts; Entscheidungen bleiben Menschen vorbehalten.
  */
 export async function getImpactReport(asOf: Date = new Date()) {
