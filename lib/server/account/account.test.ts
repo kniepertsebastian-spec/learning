@@ -52,6 +52,7 @@ import { changePassword } from "./password";
 import { deleteAccount, deletionConfirmationMode, FRESH_LOGIN_MS } from "./delete";
 import { exportAccountData } from "./export";
 import { isSessionTokenValid } from "@/lib/server/session-validity";
+import { endAllSessions } from "@/lib/server/account/sessions";
 
 const run = TEST_DB ? describe : describe.skip;
 const PASSWORD = "Altes-passwort-1";
@@ -265,6 +266,18 @@ run("Self-Service: Passwort, Löschen, Export (echte DB)", () => {
       expect(await isSessionTokenValid(id, 0)).toBe(false); // altes Token nach Passwortwechsel
       expect(await isSessionTokenValid(id, 1)).toBe(true);
       expect(await isSessionTokenValid(randomUUID(), 0)).toBe(false); // unbekannter Nutzer
+    });
+
+    it("ein Token von vor dem Abmelden gilt danach nicht mehr, auf keinem Gerät (Aufgabe 20)", async () => {
+      const id = await makeUser("logout");
+      const [{ sessionVersion: before }] = await getDb()
+        .select({ sessionVersion: users.sessionVersion })
+        .from(users)
+        .where(eq(users.id, id));
+      expect(await isSessionTokenValid(id, before)).toBe(true);
+      await endAllSessions(id);
+      expect(await isSessionTokenValid(id, before)).toBe(false);
+      expect(await isSessionTokenValid(id, before + 1)).toBe(true); // nur eine neue Anmeldung gilt
     });
   });
 

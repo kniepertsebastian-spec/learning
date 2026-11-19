@@ -49,7 +49,10 @@ export function UserMenu({ user }: { user: ShellUser }) {
           </DropdownMenuCheckItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled={isPending} onSelect={signOut} data-testid="header-logout"><LogOut className="h-4 w-4" aria-hidden="true" />{t.shell.signOut}</DropdownMenuItem>
+        <DropdownMenuItem disabled={isPending} onSelect={signOut} data-testid="header-logout"><LogOut className="h-4 w-4" aria-hidden="true" />
+          {/* Abmelden beendet alle Sitzungen (Aufgabe 20) - das soll die Person vorher sehen. */}
+          <span className="flex flex-col"><span>{t.shell.signOut}</span><span className="text-xs text-faint">{t.shell.signOutHint}</span></span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
