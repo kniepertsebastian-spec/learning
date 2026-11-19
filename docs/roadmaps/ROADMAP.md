@@ -1,6 +1,6 @@
 # Roadmap: was noch offen ist
 
-> **Stand 19.11.2026.** Die eine aktuelle Roadmap. Sie ersetzt die Sammelroadmap vom 05.11.2026 und die Einzel-Roadmaps, die jetzt unter [`archiv/`](archiv/README.md) liegen. Dort stehen Begründungen, Prüfnachweise und Einzelheiten zu jedem Punkt; die Quelle steht in Klammern.
+> **Stand 19.11.2026.** Die eine aktuelle Roadmap. Neu: die Befunde aus dem [Review vom 19.11.2026](review-2026-11-19.md) (Abschnitt 1a und 2a, Nummern R1 bis R13). Sie ersetzt die Sammelroadmap vom 05.11.2026 und die Einzel-Roadmaps, die jetzt unter [`archiv/`](archiv/README.md) liegen. Dort stehen Begründungen, Prüfnachweise und Einzelheiten zu jedem Punkt; die Quelle steht in Klammern.
 >
 > Neue Punkte kommen hierher, erledigte werden hier abgehakt und beim nächsten Aufräumen entfernt. Die Archivdateien werden nicht mehr gepflegt.
 >
@@ -11,7 +11,22 @@
 ## 1. In Arbeit
 
 - [x] **Logout macht das Token nicht ungültig** (`archiv/review-2026-11-12/20-logout-sitzungen.md`, Befund 10). Entschieden am 19.11.2026: Abmelden gilt auf allen Geräten (`sessionVersion` steigt, Hinweis im Benutzermenü). Test: Token von vor dem Abmelden wird abgelehnt (PR #212).
-- [ ] **Dependabot-PR #210** (14 Minor- und Patch-Updates). Prüfen und mergen.
+- [x] **Dependabot-PR #210** (14 Minor- und Patch-Updates). Am 19.11.2026 gemergt, CI grün.
+
+## 1a. Aus dem Review vom 19.11.2026: vor dem ersten echten Kurslauf
+
+Begründung und Nachweise je Punkt in [`review-2026-11-19.md`](review-2026-11-19.md).
+
+- [ ] **R1** Gemini-Antworten: `finishReason` auswerten. `MAX_TOKENS` als eigener Fehler statt Reparaturversuch, `SAFETY`/`RECITATION` ohne bezahlte Wiederholungen (`lib/ai/generate.ts`).
+- [ ] **R2** Kein stiller, prozessweiter Wegfall von `maxOutputTokens` und Denkbudget nach einem allgemeinen „invalid argument“ (`modelsWithoutLimits`); den Wechsel im Auftrag anzeigen.
+- [ ] **Erster echter Lauf der neuen Kursgenerierung (PR #213)** mit kleinem Kurs und niedrigem Kostenlimit: `USAGE`-Zeilen und `finishReason` mitschreiben, Kosten mit der Google-Abrechnung abgleichen, dabei R3 beobachten.
+
+## 2a. Aus dem Review vom 19.11.2026: Betrieb
+
+- [ ] **R3** Kursgenerierung im Web-Prozess: beim ersten Lauf Antwortzeit und Speicher messen; bei Bedarf eigener Worker-Container aus demselben Image. Datenbank-Pool ausdrücklich setzen (`max`, `idle_timeout`, `statement_timeout`).
+- [ ] **R4** Wiederkehrende Jobs (`reactivation:run`, `reviewers:remind`, `mandatory:run`, `push:remind`, `exams:remind`, `fsrs:optimize`): auf der VM prüfen, was eingerichtet ist; als systemd-Timer nach `deploy/` und im Monitor melden, wenn ein Lauf zu alt ist.
+- [ ] **R5** Fehler sichtbar machen: `onRequestError` in `instrumentation.ts`, Fehler als JSON-Zeile; Monitor zusätzlich für fehlgeschlagene Kursgenerierungen, KI-Budget über 80 % und 5xx.
+- [ ] **R13** Branch-Schutz: CI muss vor dem Merge grün sein (`main` war nach #208 rot). Lint und Unit-Tests als eigener schneller Job.
 
 ## 2. Vor dem Pilot
 
@@ -72,6 +87,18 @@
 - [ ] Wer bezahlt die Prüfer der allgemeinen Kurse, und wie viele Kurse je Prüfer sind realistisch.
 - [ ] Auswahlverfahren für den externen Prüf-Dienstleister schriftlich festlegen.
 
+## 4a. Aus dem Review vom 19.11.2026: Qualität, Performance, UX
+
+Keine Pilot-Blocker, aber vor dem ersten Firmenkunden sinnvoll. Einzelheiten in [`review-2026-11-19.md`](review-2026-11-19.md).
+
+- [ ] **R6** Nutzer je Anfrage nur einmal laden: `getCurrentUser` und `auth` mit React `cache()` merken (heute rund sieben gleiche Abfragen auf `/cert/[id]`).
+- [ ] **R9** `app/not-found.tsx` und `app/global-error.tsx` im App-Design; `loading.tsx` für Dashboard, Kurs, Lernsession und Firmenbereich.
+- [ ] **R7** Bundle messen; KaTeX und Highlighting in `components/RichText.tsx` nur bei Bedarf laden, Markdown wo möglich auf dem Server rendern.
+- [ ] **R8** `output: "standalone"` im Image wirklich nutzen oder entfernen; `cloudflared` auf eine Version festlegen.
+- [ ] **R10** Ein Weg für Übersetzungen, dazu ein Test, der jeden Text auf Deutsch und Englisch verlangt.
+- [ ] **R11** `npm run test:db` mit Wegwerf-Postgres für die 101 Datenbank-Testdateien; Logik aus `StudySession.tsx` und `CourseGenerationPanel.tsx` in testbare Funktionen ziehen; einmal Abdeckung messen; `vitest.config.ts` auf `oxc` umstellen.
+- [ ] **R12** `lib/server/db/schema.ts` nach Bereichen aufteilen; `session-service.ts` und `worker.ts` beim nächsten größeren Umbau zerlegen.
+
 ## 5. Messen und auswerten (ab Echtdaten)
 
 Regeln für alle Messwerte stehen in [`docs/MESSEN.md`](../MESSEN.md).
@@ -109,7 +136,7 @@ Regeln für alle Messwerte stehen in [`docs/MESSEN.md`](../MESSEN.md).
 
 Diese Punkte stehen in den archivierten Dateien noch als offen, `main` erfüllt sie aber. Sie zählen hier nicht mehr.
 
-- `output: "standalone"` im Image (`next.config.ts`). War in `ROADMAP-TECHNISCH.md` und der Sammelroadmap offen.
+- `output: "standalone"` in `next.config.ts`. War in `ROADMAP-TECHNISCH.md` und der Sammelroadmap offen. Achtung: Das `Dockerfile` nutzt es noch nicht (R8 in Abschnitt 4a).
 - Generische Fehlertexte der Admin-Routen `sources/[id]/blueprint` und `parse` (Aufgabe 11, Test `app/api/admin/sources/error-texts.test.ts`).
 - Fast alle Aufgaben aus dem Review vom 12.11.2026 (02 bis 18, 21a, 21b): in den Einzeldateien abgehakt, in `roadmap_review_messung.md` nicht nachgetragen.
 - Oberfläche aus der Sammelroadmap: Command-Palette, „Meine Schwachstellen“, Katalog-Gruppen, Skill-Abdeckung je Team (Commits vom 05.11.2026).
