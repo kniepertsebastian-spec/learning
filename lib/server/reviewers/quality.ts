@@ -4,7 +4,7 @@ import { certificationSources, certifications, contentReports, courseApprovals, 
 import { isNoticeable, per100, QUALITY_METRICS, qualityFactor, ratioToAverage, type QualityMetric } from "@/lib/reviewers/quality";
 
 /**
- * Qualität im Betrieb (docs/roadmaps/roadmap_pruefer.md, Phase 6), nur für Admins: je Prüfer und Freigabe, wie oft Lernende die geprüften Fragen
+ * Qualität im Betrieb (docs/roadmaps/archiv/roadmap_pruefer.md, Phase 6), nur für Admins: je Prüfer und Freigabe, wie oft Lernende die geprüften Fragen
  * danach gemeldet haben, im Vergleich zum Durchschnitt aller Freigaben. Dazu die Wiedervorlage: Freigaben, nach denen eine neue Ausgabe einer Quelle
  * dazukam. Nichts davon ist für Prüfer oder die Öffentlichkeit gedacht und nichts löst von selbst eine Folge aus.
  */

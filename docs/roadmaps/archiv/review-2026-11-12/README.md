@@ -2,7 +2,7 @@
 
 Jede Datei in diesem Ordner ist eine Aufgabe oder ein Thema aus `../roadmap_review_messung.md`. Der Ordner ersetzt die Sammelliste nicht. Er teilt sie auf, damit jede Aufgabe einzeln geplant, umgesetzt und abgehakt werden kann.
 
-Grundlage ist `../../PWA-REVIEW-2026-11-12.md`, ergänzt um eine Nachprüfung der Prüfungsabgabe (Aufgabe 05).
+Grundlage ist `../PWA-REVIEW-2026-11-12.md`, ergänzt um eine Nachprüfung der Prüfungsabgabe (Aufgabe 05).
 
 ## Regeln für alle Messwerte (aus der Sammelroadmap, gelten für 12 bis 19)
 1. Nur messen, was eine Entscheidung ändert. Jeder Messwert nennt vorab, was die App damit tut.

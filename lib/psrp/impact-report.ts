@@ -1,7 +1,7 @@
 import { forgettingCurve, FSRS6_DEFAULT_WEIGHTS } from "ts-fsrs/models/fsrs-6";
 
 /**
- * Wirkung messen (docs/roadmaps/roadmap_didaktik.md, Phase 7): ein beschreibender Bericht aus den vorhandenen Messwerten (`exportMetrics`,
+ * Wirkung messen (docs/roadmaps/archiv/roadmap_didaktik.md, Phase 7): ein beschreibender Bericht aus den vorhandenen Messwerten (`exportMetrics`,
  * `concept_struggle`). Reine Rechnung ohne Datenbank. Der Bericht nennt Zahlen und ihre Menge, er ändert nichts von selbst: weder Schwellen
  * noch Planung. Gruppen unter MIN_GROUP zeigen nur ihre Anzahl, keine Quote (zu klein, um etwas zu sagen).
  */

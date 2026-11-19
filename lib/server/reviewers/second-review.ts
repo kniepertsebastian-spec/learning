@@ -6,7 +6,7 @@ import { certifications, courseApprovals, courseReviewers, questionOptions, ques
 import type { ReviewQuestion } from "./course-view";
 
 /**
- * Zweitprüfung als Stichprobe (docs/roadmaps/roadmap_pruefer.md, Phase 6): bei jeder Freigabe wird ein Anteil der Fragen einem zweiten Prüfer
+ * Zweitprüfung als Stichprobe (docs/roadmaps/archiv/roadmap_pruefer.md, Phase 6): bei jeder Freigabe wird ein Anteil der Fragen einem zweiten Prüfer
  * des Kurses vorgelegt. Er sieht Frage, Lösung und Erklärung und urteilt „stimmt“ oder „stimmt nicht“ (mit Begründung). Abweichungen landen beim Admin,
  * eine automatische Folge gibt es nicht. Die Auswahl steht in lib/reviewers/second-review.ts.
  */

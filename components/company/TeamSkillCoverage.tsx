@@ -5,7 +5,7 @@ import type { SkillCoverage } from "@/lib/company/skill-coverage";
 import type { Locale } from "@/lib/types";
 
 /**
- * Skill-Abdeckung je Team, nur aggregiert (docs/roadmaps/ROADMAP-UI.md, Später). Keine Namen, keine Prozentwerte, keine Reihenfolge nach Zahl:
+ * Skill-Abdeckung je Team, nur aggregiert (docs/roadmaps/archiv/ROADMAP-UI.md, Später). Keine Namen, keine Prozentwerte, keine Reihenfolge nach Zahl:
  * „3 von 5“ je Zertifikat und Team. Die Zahlen liefert getTeamSkillCoverage (nur Freigegebenes der eigenen Firma).
  */
 export function TeamSkillCoverage({ coverage, locale }: { coverage: SkillCoverage; locale: Locale }) {

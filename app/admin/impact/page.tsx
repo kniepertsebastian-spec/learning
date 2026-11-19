@@ -8,7 +8,7 @@ import { requireAdminPage } from "@/lib/server/auth-guards";
 import { getServerLocale } from "@/lib/server/locale";
 import { getImpactReport } from "@/lib/server/psrp/impact";
 
-/** Wirkung messen (docs/roadmaps/roadmap_didaktik.md, Phase 7): beschreibender Bericht für Admins, ohne automatische Folgen. */
+/** Wirkung messen (docs/roadmaps/archiv/roadmap_didaktik.md, Phase 7): beschreibender Bericht für Admins, ohne automatische Folgen. */
 export default async function AdminImpactPage() {
   await requireAdminPage("/admin/impact");
   const locale = await getServerLocale();

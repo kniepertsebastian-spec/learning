@@ -34,7 +34,7 @@ import { syncAssignmentStatus } from "../lib/server/assignments/sync";
 import { CURRICULUM_MODEL } from "../lib/gemini";
 
 /**
- * Gate 3 (docs/roadmaps/ROADMAP-TECHNISCH.md): die Testfirma durchläuft einmal alles.
+ * Gate 3 (docs/roadmaps/archiv/ROADMAP-TECHNISCH.md): die Testfirma durchläuft einmal alles.
  *   Firma → einladen → Dokument hochladen → interner Lernpfad (KI) → Freigabe → zuweisen → Praxisaufgabe →
  *   durcharbeiten → Onboarding → Statusansicht
  *

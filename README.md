@@ -7,14 +7,32 @@ Auth.js, Inhaltsgenerierung mit Google Gemini.
 
 ## Dokumentation
 
-- Roadmap (rein technisch, mit Prüfnachweisen je Punkt): [docs/roadmaps/ROADMAP-TECHNISCH.md](docs/roadmaps/ROADMAP-TECHNISCH.md)
+**Planung**
+- Was noch offen ist: [docs/roadmaps/ROADMAP.md](docs/roadmaps/ROADMAP.md) (die eine aktuelle Roadmap)
+- Frühere Roadmaps und Reviews: [docs/roadmaps/archiv/](docs/roadmaps/archiv/README.md). Code-Kommentare zitieren
+  sie mit Namen (`roadmap.md`, `roadmap3.md`, `roadmap_pruefer.md` …), deshalb bleiben sie dort stehen.
+
+**Betrieb**
 - Deployment mit Docker Compose: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
-- Backup und Wiederanlauf: [docs/BACKUP.md](docs/BACKUP.md)
-- Überwachung per E-Mail: [docs/MONITORING.md](docs/MONITORING.md)
 - Server von alter Compose-Datei absichern und aktualisieren: [docs/DEPLOY-UPDATE.md](docs/DEPLOY-UPDATE.md)
   (Prüfskript: `scripts/check-server.sh`)
-- Alle Pläne und Roadmaps mit Stand je Datei: [docs/roadmaps/README.md](docs/roadmaps/README.md). Die Dateinamen
-  bleiben stabil, weil viele Code-Kommentare sie zitieren (`roadmap.md`, `roadmap2.md`, `roadmap3.md`)
+- Backup und Wiederanlauf: [docs/BACKUP.md](docs/BACKUP.md)
+- Überwachung per E-Mail: [docs/MONITORING.md](docs/MONITORING.md)
+- E-Mail-Versand: [docs/EMAIL.md](docs/EMAIL.md)
+- Anmeldung über das Firmenkonto (SSO): [docs/SSO.md](docs/SSO.md)
+- PWA, Caching, Offline, Update und Web Push: [docs/PWA.md](docs/PWA.md)
+- Wiederholungsplanung (PSRP-HR) im Betrieb: [docs/WIEDERHOLUNGSPLANUNG.md](docs/WIEDERHOLUNGSPLANUNG.md)
+- Pflichtschulungen im Betrieb: [docs/PFLICHTSCHULUNGEN.md](docs/PFLICHTSCHULUNGEN.md)
+
+**Inhalte, Prüfer und Didaktik**
+- Freigabe je Inhaltsstand: [docs/FREIGABE.md](docs/FREIGABE.md)
+- Expertenprofil: [docs/EXPERTENPROFIL.md](docs/EXPERTENPROFIL.md)
+- Probe-Review für neue Prüfer: [docs/PROBE-REVIEW.md](docs/PROBE-REVIEW.md)
+- Neue Antwortformate: [docs/ANTWORTFORMATE.md](docs/ANTWORTFORMATE.md)
+- Lernhilfen („Antwort zuerst überlegen“, Selbsterklärung): [docs/LERNHILFEN.md](docs/LERNHILFEN.md)
+- Rückmeldungen ohne Schuldzuweisung (Leitfaden für Texte): [docs/RUECKMELDUNGEN.md](docs/RUECKMELDUNGEN.md)
+- Messen, Ausgangswerte und Hypothesen: [docs/MESSEN.md](docs/MESSEN.md)
+- UI-Kontrast (erzeugt mit `npm run check:contrast -- --write`): [docs/UI-KONTRAST.md](docs/UI-KONTRAST.md)
 
 ## Lokal entwickeln
 
@@ -41,6 +59,8 @@ npm test                        # Vitest; Rechte-Tests des Firmenbereichs brauch
                                 # TEST_DATABASE_URL=postgres://... npm test (migrierte Test-DB), sonst übersprungen
 npm run build
 npx tsc --noEmit                # nach dem Build, der die globalen Next-Typen erzeugt
+npm run lint:ui                 # keine neuen Rohfarben und Inline-Texte (Bestand: scripts/ui-token-baseline.json)
+npm run check:contrast          # Kontrast der Farbpaare aus app/globals.css
 ```
 
 Dieselben Schritte führt die CI (`.github/workflows/ci.yml`) bei jedem Push und Pull Request aus.
@@ -108,3 +128,24 @@ Bestätigung der E-Mail-Adresse, „Passwort vergessen“ und Einladungen laufen
 Ohne `MAIL_*` und `APP_BASE_URL` in der `.env` bleibt der Versand aus und die App funktioniert wie
 bisher (Registrierungen gelten sofort als bestätigt). Einrichtung, Gmail-App-Passwort und Grenzen:
 [docs/EMAIL.md](docs/EMAIL.md).
+
+## Skripte
+
+Alle Skripte stehen in `package.json` und laufen im Container mit `docker compose exec app npm run <name> -- …`.
+Ohne Argumente zeigen die meisten ihre Verwendung. Die Betriebsskripte für Wiederholungsplanung, Push, Backup und
+Monitoring sind in den jeweiligen Anleitungen unter `docs/` beschrieben.
+
+| Skript | Zweck |
+|---|---|
+| `db:generate` | Neue Migration aus `lib/server/db/schema.ts` erzeugen (Drizzle). |
+| `user:reset-password`, `user:*` | Passwort zurücksetzen, Rollen setzen (Betreiber mit DB-Zugriff). |
+| `company:ensure` | Firma anlegen, falls nicht vorhanden, und ein Konto eintragen. Mehrfach ausführbar. |
+| `cert:add` | Neue Zertifizierung aus einer Vorlage anlegen (nur Gerüst: Namen und Gewichte der Domänen). |
+| `gate3` | Testfirma einmal durch den ganzen Firmenablauf schicken (Einladen bis Statusansicht). |
+| `rationales:backfill`, `variants:backfill`, `explanations:backfill`, `prerequisites:backfill` | Begründungen, Varianten, Alternativerklärungen und Voraussetzungen für einen allgemeinen Lernpfad per KI nachtragen. Ohne `--yes` nur Kostenschätzung, wo angegeben. |
+| `lessons:blocks`, `lessons:simulations`, `lessons:possible` | Lernblöcke, Simulationen und „Was damit möglich ist“ in bestehende Lektionen eines allgemeinen Lernpfads ergänzen. |
+| `courses:check-sources` | Quellen der Kurse erneut abrufen und melden, wo sich der Prüfungsleitfaden geändert hat (Exit-Code 2). Für einen wöchentlichen Cron. |
+| `stats:backfill-completions` | Anonyme Abschluss-Statistik einmalig aus alten Prüfungsversuchen nachtragen. |
+| `exams:audit-attempts` | Bestandene Prüfungsversuche aus der Zeit vor der serverseitigen Prüfung nachrechnen. Liest nur. |
+| `course:import-fixture`, `course:e2e` | Entwicklung: Kurs aus einer Fixture importieren bzw. die ganze Kursgenerierung mit Fake-KI gegen Postgres laufen lassen. |
+| `lighthouse` | Lighthouse-Check (Best Practices) gegen einen laufenden Server; läuft auch in der CI. |

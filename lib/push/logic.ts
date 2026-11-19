@@ -3,7 +3,7 @@ import { fill } from "@/lib/i18n/fill";
 import type { PushKind } from "@/lib/server/db/schema";
 
 /**
- * Web Push (docs/roadmaps/roadmap_pwa.md, Phase 6), reine Regeln ohne Datenbank und Netz: wann eine Person erinnert wird und was in der
+ * Web Push (docs/roadmaps/archiv/roadmap_pwa.md, Phase 6), reine Regeln ohne Datenbank und Netz: wann eine Person erinnert wird und was in der
  * Nachricht steht. Die Uhrzeit und die Lerntage kommen aus dem Review-Log der Wiederholungsplanung (PSRP-HR: je Review die lokale
  * Stunde und der Wochentag in der Zeitzone der Person), nicht aus einer eigenen Einstellung.
  */

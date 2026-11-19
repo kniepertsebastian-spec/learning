@@ -16,7 +16,7 @@ interface PushInfo {
 type Pref = keyof PushInfo["prefs"];
 
 /**
- * Einstellungen für Web Push (docs/roadmaps/roadmap_pwa.md, Phase 6): Gerät ein- und ausschalten, die drei Erinnerungsarten einzeln, Testnachricht.
+ * Einstellungen für Web Push (docs/roadmaps/archiv/roadmap_pwa.md, Phase 6): Gerät ein- und ausschalten, die drei Erinnerungsarten einzeln, Testnachricht.
  * Die Berechtigung des Browsers wird erst auf den Klick auf „Auf diesem Gerät benachrichtigen“ gefragt, nie beim Öffnen der Seite.
  */
 export function PushSettings() {

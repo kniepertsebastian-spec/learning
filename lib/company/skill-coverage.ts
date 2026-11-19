@@ -1,5 +1,5 @@
 /**
- * Skill-Abdeckung je Team (docs/roadmaps/ROADMAP-UI.md, Später), reine Zusammenfassung ohne Datenbank. Leitplanken („kein Talent-Score, keine
+ * Skill-Abdeckung je Team (docs/roadmaps/archiv/ROADMAP-UI.md, Später), reine Zusammenfassung ohne Datenbank. Leitplanken („kein Talent-Score, keine
  * Vergleiche“): nur **aggregiert** („3 von 5 im Team haben CKA“), nie ein Raster aus Personen und Fähigkeiten, nie als Rangfolge oder Prozentwert;
  * Teams und Zertifikate stehen alphabetisch, nicht nach Zahl. Teams mit weniger als MIN_TEAM Mitgliedern erscheinen nicht (die Zahl wäre fast
  * eine Aussage über eine einzelne Person). Es zählen nur Zertifikate, die die Person der Firma selbst freigegeben hat und die noch gelten.
