@@ -18,6 +18,8 @@ export const REQUEST_ERROR_WINDOW_MS = 15 * 60 * 1000;
 export const FAILED_JOB_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export interface MonitorReport {
+  /** Gesetzt, wenn Aufträge oder Budget nicht lesbar waren (Datenbank weg). */
+  databaseError: string | null;
   requestErrors: { windowMinutes: number; count: number; latest: Array<{ time: string; method: string; path: string; digest: string | null; message: string }> };
   failedJobs: Array<{ id: string; title: string; status: string; errorCode: string | null; completedAt: string | null }>;
   /** null: kein Budget gesetzt (GEMINI_BUDGET_USD). */
@@ -35,6 +37,12 @@ export function isMonitorAuthorized(header: string | null, token = process.env.M
 
 export async function getMonitorReport(now = Date.now()): Promise<MonitorReport> {
   const errors = recentRequestErrors(REQUEST_ERROR_WINDOW_MS, now);
+  // Ist die Datenbank weg, sollen Serverfehler und Prozesswerte trotzdem ankommen (das meldet dann /api/ready).
+  let databaseError: string | null = null;
+  const onDbError = <T,>(fallback: T) => (error: unknown) => {
+    databaseError = (error instanceof Error ? error.message : String(error)).slice(0, 200);
+    return fallback;
+  };
   const [jobs, budget] = await Promise.all([
     getDb()
       .select({
@@ -48,10 +56,12 @@ export async function getMonitorReport(now = Date.now()): Promise<MonitorReport>
       .from(courseGenerationJobs)
       .where(and(inArray(courseGenerationJobs.status, FAILED_JOB_STATUSES), gt(courseGenerationJobs.updatedAt, new Date(now - FAILED_JOB_WINDOW_MS))))
       .orderBy(desc(courseGenerationJobs.updatedAt))
-      .limit(20),
-    getAiBudgetStatus(),
+      .limit(20)
+      .catch(onDbError([])),
+    getAiBudgetStatus().catch(onDbError(null)),
   ]);
   return {
+    databaseError,
     requestErrors: {
       windowMinutes: REQUEST_ERROR_WINDOW_MS / 60_000,
       count: errors.length,

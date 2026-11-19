@@ -37,6 +37,7 @@ describe("/api/monitor", () => {
 
   it("Zeilenformat für monitor.sh: Tabs und Zeilenumbrüche in Texten werden ersetzt", () => {
     const text = formatMonitorReport({
+      databaseError: null,
       requestErrors: { windowMinutes: 15, count: 1, latest: [{ time: "t", method: "GET", path: "/x", digest: null, message: "a\tb\nc" }] },
       failedJobs: [{ id: "j1", title: "Kurs\tA", status: "failed", errorCode: null, completedAt: null }],
       aiBudget: { limitUsd: 100, spentUsd: 81.5, percent: 82 },
