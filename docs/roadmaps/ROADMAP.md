@@ -24,7 +24,7 @@ Begründung und Nachweise je Punkt in [`review-2026-11-19.md`](review-2026-11-19
 ## 2a. Aus dem Review vom 19.11.2026: Betrieb
 
 - [ ] **R3** Kursgenerierung im Web-Prozess: beim ersten Lauf Antwortzeit und Speicher messen; bei Bedarf eigener Worker-Container aus demselben Image. Datenbank-Pool ausdrücklich setzen (`max`, `idle_timeout`, `statement_timeout`).
-- [ ] **R4** Wiederkehrende Jobs (`reactivation:run`, `reviewers:remind`, `mandatory:run`, `push:remind`, `exams:remind`, `fsrs:optimize`): auf der VM prüfen, was eingerichtet ist; als systemd-Timer nach `deploy/` und im Monitor melden, wenn ein Lauf zu alt ist.
+- [ ] **R4** Wiederkehrende Jobs: Auf der VM laufen nur `fsrs:optimize` und `push:remind` (Crontab vom 19.11.2026). Sofort nachtragen: `reactivation:run`, `reviewers:remind`, `mandatory:run`, `exams:remind` (Zeilen in `review-2026-11-19.md`). Danach alle als systemd-Timer nach `deploy/` und im Monitor melden, wenn ein Lauf zu alt ist.
 - [ ] **R5** Fehler sichtbar machen: `onRequestError` in `instrumentation.ts`, Fehler als JSON-Zeile; Monitor zusätzlich für fehlgeschlagene Kursgenerierungen, KI-Budget über 80 % und 5xx.
 - [ ] **R13** Branch-Schutz: CI muss vor dem Merge grün sein (`main` war nach #208 rot). Lint und Unit-Tests als eigener schneller Job.
 
