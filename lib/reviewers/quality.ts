@@ -1,5 +1,5 @@
 /**
- * Qualität im Betrieb (docs/roadmaps/roadmap_pruefer.md, Phase 6): reine Rechenregeln ohne Datenbank. Die Kennzahlen sind nur für
+ * Qualität im Betrieb (docs/roadmaps/archiv/roadmap_pruefer.md, Phase 6): reine Rechenregeln ohne Datenbank. Die Kennzahlen sind nur für
  * Admins gedacht, nie für Prüfer oder die Öffentlichkeit, und lösen nie eine automatische Folge aus (Hinweis, keine Sanktion).
  */
 

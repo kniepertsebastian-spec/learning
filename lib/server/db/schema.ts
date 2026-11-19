@@ -40,7 +40,7 @@ export type GenerationErrorClass =
   | "provider_outage"
   | "internal";
 
-/** Phase 1 (docs/roadmaps/ROADMAP-TECHNISCH.md): Rolle eines Nutzers INNERHALB einer
+/** Phase 1 (docs/roadmaps/archiv/ROADMAP-TECHNISCH.md): Rolle eines Nutzers INNERHALB einer
  * Organisation. Bewusst getrennt von UserRole (Plattform-Admin): ein
  * Plattform-Admin hat dadurch keinen Zugriff auf Firmendaten. */
 export type CompanyRole = "company_admin" | "mentor" | "learner";
@@ -121,7 +121,7 @@ export const users = pgTable(
     examRemindersOptOut: boolean("exam_reminders_opt_out").notNull().default(false),
     /** Motivation Phase 6: keine E-Mails „Schön, dass du da bist“ nach längerer Pause (Konto oder Abmeldelink in der Mail). */
     reactivationOptOut: boolean("reactivation_opt_out").notNull().default(false),
-    /** PSRP-HR (docs/roadmaps/roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
+    /** PSRP-HR (docs/roadmaps/archiv/roadmap_psrp_hr.md, Phase 1): optionale Altersspanne, nur für Kaltstart-Parameter des Schedulers. */
     ageRange: text("age_range").$type<AgeRange>(),
     /** IANA-Zeitzone für die lokale Tageszeit (Chronotyp) und Tagesgrenzen der Planung. */
     timezone: text("timezone").notNull().default("Europe/Berlin"),
@@ -3438,7 +3438,7 @@ export const careerSuggestions = pgTable("career_suggestions", {
 });
 
 // ---------------------------------------------------------------------------
-// PSRP-HR (docs/roadmaps/roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
+// PSRP-HR (docs/roadmaps/archiv/roadmap_psrp_hr.md): FSRS-Gedächtnismodell, Review-Log, Human State
 // Engine und Kalibrierung. „Item“ der Roadmap = Frage (`questions`), „Kurs“ =
 // Zertifizierung (`certifications`), `course_enrollment` = `study_profiles`
 // (dort liegen Prüfungsdatum und leichte Tage bereits je Nutzer und Kurs).
@@ -3891,7 +3891,7 @@ export const geminiBatchJobs = pgTable(
 export type PushKind = "exam_soon" | "voucher_expiring" | "retake_included" | "reviews_due" | "streak_risk";
 
 /**
- * Web Push (docs/roadmaps/roadmap_pwa.md, Phase 6): ein Eintrag je Gerät und Browser. Er entsteht erst, wenn die Person in den
+ * Web Push (docs/roadmaps/archiv/roadmap_pwa.md, Phase 6): ein Eintrag je Gerät und Browser. Er entsteht erst, wenn die Person in den
  * Einstellungen selbst „Auf diesem Gerät benachrichtigen“ wählt und der Browser zustimmt (kein Abo ohne Opt-in); beim Abmelden und
  * auf Wunsch wird er gelöscht. `auth_key` und `p256dh` sind die Schlüssel des Geräts für die Verschlüsselung (RFC 8291), sie
  * verlassen den Server nie. `locale` ist die Sprache der Oberfläche beim Anmelden des Geräts, in ihr kommt der Text.
@@ -3954,7 +3954,7 @@ export const pushDeliveries = pgTable(
 export type SecondReviewStatus = "pending" | "agreed" | "deviated";
 
 /**
- * Zweitprüfung als Stichprobe (docs/roadmaps/roadmap_pruefer.md, Phase 6): bei jeder Freigabe wird ein Anteil der Fragen einem zweiten
+ * Zweitprüfung als Stichprobe (docs/roadmaps/archiv/roadmap_pruefer.md, Phase 6): bei jeder Freigabe wird ein Anteil der Fragen einem zweiten
  * Prüfer des Kurses vorgelegt (nicht dem Freigebenden). Weicht sein Urteil ab, steht die Frage beim Admin; es gibt keine automatische
  * Folge. Ohne zweiten Prüfer bleibt `reviewer_user_id` leer, bis jemand zugewiesen ist.
  */

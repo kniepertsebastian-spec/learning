@@ -17,7 +17,7 @@ function solutionText(solution: AnswerSolution, locale: Locale): string {
   return solution.pairs.map((p) => `${p.left[locale]} → ${p.right[locale]}`).join("\n");
 }
 
-/** Zweitprüfung als Stichprobe (docs/roadmaps/roadmap_pruefer.md, Phase 6): die Fragen, die der zweite Prüfer des Kurses beurteilen soll. */
+/** Zweitprüfung als Stichprobe (docs/roadmaps/archiv/roadmap_pruefer.md, Phase 6): die Fragen, die der zweite Prüfer des Kurses beurteilen soll. */
 export default async function SecondReviewPage() {
   const user = await requireReviewerPage("/reviewer/second-review");
   const locale = await getServerLocale();

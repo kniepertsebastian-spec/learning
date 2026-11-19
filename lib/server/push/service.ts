@@ -29,7 +29,7 @@ import {
 import { webPushSender, type PushSender } from "./sender";
 
 /**
- * Web Push (docs/roadmaps/roadmap_pwa.md, Phase 6): Abos je Gerät, Einstellungen je Person und der stündliche Lauf der Erinnerungen
+ * Web Push (docs/roadmaps/archiv/roadmap_pwa.md, Phase 6): Abos je Gerät, Einstellungen je Person und der stündliche Lauf der Erinnerungen
  * (`npm run push:remind`). Ein Abo entsteht nur auf eigenen Wunsch der Person (siehe components/PushSettings.tsx); ohne Abo
  * läuft nichts. Die Regeln (Uhrzeit, Tage, Texte) stehen in lib/push/logic.ts.
  */

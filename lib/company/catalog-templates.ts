@@ -1,5 +1,5 @@
 /**
- * Katalog-Gruppen als Vorlage für Firmen (docs/roadmaps/ROADMAP-UI.md, Später): „Security-Paket aus dem Katalog übernehmen“ füllt eine neue
+ * Katalog-Gruppen als Vorlage für Firmen (docs/roadmaps/archiv/ROADMAP-UI.md, Später): „Security-Paket aus dem Katalog übernehmen“ füllt eine neue
  * Kursgruppe der Firma mit den freigegebenen Kursen einer Katalog-Gruppe. Reine Zusammenstellung ohne Datenbank; nur Kurse, die die Firma auch
  * zuweisen darf (`paths`), landen in der Vorlage. Die Firma kann die Auswahl danach frei ändern, bevor sie speichert.
  */
