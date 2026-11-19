@@ -36,11 +36,13 @@ export interface FetchedSource {
 
 /** Grobe HTML-Text-Extraktion für Nicht-PDF-Quellen - bewusst einfach
  * (Hobbyprojekt-Scope, siehe course_generation.md Abschnitt 22), kein
- * vollständiger Readability-Parser. Entfernt Skripte/Styles und Tags, lässt
- * Absätze als Zeilenumbrüche erkennbar. */
+ * vollständiger Readability-Parser. Entfernt Skripte/Styles, Navigation, Fußbereiche, Seitenleisten, Formulare
+ * und Kommentare (token_architektur_roadmap Stufe 0: Ballast kostet Eingabe-Token und lenkt ab) sowie die Tags,
+ * lässt Absätze als Zeilenumbrüche erkennbar. */
 export function stripHtml(html: string): string {
   return html
-    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<(script|style|noscript|svg|template|iframe|nav|footer|aside|form)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
     // Überschriften bleiben als Markdown-Überschrift erkennbar: daran zerlegt splitIntoSections() den Text.
     .replace(/<h[1-6]\b[^>]*>/gi, "\n\n## ")
     .replace(/<(br|\/p|\/div|\/li|\/h[1-6])>/gi, "\n")

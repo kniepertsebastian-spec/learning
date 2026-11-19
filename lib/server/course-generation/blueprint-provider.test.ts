@@ -22,7 +22,7 @@ const aiAnswer = (sources: unknown) =>
         objectives: [{
           id: "obj-1", code: "1.1", title: "Ziel", description: "Beschreibung", examWeight: 1, complexity: "medium",
           requiredConcepts: ["a", "b"], commonMisconceptions: [], lessonPlan: ["Schritt 1", "Schritt 2"],
-          sourceLocators: ["Abschnitt 1"], recommendedQuestions: 4, requiredScenarios: [],
+          sourceLocators: ["Abschnitt 1"], sourceIds: ["SRC_01"], recommendedQuestions: 4, requiredScenarios: [],
         }],
       },
     ],
@@ -70,5 +70,32 @@ describe("Blueprint-Provider: individuelles Training", () => {
 
   it("Zertifikatskurs: Prompt unverändert (kein Hinweis auf individuelles Training)", async () => {
     expect(await capture()).not.toContain("KEIN Zertifizierungskurs");
+  });
+});
+
+describe("Blueprint-Provider: Stufe 1 der Token-Roadmap", () => {
+  const captureArgs = async (answer = aiAnswer(undefined)) => {
+    let seen: { contents: string; config: { systemInstruction: string; thinkingConfig?: unknown } } | null = null;
+    const client = { models: { generateContent: async (args: never) => { seen = args; return { text: answer, usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1 } }; } } } as unknown as GoogleGenAI;
+    const result = await createSonnetBlueprintProvider(client).generateBlueprint(input as never, () => undefined);
+    return { seen: seen!, result };
+  };
+
+  it("Quellen stehen ID-getaggt am Anfang, Quellenregeln im Systemprompt", async () => {
+    const { seen } = await captureArgs();
+    expect(seen.contents.startsWith("Quellen:\n<source id=\"SRC_01\" title=\"Handbuch\">")).toBe(true);
+    expect(seen.config.systemInstruction).toContain("Closed Book");
+    expect(seen.config.systemInstruction).toContain("[QUELLE FEHLT: kurze Beschreibung]");
+    expect(seen.config.systemInstruction).toContain("`sourceIds`");
+  });
+
+  it("das Quellen-Mapping (sourceIds) landet im Blueprint", async () => {
+    const { result } = await captureArgs();
+    expect(result.domains[0].objectives[0].sourceIds).toEqual(["SRC_01"]);
+  });
+
+  it("ohne sourceIds ist die Antwort ungültig (Mapping ist Pflicht)", async () => {
+    const answer = aiAnswer(undefined).replace('"sourceIds":["SRC_01"],', "");
+    await expect(captureArgs(answer)).rejects.toThrow(/sourceIds/);
   });
 });
