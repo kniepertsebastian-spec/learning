@@ -1,5 +1,5 @@
 import type { GoogleGenAI, InlinedRequest } from "@google/genai";
-import { generationConfig, type GenerationOptions } from "./generate";
+import { assertUsableFinish, finishReasonOf, generationConfig, type GenerationOptions } from "./generate";
 
 /**
  * Dünne Hülle um die Gemini Batch API (Gemini Developer API, Anfragen inline): viele Anfragen in einem Auftrag, Google
@@ -77,7 +77,8 @@ export async function submitBatch(client: BatchClient, model: string, requests: 
 }
 
 interface ResponseLike {
-  candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> }; finishReason?: string }>;
+  promptFeedback?: { blockReason?: string };
   usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number; cachedContentTokenCount?: number };
 }
 
@@ -120,11 +121,21 @@ export async function pollBatch(client: BatchClient, name: string, expectedKeys:
   responses.forEach((item, index) => {
     const key = item.metadata?.key ?? expectedKeys[index];
     if (!key) return;
-    const text = item.error ? null : responseText(item.response as ResponseLike | undefined);
+    const response = item.response as ResponseLike | undefined;
+    // Abgeschnittene oder blockierte Antworten zählen als Fehler (wie im Live-Aufruf), nicht als halbes JSON.
+    let finishError: string | null = null;
+    if (!item.error) {
+      try {
+        assertUsableFinish(finishReasonOf(response));
+      } catch (error) {
+        finishError = (error as Error).message;
+      }
+    }
+    const text = item.error || finishError ? null : responseText(response);
     byKey.set(key, {
       key,
       text,
-      error: item.error?.message ?? (text === null ? "Keine Textantwort." : null),
+      error: item.error?.message ?? finishError ?? (text === null ? "Keine Textantwort." : null),
       usage: responseUsage(item.response as ResponseLike | undefined),
     });
   });

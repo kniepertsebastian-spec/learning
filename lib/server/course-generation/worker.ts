@@ -1,5 +1,5 @@
 import { raiseQuestionTargets } from "@/lib/chapters/logic";
-import { isRetryableError, type AIUsage } from "@/lib/ai/generate";
+import { configFallbackNotes, isPermanentAiResponseError, isRetryableError, type AIUsage } from "@/lib/ai/generate";
 import { estimateCostUsd } from "@/lib/server/admin/ai-cost";
 import { withAiCostDetail } from "@/lib/server/admin/ai-ledger";
 import {
@@ -254,6 +254,8 @@ interface ObjectiveRunResult {
   costUsd: number;
   /** Befunde des optionalen Audits (leer ohne Audit). */
   auditFindings?: AuditFinding[];
+  /** Antwort abgeschnitten oder blockiert (R1): ein zweiter Durchgang mit derselben Anfrage kostet nur und endet gleich. */
+  permanent?: boolean;
 }
 
 /** Was alle Lernziele eines Kurses gemeinsam bekommen (Stufe 2): Quellenpaket und Curriculum, oder `null` im Auszugs-Modus. */
@@ -346,7 +348,7 @@ async function generateAndValidateObjective(
       model: deps.contentProvider.model,
       validationErrorsJson: [(error as Error).message],
     });
-    return { success: false, content: null, errors: [(error as Error).message], costUsd: attemptCostUsd };
+    return { success: false, content: null, errors: [(error as Error).message], costUsd: attemptCostUsd, permanent: isPermanentAiResponseError(error) };
   }
 
   // Was sich ohne KI beheben lässt (doppelte Fragen, unbekannte Quellenverweise), wird ohne KI behoben.
@@ -355,6 +357,7 @@ async function generateAndValidateObjective(
   let errors = validateAttempt(entry.objective, result, sourceExcerpts, input);
   let usedProvider = deps.contentProvider;
   let attempts = 1;
+  let permanent = false;
 
   /**
    * Teil-Reparatur: fehlen nur Fragen (Anzahl oder Szenario-Frage), liefert der Provider genau diese nach. Lektionen
@@ -387,6 +390,7 @@ async function generateAndValidateObjective(
       }
     } catch (error) {
       errors = [(error as Error).message];
+      permanent = isPermanentAiResponseError(error);
       break;
     }
     attempts++;
@@ -395,7 +399,7 @@ async function generateAndValidateObjective(
   // Abschnitt 6/11: nach den günstigen Versuchen EIN Reparaturversuch mit dem Reparatur-Modell - aber nur, wenn das
   // tatsächlich ein anderes Modell ist. Standardmäßig sind beide gemini-4-hydrogen; dann wäre es nur ein weiterer
   // identischer Versuch zum vollen Preis.
-  if (errors.length > 0 && deps.repairProvider.model !== deps.contentProvider.model) {
+  if (errors.length > 0 && !permanent && deps.repairProvider.model !== deps.contentProvider.model) {
     await updateCourseGenerationObjective(objectiveRowId, {
       status: "repairing",
       attempts,
@@ -424,7 +428,7 @@ async function generateAndValidateObjective(
       costUsd: attemptCostUsd.toString(),
       validationErrorsJson: errors,
     });
-    return { success: false, content: null, errors, costUsd: attemptCostUsd };
+    return { success: false, content: null, errors, costUsd: attemptCostUsd, permanent };
   }
 
   // Stufe 3 (optional): Quellen-Audit. Ein Fehler hier kostet das Lernziel nicht, es fehlt dann nur der Befund.
@@ -830,6 +834,8 @@ export async function executeCourseGenerationJob(
     let batchSize = INITIAL_BATCH_SIZE;
     const errorCounts = new Map<string, number>();
     const failedEntries: ObjectiveEntry[] = [];
+    /** Abgeschnitten oder blockiert: kein zweiter Durchgang, sie stehen am Ende mit in der Fehlermeldung. */
+    const permanentFailures: string[] = [];
     let circuitOpenMessage: string | null = null;
 
     while (processed < remaining.length) {
@@ -865,7 +871,8 @@ export async function executeCourseGenerationJob(
           results.set(entry.objective.id, { ...entry, content: result.content! });
         } else {
           batchFailures++;
-          failedEntries.push(entry);
+          if (result.permanent) permanentFailures.push(`${entry.objective.code}: ${result.errors[0] ?? "unbekannter Fehler"}`);
+          else failedEntries.push(entry);
           const errorKey = result.errors[0] ?? "unbekannter Fehler";
           // Vorübergehende API-Fehler (Netz, 429/503, Zeitüberschreitung) sind kein „immer gleicher Inhaltsfehler“: sie
           // lösen den Fehlerschutz für identische Fehler nicht aus (die Fehlerquote je Batch zählt sie weiterhin).
@@ -898,12 +905,14 @@ export async function executeCourseGenerationJob(
     // Zweiter Durchgang: einzelne gescheiterte Lernziele (unterhalb der Fehlerschwelle) werden noch einmal erzeugt,
     // bevor der ganze Lauf daran scheitert. Vorher endete jeder Lauf mit auch nur einem gescheiterten Lernziel erst
     // beim Zusammensetzen des Pakets und musste von Hand neu gestartet werden.
-    if (failedEntries.length > 0) {
-      await updateCourseGenerationJob(jobId, {
-        status: "repairing",
-        message: `Zweiter Versuch für ${failedEntries.length} Lernziel(e) …`,
-      });
-      const stillFailed: string[] = [];
+    if (failedEntries.length > 0 || permanentFailures.length > 0) {
+      if (failedEntries.length > 0) {
+        await updateCourseGenerationJob(jobId, {
+          status: "repairing",
+          message: `Zweiter Versuch für ${failedEntries.length} Lernziel(e) …`,
+        });
+      }
+      const stillFailed: string[] = [...permanentFailures];
       for (const entry of failedEntries) {
         await checkNotCancelled();
         const row = await upsertCourseGenerationObjective(jobId, entry.domain.id, entry.objective.id, entry.objective.code, false);
@@ -915,7 +924,7 @@ export async function executeCourseGenerationJob(
       }
       if (stillFailed.length > 0) {
         throw new Error(
-          `${stillFailed.length} Lernziel(e) konnten auch im zweiten Versuch nicht erzeugt werden (${stillFailed.slice(0, 3).join(" | ").slice(0, 600)}). ` +
+          `${stillFailed.length} Lernziel(e) konnten nicht erzeugt werden (${stillFailed.slice(0, 3).join(" | ").slice(0, 600)}). ` +
             "„Erneut versuchen“ setzt bei diesen Lernzielen fort; fertige bleiben erhalten.",
         );
       }
@@ -939,7 +948,10 @@ export async function executeCourseGenerationJob(
       missingMarkers > 0 ? `${missingMarkers} Stelle(n) mit [QUELLE FEHLT] in den Lektionen` : "",
       auditCount > 0 ? `${auditCount} Audit-Befund(e) (siehe Lernziele)` : "",
     ].filter(Boolean).join(", ");
-    const fidelitySuffix = fidelityNote ? ` Quellentreue prüfen: ${fidelityNote}.` : "";
+    // R2: Lief ein Modell mit abgeschwächten Einstellungen (Gemini hat Denk-Einstellung oder Ausgabe-Limit abgelehnt), steht das im Auftrag.
+    const fallbackNotes = configFallbackNotes();
+    const fidelitySuffix =
+      (fidelityNote ? ` Quellentreue prüfen: ${fidelityNote}.` : "") + (fallbackNotes.length > 0 ? ` Hinweis: ${fallbackNotes.join(" ")}` : "");
 
     if (!job.autoPublish) {
       await updateCourseGenerationJob(jobId, {
@@ -968,7 +980,8 @@ export async function executeCourseGenerationJob(
 }
 
 async function handleJobFailure(jobId: string, error: unknown): Promise<void> {
-  const message = error instanceof Error ? error.message : String(error);
+  const fallbackNotes = error instanceof JobCancelledError ? [] : configFallbackNotes();
+  const message = (error instanceof Error ? error.message : String(error)) + (fallbackNotes.length > 0 ? ` Hinweis: ${fallbackNotes.join(" ")}` : "");
   if (error instanceof JobCancelledError) {
     // Status ist bereits "cancelled" (vom cancel-Endpunkt gesetzt) - nur
     // completedAt nachtragen, kein errorCode/-message für eine gewollte
