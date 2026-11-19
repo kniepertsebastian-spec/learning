@@ -1,4 +1,4 @@
-// Texte von app/not-found.tsx, app/global-error.tsx und components/PageSkeleton.tsx (de/en).
+// Texte von app/not-found.tsx und app/global-error.tsx (de/en).
 const texts = {
   de: {
     title: "Seite nicht gefunden",
@@ -8,7 +8,6 @@ const texts = {
     globalErrorTitle: "Die App konnte nicht geladen werden",
     globalErrorBody: "Ein Fehler auf dem Server hat die Seite verhindert. Dein Lernfortschritt ist nicht betroffen. Bitte versuche es gleich noch einmal.",
     retry: "Erneut versuchen",
-    loading: "Wird geladen …",
   },
   en: {
     title: "Page not found",
@@ -18,7 +17,6 @@ const texts = {
     globalErrorTitle: "The app could not be loaded",
     globalErrorBody: "A server error prevented this page from loading. Your study progress is not affected. Please try again in a moment.",
     retry: "Try again",
-    loading: "Loading …",
   },
 } as const;
 

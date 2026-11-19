@@ -95,7 +95,8 @@ Begründung und Nachweise je Punkt in [`review-2026-11-19.md`](review-2026-11-19
 Keine Pilot-Blocker, aber vor dem ersten Firmenkunden sinnvoll. Einzelheiten in [`review-2026-11-19.md`](review-2026-11-19.md).
 
 - [x] **R6** Nutzer je Anfrage nur einmal laden: `getCurrentUser` und `auth` mit React `cache()` merken (heute rund sieben gleiche Abfragen auf `/cert/[id]`).
-- [x] **R9** `app/not-found.tsx` und `app/global-error.tsx` im App-Design; `loading.tsx` für Dashboard, Kurs, Lernsession und Firmenbereich.
+- [x] **R9a** `app/not-found.tsx` und `app/global-error.tsx` im App-Design.
+- [ ] **R9b** `loading.tsx` für Dashboard, Kurs, Lernsession und Firmenbereich. Erster Versuch (PR #215) zurückgenommen: Mit Ladegrenze standen Teile der Seite doppelt im DOM, einmal deutsch und einmal englisch (E2E `pause-session`, `unlock`). Ursache vermutlich ein Sprach-Unterschied zwischen Server und Client beim Hydrieren; erst den beheben, dann die Ladezustände wieder einbauen.
 - [ ] **R7** Bundle messen; KaTeX und Highlighting in `components/RichText.tsx` nur bei Bedarf laden, Markdown wo möglich auf dem Server rendern.
 - [ ] **R8** `output: "standalone"` im Image wirklich nutzen oder entfernen; `cloudflared` auf eine Version festlegen.
 - [ ] **R10** Ein Weg für Übersetzungen, dazu ein Test, der jeden Text auf Deutsch und Englisch verlangt.
