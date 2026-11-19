@@ -4,6 +4,7 @@ import { getDb } from "@/lib/server/db/client";
 import { courseGenerationJobs, type CourseGenerationJobStatus } from "@/lib/server/db/schema";
 import { getAiBudgetStatus } from "@/lib/server/admin/ai-cost";
 import { recentRequestErrors } from "./request-errors";
+import { readProcessStats, type ProcessStats } from "./process-stats";
 
 /**
  * Was scripts/monitor.sh zusätzlich zu Erreichbarkeit, Backup und Platte prüft (R5): Serverfehler, gescheiterte
@@ -21,6 +22,8 @@ export interface MonitorReport {
   failedJobs: Array<{ id: string; title: string; status: string; errorCode: string | null; completedAt: string | null }>;
   /** null: kein Budget gesetzt (GEMINI_BUDGET_USD). */
   aiBudget: { limitUsd: number; spentUsd: number; percent: number } | null;
+  /** R3: Last des Web-Prozesses seit der vorigen Abfrage. */
+  process: ProcessStats;
 }
 
 /** Prüft das Token in konstanter Zeit. Ohne gesetztes MONITOR_TOKEN ist der Endpunkt aus. */
@@ -62,6 +65,7 @@ export async function getMonitorReport(now = Date.now()): Promise<MonitorReport>
       errorCode: job.errorCode,
       completedAt: job.completedAt?.toISOString() ?? null,
     })),
+    process: readProcessStats(),
     aiBudget: budget ? { limitUsd: budget.limitUsd, spentUsd: Number(budget.spentUsd.toFixed(2)), percent: Math.round((budget.spentUsd / budget.limitUsd) * 100) } : null,
   };
 }
@@ -73,12 +77,15 @@ export async function getMonitorReport(now = Date.now()): Promise<MonitorReport>
  *   request_error <Zeit> <Methode> <Pfad> <Meldung>          (die neuesten fünf)
  *   failed_job <ID> <Status> <Fehlercode> <Titel>
  *   ai_budget <Prozent> <ausgegeben USD> <Limit USD>        (fehlt ohne GEMINI_BUDGET_USD)
+ *   process <Event-Loop p99 ms> <max ms> <RSS MB> <Heap MB> <laufende Kursgenerierungen>
  */
 export function formatMonitorReport(report: MonitorReport): string {
   const clean = (value: string | null) => (value ?? "-").replace(/[\t\r\n]+/g, " ").trim() || "-";
   const lines = [`request_errors\t${report.requestErrors.count}\t${report.requestErrors.windowMinutes}`];
   for (const e of report.requestErrors.latest) lines.push(["request_error", e.time, e.method, clean(e.path), clean(e.message)].join("\t"));
   for (const job of report.failedJobs) lines.push(["failed_job", job.id, job.status, clean(job.errorCode), clean(job.title)].join("\t"));
+  const p = report.process;
+  lines.push(["process", p.eventLoopP99Ms, p.eventLoopMaxMs, p.rssMb, p.heapUsedMb, p.activeCourseJobs].join("\t"));
   if (report.aiBudget) lines.push(`ai_budget\t${report.aiBudget.percent}\t${report.aiBudget.spentUsd.toFixed(2)}\t${report.aiBudget.limitUsd.toFixed(2)}`);
   return lines.join("\n") + "\n";
 }

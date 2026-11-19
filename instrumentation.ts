@@ -5,6 +5,15 @@
  */
 export async function register() {
   // Import nur innerhalb dieser Bedingung: so landet der Server-Code (Datenbank, Worker) nicht im Edge-Bundle.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    try {
+      // R3: Event-Loop-Verzögerung und Speicher messen (/api/monitor, PROCESS-Zeilen während einer Kursgenerierung).
+      const { startProcessStats } = await import("./lib/server/observability/process-stats");
+      startProcessStats();
+    } catch (error) {
+      console.error("Prozessmessung konnte nicht starten:", error);
+    }
+  }
   if (process.env.NEXT_RUNTIME === "nodejs" && process.env.DATABASE_URL) {
     try {
       const { startCourseGenerationWatchdog } = await import("./lib/server/course-generation/runner");

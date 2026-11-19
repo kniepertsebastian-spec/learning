@@ -32,6 +32,10 @@ services:
     environment:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?DB_PASSWORD muss in .env gesetzt sein}@postgres:5432/${DB_NAME:-learning_pwa}
+      # Pool und Zeitlimits (lib/server/db/client.ts); leer = Standard (10 Verbindungen, Abfragen höchstens 60 s)
+      DB_POOL_MAX: ${DB_POOL_MAX:-}
+      DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-}
+      DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: ${DB_IDLE_IN_TRANSACTION_TIMEOUT_MS:-}
       
       # Auth (Auth.js v5 reads AUTH_SECRET, see lib/server/auth.ts)
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET muss in .env gesetzt sein}

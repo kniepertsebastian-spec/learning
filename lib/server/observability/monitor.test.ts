@@ -40,13 +40,32 @@ describe("/api/monitor", () => {
       requestErrors: { windowMinutes: 15, count: 1, latest: [{ time: "t", method: "GET", path: "/x", digest: null, message: "a\tb\nc" }] },
       failedJobs: [{ id: "j1", title: "Kurs\tA", status: "failed", errorCode: null, completedAt: null }],
       aiBudget: { limitUsd: 100, spentUsd: 81.5, percent: 82 },
+      process: { eventLoopP99Ms: 12, eventLoopMaxMs: 40, rssMb: 300, heapUsedMb: 120, activeCourseJobs: 1 },
     });
     expect(text.split("\n")).toEqual([
       "request_errors\t1\t15",
       "request_error\tt\tGET\t/x\ta b c",
       "failed_job\tj1\tfailed\t-\tKurs A",
+      "process\t12\t40\t300\t120\t1",
       "ai_budget\t82\t81.50\t100.00",
       "",
     ]);
+  });
+});
+
+describe("Prozessmessung (R3)", () => {
+  it("liefert plausible Werte und setzt die Event-Loop-Messung zurück", async () => {
+    const { readProcessStats } = await import("./process-stats");
+    readProcessStats();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const start = Date.now();
+    while (Date.now() - start < 150) {
+      // Event-Loop absichtlich blockieren
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const stats = readProcessStats();
+    expect(stats.rssMb).toBeGreaterThan(0);
+    expect(stats.eventLoopMaxMs).toBeGreaterThanOrEqual(50);
+    expect(stats.activeCourseJobs).toBe(0);
   });
 });

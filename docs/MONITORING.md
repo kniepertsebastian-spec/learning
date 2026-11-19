@@ -14,6 +14,7 @@ Ein späteres Monitoring-Werkzeug auf einem eigenen Server kann das ersetzen ode
 | `app-kennzahlen` | `/api/monitor` nicht antwortet (nur mit `MONITOR_TOKEN`, siehe unten) |
 | `serverfehler` | in den letzten 15 Minuten mindestens 3 Serverfehler aufgetreten sind (Mail nennt die neuesten fünf) |
 | `ki-budget` | mehr als 80 % von `GEMINI_BUDGET_USD` verbraucht sind (ohne gesetztes Budget keine Prüfung) |
+| `app-last` | die Event-Loop-Verzögerung der App (p99 seit der letzten Prüfung) über 500 ms liegt; die Mail nennt auch Speicher und laufende Kursgenerierungen |
 | `kursgenerierung` | eine Kursgenerierung gescheitert ist. Jede gescheiterte wird **einmal und sofort** gemeldet, ohne „BEHOBEN“ |
 
 Verhalten: Erst die **zweite** Prüfung in Folge, die fehlschlägt, löst die Mail „PROBLEM“ aus (kurze
@@ -62,7 +63,27 @@ es behoben ist („BEHOBEN“). Besteht ein Problem länger als 24 Stunden, komm
 | `MONITOR_TOKEN` | leer | schaltet `/api/monitor` und die App-Kennzahlen ein (gleicher Wert in App und Skript) |
 | `MONITOR_ERRORS_MAX` | `3` | Serverfehler in 15 Minuten bis zum Alarm |
 | `MONITOR_BUDGET_WARN_PERCENT` | `80` | Warnschwelle für das KI-Budget |
+| `MONITOR_EVENT_LOOP_MAX_MS` | `500` | Grenze für die Event-Loop-Verzögerung der App |
 | `MAIL_SMTP_SECURE` | nur Port 465 | `1` implizites TLS auch auf anderem Port, `0` STARTTLS |
+
+## Erster echter Kurslauf: Last beobachten (R3)
+
+Die Kursgenerierung läuft im Prozess der Web-App, mit mehreren Lernzielen parallel (`COURSE_GEN_CONCURRENCY`, Standard 5).
+Während ein Auftrag läuft, schreibt die App jede Minute eine Zeile ins Log:
+
+```bash
+docker compose logs -f app | grep -E 'PROCESS|USAGE'
+# PROCESS eventLoopP99Ms=14 eventLoopMaxMs=62 rssMb=412 heapUsedMb=230 activeCourseJobs=1
+# USAGE model=… promptTokens=… completionTokens=… finishReason=STOP configFallback=none
+```
+
+Faustregel: `eventLoopP99Ms` unter 100 ist unauffällig, ab etwa 200 spürt man es bei Klicks, ab 500 meldet der Monitor.
+`docker stats learning-app` zeigt dazu CPU und Speicher des Containers. Ist es spürbar, zuerst `COURSE_GEN_CONCURRENCY`
+senken (z. B. 2); der nächste Schritt ist ein eigener Worker-Container aus demselben Image.
+
+`finishReason` in der `USAGE`-Zeile: `STOP` ist normal. `MAX_TOKENS` heißt, die Antwort war zu lang und wurde abgeschnitten
+(das Lernziel scheitert ohne bezahlte Wiederholung). `SAFETY`, `RECITATION` oder `BLOCKED:…` heißt, Gemini hat blockiert.
+`configFallback` ist `none`, solange Gemini Denk-Einstellung und Ausgabe-Limit annimmt.
 
 ## Grenzen
 
