@@ -10,7 +10,7 @@
 
 ## 1. In Arbeit
 
-- [ ] **Logout macht das Token nicht ungültig** (`archiv/review-2026-11-12/20-logout-sitzungen.md`, Befund 10). Entscheidung festhalten, umsetzen, Test: nach dem Abmelden wird das alte Token abgelehnt. Läuft gerade in einem eigenen Branch.
+- [x] **Logout macht das Token nicht ungültig** (`archiv/review-2026-11-12/20-logout-sitzungen.md`, Befund 10). Entschieden am 19.11.2026: Abmelden gilt auf allen Geräten (`sessionVersion` steigt, Hinweis im Benutzermenü). Test: Token von vor dem Abmelden wird abgelehnt (PR #212).
 - [ ] **Dependabot-PR #210** (14 Minor- und Patch-Updates). Prüfen und mergen.
 
 ## 2. Vor dem Pilot
