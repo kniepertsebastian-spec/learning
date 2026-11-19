@@ -97,4 +97,10 @@ senken (z. B. 2); der nächste Schritt ist ein eigener Worker-Container aus dems
   die ersten Zeilen des Stacktrace). Gezählt wird im Speicher der App; nach einem Neustart beginnt die Zählung bei null.
   Fehler, die eine Route selbst abfängt und als 500 beantwortet, zählen nicht. Ein externer Dienst (Sentry o. ä.) kommt
   erst mit Echtdaten und braucht dann einen Eintrag in der Datenschutzerklärung.
+- **Fehler im Browser:** Was die Fehlerseiten (`app/error.tsx`, `app/global-error.tsx`) auffangen, melden sie an
+  `POST /api/client-errors`; es steht als JSON-Zeile im Log: `docker compose logs app | grep client_error` (Pfad ohne
+  Query und ohne Einmal-Token, Meldung, Digest, gekürzter Stack, User-Agent, keine Nutzerkennung). `chunkError: true` heißt:
+  ein offener Tab hatte nach einem Deploy noch Skripte der alten Version; mit `reloading: true` hat die Seite sich danach
+  selbst neu geladen. Höchstens 20 Meldungen je IP und 300 insgesamt in 10 Minuten; sie zählen nicht zu den Serverfehlern
+  im Monitor, weil jeder sie auslösen kann.
 - Keine Serverwerte außer Platte (CPU, RAM, Last).

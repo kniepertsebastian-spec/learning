@@ -87,6 +87,9 @@ const runtimeCaching: RuntimeCaching[] = [
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
+  // Next.js hängt die Build-Kennung (?dpl=, deploymentId in next.config.ts) an Skripte und Stile; der Precache kennt die
+  // Adressen ohne sie. Ohne diese Regel fände der Service Worker offline keinen Chunk mehr.
+  precacheOptions: { ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^dpl$/] },
   // Ein neuer Service Worker wartet, bis der Nutzer im Update-Hinweis „Neu laden“ wählt (SKIP_WAITING-Nachricht,
   // components/ServiceWorkerManager.tsx): ein Deploy beendet so keine laufende Session.
   skipWaiting: false,
