@@ -73,3 +73,22 @@ describe("RichText: Formeln und Brüche (KaTeX)", () => {
     expect(() => html("$$\\frac{a}{$$")).not.toThrow();
   });
 });
+
+describe("RichText: Quellenbelege der Kursgenerierung", () => {
+  it("[SRC_07] wird zur hochgestellten Nummer mit Tooltip, Sammelbelege bleiben zusammen", () => {
+    const out = html("Backups werden 30 Tage aufbewahrt [SRC_07]. Gilt für alle Server [SRC_04, SRC_12].");
+    expect(out).toMatch(/<sup[^>]*title="Quelle SRC_07"[^>]*>7<\/sup>/);
+    expect(out).toMatch(/<sup[^>]*title="Quelle SRC_04, SRC_12"[^>]*>4, 12<\/sup>/);
+    expect(out).not.toContain("[SRC_07]");
+  });
+  it("[QUELLE FEHLT: …] wird als sichtbarer Hinweis gezeigt", () => {
+    const out = html("Die Frist beträgt [QUELLE FEHLT: Aufbewahrungsfrist für Logs].");
+    expect(out).toMatch(/<span[^>]*data-missing-source="true"[^>]*>Quelle fehlt: Aufbewahrungsfrist für Logs<\/span>/);
+  });
+  it("in Code bleiben Tags unverändert", () => {
+    const out = html("`[SRC_07]`\n\n```text\n[SRC_03]\n```");
+    expect(out).toContain("[SRC_07]");
+    expect(out).toContain("[SRC_03]");
+    expect(out).not.toContain("<sup");
+  });
+});

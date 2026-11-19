@@ -1,15 +1,15 @@
 import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured, type AIUsage } from "@/lib/ai/generate";
-import { TRANSLATION_MODEL } from "@/lib/gemini";
+import { TRANSLATION_MODEL, thinkingLevelFor } from "@/lib/gemini";
 import type { Locale } from "@/lib/types";
 import { extractSimulationSources, parseSimulation, simulationSkeleton } from "@/lib/markdown/simulation";
 
 /**
  * Übersetzung eines fertigen Kurses in die zweite Sprache. Die Kursgenerierung schreibt jeden Text nur in der
  * Auftragssprache (und legt ihn in beide Sprachfelder, siehe toBilingualObjectiveContent); dieser Lauf füllt danach
- * das zweite Feld. Er liest keine Quellen, nur den fertigen Text, und läuft deshalb mit einem schlanken Modell
- * (TRANSLATION_MODEL) in eigenem, kleinem Kontext.
+ * das zweite Feld. Er liest keine Quellen, nur den fertigen Text, und läuft deshalb mit Denkstufe `low`
+ * (TRANSLATION_MODEL, token_architektur_roadmap Abschnitt 6) in eigenem, kleinem Kontext.
  *
  * Was die KI nie sieht und nie ändert: welche Antwort richtig ist, IDs, Reihenfolgen. Sie bekommt nur Texte mit einem
  * Schlüssel und gibt dieselbe Struktur übersetzt zurück; validateTranslation() prüft, dass nichts fehlt oder
@@ -72,6 +72,51 @@ export const QUESTIONS_PER_CHUNK = 8;
 const LANGUAGE = { de: "Deutsch", en: "Englisch" } as const;
 
 /**
+ * Begriffe, die nie übersetzt werden (Roadmap Abschnitt 6: „Do-Not-Translate-Liste“): Fachbegriffe, die im Deutschen
+ * genauso verwendet werden und übersetzt hölzern klingen. Per `COURSE_TRANSLATION_DO_NOT_TRANSLATE` (kommagetrennt)
+ * ergänzbar, etwa um Produktnamen einer Firma.
+ */
+export const DEFAULT_DO_NOT_TRANSLATE = [
+  "Deployment",
+  "Pipeline",
+  "Prompt",
+  "Cloud",
+  "Container",
+  "Cluster",
+  "Repository",
+  "Commit",
+  "Branch",
+  "Pull Request",
+  "Merge",
+  "Build",
+  "Release",
+  "Backup",
+  "Load Balancer",
+  "Firewall",
+  "Token",
+  "API",
+  "Endpoint",
+  "Namespace",
+  "Pod",
+  "Node",
+  "Workload",
+  "Framework",
+  "Dashboard",
+];
+
+export function doNotTranslateTerms(): string[] {
+  const extra = (process.env.COURSE_TRANSLATION_DO_NOT_TRANSLATE ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return [...new Set([...DEFAULT_DO_NOT_TRANSLATE, ...extra])];
+}
+
+/** Quellenbelege der Kursgenerierung (`[SRC_07]`) und Lücken-Markierungen (`[QUELLE FEHLT: …]`). */
+const SOURCE_TAG = /\[SRC_\d+(?:\s*[,;]\s*SRC_\d+)*\]/g;
+const MISSING_SOURCE_TAG = /\[QUELLE FEHLT:/g;
+
+/**
  * Systemprompt je Sprachrichtung. Hängt bewusst nur von der Richtung ab, nie vom Kurs: so ist der Anfang jeder Anfrage
  * identisch und wird über Geminis implizites Caching günstiger abgerechnet.
  */
@@ -84,6 +129,8 @@ export function translationSystemPrompt(source: Locale, target: Locale): string 
     "Unverändert bleiben: Code-Blöcke und Inline-Code, Befehle, Pfade, URLs, Konfigurationsschlüssel, Produkt- und Dienstnamen, Abkürzungen und Platzhalter.",
     "Ausnahme Codeblöcke mit Sprache `simulation` (JSON): übersetze nur die Werte von title, scenario, review (Einträge so, wie die Überschrift im übersetzten Text lautet), goal, hint, success, text, label, value, feedback und explanation; alles andere (Schlüssel, IDs, type, start, next, outcome, tone, prompt, accept, output, file, template, options, answer, successOutput, failureOutput) bleibt Zeichen für Zeichen gleich, das JSON bleibt gültig.",
     `Etablierte Fachbegriffe in der in ${LANGUAGE[target]} üblichen Form; ist der Begriff im Original englisch und auch im Deutschen üblich, bleibt er englisch. Innerhalb eines Kurses denselben Begriff immer gleich übersetzen.`,
+    `Diese Begriffe bleiben unübersetzt (auch in zusammengesetzten Wörtern): ${doNotTranslateTerms().join(", ")}.`,
+    "Quellenbelege wie `[SRC_07]` oder `[SRC_04, SRC_12]` bleiben Zeichen für Zeichen und an derselben Stelle im Satz erhalten. Markierungen `[QUELLE FEHLT: …]` behalten das Wort `QUELLE FEHLT` unverändert, nur die Beschreibung danach wird übersetzt.",
     "Markdown bleibt Markdown: Überschriften, Listen, Tabellen, Hervorhebungen, Links und Blöcke der Form `:::name ... :::` behalten Struktur und Zeilenumbrüche; nur der sichtbare Text wird übersetzt, Namen der Blöcke und ihre Attribute nicht.",
     "Antworte ausschließlich als JSON mit derselben Struktur wie die Eingabe: jeder Eintrag behält seinen `key`, Listen behalten Länge und Reihenfolge, `null` bleibt `null`.",
   ].join("\n");
@@ -133,6 +180,9 @@ function markdownProblems(label: string, original: string, translated: string): 
   if (fenceCount(original) !== fenceCount(translated)) problems.push(`${label}: Anzahl der Code-Blöcke weicht ab`);
   if (directiveCount(original) !== directiveCount(translated)) problems.push(`${label}: Anzahl der :::-Blöcke weicht ab`);
   problems.push(...simulationProblems(label, original, translated));
+  const tags = (text: string) => (text.match(SOURCE_TAG) ?? []).join(" ");
+  if (tags(original) !== tags(translated)) problems.push(`${label}: Quellenbelege [SRC_…] fehlen oder wurden verändert`);
+  if ((original.match(MISSING_SOURCE_TAG) ?? []).length !== (translated.match(MISSING_SOURCE_TAG) ?? []).length) problems.push(`${label}: Markierungen [QUELLE FEHLT: …] fehlen oder wurden verändert`);
   // Eine Übersetzung ist selten weniger als halb so lang wie das Original: kürzer heißt fast immer abgeschnitten oder zusammengefasst.
   if (original.length >= 400 && translated.length < original.length * 0.5) problems.push(`${label}: Übersetzung ist verdächtig kurz`);
   return problems;
@@ -187,11 +237,12 @@ export function createChunkTranslator(client?: GoogleGenAI, onUsage?: (usage: AI
   return async (chunk, source, target) => {
     const system = translationSystemPrompt(source, target);
     const user = translationUserPrompt(chunk);
-    const first = await generateStructured(system, user, translationResponseSchema, model, onUsage, client);
+    const options = { thinkingLevel: thinkingLevelFor("translation") };
+    const first = await generateStructured(system, user, translationResponseSchema, model, onUsage, client, options);
     const problems = validateTranslation(chunk, first);
     if (problems.length === 0) return first;
     const retryUser = `${user}\n\nDeine vorherige Übersetzung war unvollständig (${problems.join("; ")}). Übersetze erneut vollständig.`;
-    const second = await generateStructured(system, retryUser, translationResponseSchema, model, onUsage, client);
+    const second = await generateStructured(system, retryUser, translationResponseSchema, model, onUsage, client, options);
     const remaining = validateTranslation(chunk, second);
     if (remaining.length > 0) throw new TranslationValidationError(remaining.join("; "));
     return second;

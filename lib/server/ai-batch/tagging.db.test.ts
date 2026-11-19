@@ -157,7 +157,8 @@ run("Konzept-Tagging als Batch (echte DB, Fake-Client)", () => {
     expect(entries).toHaveLength(2);
     expect(entries.every((e) => e.source === "course_generation" && !e.byok)).toBe(true);
     const total = entries.reduce((sum, e) => sum + Number(e.costUsd), 0);
-    expect(total).toBeCloseTo(((2_000_000 / 1e6) * 0.75 + (200_000 / 1e6) * 3.75) * 0.5, 5);
+    // Standardmodell gemini-4-hydrogen: 1,50 / 7,50 je Million Token.
+    expect(total).toBeCloseTo(((2_000_000 / 1e6) * 1.5 + (200_000 / 1e6) * 7.5) * 0.5, 5);
 
     // Voraussetzungen kommen einmal, nachdem der letzte Auftrag des Kurses erledigt ist
     expect(prerequisites).toHaveBeenCalledTimes(1);

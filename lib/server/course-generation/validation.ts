@@ -7,6 +7,7 @@ import type {
 } from "./schemas";
 import type { SourceExcerpt } from "./sources";
 import { nearDuplicate } from "./variety";
+import { replaceUnknownCitations, type TaggedExcerpt } from "./source-pack";
 
 /**
  * course_generation.md Abschnitt 10 "Frühzeitige Freigabegates" / Gate B:
@@ -167,6 +168,7 @@ export function autoFixObjectiveContent(
   sourceExcerpts: SourceExcerpt[],
 ): { content: ObjectiveContentResponse; fixes: string[] } {
   const fixes: string[] = [];
+  content = fixUnknownCitations(content, sourceExcerpts, fixes);
   const kept: string[] = [];
   const questions = content.questions.flatMap((question, index) => {
     if (kept.some((k) => sameQuestion(k, question.question.en))) {
@@ -190,6 +192,36 @@ export function autoFixObjectiveContent(
     return { ...section, content: { de, en } };
   });
   return { content: { ...content, sections, questions }, fixes };
+}
+
+/**
+ * Belege auf Quellen, die die KI gar nicht bekommen hat (`[SRC_31]`), werden zu `[QUELLE FEHLT: …]`: Die Aussage ist dann
+ * sichtbar unbelegt, ohne dafür das ganze Lernziel neu erzeugen zu lassen. Ohne Quellen-IDs (ältere Aufrufer) passiert nichts.
+ */
+function fixUnknownCitations(content: ObjectiveContentResponse, sourceExcerpts: SourceExcerpt[], fixes: string[]): ObjectiveContentResponse {
+  const known = new Set(sourceExcerpts.flatMap((e) => ((e as TaggedExcerpt).sourceId ? [(e as TaggedExcerpt).sourceId!] : [])));
+  if (known.size === 0) return content;
+  const unknown = new Set<string>();
+  const fix = (text: string) => {
+    const result = replaceUnknownCitations(text, known);
+    result.unknown.forEach((id) => unknown.add(id));
+    return result.text;
+  };
+  // Nur Texte anfassen: ein unvollständiger Merkzettel ({ de } ohne en) wird später ohnehin verworfen, nicht hier.
+  const fixText = (text: unknown) => (typeof text === "string" ? fix(text) : text);
+  const both = <T extends { de: string; en: string }>(value: T): T => {
+    const de = fixText(value.de) as string;
+    return { ...value, de, en: value.en === value.de ? de : (fixText(value.en) as string) };
+  };
+  const sections = content.sections.map((section) => ({
+    ...section,
+    content: both(section.content),
+    ...(section.cheatSheet ? { cheatSheet: both(section.cheatSheet) } : {}),
+  }));
+  const questions = content.questions.map((question) => ({ ...question, explanation: both(question.explanation) }));
+  if (unknown.size === 0) return content;
+  fixes.push(`Belege auf unbekannte Quellen (${[...unknown].join(", ")}) als [QUELLE FEHLT] markiert.`);
+  return { ...content, sections, questions };
 }
 
 /**

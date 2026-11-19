@@ -562,6 +562,23 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
             </div>
           )}
 
+          {/* Befunde des optionalen Quellen-Audits (COURSE_GEN_AUDIT=1) bei fertigen Lernzielen: Hinweise für die Prüfung, keine Fehler. */}
+          {!active && objectives.some((o) => o.status === "valid" && (o.validationErrorsJson?.length ?? 0) > 0) && (
+            <div className="rounded-md border border-border p-3 text-xs" data-testid="audit-findings">
+              <p className="font-medium">{c_courseGenerationPanel(locale).sourceAuditPleaseReview}</p>
+              {objectives.filter((o) => o.status === "valid" && (o.validationErrorsJson?.length ?? 0) > 0).map((o) => (
+                <div key={o.id} className="mt-2">
+                  <p className="font-mono font-medium">{o.code}</p>
+                  <ul className="list-disc pl-4 text-warning-text">
+                    {o.validationErrorsJson!.slice(0, 6).map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+
           {pricingConfigured ? (
             <p className="text-xs text-faint">
               {c_courseGenerationPanel(locale).cost}: ~${Number(job.actualCostUsd).toFixed(4)}

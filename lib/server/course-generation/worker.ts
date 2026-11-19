@@ -26,9 +26,20 @@ import {
   anthropicHaikuContentProvider,
   anthropicSonnetRepairProvider,
   resolveBlueprintProvider,
+  compactCurriculum,
+  type AuditFinding,
   type BlueprintProvider,
   type CourseContentProvider,
 } from "./providers";
+import {
+  assignCitationIds,
+  cleanSources,
+  countMissingSourceMarkers,
+  formatSourcePack,
+  sourcePackChars,
+  taggedExcerpts,
+  type TaggedExcerpt,
+} from "./source-pack";
 import {
   courseBlueprintV1Schema,
   coursePackageV1Schema,
@@ -79,6 +90,42 @@ const GENERATION_BATCH_SIZE = envInt("COURSE_GEN_BATCH_SIZE", 5);
 const MAX_BATCH_ERROR_RATE = envFloat("COURSE_GEN_MAX_BATCH_ERROR_RATE", 0.3);
 const MAX_IDENTICAL_ERRORS = envInt("COURSE_GEN_MAX_IDENTICAL_ERRORS", 2);
 const HARD_MAX_OBJECTIVES = envInt("COURSE_GEN_HARD_MAX_OBJECTIVES", 80);
+/**
+ * Stufe 2 (token_architektur_roadmap): Lernziele eines Batches laufen parallel, höchstens so viele gleichzeitig. Das
+ * Canary-Lernziel läuft vorher allein und legt damit auch den impliziten Cache für das Quellenpaket an.
+ */
+const GENERATION_CONCURRENCY = Math.max(1, envInt("COURSE_GEN_CONCURRENCY", 5));
+/**
+ * Bis zu dieser Größe (Zeichen, grob 4 je Token) bekommt jedes Lernziel das komplette Quellenpaket samt Curriculum
+ * (Roadmap Stufe 2, über implizites Caching zu 5 % des Eingabepreises). Darüber, oder mit COURSE_GEN_CONTEXT_MODE=excerpts,
+ * nur die gemappten Ausschnitte: Ein Cache-Fehltreffer mit sehr großem Paket wäre sonst teuer. `full` erzwingt das Paket.
+ */
+const FULL_CONTEXT_MAX_CHARS = envInt("COURSE_GEN_FULL_CONTEXT_MAX_CHARS", 400_000);
+
+export function shouldUseFullSourceContext(sources: FetchedSource[], mode = process.env.COURSE_GEN_CONTEXT_MODE?.trim().toLowerCase()): boolean {
+  if (mode === "excerpts") return false;
+  if (mode === "full") return true;
+  return sourcePackChars(sources) <= FULL_CONTEXT_MAX_CHARS;
+}
+
+/** Optionaler Quellen-Audit je Lernziel (Roadmap Stufe 3): COURSE_GEN_AUDIT=1. Die Befunde ändern nichts am Inhalt, sie werden gemeldet. */
+function auditEnabled(): boolean {
+  return ["1", "true", "yes"].includes((process.env.COURSE_GEN_AUDIT ?? "").trim().toLowerCase());
+}
+
+/** Läuft `items` mit höchstens `limit` gleichzeitigen Aufgaben ab; Ergebnisse in der Reihenfolge der Eingabe. */
+export async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
 
 /** Höchstmenge Quelltext, die an die KI für EIN Lernziel geht (bei Kursen mit vielen Dateien sonst Hunderttausende Zeichen je Aufruf).
  * War 80.000 Zeichen (≈ 20k Token je Aufruf). Seit Text- und HTML-Quellen in Abschnitte zerlegt werden (sources.ts),
@@ -89,11 +136,14 @@ export const MAX_EXCERPT_CHARS_PER_OBJECTIVE = envInt("COURSE_GEN_MAX_EXCERPT_CH
  * Welche Textstellen die KI für ein Lernziel bekommt: die vom Blueprint genannten; fehlt die Angabe oder passt keine
  * (die KI schreibt Verweise manchmal leicht anders), alle, jeweils auf die Höchstmenge gekürzt.
  */
-export function selectSourceExcerpts(sources: FetchedSource[], locators: string[], maxChars = MAX_EXCERPT_CHARS_PER_OBJECTIVE) {
-  const all = sources.flatMap((s) => s.excerpts);
-  const picked = locators.length === 0 ? all : all.filter((e) => locators.includes(e.locator));
-  const chosen = picked.length > 0 ? picked : all;
-  const out: typeof all = [];
+export function selectSourceExcerpts(sources: FetchedSource[], locators: string[], maxChars = MAX_EXCERPT_CHARS_PER_OBJECTIVE, sourceIds: string[] = []): TaggedExcerpt[] {
+  const all = taggedExcerpts(sources);
+  // Mit Quellen-Mapping aus Stufe 1 nur Ausschnitte der gemappten Quellen: Locators wie „S. 3“ gibt es sonst in jeder PDF.
+  const mapped = sourceIds.length > 0 ? all.filter((e) => e.sourceId !== undefined && sourceIds.includes(e.sourceId)) : [];
+  const pool = mapped.length > 0 ? mapped : all;
+  const byLocator = locators.length === 0 ? [] : pool.filter((e) => locators.includes(e.locator));
+  const chosen = byLocator.length > 0 ? byLocator : mapped.length > 0 ? mapped : all;
+  const out: TaggedExcerpt[] = [];
   let used = 0;
   for (const e of chosen) {
     if (used >= maxChars) break;
@@ -202,6 +252,34 @@ interface ObjectiveRunResult {
   content: ObjectiveContentResponse | null;
   errors: string[];
   costUsd: number;
+  /** Befunde des optionalen Audits (leer ohne Audit). */
+  auditFindings?: AuditFinding[];
+}
+
+/** Was alle Lernziele eines Kurses gemeinsam bekommen (Stufe 2): Quellenpaket und Curriculum, oder `null` im Auszugs-Modus. */
+interface SharedSourceContext {
+  context: { pack: string; curriculum: string } | null;
+  allExcerpts: TaggedExcerpt[];
+  titles: Map<string, string>;
+}
+
+export function buildSharedSourceContext(sources: FetchedSource[], blueprint: Pick<CourseBlueprintV1, "title" | "domains">): SharedSourceContext {
+  const ids = assignCitationIds(sources);
+  const titles = new Map(sources.map((s) => [ids.get(s.id) ?? s.id, s.title]));
+  const allExcerpts = taggedExcerpts(sources, ids);
+  const context = shouldUseFullSourceContext(sources) ? { pack: formatSourcePack(sources, ids), curriculum: compactCurriculum(blueprint) } : null;
+  return { context, allExcerpts, titles };
+}
+
+/** Quellen-IDs aus dem Curriculum, die es nicht gibt (nur zur Diagnose; Stufe 2 fällt dann auf die übrigen Quellen zurück). */
+function blueprintUnknownSourceIds(blueprint: CourseBlueprintV1, titles: Map<string, string>): string[] {
+  const ids = blueprint.domains.flatMap((d) => d.objectives.flatMap((o) => o.sourceIds ?? []));
+  return [...new Set(ids.filter((id) => !titles.has(id)))];
+}
+
+/** Lückenmarkierungen `[QUELLE FEHLT: …]` im Lerntext eines Lernziels (für die Meldung am Ende). */
+function missingSourceMarkers(content: ObjectiveContentResponse, language: "de" | "en"): number {
+  return content.sections.reduce((n, s) => n + countMissingSourceMarkers(s.content[language]), 0);
 }
 
 /** Abschnitt 3.6/11: generiert EIN Objective, validiert es, repariert bei
@@ -217,6 +295,7 @@ async function generateAndValidateObjective(
   sources: FetchedSource[],
   maxAttempts: number,
   outline: boolean,
+  shared: SharedSourceContext,
 ): Promise<ObjectiveRunResult> {
   const objectiveRowId = objectiveRow.id;
 
@@ -231,13 +310,18 @@ async function generateAndValidateObjective(
     }
   }
 
-  const sourceExcerpts = selectSourceExcerpts(sources, entry.objective.sourceLocators);
+  // Mit Quellenpaket sieht die KI alle Ausschnitte; geprüft wird dann auch gegen alle. Sonst nur die gemappten.
+  const sourceExcerpts = shared.context
+    ? shared.allExcerpts
+    : selectSourceExcerpts(sources, entry.objective.sourceLocators, MAX_EXCERPT_CHARS_PER_OBJECTIVE, entry.objective.sourceIds ?? []);
   const input = {
     courseTitle: job.courseTitle,
     language: job.language as "de" | "en",
     domain: entry.domain,
     objective: entry.objective,
     sourceExcerpts,
+    sourceContext: shared.context ?? undefined,
+    sourceTitles: shared.titles,
     ...generationModeOf(job, outline),
   };
 
@@ -309,7 +393,7 @@ async function generateAndValidateObjective(
   }
 
   // Abschnitt 6/11: nach den günstigen Versuchen EIN Reparaturversuch mit dem Reparatur-Modell - aber nur, wenn das
-  // tatsächlich ein anderes Modell ist. Standardmäßig sind beide gemini-3.8-flash; dann wäre es nur ein weiterer
+  // tatsächlich ein anderes Modell ist. Standardmäßig sind beide gemini-4-hydrogen; dann wäre es nur ein weiterer
   // identischer Versuch zum vollen Preis.
   if (errors.length > 0 && deps.repairProvider.model !== deps.contentProvider.model) {
     await updateCourseGenerationObjective(objectiveRowId, {
@@ -343,6 +427,17 @@ async function generateAndValidateObjective(
     return { success: false, content: null, errors, costUsd: attemptCostUsd };
   }
 
+  // Stufe 3 (optional): Quellen-Audit. Ein Fehler hier kostet das Lernziel nicht, es fehlt dann nur der Befund.
+  let auditFindings: AuditFinding[] = [];
+  const audit = usedProvider.auditObjective?.bind(usedProvider);
+  if (auditEnabled() && audit) {
+    try {
+      auditFindings = await withAiCostDetail("audit", () => audit(input, result, trackUsage));
+    } catch (error) {
+      console.warn(`[course-generation] Audit für ${entry.objective.code} fehlgeschlagen:`, (error as Error).message);
+    }
+  }
+
   await updateCourseGenerationObjective(objectiveRowId, {
     status: "valid",
     attempts,
@@ -350,9 +445,10 @@ async function generateAndValidateObjective(
     model: usedProvider.model,
     costUsd: attemptCostUsd.toString(),
     contentJson: result,
-    validationErrorsJson: [],
+    // Beim gültigen Lernziel stehen hier die Audit-Befunde (Hinweise für die Prüfung, keine Fehler).
+    validationErrorsJson: auditFindings.map((f) => `Audit (${f.problem}) ${f.section}: „${f.claim}“ – ${f.note}`),
   });
-  return { success: true, content: result, errors: [], costUsd: attemptCostUsd };
+  return { success: true, content: result, errors: [], costUsd: attemptCostUsd, auditFindings };
 }
 
 function validateAttempt(
@@ -538,6 +634,8 @@ export async function executeCourseGenerationJob(
       throw new PreflightError((error as Error).message);
     }
     if (sources.length === 0 && skippedSources.length > 0) throw new PreflightError(noUsableSourceMessage(skippedSources));
+    // Stufe 0: wiederkehrende Kopf-/Fußzeilen und leere Ausschnitte entfernen, bevor irgendetwas an die KI geht.
+    sources = cleanSources(sources);
 
     // Was die Quellen hergeben (offizielle Lernziel-Nummern, gekürzte Quellen, übersprungene Quellen) für den Qualitätsbericht
     // festhalten. Reine Zusatzinformation: ein Fehler hier darf den Auftrag nie aufhalten.
@@ -665,6 +763,17 @@ export async function executeCourseGenerationJob(
         (outline ? " Die Quelle ist überwiegend eine Stichwortliste: Erklärungen werden aus Fachwissen ergänzt, bitte den Entwurf genau prüfen." : ""),
     });
 
+    // Stufe 2: Quellenpaket und Curriculum einmal bauen; alle Lernziel-Aufrufe beginnen damit gleich (implizites Caching).
+    const shared = buildSharedSourceContext(sources, blueprint);
+    const unknownIds = blueprintUnknownSourceIds(blueprint, shared.titles);
+    if (unknownIds.length > 0) console.warn(`[course-generation] Curriculum nennt unbekannte Quellen-IDs: ${unknownIds.join(", ")}`);
+    let missingMarkers = 0;
+    let auditCount = 0;
+    const tally = (result: ObjectiveRunResult) => {
+      if (result.content) missingMarkers += missingSourceMarkers(result.content, job.language as "de" | "en");
+      auditCount += result.auditFindings?.length ?? 0;
+    };
+
     const canaryIndex = pickCanaryIndex(allObjectives);
     const objectiveRows = new Map<string, CourseGenerationObjectiveRow>();
     for (const [index, entry] of allObjectives.entries()) {
@@ -699,7 +808,9 @@ export async function executeCourseGenerationJob(
       sources,
       MAX_CANARY_ATTEMPTS,
       outline,
+      shared,
     );
+    tally(canaryResult);
     await recordSpend(canaryResult.costUsd);
     if (!canaryResult.success) {
       await updateCourseGenerationJob(jobId, { status: "canary_failed" });
@@ -730,10 +841,11 @@ export async function executeCourseGenerationJob(
       });
 
       let batchFailures = 0;
-      for (const entry of batch) {
-        // Abbruch je Lernziel prüfen, nicht nur je Batch: ein Klick auf „Abbrechen“ greift so nach höchstens einem Lernziel.
+      // Stufe 2: die Lernziele eines Batches parallel (höchstens COURSE_GEN_CONCURRENCY gleichzeitig). Abbruch wird vor
+      // jedem Lernziel geprüft; ein Klick auf „Abbrechen“ greift so, sobald die laufenden Aufrufe fertig sind.
+      const batchResults = await mapWithConcurrency(batch, GENERATION_CONCURRENCY, async (entry) => {
         await checkNotCancelled();
-        const result = await generateAndValidateObjective(
+        return generateAndValidateObjective(
           jobId,
           objectiveRows.get(entry.objective.id)!,
           deps,
@@ -742,7 +854,12 @@ export async function executeCourseGenerationJob(
           sources,
           MAX_REPAIR_ATTEMPTS,
           outline,
+          shared,
         );
+      });
+      for (const [index, result] of batchResults.entries()) {
+        const entry = batch[index];
+        tally(result);
         await recordSpend(result.costUsd);
         if (result.success) {
           results.set(entry.objective.id, { ...entry, content: result.content! });
@@ -790,7 +907,8 @@ export async function executeCourseGenerationJob(
       for (const entry of failedEntries) {
         await checkNotCancelled();
         const row = await upsertCourseGenerationObjective(jobId, entry.domain.id, entry.objective.id, entry.objective.code, false);
-        const result = await generateAndValidateObjective(jobId, row, deps, job, entry, sources, MAX_REPAIR_ATTEMPTS, outline);
+        const result = await generateAndValidateObjective(jobId, row, deps, job, entry, sources, MAX_REPAIR_ATTEMPTS, outline, shared);
+        tally(result);
         await recordSpend(result.costUsd);
         if (result.success) results.set(entry.objective.id, { ...entry, content: result.content! });
         else stillFailed.push(`${entry.objective.code}: ${result.errors[0] ?? "unbekannter Fehler"}`);
@@ -816,10 +934,17 @@ export async function executeCourseGenerationJob(
     }
     await updateCourseGenerationJob(jobId, { packageJson: pkgValidation.data });
 
+    // Quellentreue für die Prüfung sichtbar machen: Lücken aus den Quellen und Befunde des Audits.
+    const fidelityNote = [
+      missingMarkers > 0 ? `${missingMarkers} Stelle(n) mit [QUELLE FEHLT] in den Lektionen` : "",
+      auditCount > 0 ? `${auditCount} Audit-Befund(e) (siehe Lernziele)` : "",
+    ].filter(Boolean).join(", ");
+    const fidelitySuffix = fidelityNote ? ` Quellentreue prüfen: ${fidelityNote}.` : "";
+
     if (!job.autoPublish) {
       await updateCourseGenerationJob(jobId, {
         status: "package_ready",
-        message: "Kurs vollständig generiert und validiert - wartet auf manuelle Freigabe (autoPublish=false).",
+        message: `Kurs vollständig generiert und validiert - wartet auf manuelle Freigabe (autoPublish=false).${fidelitySuffix}`,
         completedAt: new Date(),
       });
       return;
@@ -832,7 +957,7 @@ export async function executeCourseGenerationJob(
     await updateCourseGenerationJob(jobId, {
       status: "published",
       resultCertificationId: imported.certificationId,
-      message: `Veröffentlicht: ${imported.slug} (${imported.objectiveCount} Objective(s), ${imported.questionCount} Frage(n)).`,
+      message: `Veröffentlicht: ${imported.slug} (${imported.objectiveCount} Objective(s), ${imported.questionCount} Frage(n)).${fidelitySuffix}`,
       completedAt: new Date(),
     });
     // PSRP-HR Phase 7.1: Konzepte und Abfragevarianten ergänzen (Hintergrund, best effort).

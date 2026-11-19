@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, like, sql } from "drizzle-orm";
 import type { GoogleGenAI } from "@google/genai";
 import { generateStructured } from "@/lib/ai/generate";
-import { CURRICULUM_MODEL, TRANSLATION_MODEL } from "@/lib/gemini";
+import { CURRICULUM_MODEL, TRANSLATION_MODEL, thinkingLevelFor } from "@/lib/gemini";
 import {
   courseOverviewSchema,
   overviewDraftOf,
@@ -122,7 +122,7 @@ export async function ensureCourseOverview(certificationId: string): Promise<"cr
 export type OverviewTranslator = (draft: OverviewDraft, source: Locale, target: Locale) => Promise<OverviewDraft>;
 
 function createOverviewTranslator(client?: GoogleGenAI): OverviewTranslator {
-  return (draft, source, target) => generateStructured(overviewTranslationSystemPrompt(source, target), JSON.stringify(draft), overviewDraftSchema, TRANSLATION_MODEL, undefined, client);
+  return (draft, source, target) => generateStructured(overviewTranslationSystemPrompt(source, target), JSON.stringify(draft), overviewDraftSchema, TRANSLATION_MODEL, undefined, client, { thinkingLevel: thinkingLevelFor("translation") });
 }
 
 /**

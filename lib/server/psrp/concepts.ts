@@ -11,7 +11,7 @@ import type { GoogleGenAI } from "@google/genai";
 import { isBatchEnabled } from "@/lib/ai/batch";
 import { generateStructured, toGeminiJsonSchema } from "@/lib/ai/generate";
 import { localizedStringSchema } from "@/lib/ai/schemas";
-import { TAGGING_MODEL } from "@/lib/gemini";
+import { TAGGING_MODEL, thinkingLevelFor } from "@/lib/gemini";
 import { withAiCostDetail } from "@/lib/server/admin/ai-ledger";
 import { getDb } from "@/lib/server/db/client";
 import {
@@ -107,7 +107,7 @@ export function taggingPrompt(input: TaggingInput): { system: string; user: stri
 export function createConceptTagger(client?: GoogleGenAI): ConceptTagger {
   return async (input) => {
     const { system, user } = taggingPrompt(input);
-    return generateStructured(system, user, taggingResponseSchema, TAGGING_MODEL, undefined, client);
+    return generateStructured(system, user, taggingResponseSchema, TAGGING_MODEL, undefined, client, { thinkingLevel: thinkingLevelFor("tagging") });
   };
 }
 

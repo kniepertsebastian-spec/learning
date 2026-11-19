@@ -57,6 +57,11 @@ export const courseBlueprintObjectiveSchema = z.object({
    * (Phase 5) zu vollständigen `sections` mit Lerninhalt. */
   lessonPlan: z.array(z.string().min(1)).min(1),
   sourceLocators: z.array(z.string().min(1)),
+  /**
+   * Quellen-Mapping aus Stufe 1 (token_architektur_roadmap): die IDs der Quellen (`SRC_04`), auf die sich dieses Lernziel
+   * stützt. Stufe 2 nutzt primär diese Quellen. Fehlt bei Blueprints von vor der Umstellung.
+   */
+  sourceIds: z.array(z.string().min(1)).optional(),
   recommendedQuestions: z.number().int().min(1).max(15),
   /**
    * Kapitel-Quiz: Fragenzahl, die erzeugt werden soll, damit der Pool des Kapitels mindestens 30 Fragen erreicht. Nur ein Wunsch an die KI
@@ -184,9 +189,17 @@ export const courseBlueprintGenerationResponseSchema = courseBlueprintV1Schema.o
  * kennt die App selbst; die KI hat daran nichts zu erfinden und ließ `retrievedAt` im Praxislauf weg (Gate 3).
  * Der Provider setzt die echten Quellen nach dem Aufruf ein.
  */
+/** Im Curriculum-Aufruf ist das Quellen-Mapping Pflicht: jedes Lernziel nennt mindestens eine Quelle. */
+const courseBlueprintObjectiveAiSchema = courseBlueprintObjectiveSchema.extend({
+  sourceIds: z.array(z.string().regex(/^SRC_\d+$/, "Quellen-ID im Format SRC_NN")).min(1),
+});
+const courseBlueprintDomainAiSchema = courseBlueprintDomainSchema.extend({
+  objectives: z.array(courseBlueprintObjectiveAiSchema).min(1),
+});
+
 export const courseBlueprintAiResponseSchema = courseBlueprintGenerationResponseSchema
-  .omit({ sources: true })
-  .extend({ sources: z.array(z.unknown()).optional() });
+  .omit({ sources: true, domains: true })
+  .extend({ sources: z.array(z.unknown()).optional(), domains: z.array(courseBlueprintDomainAiSchema).min(1) });
 
 export type CourseBlueprintGenerationResponse = z.infer<
   typeof courseBlueprintGenerationResponseSchema

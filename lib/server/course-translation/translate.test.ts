@@ -204,3 +204,34 @@ describe("validateTranslation: Simulationen", () => {
     expect(validateTranslation(c, response("```simulation\n{\"type\":\n```")).join()).toMatch(/Simulation 1 ist nach der Übersetzung ungültig/);
   });
 });
+
+describe("Übersetzung nach token_architektur_roadmap Abschnitt 6", () => {
+  beforeEach(() => generateStructured.mockReset());
+
+  it("läuft mit Denkstufe low", async () => {
+    generateStructured.mockResolvedValueOnce(goodResponse());
+    await createChunkTranslator()(chunk, "de", "en");
+    expect(generateStructured.mock.calls[0][6]).toEqual({ thinkingLevel: "low" });
+  });
+
+  it("Systemprompt: Do-Not-Translate-Liste (per Env ergänzbar) und Schutz der Quellenbelege", () => {
+    vi.stubEnv("COURSE_TRANSLATION_DO_NOT_TRANSLATE", "Nordlicht-Portal, Kubernetes");
+    const prompt = translationSystemPrompt("de", "en");
+    vi.unstubAllEnvs();
+    expect(prompt).toMatch(/unübersetzt.*Deployment, Pipeline, Prompt/);
+    expect(prompt).toContain("Nordlicht-Portal, Kubernetes");
+    expect(prompt).toContain("`[SRC_07]`");
+  });
+
+  it("ein verlorener oder veränderter Quellenbeleg macht die Übersetzung ungültig", () => {
+    const withTags: TranslationChunk = { ...chunk, sections: [{ ...section, content: `${lessonText}\n\nGilt 30 Tage [SRC_07]. Frist [QUELLE FEHLT: Frist].` }] };
+    const ok = goodResponse();
+    ok.sections[0].content = `${ok.sections[0].content}\n\nValid for 30 days [SRC_07]. Deadline [QUELLE FEHLT: deadline].`;
+    expect(validateTranslation(withTags, ok)).toEqual([]);
+    const lost = goodResponse();
+    lost.sections[0].content = `${lost.sections[0].content}\n\nValid for 30 days [SRC_7]. Deadline [SOURCE MISSING: deadline].`;
+    const problems = validateTranslation(withTags, lost);
+    expect(problems.some((p) => p.includes("[SRC_…]"))).toBe(true);
+    expect(problems.some((p) => p.includes("[QUELLE FEHLT"))).toBe(true);
+  });
+});

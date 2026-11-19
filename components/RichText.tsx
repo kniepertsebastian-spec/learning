@@ -12,6 +12,7 @@ import { CalloutBlock, PracticeBlock, StepsBlock, TabsBlock } from "@/components
 import { CodeBlock, TerminalBlock } from "@/components/richtext/CodeBlock";
 import { SimulationBlock } from "@/components/richtext/Simulation";
 import { parseLineRanges, remarkLearningBlocks } from "@/lib/markdown/blocks";
+import { remarkSourceCitations } from "@/lib/markdown/citations";
 import { normalizeMath } from "@/lib/markdown/math";
 import { nodeText } from "@/components/richtext/code-lines";
 import { slugify } from "@/lib/markdown/toc";
@@ -102,7 +103,7 @@ function withHeadingIds(base: Components): Components {
  * gelten; `normalizeMath` bringt andere Schreibweisen (`$…$`, `\(…\)`, `\[…\]`, nacktes `\frac`) vorher auf `$$…$$`. Fehlerhafte Formeln
  * zeigen ihren Quelltext statt die Seite zu brechen.
  */
-const remarkPlugins = [remarkGfm, remarkDirective, remarkLearningBlocks, [remarkMath, { singleDollarTextMath: false }]] as NonNullable<React.ComponentProps<typeof ReactMarkdown>["remarkPlugins"]>;
+const remarkPlugins = [remarkGfm, remarkDirective, remarkLearningBlocks, remarkSourceCitations, [remarkMath, { singleDollarTextMath: false }]] as NonNullable<React.ComponentProps<typeof ReactMarkdown>["remarkPlugins"]>;
 const rehypePlugins = [rehypeHighlight, [rehypeKatex, { throwOnError: false, strict: "ignore", output: "htmlAndMathml" }]] as NonNullable<React.ComponentProps<typeof ReactMarkdown>["rehypePlugins"]>;
 
 export const RichText = React.memo(function RichText({ text, inline = false, headingIds = false }: { text: string; inline?: boolean; headingIds?: boolean }) {
