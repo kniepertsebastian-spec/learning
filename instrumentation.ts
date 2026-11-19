@@ -21,3 +21,21 @@ export async function register() {
     }
   }
 }
+
+/**
+ * R5 (Review vom 19.11.2026): Jeder Serverfehler, den Next.js auffängt, wird als eine JSON-Zeile geloggt und gezählt
+ * (`/api/monitor`, scripts/monitor.sh). Ohne Datenbank und ohne externen Dienst; ein Fehler hier stört die Anfrage nicht.
+ */
+export async function onRequestError(
+  error: unknown,
+  request: { path: string; method: string },
+  context: { routePath?: string; routeType?: string },
+): Promise<void> {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  try {
+    const { recordRequestError } = await import("./lib/server/observability/request-errors");
+    recordRequestError(error, request, context);
+  } catch {
+    // Melden darf nie selbst scheitern.
+  }
+}

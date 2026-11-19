@@ -85,6 +85,8 @@ services:
       GEMINI_TRANSLATION_PRICE_PER_MILLION_COMPLETION_TOKENS_USD: ${GEMINI_TRANSLATION_PRICE_PER_MILLION_COMPLETION_TOKENS_USD:-}
       GEMINI_CACHED_PROMPT_PRICE_FACTOR: ${GEMINI_CACHED_PROMPT_PRICE_FACTOR:-}
       GEMINI_BUDGET_USD: ${GEMINI_BUDGET_USD:-}
+      # Schaltet /api/monitor für scripts/monitor.sh ein (docs/MONITORING.md); leer = aus.
+      MONITOR_TOKEN: ${MONITOR_TOKEN:-}
 
       # E-Mail-Versand per SMTP (docs/EMAIL.md); leer = Versand aus
       # Schlüssel zum Verschlüsseln gespeicherter Firmen-Geheimnisse (eigene KI-Schlüssel, BYOK): openssl rand -base64 32
