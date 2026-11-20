@@ -16,8 +16,15 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
 ];
 
+// Eine Kennung je Build. Next.js hängt sie an die Asset-Adressen (?dpl=) und schickt sie bei Client-Navigationen mit: passt sie
+// nicht zum Server (offener Tab nach einem Deploy), lädt Next.js die Seite ganz neu, statt Chunks der alten Version
+// nachzuladen, die es nicht mehr gibt. Über die Umgebung weitergereicht, damit alle Build-Prozesse dieselbe Kennung nutzen.
+const deploymentId = process.env.NEXT_DEPLOYMENT_ID || process.env.GITHUB_SHA || `b${Date.now().toString(36)}`;
+process.env.NEXT_DEPLOYMENT_ID = deploymentId;
+
 const nextConfig: NextConfig = {
   output: "standalone",
+  deploymentId,
   experimental: {
     // Enables next/navigation's forbidden()/unauthorized() so admin guards
     // (R0.2, lib/server/auth-guards.ts) can return real 403/401 responses
@@ -30,7 +37,7 @@ const nextConfig: NextConfig = {
 };
 
 // Offline-Einstieg vorab im Precache; die Revision wechselt mit jedem Build, damit er nach einem Deploy erneuert wird.
-const precacheRevision = process.env.GITHUB_SHA ?? String(Date.now());
+const precacheRevision = deploymentId;
 
 const withSerwist = withSerwistInit({
   additionalPrecacheEntries: [
