@@ -1071,7 +1071,7 @@ teure Teil, deshalb setzen die Maßnahmen vor allem dort an.
 
 ## Anhang: Robustheit und hängende Läufe (Oktober 2026)
 
-- **KI-Anfragen:** Zeitlimit je Anfrage (`GEMINI_REQUEST_TIMEOUT_MS`, Standard 180 s). Vorübergehende Fehler (429, 5xx,
+- **KI-Anfragen:** Zeitlimit je Anfrage (`GEMINI_REQUEST_TIMEOUT_MS`, Standard 600 s; nach einer Zeitüberschreitung höchstens ein zweiter Versuch, `GEMINI_TIMEOUT_ATTEMPTS`). Vorübergehende Fehler (429, 5xx,
   Netz, Zeitüberschreitung, leere Antwort) werden bis zu `GEMINI_MAX_ATTEMPTS` (Standard 4) mal mit wachsender Pause
   wiederholt (2 s, 6 s, 18 s; Basis `GEMINI_RETRY_BASE_MS`). Sie lösen den Fehlerschutz „gleicher Fehler zweimal“ nicht
   mehr aus.
