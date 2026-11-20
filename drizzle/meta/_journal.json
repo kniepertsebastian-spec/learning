@@ -862,6 +862,13 @@
       "when": 1794668863671,
       "tag": "0122_self_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1795183534085,
+      "tag": "0123_course_generation_source_files",
+      "breakpoints": true
     }
   ]
 }

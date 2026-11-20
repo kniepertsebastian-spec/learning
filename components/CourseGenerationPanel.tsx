@@ -7,6 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { SourceUrlInput } from "@/components/SourceUrlInput";
+import { FileDropZone } from "@/components/FileDropZone";
+import { isGatewayStatus, NonJsonResponseError, readJsonResponse } from "@/lib/client/read-json";
 import { toast } from "@/components/ui/toaster";
 import { useLocale } from "@/lib/i18n";
 import { fmt } from "@/lib/quiz/keys";
@@ -80,6 +82,17 @@ export interface PanelCategory {
 
 const fieldClass = "w-full rounded-md border border-border-strong bg-control px-3 py-2";
 
+/** Adressen und Dateien zusammen (wie im Server, app/api/admin/course-generation/route.ts). */
+const MAX_SOURCES = 30;
+/** Dateien je Auftrag und Größe je Datei (Dokumentprüfung im Server). */
+const MAX_SOURCE_FILES = 10;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+/**
+ * Quellen werden einzeln geprüft, mehrere gleichzeitig: Eine Anfrage für alle 30 dauert länger als die rund 100 Sekunden,
+ * nach denen Cloudflare abbricht (dann kommt eine HTML-Fehlerseite statt JSON).
+ */
+const CHECK_CONCURRENCY = 4;
+
 export function CourseGenerationPanel({ locale, categories = [], bare = false }: { locale: "de" | "en"; categories?: PanelCategory[]; /** ohne Kartenrahmen, z. B. im Sheet */ bare?: boolean }) {
   const { t } = useLocale();
   const ac = t.admin_catalog;
@@ -94,6 +107,9 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
   const [objectives, setObjectives] = useState<Objective[]>([]);
   const [pricingConfigured, setPricingConfigured] = useState(true);
   const [sourceUrlList, setSourceUrlList] = useState<string[]>([]);
+  const [sourceFiles, setSourceFiles] = useState<File[]>([]);
+  /** Fortschritt während des Starts (Quellenprüfung, Hochladen), sonst null. */
+  const [progress, setProgress] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(true);
@@ -116,7 +132,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
         setRequestError(ac.needBasis);
         return;
       }
-      if (target >= 2 && sourceUrlList.length === 0) {
+      if (target >= 2 && sourceUrlList.length + sourceFiles.length === 0) {
         setStep(1);
         setRequestError(ac.needSource);
         return;
@@ -192,20 +208,75 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
   const [badSources, setBadSources] = useState<{ url: string; error: string }[] | null>(null);
   const [pendingPayload, setPendingPayload] = useState<Record<string, unknown> | null>(null);
 
+  /** Fehlermeldung für die Anzeige; eine HTML-Fehlerseite (Zeitüberschreitung, zu groß) wird verständlich benannt. */
+  function describeError(error: unknown): string {
+    const tx = c_courseGenerationPanel(locale);
+    if (error instanceof NonJsonResponseError) {
+      if (error.status === 413) return tx.tooLarge;
+      return fill(isGatewayStatus(error.status) ? tx.serverTimeout : tx.serverUnexpected, error.status);
+    }
+    return error instanceof Error ? error.message : "Auftrag konnte nicht gestartet werden.";
+  }
+
   async function createJob(payload: Record<string, unknown>) {
-    const response = await fetch("/api/admin/course-generation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = (await response.json()) as { job?: Job; error?: string };
+    // Mit Dateien als multipart/form-data (die Angaben als JSON im Feld „payload“), sonst wie bisher als JSON.
+    let body: BodyInit;
+    let headers: HeadersInit | undefined;
+    if (sourceFiles.length > 0) {
+      const form = new FormData();
+      form.append("payload", JSON.stringify(payload));
+      for (const file of sourceFiles) form.append("files", file);
+      body = form;
+      setProgress(fill(c_courseGenerationPanel(locale).uploading, sourceFiles.length));
+    } else {
+      body = JSON.stringify(payload);
+      headers = { "Content-Type": "application/json" };
+    }
+    const response = await fetch("/api/admin/course-generation", { method: "POST", headers, body });
+    const data = await readJsonResponse<{ job?: Job; error?: string }>(response);
     if (!response.ok) throw new Error(data.error ?? `Status ${response.status}`);
     if (data.job) {
       setJob(data.job);
       setShowForm(false);
       setBadSources(null);
       setPendingPayload(null);
+      setSourceFiles([]);
     }
+  }
+
+  /**
+   * Prüft die Adressen einzeln (CHECK_CONCURRENCY gleichzeitig) und zeigt den Fortschritt. Ließ sich eine Prüfung selbst nicht
+   * ausführen (Netz, Server), gilt sie nicht als Fehler der Quelle: dann entscheidet der Preflight des Auftrags.
+   */
+  async function checkSourceUrls(urls: string[]): Promise<{ url: string; error: string }[]> {
+    const bad: { url: string; error: string }[] = [];
+    let next = 0;
+    let done = 0;
+    const tx = c_courseGenerationPanel(locale);
+    setProgress(fill(tx.checkingSources, 0, urls.length));
+    async function worker() {
+      while (next < urls.length) {
+        const url = urls[next++];
+        try {
+          const response = await fetch("/api/admin/course-generation/check-sources", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sourceUrls: [url] }),
+          });
+          if (response.ok) {
+            const { results } = await readJsonResponse<{ results: { url: string; ok: boolean; error?: string }[] }>(response);
+            for (const r of results) if (!r.ok) bad.push({ url: r.url, error: r.error ?? "" });
+          }
+        } catch {
+          // siehe oben: der Preflight prüft die Quelle noch einmal
+        }
+        done++;
+        setProgress(fill(tx.checkingSources, done, urls.length));
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(CHECK_CONCURRENCY, urls.length) }, worker));
+    // Reihenfolge wie in der Eingabe, unabhängig davon, welche Prüfung zuerst fertig war.
+    return urls.flatMap((u) => bad.filter((b) => b.url === u));
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -215,7 +286,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     setBadSources(null);
     const form = new FormData(event.currentTarget);
     const sourceUrls = sourceUrlList;
-    if (sourceUrls.length === 0) {
+    if (sourceUrls.length + sourceFiles.length === 0) {
       setLoading(false);
       setRequestError(c_courseGenerationPanel(locale).pleaseAddAtLeastOne);
       return;
@@ -236,27 +307,20 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     };
 
     try {
-      // Erst die Quellen prüfen: eine kaputte soll nicht den ganzen Lauf scheitern lassen, sondern gemeldet werden.
-      const check = await fetch("/api/admin/course-generation/check-sources", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrls }),
-      });
-      if (check.ok) {
-        const { results } = (await check.json()) as { results: { url: string; ok: boolean; error?: string }[] };
-        const bad = results.filter((r) => !r.ok).map((r) => ({ url: r.url, error: r.error ?? "" }));
-        if (bad.length > 0) {
-          setBadSources(bad);
-          setPendingPayload(payload);
-          return;
-        }
+      // Erst die Adressen prüfen: eine kaputte soll nicht den ganzen Lauf scheitern lassen, sondern gemeldet werden.
+      // Dateien prüft der Server beim Anlegen des Auftrags.
+      const bad = sourceUrls.length > 0 ? await checkSourceUrls(sourceUrls) : [];
+      if (bad.length > 0) {
+        setBadSources(bad);
+        setPendingPayload(payload);
+        return;
       }
-      // Ließ sich die Prüfung selbst nicht ausführen, gilt weiter der Preflight des Auftrags.
       await createJob(payload);
     } catch (error) {
-      setRequestError(error instanceof Error ? error.message : "Auftrag konnte nicht gestartet werden.");
+      setRequestError(describeError(error));
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   }
 
@@ -265,7 +329,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     const bad = new Set(badSources.map((b) => b.url));
     const rest = (pendingPayload.sourceUrls as string[]).filter((u) => !bad.has(u));
     setSourceUrlList(rest);
-    if (rest.length === 0) {
+    if (rest.length + sourceFiles.length === 0) {
       setBadSources(null);
       setPendingPayload(null);
       setRequestError(c_courseGenerationPanel(locale).noUsableSourceLeftPlease);
@@ -276,9 +340,10 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     try {
       await createJob({ ...pendingPayload, sourceUrls: rest });
     } catch (error) {
-      setRequestError(error instanceof Error ? error.message : "Auftrag konnte nicht gestartet werden.");
+      setRequestError(describeError(error));
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   }
 
@@ -404,8 +469,21 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           </div>
 
           <div className={step === 1 ? "space-y-2" : "hidden"}>
-            <SourceUrlInput urls={sourceUrlList} onChange={setSourceUrlList} locale={locale} max={30} />
-            <p className="text-xs text-faint">{fmt(ac.sourcesCount, { n: sourceUrlList.length })}</p>
+            <SourceUrlInput urls={sourceUrlList} onChange={setSourceUrlList} locale={locale} max={MAX_SOURCES - sourceFiles.length} />
+            <div className="space-y-1 pt-2" data-testid="source-files">
+              <p className="text-sm font-medium">{c_courseGenerationPanel(locale).filesHeading}</p>
+              <p className="text-xs text-subtle">{fill(c_courseGenerationPanel(locale).filesHint, MAX_SOURCE_FILES)}</p>
+              <FileDropZone
+                files={sourceFiles}
+                onChange={setSourceFiles}
+                locale={locale}
+                maxFiles={Math.max(1, Math.min(MAX_SOURCE_FILES, MAX_SOURCES - sourceUrlList.length))}
+                maxBytes={MAX_FILE_BYTES}
+                disabled={loading}
+                testId="source-files-drop"
+              />
+            </div>
+            <p className="text-xs text-faint">{fmt(ac.sourcesCount, { n: sourceUrlList.length + sourceFiles.length })}</p>
           </div>
 
           <div className={step === 2 ? "space-y-3" : "hidden"}>
@@ -431,7 +509,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
               <div><dt className="text-xs text-subtle">{ac.fieldTitle}</dt><dd className="font-medium">{summary.title}</dd></div>
               <div><dt className="text-xs text-subtle">{ac.fieldProvider}</dt><dd>{summary.provider}{summary.version ? ` · ${summary.version}` : ""}</dd></div>
               <div><dt className="text-xs text-subtle">{ac.fieldGroup}</dt><dd>{summary.group}</dd></div>
-              <div><dt className="text-xs text-subtle">{ac.sources}</dt><dd>{fmt(ac.sourcesCount, { n: sourceUrlList.length })}</dd></div>
+              <div><dt className="text-xs text-subtle">{ac.sources}</dt><dd>{fmt(ac.sourcesCount, { n: sourceUrlList.length + sourceFiles.length })}</dd></div>
               <div><dt className="text-xs text-subtle">{ac.budget}</dt><dd>$ {summary.budget} · {fmt(ac.jobLimit, { n: summary.limit })}{summary.autoPublish ? ` · ${ac.fieldAutoPublish}` : ""}</dd></div>
             </dl>
           )}
@@ -675,6 +753,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           </div>
         </div>
       )}
+      {progress && <p className="mt-3 text-sm text-subtle" role="status" data-testid="wizard-progress">{progress}</p>}
       {requestError && <p className="mt-3 text-sm text-danger-text">{requestError}</p>}
     </section>
   );

@@ -175,12 +175,15 @@ export function primarySourceIndex(sources: Array<Pick<FetchedSource, "excerpts"
 }
 
 /** Der Prüfungsleitfaden unter den Quellen wird bis PRIMARY_SOURCE_MAX_CHARS gelesen, die übrigen werden wie bisher gekappt. */
-function markPrimaryAndCap(full: FetchedSource[]): FetchedSource[] {
+export function markPrimaryAndCap(full: FetchedSource[]): FetchedSource[] {
   const primary = primarySourceIndex(full);
   return full.map((source, i) => {
-    if (i === primary) return { ...source, primary: true };
+    // Eine früher (z. B. nur unter den Adressen) als Leitfaden markierte Quelle verliert die Markierung, wenn eine andere gewinnt.
+    const rest: FetchedSource = { ...source };
+    delete rest.primary;
+    if (i === primary) return { ...rest, primary: true };
     const { excerpts, truncated } = capExcerpts(source.excerpts);
-    return { ...source, excerpts, truncated: source.truncated || truncated };
+    return { ...rest, excerpts, truncated: source.truncated || truncated };
   });
 }
 

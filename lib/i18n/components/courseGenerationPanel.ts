@@ -29,6 +29,13 @@ const texts = {
     n0SourceSCannotBe: "{0} Quelle(n) lassen sich nicht verwenden:",
     n0SourceSSkipped: "{0} Quelle(n) übersprungen",
     skippedSourcesHint: "Der Kurs entsteht aus den übrigen Quellen. Diese ließen sich nicht verwenden:",
+    filesHeading: "Dateien (PDF, Markdown, Text …)",
+    filesHint: "Zusätzlich oder statt Adressen: bis zu {0} Dateien, je höchstens 10 MB.",
+    checkingSources: "Quellen werden geprüft ({0} von {1}) …",
+    uploading: "Auftrag wird mit {0} Datei(en) hochgeladen …",
+    serverTimeout: "Der Server hat nicht rechtzeitig geantwortet (Status {0}). Bitte in einer Minute erneut versuchen; läuft ein Auftrag bereits, erscheint er unten in der Liste.",
+    serverUnexpected: "Unerwartete Antwort vom Server (Status {0}). Bitte erneut versuchen.",
+    tooLarge: "Die Anfrage ist zu groß (Status 413). Bitte weniger oder kleinere Dateien wählen.",
   },
   en: {
     pleaseAddAtLeastOne: "Please add at least one source.",
@@ -59,6 +66,13 @@ const texts = {
     n0SourceSCannotBe: "{0} source(s) cannot be used:",
     n0SourceSSkipped: "{0} source(s) skipped",
     skippedSourcesHint: "The course is built from the remaining sources. These could not be used:",
+    filesHeading: "Files (PDF, Markdown, text …)",
+    filesHint: "In addition to or instead of addresses: up to {0} files, at most 10 MB each.",
+    checkingSources: "Checking sources ({0} of {1}) …",
+    uploading: "Uploading job with {0} file(s) …",
+    serverTimeout: "The server did not respond in time (status {0}). Please try again in a minute; if a job is already running, it appears in the list below.",
+    serverUnexpected: "Unexpected response from the server (status {0}). Please try again.",
+    tooLarge: "The request is too large (status 413). Please choose fewer or smaller files.",
   },
 } as const;
 

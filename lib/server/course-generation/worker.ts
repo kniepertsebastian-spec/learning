@@ -55,7 +55,8 @@ import {
 } from "./schemas";
 import { looksLikeOutline } from "./outline";
 import { partTitle, splitBlueprint } from "./split";
-import { fetchSourcesTolerant, noUsableSourceMessage, type FetchedSource, type FetchSourcesResult, type SkippedSource } from "./sources";
+import { fetchSourcesTolerant, markPrimaryAndCap, noUsableSourceMessage, type FetchedSource, type FetchSourcesResult, type SkippedSource } from "./sources";
+import { loadSourceFiles } from "./source-files";
 import { buildSourceReport } from "./coverage";
 import { autoFixObjectiveContent, missingQuestionsOnly, pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
 import { getDb } from "@/lib/server/db/client";
@@ -171,6 +172,8 @@ export interface CourseGenerationDeps {
   repairProvider: CourseContentProvider;
   /** Liefert die brauchbaren Quellen und die übersprungenen; der Worker bricht nur ab, wenn keine einzige brauchbar ist. */
   fetchSourcesFn: (urls: string[]) => Promise<FetchSourcesResult>;
+  /** Betreiber-Aufträge: hochgeladene Dateien als weitere Quellen (Teile eines aufgeteilten Kurses lesen die des ersten Teils). */
+  loadSourceFilesFn: (jobId: string, fallbackJobId?: string | null) => Promise<FetchSourcesResult>;
   /** Interne Lernpfade: Text des Firmendokuments (geschwärzt und gescannt). */
   loadDocumentSourcesFn: (organizationId: string, jobId: string, describeImage?: ImageDescriber, legacyDocumentId?: string | null) => Promise<FetchedSource[]>;
   /** Interne Lernpfade: beschreibt Screenshots über den KI-Zugang der Firma. */
@@ -186,7 +189,7 @@ async function defaultDeps(
   job: CourseGenerationJob,
   override?: Partial<CourseGenerationDeps>,
 ): Promise<CourseGenerationDeps> {
-  const base = { fetchSourcesFn: fetchSourcesTolerant, loadDocumentSourcesFn: loadJobSources };
+  const base = { fetchSourcesFn: fetchSourcesTolerant, loadSourceFilesFn: loadSourceFiles, loadDocumentSourcesFn: loadJobSources };
   if (!job.organizationId) {
     return {
       blueprintProvider: resolveBlueprintProvider(job.blueprintProvider),
@@ -597,8 +600,10 @@ export async function executeCourseGenerationJob(
       message: "Technischer Preflight läuft …",
     });
     deps = { ...(await defaultDeps(job, depsOverride)), ...depsOverride };
-    if (!job.organizationId && job.sourceUrls.length === 0) {
-      throw new PreflightError("Mindestens eine Quelle (sourceUrls) ist erforderlich.");
+    // Betreiber-Aufträge: Adressen und/oder hochgeladene Dateien (geprüft wird unten, ob zusammen etwas Brauchbares übrig bleibt).
+    const operatorFiles = job.organizationId ? null : await deps.loadSourceFilesFn(job.id, job.splitOfJobId);
+    if (!job.organizationId && job.sourceUrls.length === 0 && (operatorFiles?.sources.length ?? 0) + (operatorFiles?.skipped.length ?? 0) === 0) {
+      throw new PreflightError("Mindestens eine Quelle (Adresse oder Datei) ist erforderlich.");
     }
     if (job.organizationId && !job.documentId && !(await hasJobDocuments(jobId))) {
       throw new PreflightError("Für einen internen Kurs ist mindestens eine Datei erforderlich.");
@@ -627,7 +632,14 @@ export async function executeCourseGenerationJob(
       if (job.organizationId && (job.documentId || (await hasJobDocuments(jobId)))) {
         sources = await deps.loadDocumentSourcesFn(job.organizationId, jobId, deps.describeImageFn, job.documentId);
       } else {
-        ({ sources, skipped: skippedSources } = await deps.fetchSourcesFn(job.sourceUrls));
+        const fetched = job.sourceUrls.length > 0 ? await deps.fetchSourcesFn(job.sourceUrls) : { sources: [], skipped: [] };
+        if (operatorFiles && (operatorFiles.sources.length > 0 || operatorFiles.skipped.length > 0)) {
+          // Dateien und Adressen zusammen: der Prüfungsleitfaden kann auch eine Datei sein, deshalb über alle neu bestimmen.
+          sources = markPrimaryAndCap([...fetched.sources, ...operatorFiles.sources]);
+          skippedSources = [...fetched.skipped, ...operatorFiles.skipped];
+        } else {
+          ({ sources, skipped: skippedSources } = fetched);
+        }
       }
     } catch (error) {
       if (error instanceof DocumentSourceError) throw new PreflightError(error.message);

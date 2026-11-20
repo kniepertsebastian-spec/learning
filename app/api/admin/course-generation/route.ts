@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { checkCourseGenerationRateLimit } from "@/lib/server/admin/rate-limit";
 import { requireAdminApi } from "@/lib/server/auth-guards";
+import { BodyTooLargeError, readFormDataCapped, readJsonCapped } from "@/lib/server/http/capped-body";
+import { checkSourceFiles, saveSourceFiles, type SourceFileInput } from "@/lib/server/course-generation/source-files";
 import {
   createCourseGenerationJob,
   DuplicateCourseGenerationJobError,
@@ -15,6 +17,9 @@ import {
   recoverStaleCourseGenerationJobsNow,
   startCourseGenerationJob,
 } from "@/lib/server/course-generation/runner";
+import { getDb } from "@/lib/server/db/client";
+import { courseGenerationJobs } from "@/lib/server/db/schema";
+import { eq } from "drizzle-orm";
 import type { CourseGenerationJobStatus } from "@/lib/server/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +27,12 @@ export const runtime = "nodejs";
 
 /** Höchstzahl Quellen je Auftrag (Zertifikate haben oft viele offizielle Seiten: Prüfungsleitfaden, PDF, Dienste-Liste …). */
 const MAX_SOURCE_URLS = 30;
+/** Höchstzahl hochgeladener Dateien je Auftrag (je Datei gilt die Grenze der Dokumentprüfung, 10 MB). Adressen und Dateien zählen zusammen bis MAX_SOURCE_URLS. */
+const MAX_SOURCE_FILES = 10;
+/** Gesamtgröße einer Anfrage mit Dateien (unter der Upload-Grenze von Cloudflare). */
+const MAX_MULTIPART_BYTES = 60 * 1024 * 1024;
+/** Ohne Dateien enthält die Anfrage nur Text. */
+const MAX_JSON_BYTES = 256 * 1024;
 
 const createJobSchema = z.object({
   courseTitle: z.string().min(1).max(200),
@@ -31,7 +42,8 @@ const createJobSchema = z.object({
   /** Pflicht beim Zertifikatskurs; beim individuellen Training optional (Standard: „Individuell“). */
   provider: z.string().trim().max(100).default(""),
   certificationVersion: z.string().min(1).max(50).optional(),
-  sourceUrls: z.array(z.string().url()).min(1).max(MAX_SOURCE_URLS),
+  /** Darf leer sein, wenn Dateien mitkommen (geprüft im POST). */
+  sourceUrls: z.array(z.string().url()).max(MAX_SOURCE_URLS).default([]),
   autoPublish: z.boolean().default(false),
   initialCostLimitUsd: z.number().min(0.1).max(1000).default(2),
   absoluteCostLimitUsd: z.number().min(0.1).max(1000).default(5),
@@ -86,11 +98,36 @@ export async function POST(request: Request) {
     );
   }
 
+  // Zwei Formen: JSON (nur Adressen) oder multipart/form-data mit dem JSON im Feld „payload“ und den Dateien unter „files“.
   let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Ungültiger Request-Body." }, { status: 400 });
+  let files: SourceFileInput[] = [];
+  if ((request.headers.get("content-type") ?? "").startsWith("multipart/form-data")) {
+    let form: FormData;
+    try {
+      form = await readFormDataCapped(request, MAX_MULTIPART_BYTES);
+    } catch (error) {
+      if (error instanceof BodyTooLargeError) {
+        return NextResponse.json({ error: `Die Dateien sind zusammen zu groß (höchstens ${MAX_MULTIPART_BYTES / (1024 * 1024)} MB).` }, { status: 413 });
+      }
+      return NextResponse.json({ error: "Ungültiger Request-Body." }, { status: 400 });
+    }
+    try {
+      body = JSON.parse(String(form.get("payload") ?? ""));
+    } catch {
+      return NextResponse.json({ error: "Ungültiger Request-Body." }, { status: 400 });
+    }
+    const uploaded = form.getAll("files").filter((f): f is File => f instanceof File);
+    if (uploaded.length > MAX_SOURCE_FILES) {
+      return NextResponse.json({ error: `Höchstens ${MAX_SOURCE_FILES} Dateien je Auftrag.` }, { status: 400 });
+    }
+    files = await Promise.all(uploaded.map(async (f) => ({ filename: f.name, mimeType: f.type, data: Buffer.from(await f.arrayBuffer()) })));
+  } else {
+    try {
+      body = await readJsonCapped(request, MAX_JSON_BYTES);
+    } catch (error) {
+      if (error instanceof BodyTooLargeError) return NextResponse.json({ error: "Die Anfrage ist zu groß." }, { status: 413 });
+      return NextResponse.json({ error: "Ungültiger Request-Body." }, { status: 400 });
+    }
   }
 
   let input: z.infer<typeof createJobSchema>;
@@ -106,11 +143,27 @@ export async function POST(request: Request) {
     throw error;
   }
 
+  if (input.sourceUrls.length + files.length === 0) {
+    return NextResponse.json({ error: "Ungültige Anfrage: mindestens eine Quelle (Adresse oder Datei) angeben." }, { status: 400 });
+  }
+  if (input.sourceUrls.length + files.length > MAX_SOURCE_URLS) {
+    return NextResponse.json({ error: `Ungültige Anfrage: höchstens ${MAX_SOURCE_URLS} Quellen (Adressen und Dateien zusammen).` }, { status: 400 });
+  }
+
   if (input.absoluteCostLimitUsd < input.initialCostLimitUsd) {
     return NextResponse.json(
       { error: "absoluteCostLimitUsd muss mindestens initialCostLimitUsd sein." },
       { status: 400 },
     );
+  }
+
+  // Dateien vor dem Anlegen prüfen: eine unbrauchbare Datei soll genannt werden, statt dass ein Auftrag ohne sie startet.
+  if (files.length > 0) {
+    const problems = await checkSourceFiles(files);
+    if (problems.length > 0) {
+      const shown = problems.slice(0, 3).map((p) => `${p.filename}: ${p.message}`).join("; ");
+      return NextResponse.json({ error: `Nicht alle Dateien lassen sich verwenden. Es wurde nichts gestartet. ${shown}`, files: problems }, { status: 422 });
+    }
   }
 
   let job;
@@ -136,6 +189,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
     throw error;
+  }
+
+  if (files.length > 0) {
+    try {
+      await saveSourceFiles(job.id, files);
+    } catch (error) {
+      // Ohne seine Dateien soll der Auftrag nicht starten (und auch nicht als aktiver Auftrag den Titel blockieren).
+      await getDb().delete(courseGenerationJobs).where(eq(courseGenerationJobs.id, job.id)).catch((e) => console.error("[course-generation] Auftrag ohne Dateien nicht gelöscht:", e));
+      throw error;
+    }
   }
 
   startCourseGenerationJob(job.id);

@@ -2537,6 +2537,27 @@ export const courseGenerationJobDocuments = pgTable(
   (table) => [unique("course_generation_job_documents_unique").on(table.jobId, table.documentId)],
 );
 
+/**
+ * Dateien als Quellen eines Betreiber-Auftrags (Kurs generieren), zusätzlich zu den Adressen in source_urls. Inhalt in der
+ * Datenbank wie bei Firmendokumenten; fällt mit dem Auftrag weg. Teile eines aufgeteilten Kurses lesen die Dateien des ersten Teils.
+ */
+export const courseGenerationSourceFiles = pgTable(
+  "course_generation_source_files",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => courseGenerationJobs.id, { onDelete: "cascade" }),
+    orderNum: integer("order_num").notNull(),
+    filename: text("filename").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    data: bytea("data").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("course_generation_source_files_job_idx").on(table.jobId, table.orderNum)],
+);
+
 /** Dateiinhalt eines Firmendokuments (wird mit dem Dokument gelöscht und über pg_dump mitgesichert). */
 export const companyDocumentFiles = pgTable("company_document_files", {
   documentId: uuid("document_id")
