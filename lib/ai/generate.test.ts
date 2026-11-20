@@ -150,6 +150,7 @@ import { z } from "zod";
 import type { GoogleGenAI } from "@google/genai";
 import { vi } from "vitest";
 import {
+  AIGenerationError,
   AIResponseBlockedError,
   AIResponseTruncatedError,
   activeConfigFallback,
@@ -356,6 +357,17 @@ describe("vorübergehende Fehler: Wiederholen statt Aufgeben", () => {
     const { client, calls } = fakeClient((_c, n) => (n === 1 ? new Error('{"error":{"code":503,"status":"UNAVAILABLE"}}') : n === 2 ? timeout : '{"name":"a","count":1}'));
     await expect(generateStructured("sys", "user", small, "m", undefined, client)).resolves.toEqual({ name: "a", count: 1 });
     expect(calls).toHaveLength(3);
+  });
+
+  it("Zeitlimit: nur ein zweiter Versuch, dann eine verständliche Meldung statt „This operation was aborted“", async () => {
+    const aborted = Object.assign(new Error("This operation was aborted"), { name: "AbortError" });
+    const { client, calls } = fakeClient(() => aborted);
+    const err = await generateStructured("sys", "user", small, "m", undefined, client).catch((e: unknown) => e);
+    expect(calls).toHaveLength(2);
+    expect(err).toBeInstanceOf(AIGenerationError);
+    expect((err as Error).message).toMatch(/nicht innerhalb von 10 Minuten/);
+    // Bleibt für den Fehlerschutz des Workers ein vorübergehender Fehler (zählt nicht als „immer gleicher Inhaltsfehler“).
+    expect(isRetryableError(new Error((err as Error).message))).toBe(true);
   });
 
   it("jede Anfrage hat ein Zeitlimit, damit eine hängende Verbindung den Lauf nicht blockiert", async () => {

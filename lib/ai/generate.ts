@@ -363,9 +363,29 @@ function envNumber(name: string, fallback: number): number {
   const value = Number(process.env[name]);
   return process.env[name] !== undefined && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
-/** Zeitlimit je Gemini-Anfrage (Standard 3 Minuten; eine Lernziel-Antwort braucht typischerweise unter einer Minute). */
+/**
+ * Zeitlimit je Gemini-Anfrage (Standard 10 Minuten). Früher 3 Minuten: Ein Lernziel mit großem Quellenpaket (~140k
+ * Eingabe-Token) und Gemini 4 mit Denkstufe `high` braucht nachweislich länger; alle vier Versuche liefen dann ins
+ * Zeitlimit und der Kurslauf scheiterte mit „This operation was aborted“ (CEH v13, Canary). Das Limit soll nur hängende
+ * Verbindungen beenden, nicht langsame, aber gültige Antworten.
+ */
 function requestTimeoutMs(): number {
-  return envNumber("GEMINI_REQUEST_TIMEOUT_MS", 180_000);
+  return envNumber("GEMINI_REQUEST_TIMEOUT_MS", 600_000);
+}
+/**
+ * Versuche je Anfrage, wenn sie ins Zeitlimit läuft (Standard 2). Eine Wiederholung mit derselben Anfrage dauert meist
+ * wieder genauso lange, und Gemini rechnet die abgebrochene Anfrage trotzdem ab; mehr als ein zweiter Versuch kostet nur
+ * Zeit und Geld.
+ */
+function timeoutAttempts(): number {
+  return Math.max(1, Math.floor(envNumber("GEMINI_TIMEOUT_ATTEMPTS", 2)));
+}
+/** Ist der Fehler unser eigenes Zeitlimit (AbortSignal.timeout)? Das SDK meldet es je nach Version als TimeoutError oder AbortError. */
+export function isRequestTimeout(error: unknown): boolean {
+  return (
+    (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) ||
+    /operation was aborted|aborted due to timeout/i.test(errorMessage(error))
+  );
 }
 /** Versuche je Anfrage bei vorübergehenden Fehlern (Standard 4). */
 function transientAttempts(): number {
@@ -439,6 +459,8 @@ export async function requestJson(
 
   let useSchema = Boolean(jsonSchema) && !rejectedSchemas.has(schemaKey(jsonSchema!));
   const modelKey = model || DEFAULT_GEMINI_MODEL;
+  const timeoutMs = requestTimeoutMs();
+  let timeouts = 0;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     // Stufe, mit der diese Anfrage rausgeht: Bei parallelen Anfragen kann eine andere die Stufe inzwischen erhöht haben.
     const sentLevel = activeConfigFallback(modelKey)?.level;
@@ -452,7 +474,7 @@ export async function requestJson(
         config: {
           ...generationConfig(systemPrompt, model, jsonSchema, useSchema, options),
           // Ohne Zeitlimit kann eine hängende Verbindung den ganzen Kurslauf für Stunden blockieren.
-          abortSignal: AbortSignal.timeout(requestTimeoutMs()),
+          abortSignal: AbortSignal.timeout(timeoutMs),
         },
       });
 
@@ -507,7 +529,16 @@ export async function requestJson(
           continue;
         }
       }
-      if (attempt === maxAttempts || !isRetryableError(error)) {
+      if (isRequestTimeout(error)) {
+        timeouts++;
+        if (timeouts >= timeoutAttempts() || attempt === maxAttempts) {
+          console.warn(`Gemini-Anfrage (${modelKey}) ${timeouts}× ins Zeitlimit von ${timeoutMs / 1000} s gelaufen, gebe auf.`);
+          throw new AIGenerationError(
+            `Gemini hat ${timeouts}× nicht innerhalb von ${Math.round(timeoutMs / 60_000)} Minuten geantwortet (timeout, GEMINI_REQUEST_TIMEOUT_MS). Das ist keine inhaltliche Ablehnung; ein neuer Start versucht es erneut.`,
+            error,
+          );
+        }
+      } else if (attempt === maxAttempts || !isRetryableError(error)) {
         throw error;
       }
       console.warn(`Gemini-Anfrage fehlgeschlagen (Versuch ${attempt}/${maxAttempts}), neuer Versuch:`, errorMessage(error).slice(0, 200));
