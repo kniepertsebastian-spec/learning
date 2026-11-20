@@ -3,6 +3,7 @@ import { splitIntoSections, type SourceExcerpt } from "@/lib/server/documents/se
 import { fetchUrlSafely, UrlFetchError } from "@/lib/server/network/fetch-url";
 import { UnsafeUrlError } from "@/lib/server/network/ssrf-guard";
 import { extractOfficialObjectives, MIN_RECOGNISED } from "./coverage";
+import { isUploadRef, loadCourseGenerationUpload } from "./uploads";
 
 // Ausschnitte und Abschnittszerlegung liegen in documents/sections.ts; hier bleiben sie unter dem bisherigen Namen erreichbar.
 export { splitIntoSections, type SourceExcerpt };
@@ -114,6 +115,15 @@ export function capTotalChars(sources: FetchedSource[], maxTotal: number): Fetch
  * buildSourceText() in lib/server/admin/blueprint.ts).
  */
 export async function fetchSource(id: string, url: string, maxChars = MAX_EXCERPT_CHARS_PER_SOURCE): Promise<FetchedSource> {
+  // Hochgeladene Datei (im Assistenten neben den Links): Text liegt schon gelesen in der Datenbank.
+  if (isUploadRef(url)) {
+    const upload = await loadCourseGenerationUpload(url);
+    if (!upload) throw new SourceFetchError("Die hochgeladene Datei gibt es nicht mehr. Bitte erneut hochladen.");
+    const usable = upload.excerpts.reduce((sum, e) => sum + e.text.trim().length, 0);
+    if (usable < 200) throw new SourceFetchError(`Datei "${upload.filename}" enthält zu wenig verwertbaren Text (${usable} Zeichen).`);
+    const { excerpts, truncated } = capExcerpts(upload.excerpts, maxChars);
+    return { id, title: upload.filename, url, retrievedAt: new Date().toISOString(), excerpts, truncated };
+  }
   let contentType: string;
   let buffer: Buffer;
   try {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isValidSourceRef } from "@/lib/course-generation/source-refs";
 import { z, ZodError } from "zod";
 import { checkCourseGenerationRateLimit } from "@/lib/server/admin/rate-limit";
 import { requireAdminApi } from "@/lib/server/auth-guards";
@@ -31,7 +32,7 @@ const createJobSchema = z.object({
   /** Pflicht beim Zertifikatskurs; beim individuellen Training optional (Standard: „Individuell“). */
   provider: z.string().trim().max(100).default(""),
   certificationVersion: z.string().min(1).max(50).optional(),
-  sourceUrls: z.array(z.string().url()).min(1).max(MAX_SOURCE_URLS),
+  sourceUrls: z.array(z.string().refine(isValidSourceRef, "Ungültige Quelle (Adresse oder hochgeladene Datei erwartet).")).min(1).max(MAX_SOURCE_URLS),
   autoPublish: z.boolean().default(false),
   initialCostLimitUsd: z.number().min(0.1).max(1000).default(2),
   absoluteCostLimitUsd: z.number().min(0.1).max(1000).default(5),

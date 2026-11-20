@@ -2537,6 +2537,22 @@ export const courseGenerationJobDocuments = pgTable(
   (table) => [unique("course_generation_job_documents_unique").on(table.jobId, table.documentId)],
 );
 
+/**
+ * Datei, die der Betreiber im Kurs-Assistenten als Quelle hochlädt (neben Links). Gespeichert wird nur der gelesene Text je
+ * Seite; im Auftrag steht sie als `upload:<id>` in source_urls, fetchSource() liest sie von hier.
+ */
+export const courseGenerationUploads = pgTable("course_generation_uploads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  uploadedByUserId: uuid("uploaded_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  filename: text("filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  /** "pdf" = Seiten mit Seitenzahl, sonst ein Text, der in Abschnitte zerlegt wird. */
+  kind: text("kind").notNull(),
+  pages: jsonb("pages").$type<{ pageNumber: number; text: string }[]>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Dateiinhalt eines Firmendokuments (wird mit dem Dokument gelöscht und über pg_dump mitgesichert). */
 export const companyDocumentFiles = pgTable("company_document_files", {
   documentId: uuid("document_id")
