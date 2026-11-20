@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/toaster";
 import { useLocale } from "@/lib/i18n";
 import { fmt } from "@/lib/quiz/keys";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
+import { readJson } from "@/lib/client/read-json";
 
 interface Job {
   id: string;
@@ -94,6 +95,9 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
   const [objectives, setObjectives] = useState<Objective[]>([]);
   const [pricingConfigured, setPricingConfigured] = useState(true);
   const [sourceUrlList, setSourceUrlList] = useState<string[]>([]);
+  /** Dateinamen der hochgeladenen Quellen (`upload:<id>` → Name) für Liste und Fehlermeldungen. */
+  const [sourceLabels, setSourceLabels] = useState<Record<string, string>>({});
+  const sourceLabel = (ref: string) => sourceLabels[ref] ?? ref;
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(true);
@@ -143,7 +147,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     try {
       const response = await fetch(`/api/admin/course-generation/${jobId}`, { cache: "no-store" });
       if (!response.ok) return;
-      const data = (await response.json()) as { job: Job; objectives: Objective[]; pricingConfigured?: boolean };
+      const data = await readJson<{ job: Job; objectives: Objective[]; pricingConfigured?: boolean }>(response);
       setJob(data.job);
       setPricingConfigured(data.pricingConfigured !== false);
       setObjectives(data.objectives);
@@ -169,7 +173,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       try {
         const response = await fetch("/api/admin/course-generation", { cache: "no-store" });
         if (!response.ok) return;
-        const { jobs } = (await response.json()) as { jobs: Job[] };
+        const { jobs } = await readJson<{ jobs: Job[] }>(response);
         const latest = jobs[0];
         if (!latest || latest.status === "published" || latest.status === "cancelled" || cancelled) return;
         await loadJob(latest.id);
@@ -198,7 +202,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const data = (await response.json()) as { job?: Job; error?: string };
+    const data = await readJson<{ job?: Job; error?: string }>(response, locale === "de");
     if (!response.ok) throw new Error(data.error ?? `Status ${response.status}`);
     if (data.job) {
       setJob(data.job);
@@ -242,8 +246,10 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceUrls }),
       });
-      if (check.ok) {
-        const { results } = (await check.json()) as { results: { url: string; ok: boolean; error?: string }[] };
+      // Antwortet die Prüfung nicht verwertbar (Zeitüberschreitung, HTML-Fehlerseite), gilt weiter der Preflight des Auftrags.
+      const checked = check.ok ? await readJson<{ results: { url: string; ok: boolean; error?: string }[] }>(check).catch(() => null) : null;
+      if (checked) {
+        const { results } = checked;
         const bad = results.filter((r) => !r.ok).map((r) => ({ url: r.url, error: r.error ?? "" }));
         if (bad.length > 0) {
           setBadSources(bad);
@@ -282,6 +288,16 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     }
   }
 
+  /** Datei als Quelle hochladen: der Server liest den Text und gibt den Verweis für die Quellenliste zurück. */
+  async function uploadSourceFile(file: File): Promise<{ ref: string; filename: string }> {
+    const body = new FormData();
+    body.append("file", file);
+    const response = await fetch("/api/admin/course-generation/uploads", { method: "POST", body });
+    const data = await readJson<{ upload?: { ref: string; filename: string }; error?: string }>(response, locale === "de");
+    if (!response.ok || !data.upload) throw new Error(data.error ?? `Status ${response.status}`);
+    return data.upload;
+  }
+
   async function handleCancel() {
     if (!job) return;
     await fetch(`/api/admin/course-generation/${job.id}/cancel`, { method: "POST" });
@@ -293,7 +309,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     setLoading(true);
     try {
       const response = await fetch(`/api/admin/course-generation/${job.id}/retry`, { method: "POST" });
-      const data = (await response.json()) as { job?: Job; error?: string };
+      const data = await readJson<{ job?: Job; error?: string }>(response, locale === "de");
       if (!response.ok) throw new Error(data.error ?? `Status ${response.status}`);
       if (job.status === "package_ready") setPublishing(true);
       if (data.job) setJob(data.job);
@@ -404,7 +420,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           </div>
 
           <div className={step === 1 ? "space-y-2" : "hidden"}>
-            <SourceUrlInput urls={sourceUrlList} onChange={setSourceUrlList} locale={locale} max={30} />
+            <SourceUrlInput urls={sourceUrlList} onChange={setSourceUrlList} locale={locale} max={30} uploadFile={uploadSourceFile} labels={sourceLabels} onLabel={(ref, filename) => setSourceLabels((l) => ({ ...l, [ref]: filename }))} />
             <p className="text-xs text-faint">{fmt(ac.sourcesCount, { n: sourceUrlList.length })}</p>
           </div>
 
@@ -471,7 +487,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
               <ul className="mt-1.5 flex flex-col gap-1.5">
                 {job.sourceReport?.skipped?.map((s) => (
                   <li key={s.url}>
-                    <span className="block break-all font-mono">{s.url}</span>
+                    <span className="block break-all font-mono">{sourceLabel(s.url)}</span>
                     <span className="block">{s.error}</span>
                   </li>
                 ))}
@@ -659,7 +675,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           <ul className="mt-2 flex flex-col gap-2">
             {badSources.map((b) => (
               <li key={b.url}>
-                <span className="block break-all font-mono text-xs">{b.url}</span>
+                <span className="block break-all font-mono text-xs">{sourceLabel(b.url)}</span>
                 <span className="block text-xs text-danger-text">{b.error}</span>
               </li>
             ))}

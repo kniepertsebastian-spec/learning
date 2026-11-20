@@ -191,6 +191,7 @@ export const EXCLUDED_USER_REFERENCES: Readonly<Record<string, string>> = {
   "feedback_reports.resolved_by_user_id": OPERATIONAL_REASON,
   "ai_batch_runs.started_by_user_id": OPERATIONAL_REASON,
   "course_generation_jobs.requested_by_user_id": OPERATIONAL_REASON,
+  "course_generation_uploads.uploaded_by_user_id": "Quelltext für die Kursgenerierung (öffentliche Unterlagen), betrieblich; der Uploader-Verweis wird bei Löschung anonymisiert (SET NULL)",
 };
 
 export type AccountExport = Awaited<ReturnType<typeof exportAccountData>>;

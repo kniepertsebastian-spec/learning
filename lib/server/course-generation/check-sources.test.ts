@@ -16,3 +16,16 @@ describe("checkSources", () => {
     expect(out.filter((r) => r.ok)).toHaveLength(10);
   });
 });
+
+describe("checkSources mit Frist", () => {
+  it("meldet nicht rechtzeitig fertige Quellen als ungeprüft statt die Anfrage hängen zu lassen", async () => {
+    const urls = ["https://a.example/schnell", "https://a.example/langsam"];
+    const fake = (_id: string, url: string) =>
+      url.endsWith("langsam") ? new Promise<never>(() => {}) : Promise.resolve({} as never);
+    const out = await checkSources(urls, fake, 50);
+    expect(out).toEqual([
+      { url: urls[0], ok: true },
+      { url: urls[1], ok: true, unchecked: true },
+    ]);
+  });
+});
