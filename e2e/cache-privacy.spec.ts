@@ -3,20 +3,24 @@ import { expect, login, runtimeCachePaths, test, waitForServiceWorkerReady } fro
 
 const allPaths = (caches: Record<string, string[]>) => Object.values(caches).flat();
 
-test("Admin- und Firmenseiten landen in keinem Cache; Lernseiten im pages-cache", async ({ page, gateway }) => {
+const UNCACHED = ["/admin", "/company", "/profile", "/account", "/reviewer", "/reset-password/test"];
+
+test("Admin-, Firmen-, Konto- und Token-Seiten landen in keinem Cache; Lernseiten im pages-cache", async ({ page, gateway }) => {
   await login(page, gateway.url, USERS.admin.email);
   await waitForServiceWorkerReady(page);
-  for (const path of ["/admin", "/company", "/profile", "/"]) {
+  for (const path of [...UNCACHED, "/catalog", "/"]) {
     await page.goto(`${gateway.url}${path}`);
     await page.waitForLoadState("load");
   }
   // Cache-Schreibzugriffe laufen im Service Worker asynchron
-  await expect.poll(async () => (await runtimeCachePaths(page))["pages-cache"] ?? []).toContain("/profile");
+  await expect.poll(async () => (await runtimeCachePaths(page))["pages-cache"] ?? []).toContain("/catalog");
   const caches = await runtimeCachePaths(page);
   expect(Object.keys(caches)).toEqual(expect.arrayContaining(["pages-cache"]));
   expect(Object.keys(caches)).not.toContain("ui-cache");
   const paths = allPaths(caches);
-  expect(paths.some((p) => p === "/admin" || p.startsWith("/admin/") || p === "/company" || p.startsWith("/company/"))).toBe(false);
+  for (const prefix of UNCACHED) {
+    expect(paths.some((p) => p === prefix || p.startsWith(`${prefix}/`))).toBe(false);
+  }
 });
 
 test("Nutzerwechsel ohne Logout und Logout leeren den Seiten-Cache", async ({ page, context, gateway }) => {

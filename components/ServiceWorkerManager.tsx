@@ -13,10 +13,17 @@ import { toast } from "@/components/ui/toaster";
 import { startInstallCapture } from "@/lib/client/install-prompt";
 
 /**
+ * Als installierte App (standalone) bleibt die Seite oft tagelang offen; der Browser sucht dann nur selten selbst nach einem
+ * neuen Service Worker. Beim Zurückholen in den Vordergrund wird höchstens alle 30 Minuten aktiv nachgefragt.
+ */
+const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+
+/**
  * Service-Worker-Verwaltung im Browser (roadmap_pwa Phase 3), ohne eigene Oberfläche:
  *  - Seiten-Cache gehört einem Nutzer: bei anderer Nutzer-ID (auch nach abgelaufener Sitzung) wird er geleert.
  *  - Update-Fluss: ein wartender Service Worker löst einen Toast „Neue Version verfügbar“ aus; erst der Klick schickt
  *    SKIP_WAITING, danach lädt die Seite beim Wechsel des Controllers neu. Ohne Klick läuft die alte Version weiter.
+ *  - Update-Suche: beim Wechsel in den Vordergrund (gedrosselt, UPDATE_CHECK_INTERVAL_MS), Fehler bleiben folgenlos.
  */
 export function ServiceWorkerManager({ userId }: { userId: string | null }) {
   const { t, locale } = useLocale();
@@ -101,14 +108,32 @@ export function ServiceWorkerManager({ userId }: { userId: string | null }) {
         });
       });
     };
+    // Vordergrund-Wechsel: neue Version suchen. Offline zählt nicht als Versuch, damit der nächste Online-Wechsel prüft.
+    let activeRegistration: ServiceWorkerRegistration | null = null;
+    let lastUpdateCheck = Date.now();
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible" || !activeRegistration || !navigator.onLine) return;
+      const now = Date.now();
+      if (now - lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) return;
+      lastUpdateCheck = now;
+      activeRegistration.update().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     // `ready` statt `getRegistration()`: beim ersten Besuch wird der Worker erst nach dem Laden der Seite registriert.
-    void navigator.serviceWorker.ready.then((registration) => {
-      if (!cancelled) watch(registration);
-    });
+    // Das `catch` verhindert unbehandelte Rejections in Kontexten ohne Service-Worker-Zugriff (z. B. gesperrter Speicher).
+    void navigator.serviceWorker.ready
+      .then((registration) => {
+        if (cancelled) return;
+        activeRegistration = registration;
+        watch(registration);
+      })
+      .catch(() => {});
 
     return () => {
       cancelled = true;
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 

@@ -11,11 +11,12 @@ import { parsePush, safeAppPath } from "../lib/pwa/push-payload";
 import { userIdFromSyncTag } from "../lib/pwa/sync-tag";
 import { deletePendingSyncEvent, listPendingSyncEvents, savePendingSyncEvent } from "../lib/client/offline-db";
 import { transferPendingEvents } from "../lib/client/sync-core";
-import type { PrecacheEntry, RuntimeCaching, SerwistGlobalConfig } from "serwist";
+import type { PrecacheEntry, RuntimeCaching, SerwistGlobalConfig, SerwistPlugin } from "serwist";
 import {
   ASSETS_CACHE,
   ASSETS_CACHE_MAX_AGE_SECONDS,
   ASSETS_CACHE_MAX_ENTRIES,
+  isPageResponseCacheable,
   isRscRequest,
   isUncachedPagePath,
   LEGACY_CACHE,
@@ -31,6 +32,12 @@ declare global {
 }
 
 declare const self: ServiceWorkerGlobalScope;
+
+// Seiten, die der Server bewusst als nicht speicherbar markiert (X-SW-Cache: no-store, eigenes no-store/private), nie in
+// den Seiten-Cache schreiben - auch wenn sie in keiner Sperrliste stehen (lib/pwa/cache-policy.ts).
+const respectNoStore: SerwistPlugin = {
+  cacheWillUpdate: async ({ response }) => (isPageResponseCacheable(response.headers) ? response : null),
+};
 
 const runtimeCaching: RuntimeCaching[] = [
   {
@@ -48,7 +55,7 @@ const runtimeCaching: RuntimeCaching[] = [
     handler: new NetworkOnly(),
   },
   {
-    // Admin- und Firmenbereich enthalten Daten anderer Personen: nie in einen Cache (roadmap_pwa Regel 3).
+    // Daten anderer Personen, persönliche Konto-/Profilseiten und Token-Adressen: nie in einen Cache (roadmap_pwa Regel 3).
     matcher: ({ request, sameOrigin, url }) => sameOrigin && request.mode === "navigate" && isUncachedPagePath(url.pathname),
     handler: new NetworkOnly(),
   },
@@ -66,6 +73,7 @@ const runtimeCaching: RuntimeCaching[] = [
       // Deploy-Fensters im Cache hängen bleiben und bei Ausfall ausgeliefert.
       plugins: [
         new CacheableResponsePlugin({ statuses: [200] }),
+        respectNoStore,
         new ExpirationPlugin({ maxEntries: PAGES_CACHE_MAX_ENTRIES, maxAgeSeconds: PAGES_CACHE_MAX_AGE_SECONDS, purgeOnQuotaError: true }),
       ],
     }),

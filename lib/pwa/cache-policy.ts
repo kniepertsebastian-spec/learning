@@ -15,11 +15,67 @@ export const PAGES_CACHE_MAX_AGE_SECONDS = 14 * 24 * 60 * 60;
 export const ASSETS_CACHE_MAX_ENTRIES = 200;
 export const ASSETS_CACHE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
-/** Bereiche mit Daten anderer Personen: Navigationen dorthin laufen nie über den Seiten-Cache. */
-const UNCACHED_PREFIXES = ["/admin", "/company", "/confirm-company"];
+/**
+ * Navigationen dorthin laufen nie über den Seiten-Cache: Bereiche mit Daten anderer Personen (Admin, Firma, Reviewer,
+ * öffentliche Nachweis-Prüfung), persönliche Konto- und Profilseiten sowie alle Seiten, deren Adresse ein Token enthalten
+ * kann (Anmeldung, Passwort-Reset, Einladungen, E-Mail-Bestätigung, Abmeldung von E-Mails).
+ */
+const UNCACHED_PREFIXES = [
+  "/admin",
+  "/company",
+  "/confirm-company",
+  "/reviewer",
+  "/account",
+  "/profile",
+  "/certificates",
+  "/verify",
+  "/login",
+  "/register",
+  "/sso",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/resend-verification",
+  "/invite",
+  "/reviewer-invite",
+  "/unsubscribe",
+];
 
 export function isUncachedPagePath(pathname: string): boolean {
   return UNCACHED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+/** Eigenes Signal: eine Seite mit `X-SW-Cache: no-store` landet nie im Seiten-Cache, unabhängig von Cache-Control. */
+export const SW_CACHE_HEADER = "X-SW-Cache";
+
+/**
+ * Next.js setzt diesen Wert auf JEDE dynamisch gerenderte Seite. Er sagt deshalb nichts über die einzelne Seite aus und
+ * sperrt sie nicht für den Seiten-Cache (sonst wäre der Cache leer); Schutz geben dort die Sperrliste oben und das Leeren
+ * beim Logout/Nutzerwechsel. Ändert Next.js den Wert, greift die strenge Regel: dann wird eher zu wenig als zu viel gecacht.
+ */
+const NEXT_DYNAMIC_CACHE_CONTROL = "private, no-cache, no-store, max-age=0, must-revalidate";
+
+const directives = (cacheControl: string) =>
+  cacheControl
+    .split(",")
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join(",");
+
+const NEXT_DYNAMIC_DIRECTIVES = directives(NEXT_DYNAMIC_CACHE_CONTROL);
+
+/**
+ * Darf eine Seiten-Antwort in den Seiten-Cache? Nein bei `X-SW-Cache: no-store` und bei bewusst gesetztem `no-store` oder
+ * `private` (jeder Cache-Control-Wert außer dem Next.js-Standard für dynamische Seiten).
+ */
+export function isPageResponseCacheable(headers: Pick<Headers, "get">): boolean {
+  if (headers.get(SW_CACHE_HEADER)?.trim().toLowerCase() === "no-store") return false;
+  const cacheControl = headers.get("Cache-Control");
+  if (!cacheControl) return true;
+  const normalized = directives(cacheControl);
+  if (normalized === NEXT_DYNAMIC_DIRECTIVES) return true;
+  return !normalized.split(",").some((d) => /^(no-store|private)(=|$)/.test(d));
 }
 
 /**

@@ -8,7 +8,27 @@
 # diesen Server, und der learning-pwa-Container läuft lokal auf Port 3000
 # (siehe docker-compose.yml).
 
+# Service Worker und Manifest: die App setzt die Cache-Header selbst (next.config.ts, headers()). Caddy reicht sie
+# unverändert durch und cacht nichts; die Blöcke unten setzen sie trotzdem fest (defer = nach der Antwort der App), damit
+# eine spätere Änderung an Proxy oder App sie nicht versehentlich lockert. Cloudflare (Tunnel oder Proxy) übernimmt
+# "no-store" aus Cache-Control/CDN-Cache-Control und legt keine Edge-Kopie an - Voraussetzung: keine Cache Rule mit
+# "Cache Everything"/Edge-TTL für /sw.js. Prüfen: curl -I https://learning.pwa-tree.de/sw.js  (cf-cache-status: DYNAMIC
+# oder BYPASS, nie HIT).
+
 learning.pwa-tree.de {
+	@serviceWorker path /sw.js
+	header @serviceWorker {
+		Cache-Control "no-cache, no-store, must-revalidate"
+		CDN-Cache-Control "no-store"
+		defer
+	}
+
+	@manifest path /manifest.json
+	header @manifest {
+		Cache-Control "public, max-age=0, must-revalidate"
+		defer
+	}
+
 	# Rate-Limits: Die App liest die Client-Adresse zuerst aus CF-Connecting-IP (lib/server/auth-rate-limit.ts), danach aus
 	# X-Real-IP. Steht Caddy direkt im Netz (wie oben beschrieben), kann ein Client den Cloudflare-Header erfinden und damit
 	# alle Begrenzungen je IP umgehen. Deshalb entfernt "header_up -CF-Connecting-IP" ihn, und die App nimmt X-Real-IP (unten).
