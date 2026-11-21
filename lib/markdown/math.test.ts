@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeMath } from "./math";
+import { hasMath, normalizeMath } from "./math";
 
 describe("Formeln: einheitliche Schreibweise", () => {
   it("ein nacktes \\frac wird zur Formel, auch mit verschachtelten Klammern", () => {
@@ -32,5 +32,18 @@ describe("Formeln: einheitliche Schreibweise", () => {
     expect(normalizeMath("\\frac{a}")).toBe("\\frac{a}");
     expect(normalizeMath("Nur ein $ Zeichen")).toBe("Nur ein $ Zeichen");
     expect(normalizeMath("ohne Sonderzeichen")).toBe("ohne Sonderzeichen");
+  });
+});
+
+describe("Formeln: KaTeX nur bei Bedarf laden", () => {
+  it("erkennt $$…$$ (auch aus anderen Schreibweisen) und ```math-Blöcke", () => {
+    expect(hasMath(normalizeMath("Rate: \\frac{a}{b}"))).toBe(true);
+    expect(hasMath(normalizeMath("Wert \\(x^2\\) hier"))).toBe(true);
+    expect(hasMath("```math\nx^2\n```")).toBe(true);
+  });
+  it("gewöhnlicher Text, Währungen und Code brauchen kein KaTeX", () => {
+    expect(hasMath(normalizeMath("Kostet $5 bis $10."))).toBe(false);
+    expect(hasMath(normalizeMath("```bash\necho $HOME\n```"))).toBe(false);
+    expect(hasMath("Ein Satz ohne Formel.")).toBe(false);
   });
 });

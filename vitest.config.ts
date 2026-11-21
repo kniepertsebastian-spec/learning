@@ -7,10 +7,13 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["**/*.test.{ts,tsx}"],
+    setupFiles: ["./test-support/setup.ts"],
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
+      // Nachgeladene Komponenten synchron renderbar machen (siehe test-support/next-dynamic.tsx).
+      "next/dynamic": path.resolve(__dirname, "test-support/next-dynamic.tsx"),
     },
   },
 });

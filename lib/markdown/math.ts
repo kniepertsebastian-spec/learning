@@ -105,3 +105,12 @@ export function normalizeMath(text: string): string {
   if (last < text.length) parts.push({ code: false, text: text.slice(last) });
   return parts.map((p) => (p.code ? p.text : convertProse(p.text))).join("");
 }
+
+/**
+ * Enthält der (mit `normalizeMath` vereinheitlichte) Text eine Formel? Dann lädt RichText den KaTeX-Renderer nach
+ * (components/richtext/MathMarkdown.tsx); alle anderen Texte kommen ohne KaTeX-Code und -CSS aus. Großzügig: `$$` auch in
+ * Code zählt mit, schadet aber nur insofern, als KaTeX dann unnötig geladen wird.
+ */
+export function hasMath(normalized: string): boolean {
+  return normalized.includes("$$") || /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*math\b/m.test(normalized);
+}

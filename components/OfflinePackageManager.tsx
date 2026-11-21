@@ -17,9 +17,14 @@ import { getUnsavedSyncEventCount, onSyncQueueError, retryUnsavedSyncEvents } fr
 import { getStorageStatus, type StorageStatus } from "@/lib/client/storage-status";
 import { isPackageLocked } from "@/lib/pwa/package-expiry";
 import { isUninstalledIosSafari } from "@/lib/client/install-prompt";
-import { SectionContent } from "@/components/SectionContent";
 import { reviewersText, changeLabel } from "@/lib/reviewers/seal";
-import { StudySession } from "@/components/StudySession";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Lektion und Lernsitzung erst laden, wenn sie geöffnet werden (eigene Chunks, offline über den Precache des Service Workers).
+const ReaderLoading = () => <Skeleton className="h-96 w-full rounded-2xl" />;
+const SectionContent = dynamic(() => import("@/components/SectionContent").then((m) => m.SectionContent), { loading: ReaderLoading });
+const StudySession = dynamic(() => import("@/components/StudySession").then((m) => m.StudySession), { loading: ReaderLoading });
 
 interface OfflinePackageManagerProps {
   certificationId: string;

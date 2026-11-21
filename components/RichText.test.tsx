@@ -92,3 +92,39 @@ describe("RichText: Quellenbelege der Kursgenerierung", () => {
     expect(out).not.toContain("<sup");
   });
 });
+
+describe("RichText: Syntax-Highlighting mit fester Sprachauswahl", () => {
+  it("färbt die Sprachen aus den Kursinhalten (bash, yaml, python, json, ini/toml, xml, sql, typescript, go, PowerShell, Dockerfile)", () => {
+    const samples: Record<string, string> = {
+      bash: 'if [ -f "$FILE" ]; then echo ok; fi',
+      yaml: "apiVersion: v1\nkind: Pod",
+      python: "def main():\n    return 1",
+      json: '{"port": 443, "tls": true}',
+      toml: '[server]\nport = 443',
+      xml: '<config enabled="true"/>',
+      sql: "SELECT name FROM users WHERE id = 1;",
+      typescript: "const x: number = 1;",
+      go: "func main() { fmt.Println(1) }",
+      powershell: "Get-Service | Where-Object { $_.Status -eq 'Running' }",
+      dockerfile: "FROM node:26-alpine\nRUN npm ci",
+    };
+    for (const [lang, code] of Object.entries(samples)) {
+      const out = html("```" + lang + "\n" + code + "\n```");
+      expect(out, lang).toContain('class="hljs-');
+      expect(out, lang).toContain(`language-${lang}`);
+    }
+  });
+  it("Sprachen, die highlight.js nicht kennt (hcl, Cisco IOS), bleiben ungefärbte Codeblöcke ohne Fehler", () => {
+    for (const lang of ["hcl", "ios", "promql", "text"]) {
+      const out = html("```" + lang + '\nresource "aws_s3_bucket" "b" {}\n```');
+      expect(out, lang).toContain('data-testid="code-block"');
+      expect(out, lang).not.toContain('class="hljs-');
+    }
+  });
+  it("Terminal-Blöcke (```console) bleiben Terminal mit Befehl und Ausgabe", () => {
+    const out = html("```console\n$ systemctl status nginx\nactive (running)\n```");
+    expect(out).toContain('data-testid="terminal-block"');
+    expect(out).toContain('data-row="command"');
+    expect(out).not.toContain('class="hljs-');
+  });
+});

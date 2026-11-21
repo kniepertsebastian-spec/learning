@@ -8,11 +8,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import type { WorkshopTree } from "@/lib/server/course-editor/service";
 import type { AiAction } from "@/lib/workshop-ai";
-import { CourseReport } from "./CourseReport";
-import { OverviewEditor } from "./OverviewEditor";
-import { QuestionsPanel } from "./QuestionsPanel";
-import { SectionEditor } from "./SectionEditor";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api, formatDate, inputCls, Problems, useTr, type Lang } from "./shared";
+
+// Die Bearbeitungsbereiche sind je nach Auswahl sichtbar, immer nur einer: eigene Chunks, geladen bei der ersten Auswahl.
+const PanelLoading = () => <Skeleton className="h-96 w-full rounded-2xl" />;
+const CourseReport = dynamic(() => import("./CourseReport").then((m) => m.CourseReport), { loading: PanelLoading });
+const OverviewEditor = dynamic(() => import("./OverviewEditor").then((m) => m.OverviewEditor), { loading: PanelLoading });
+const QuestionsPanel = dynamic(() => import("./QuestionsPanel").then((m) => m.QuestionsPanel), { loading: PanelLoading });
+const SectionEditor = dynamic(() => import("./SectionEditor").then((m) => m.SectionEditor), { loading: PanelLoading });
 
 /** `ai`: aus dem Qualitätsbericht geöffnet, das KI-Panel startet mit dieser Aktion (nicht in der Adresse). */
 type Selection = { kind: "section"; id: string; objectiveId: string; ai?: AiAction | null } | { kind: "new-section"; objectiveId: string } | { kind: "questions"; objectiveId: string; ai?: AiAction | null } | { kind: "checkpoints" } | { kind: "report" } | { kind: "overview" } | null;

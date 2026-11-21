@@ -1,19 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import * as React from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import remarkDirective from "remark-directive";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
-import rehypeKatex from "rehype-katex";
-import remarkMath from "remark-math";
-import "katex/dist/katex.min.css";
 import { CalloutBlock, PracticeBlock, StepsBlock, TabsBlock } from "@/components/richtext/Blocks";
 import { CodeBlock, TerminalBlock } from "@/components/richtext/CodeBlock";
-import { SimulationBlock } from "@/components/richtext/Simulation";
-import { parseLineRanges, remarkLearningBlocks } from "@/lib/markdown/blocks";
-import { remarkSourceCitations } from "@/lib/markdown/citations";
-import { normalizeMath } from "@/lib/markdown/math";
+import { baseRehypePlugins, baseRemarkPlugins } from "@/components/richtext/markdown-plugins";
+import { Skeleton } from "@/components/ui/skeleton";
+import { parseLineRanges } from "@/lib/markdown/blocks";
+import { hasMath, normalizeMath } from "@/lib/markdown/math";
 import { nodeText } from "@/components/richtext/code-lines";
 import { slugify } from "@/lib/markdown/toc";
 import type { CalloutTone } from "@/components/ui/callout";
@@ -25,10 +20,21 @@ import type { CalloutTone } from "@/components/ui/callout";
  * Lernblöcke (Hinweise, Terminal, Tabs, Schritte, Praxisbeispiel, Simulation) siehe lib/markdown/blocks.ts.
  * `inline`: für Antwortknöpfe, Absätze werden zu laufendem Text statt zu Blöcken.
  *
- * Highlighting: bewusst bei highlight.js (rehype-highlight) geblieben statt Shiki/rehype-pretty-code: RichText wird in
- * Client-Komponenten (Quiz, Offline-Reader) genutzt und lässt sich nicht ohne großen Umbau zur Server-Komponente machen;
- * Kopfzeile und Zeilenmarkierung ergänzen wir selbst (CodeBlock). Die Farben kommen aus den Tokens (`--code-*`).
+ * Highlighting: bewusst bei highlight.js geblieben statt Shiki/rehype-pretty-code: RichText wird in Client-Komponenten
+ * (Quiz, Offline-Reader) genutzt und lässt sich nicht ohne großen Umbau zur Server-Komponente machen; Kopfzeile und
+ * Zeilenmarkierung ergänzen wir selbst (CodeBlock). Die Farben kommen aus den Tokens (`--code-*`). Nur eine feste
+ * Sprachauswahl (lib/markdown/highlight.ts), nicht das ganze highlight.js-Paket.
+ *
+ * Bundle: KaTeX (Formeln) und die interaktiven Simulationen sind eigene Chunks (next/dynamic) und werden nur geladen, wenn
+ * ein Text sie braucht. Beim ersten Seitenaufruf rendert der Server beides fertig mit (kein Layout-Sprung); bei
+ * Client-Navigation steht bis zum Nachladen der Text ohne Formelsatz bzw. ein Platzhalter in Simulationsgröße da.
+ * Offline sind die Chunks über den Precache des Service Workers verfügbar.
  */
+const SimulationBlock = dynamic(() => import("@/components/richtext/Simulation").then((m) => m.SimulationBlock), {
+  loading: () => <Skeleton className="my-4 h-64 rounded-2xl" data-testid="simulation-loading" />,
+});
+const MathMarkdown = dynamic(() => import("@/components/richtext/MathMarkdown").then((m) => m.MathMarkdown));
+
 function pickData(props: Record<string, unknown>): Record<string, string> {
   return Object.fromEntries(Object.entries(props).filter(([k, v]) => k.startsWith("data-") && typeof v === "string")) as Record<string, string>;
 }
@@ -98,25 +104,27 @@ function withHeadingIds(base: Components): Components {
   };
 }
 
-/**
- * Formeln und Brüche: `$$…$$` (inline oder abgesetzt) wird mit KaTeX gesetzt. Einzel-Dollar ist abgeschaltet, damit Währungen nie als Formel
- * gelten; `normalizeMath` bringt andere Schreibweisen (`$…$`, `\(…\)`, `\[…\]`, nacktes `\frac`) vorher auf `$$…$$`. Fehlerhafte Formeln
- * zeigen ihren Quelltext statt die Seite zu brechen.
- */
-const remarkPlugins = [remarkGfm, remarkDirective, remarkLearningBlocks, remarkSourceCitations, [remarkMath, { singleDollarTextMath: false }]] as NonNullable<React.ComponentProps<typeof ReactMarkdown>["remarkPlugins"]>;
-const rehypePlugins = [rehypeHighlight, [rehypeKatex, { throwOnError: false, strict: "ignore", output: "htmlAndMathml" }]] as NonNullable<React.ComponentProps<typeof ReactMarkdown>["rehypePlugins"]>;
-
 export const RichText = React.memo(function RichText({ text, inline = false, headingIds = false }: { text: string; inline?: boolean; headingIds?: boolean }) {
   const components = React.useMemo(
     () => (inline ? inlineComponents : headingIds ? withHeadingIds(blockComponents) : blockComponents),
     [inline, headingIds],
   );
   const normalized = React.useMemo(() => normalizeMath(text), [text]);
+  const plain = (
+    <ReactMarkdown remarkPlugins={baseRemarkPlugins} rehypePlugins={baseRehypePlugins} components={components}>
+      {normalized}
+    </ReactMarkdown>
+  );
   return (
     <div className={inline ? "min-w-0" : ""} data-testid="rich-text">
-      <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
-        {normalized}
-      </ReactMarkdown>
+      {hasMath(normalized) ? (
+        // Bis KaTeX geladen ist (nur bei Client-Navigation): derselbe Text ohne Formelsatz statt eines leeren Kastens.
+        <React.Suspense fallback={plain}>
+          <MathMarkdown text={normalized} components={components} />
+        </React.Suspense>
+      ) : (
+        plain
+      )}
     </div>
   );
 });
