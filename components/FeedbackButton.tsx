@@ -56,7 +56,7 @@ export function FeedbackButton({ certificationId, domainId = null, sectionId = n
   }
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className={`flex min-h-8 items-center gap-1.5 rounded-md px-1 text-xs text-subtle hover:text-foreground ${className ?? ""}`} data-testid="feedback-open">
+      <button type="button" onClick={() => setOpen(true)} className={`flex min-h-11 items-center gap-1.5 rounded-md px-1 text-xs sm:min-h-9 text-subtle hover:text-foreground ${className ?? ""}`} data-testid="feedback-open">
         <Flag className="h-3.5 w-3.5" aria-hidden="true" />
         {c_feedbackButton(de).reportAProblemFeedback}
       </button>

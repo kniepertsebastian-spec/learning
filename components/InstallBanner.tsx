@@ -50,7 +50,7 @@ export function InstallBanner() {
             {c_installBanner(de).install}
           </Button>
         )}
-        <button type="button" onClick={dismissInstallOffer} aria-label={c_installBanner(de).notNow30Days} data-testid="install-dismiss" className="flex h-10 items-center gap-1 rounded-md px-2 text-sm text-subtle hover:bg-surface-2 hover:text-foreground">
+        <button type="button" onClick={dismissInstallOffer} aria-label={c_installBanner(de).notNow30Days} data-testid="install-dismiss" className="flex min-h-11 items-center gap-1 rounded-md px-2 text-sm text-subtle hover:bg-surface-2 hover:text-foreground">
           <X className="h-4 w-4" aria-hidden="true" />
           {c_installBanner(de).notNow}
         </button>

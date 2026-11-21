@@ -49,7 +49,8 @@ images.forEach((img, i) => {
 });
 writeFileSync("app/favicon.ico", Buffer.concat([header, ...images]));
 
-// iOS-Startbilder (Hochformat): dunkler Grund, Zeichen mittig. Gerät → Pixelgröße (Punkte × Faktor).
+// iOS-Startbilder: dunkler Grund, Zeichen mittig. Gerät → Pixelgröße (Punkte × Faktor); das iPad zusätzlich im Querformat
+// (w/h getauscht, pw/ph bleiben Hochformat-Werte wie in der Media-Query von app/layout.tsx).
 export const STARTUP_IMAGES = [
   { name: "iphone-430x932", w: 1290, h: 2796, pw: 430, ph: 932, ratio: 3 },
   { name: "iphone-393x852", w: 1179, h: 2556, pw: 393, ph: 852, ratio: 3 },
@@ -57,6 +58,7 @@ export const STARTUP_IMAGES = [
   { name: "iphone-414x896", w: 828, h: 1792, pw: 414, ph: 896, ratio: 2 },
   { name: "iphone-375x667", w: 750, h: 1334, pw: 375, ph: 667, ratio: 2 },
   { name: "ipad-834x1194", w: 1668, h: 2388, pw: 834, ph: 1194, ratio: 2 },
+  { name: "ipad-1194x834", w: 2388, h: 1668, pw: 834, ph: 1194, ratio: 2 },
 ];
 mkdirSync("public/splash", { recursive: true });
 const mark = await png(anySvg, 220);

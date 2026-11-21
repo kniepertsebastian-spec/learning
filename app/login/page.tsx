@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { loginAction } from "@/app/actions/auth";
+import { useLocale } from "@/lib/i18n";
+import { c_loginPage } from "@/lib/i18n/components/loginPage";
 
 export default function LoginPage() {
   return (
@@ -18,14 +20,16 @@ function LoginForm() {
   const [error, formAction, isPending] = useActionState(loginAction, null);
   const params = useSearchParams();
   const from = safeRedirectPath(params.get("from"));
+  const { locale } = useLocale();
+  const tx = c_loginPage(locale);
   const notice = params.get("passwordChanged")
-    ? "Password changed. Please sign in again."
+    ? tx.passwordChanged
     : params.get("accountDeleted")
-      ? "Your account has been deleted."
+      ? tx.accountDeleted
       : params.get("passwordReset")
-        ? "Password reset. Please sign in with your new password."
+        ? tx.passwordReset
         : params.get("verified")
-          ? "Email confirmed. You can sign in now."
+          ? tx.emailVerified
           : null;
 
   return (
@@ -33,9 +37,9 @@ function LoginForm() {
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-8">
         <div className="mb-6 text-center">
           <p className="text-lg font-semibold">Knowvia</p>
-          <p className="text-xs text-subtle">Capture Knowledge. Empower People. Strengthen Business.</p>
+          <p className="text-xs text-subtle">{tx.tagline}</p>
         </div>
-        <h1 className="mb-6 text-xl font-semibold">Sign in</h1>
+        <h1 className="mb-6 text-xl font-semibold">{tx.signIn}</h1>
         <form action={formAction} className="flex flex-col gap-4">
           <input type="hidden" name="from" value={from} />
           {notice && (
@@ -44,13 +48,13 @@ function LoginForm() {
             </p>
           )}
           {error && (
-            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">
-              Invalid email or password.
+            <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text" data-testid="login-error">
+              {tx.invalidCredentials}
             </p>
           )}
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium">
-              Email
+              {tx.email}
             </label>
             <input
               id="email"
@@ -63,7 +67,7 @@ function LoginForm() {
           </div>
           <div>
             <label htmlFor="password" className="mb-1 block text-sm font-medium">
-              Password
+              {tx.password}
             </label>
             <input
               id="password"
@@ -77,32 +81,32 @@ function LoginForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
+            className="min-h-11 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
           >
-            {isPending ? "Signing in…" : "Sign in"}
+            {isPending ? tx.signingIn : tx.signIn}
           </button>
         </form>
         <p className="mt-4 text-center text-sm">
           <Link href="/sso" className="text-link hover:underline" data-testid="login-sso-link">
-            Sign in with company account (SSO)
+            {tx.signInWithSso}
           </Link>
         </p>
         <p className="mt-2 text-center text-sm text-subtle">
           <Link href="/forgot-password" className="text-link hover:underline">
-            Forgot password?
+            {tx.forgotPassword}
           </Link>
           {" · "}
           <Link href="/resend-verification" className="text-link hover:underline">
-            Resend confirmation email
+            {tx.resendConfirmation}
           </Link>
         </p>
         <p className="mt-2 text-center text-sm text-subtle">
-          No account?{" "}
+          {tx.noAccount}{" "}
           <Link
             href={from === "/" ? "/register" : `/register?from=${encodeURIComponent(from)}`}
             className="text-link hover:underline"
           >
-            Register
+            {tx.register}
           </Link>
         </p>
       </div>

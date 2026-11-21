@@ -26,7 +26,8 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
   const { locale, t } = useLocale();
   const switchLocale = useSwitchLocale();
   const { theme, toggleTheme } = useTheme();
-  const btn = "flex h-10 items-center gap-1.5 rounded-md border border-border-strong bg-control px-2.5 text-sm font-medium hover:bg-surface-2";
+  // Touch-Ziele mobil 44 px (WCAG 2.5.5), ab sm wie bisher 40 px.
+  const btn = "flex h-11 min-w-11 items-center gap-1.5 sm:h-10 sm:min-w-10 rounded-md border border-border-strong bg-control px-2.5 text-sm font-medium hover:bg-surface-2";
   return (
     <div data-context="personal" className="flex min-h-dvh flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <OfflineBanner />
@@ -39,7 +40,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
           <button type="button" className={btn} onClick={() => switchLocale(locale === "de" ? "en" : "de")} aria-label={`${locale.toUpperCase()} – ${t.shell.language}`}>
             <Languages className="h-4 w-4" aria-hidden="true" />{locale.toUpperCase()}
           </button>
-          <button type="button" className={cn(btn, "w-10 justify-center px-0")} onClick={toggleTheme} aria-label={t.shell.theme}>
+          <button type="button" className={cn(btn, "w-11 justify-center px-0 sm:w-10")} onClick={toggleTheme} aria-label={t.shell.theme}>
             {theme === "dark" ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
           </button>
         </div>
@@ -83,7 +84,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
             <LogoMark className="h-7 w-7" />
             {t.appTitle}
           </Link>
-          <button type="button" onClick={() => setMenuOpen(true)} aria-label={t.shell.openMenu} data-testid="mobile-menu" className="flex h-10 w-10 items-center justify-center rounded-md border border-border-strong bg-control">
+          <button type="button" onClick={() => setMenuOpen(true)} aria-label={t.shell.openMenu} data-testid="mobile-menu" className="flex h-11 w-11 items-center justify-center rounded-md border border-border-strong bg-control">
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>

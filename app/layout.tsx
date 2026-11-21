@@ -41,14 +41,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Dateien erzeugt scripts/generate-icons.mjs (Gerät in Punkten und Pixelfaktor, Hochformat).
-const IOS_STARTUP_IMAGES = [
-  { name: "iphone-430x932", pw: 430, ph: 932, ratio: 3 },
-  { name: "iphone-393x852", pw: 393, ph: 852, ratio: 3 },
-  { name: "iphone-390x844", pw: 390, ph: 844, ratio: 3 },
-  { name: "iphone-414x896", pw: 414, ph: 896, ratio: 2 },
-  { name: "iphone-375x667", pw: 375, ph: 667, ratio: 2 },
-  { name: "ipad-834x1194", pw: 834, ph: 1194, ratio: 2 },
+// Dateien erzeugt scripts/generate-icons.mjs (Gerät in Punkten und Pixelfaktor). device-width/-height meldet iOS immer im
+// Hochformat; das Querformat unterscheidet nur `orientation`.
+const IOS_STARTUP_IMAGES: { name: string; pw: number; ph: number; ratio: number; orientation: "portrait" | "landscape" }[] = [
+  { name: "iphone-430x932", pw: 430, ph: 932, ratio: 3, orientation: "portrait" },
+  { name: "iphone-393x852", pw: 393, ph: 852, ratio: 3, orientation: "portrait" },
+  { name: "iphone-390x844", pw: 390, ph: 844, ratio: 3, orientation: "portrait" },
+  { name: "iphone-414x896", pw: 414, ph: 896, ratio: 2, orientation: "portrait" },
+  { name: "iphone-375x667", pw: 375, ph: 667, ratio: 2, orientation: "portrait" },
+  { name: "ipad-834x1194", pw: 834, ph: 1194, ratio: 2, orientation: "portrait" },
+  { name: "ipad-1194x834", pw: 834, ph: 1194, ratio: 2, orientation: "landscape" },
 ];
 
 export const metadata: Metadata = {
@@ -57,16 +59,17 @@ export const metadata: Metadata = {
     "Capture Knowledge. Empower People. Strengthen Business. KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
   manifest: "/manifest.json",
   appleWebApp: {
+    // Next 16 rendert daraus <meta name="mobile-web-app-capable" content="yes"> (nicht mehr das veraltete apple-…-Gegenstück);
+    // ein zusätzliches `other: { "mobile-web-app-capable": … }` würde den Tag doppelt ausgeben.
     capable: true,
     // Die Leiste läuft unter der Statusleiste (viewportFit „cover“); die Abstände setzen die env(safe-area-inset-*)-Werte im Layout.
     statusBarStyle: "black-translucent",
     title: "Knowvia",
     startupImage: IOS_STARTUP_IMAGES.map((d) => ({
       url: `/splash/${d.name}.png`,
-      media: `(device-width: ${d.pw}px) and (device-height: ${d.ph}px) and (-webkit-device-pixel-ratio: ${d.ratio}) and (orientation: portrait)`,
+      media: `(device-width: ${d.pw}px) and (device-height: ${d.ph}px) and (-webkit-device-pixel-ratio: ${d.ratio}) and (orientation: ${d.orientation})`,
     })),
-  },
-  icons: {
+  },  icons: {
     icon: [
       { url: "/icons/icon.svg", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "any" },

@@ -23,7 +23,7 @@ export function ExpertProfileView({ profile, courses, locale }: { profile: Publi
       <header>
         {profile.photoUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- kleines Profilbild aus eigener Route, nicht optimierbar
-          <img src={profile.photoUrl} alt={`${c_expertsExpertProfileView(de).photoOf} ${profile.name}`} width={96} height={96} className="mb-3 h-24 w-24 rounded-full border border-border object-cover" data-testid="expert-photo" />
+          <img src={profile.photoUrl} alt={`${c_expertsExpertProfileView(de).photoOf} ${profile.name}`} width={96} height={96} decoding="async" className="mb-3 h-24 w-24 rounded-full border border-border object-cover" data-testid="expert-photo" />
         )}
         <p className="text-xs font-semibold tracking-wide text-subtle uppercase">{c_expertsExpertProfileView(de).expertReviewer}</p>
         <h1 className="mt-1 text-3xl font-semibold" data-testid="expert-name">{profile.name}</h1>

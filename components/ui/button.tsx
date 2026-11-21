@@ -5,7 +5,8 @@ import { cn } from "@/lib/cn";
 
 /**
  * Buttons: `primary` (Kontextakzent, Text in --ctx-on-accent), `secondary`, `ghost` (Rahmen), `inverted` (Admin: Koralle
- * bleibt Warnfarbe). Größen sm 36, md 44, lg 46 px; Touch-Ziele nie unter 36 px, primäre Aktionen 44+.
+ * bleibt Warnfarbe). Größen sm 36, md 44, lg 46 px. Unter 640 px (Touch) ist auch sm mindestens 44 px hoch (WCAG 2.5.5),
+ * ab `sm:` bleibt es bei 36 px, damit dichte Desktop-Layouts nicht wachsen.
  */
 export const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 rounded-md font-semibold whitespace-nowrap transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50",
@@ -17,7 +18,7 @@ export const buttonVariants = cva(
         ghost: "border border-border bg-transparent text-muted hover:bg-surface-2 hover:text-foreground",
         inverted: "bg-foreground text-background hover:opacity-90",
       },
-      size: { sm: "h-9 px-3 text-meta", md: "h-11 px-4 text-sm", lg: "h-[46px] px-5 text-body" },
+      size: { sm: "h-9 min-h-11 px-3 text-meta sm:min-h-9", md: "h-11 px-4 text-sm", lg: "h-[46px] px-5 text-body" },
     },
     defaultVariants: { variant: "primary", size: "md" },
   },

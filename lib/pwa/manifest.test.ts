@@ -55,5 +55,7 @@ describe("Web-App-Manifest", () => {
     expect([touch.width, touch.height, touch.hasAlpha]).toEqual([180, 180, false]);
     const splash = await sharp(file("splash/iphone-393x852.png")).metadata();
     expect([splash.width, splash.height]).toEqual([1179, 2556]);
+    const ipadLandscape = await sharp(file("splash/ipad-1194x834.png")).metadata();
+    expect([ipadLandscape.width, ipadLandscape.height]).toEqual([2388, 1668]);
   });
 });
