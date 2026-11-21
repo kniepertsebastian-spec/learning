@@ -1,8 +1,9 @@
 import type { SyncEventType } from "@/lib/server/db/schema";
 import { SYNC_TAG_PREFIX } from "@/lib/pwa/sync-tag";
-import { chunkForKeepalive, summarize, transferPendingEvents, type SyncApiResult, type SyncQueueSummary } from "@/lib/client/sync-core";
+import { chunkForKeepalive, summarize, toRequestEvent, transferPendingEvents, type SyncApiResult, type SyncQueueSummary } from "@/lib/client/sync-core";
 import {
   deletePendingSyncEvent,
+  isQuotaExceededError,
   listPendingSyncEvents,
   savePendingSyncEvent,
   type PendingSyncEvent,
@@ -53,6 +54,95 @@ function setLastSyncedAt(userId: string, iso: string): void {
   }
 }
 
+/** Ein Ergebnis konnte nicht in die Warteschlange geschrieben werden. `QUOTA_EXCEEDED`: der Gerätespeicher ist voll. */
+export type SyncQueueErrorCode = "QUOTA_EXCEEDED";
+
+export class SyncQueueError extends Error {
+  constructor(
+    readonly code: SyncQueueErrorCode,
+    /** Kontext des betroffenen Ergebnisses (z. B. „Abschnitts-Quiz“), für die Meldung. */
+    readonly label: string,
+    options?: { cause?: unknown },
+  ) {
+    super(`Ergebnis „${label}“ konnte nicht auf dem Gerät gesichert werden (Speicher voll).`, options);
+    this.name = "SyncQueueError";
+  }
+}
+
+export interface SyncQueueErrorDetail {
+  code: SyncQueueErrorCode;
+  label: string;
+  /** So viele Ergebnisse liegen gerade nur im Speicher der geöffneten Seite (gehen beim Schließen verloren). */
+  unsavedCount: number;
+}
+
+const QUEUE_ERROR_EVENT = "certstudy:sync-queue-error";
+
+/**
+ * Ergebnisse, die wegen vollen Speichers nicht in IndexedDB passten: sie bleiben im Speicher der geöffneten Seite, bis
+ * `retryUnsavedSyncEvents()` sie doch noch sichert (z. B. nachdem die Person Offline-Kurse gelöscht hat). Die Seite selbst
+ * wird bei der Offline-Nutzung nicht neu geladen (OfflinePackageManager wechselt Ansichten nur per State).
+ */
+const unsavedEvents = new Map<string, PendingSyncEvent>();
+
+function notifyQueueError(detail: SyncQueueErrorDetail): void {
+  try {
+    window.dispatchEvent(new CustomEvent<SyncQueueErrorDetail>(QUEUE_ERROR_EVENT, { detail }));
+  } catch {
+    // Kein window (SSR).
+  }
+}
+
+/**
+ * Die aufrufenden Komponenten (Quiz, Session, Simulation) fangen Fehler beim Einreihen ab; damit die Person trotzdem
+ * erfährt, dass ihr Ergebnis nicht gesichert ist, meldet die Warteschlange den Fehler zusätzlich als DOM-Ereignis.
+ */
+export function onSyncQueueError(listener: (detail: SyncQueueErrorDetail) => void): () => void {
+  const handler = (event: Event) => listener((event as CustomEvent<SyncQueueErrorDetail>).detail);
+  window.addEventListener(QUEUE_ERROR_EVENT, handler);
+  return () => window.removeEventListener(QUEUE_ERROR_EVENT, handler);
+}
+
+/** So viele Ergebnisse liegen nur im Seitenspeicher (nicht in IndexedDB). */
+export function getUnsavedSyncEventCount(): number {
+  return unsavedEvents.size;
+}
+
+/** Bei Netz das Ergebnis direkt an den Server senden (ohne Umweg über die volle Warteschlange). `true`, wenn verbucht. */
+async function sendDirectly(event: PendingSyncEvent): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.onLine) return false;
+  try {
+    const response = await fetch("/api/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: event.userId, events: [toRequestEvent(event)] }),
+    });
+    if (!response.ok) return false;
+    const results = ((await response.json()) as { results?: SyncApiResult[] }).results ?? [];
+    const result = results.find((r) => r.clientEventId === event.clientEventId);
+    const applied = result?.status === "applied" || result?.status === "applied_partial" || result?.status === "already_applied";
+    if (applied) setLastSyncedAt(event.userId, new Date().toISOString());
+    return applied;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Speicher voll: statt das Ergebnis still zu verlieren, erst direkt senden (online), sonst im Seitenspeicher halten,
+ * die Oberfläche benachrichtigen und einen typisierten `SyncQueueError` werfen.
+ */
+async function handleQuotaExceeded(event: PendingSyncEvent, cause: unknown): Promise<void> {
+  if (await sendDirectly(event)) {
+    unsavedEvents.delete(event.clientEventId);
+    notifyQueueChanged();
+    return;
+  }
+  unsavedEvents.set(event.clientEventId, event);
+  notifyQueueError({ code: "QUOTA_EXCEEDED", label: event.label, unsavedCount: unsavedEvents.size });
+  throw new SyncQueueError("QUOTA_EXCEEDED", event.label, { cause });
+}
+
 export async function enqueueSyncEvent(
   userId: string,
   type: SyncEventType,
@@ -71,9 +161,38 @@ export async function enqueueSyncEvent(
     lastError: null,
     syncedAt: null,
   };
-  await savePendingSyncEvent(event);
+  try {
+    await savePendingSyncEvent(event);
+  } catch (error) {
+    if (isQuotaExceededError(error)) return handleQuotaExceeded(event, error);
+    throw error;
+  }
   notifyQueueChanged();
   registerBackgroundSync(userId);
+}
+
+/**
+ * Noch nicht gesicherte Ergebnisse erneut in die Warteschlange schreiben (bzw. bei Netz direkt senden), z. B. nachdem
+ * Speicher freigegeben wurde. Gibt zurück, wie viele danach immer noch ungesichert sind.
+ */
+export async function retryUnsavedSyncEvents(): Promise<number> {
+  let saved = false;
+  for (const event of [...unsavedEvents.values()]) {
+    try {
+      await savePendingSyncEvent(event);
+      unsavedEvents.delete(event.clientEventId);
+      registerBackgroundSync(event.userId);
+      saved = true;
+    } catch (error) {
+      if (!isQuotaExceededError(error)) continue;
+      if (await sendDirectly(event)) {
+        unsavedEvents.delete(event.clientEventId);
+        saved = true;
+      }
+    }
+  }
+  if (saved) notifyQueueChanged();
+  return unsavedEvents.size;
 }
 
 export type { SyncQueueSummary };

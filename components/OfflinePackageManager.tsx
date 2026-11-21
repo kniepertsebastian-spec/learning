@@ -12,7 +12,8 @@ import {
   PACKAGES_CHANGED_EVENT,
   type StoredOfflinePackage,
 } from "@/lib/client/offline-db";
-import { downloadOfflinePackage, fetchOfflinePackageVersion, type DownloadProgress } from "@/lib/client/offline-download";
+import { downloadOfflinePackage, fetchOfflinePackageVersion, OfflineDownloadError, type DownloadProgress } from "@/lib/client/offline-download";
+import { getUnsavedSyncEventCount, onSyncQueueError, retryUnsavedSyncEvents } from "@/lib/client/sync-queue";
 import { getStorageStatus, type StorageStatus } from "@/lib/client/storage-status";
 import { isPackageLocked } from "@/lib/pwa/package-expiry";
 import { isUninstalledIosSafari } from "@/lib/client/install-prompt";
@@ -38,6 +39,15 @@ function formatDate(iso: string, locale: Locale): string {
   return new Date(iso).toLocaleString(locale === "de" ? "de-DE" : "en-US");
 }
 
+/** Lokalisierte Meldung zu einem Download-Fehler, nie die rohe Browser-Meldung (`e.message`). */
+export function downloadErrorText(error: unknown, locale: Locale): string {
+  const t = c_offlinePackageManager(locale);
+  return error instanceof OfflineDownloadError && error.code === "QUOTA_EXCEEDED" ? t.storageFullDownload : t.downloadFailed;
+}
+
+/** Aktionsbuttons: auf Touch-Geräten mindestens 44 px hoch, ab `sm` kompakter. */
+const TOUCH_TARGET = "min-h-11 sm:min-h-9";
+
 /**
  * R4.1/4.2/4.3 (roadmap.md): Download, lokale Speicherung (IndexedDB) und
  * Offline-Ansicht eines Kurspakets - eigene Route statt jede bestehende
@@ -61,6 +71,23 @@ export function OfflinePackageManager({
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [showSession, setShowSession] = useState(false);
   const [storage, setStorage] = useState<StorageStatus | null>(null);
+  // Offline beendete Quiz/Sessions, die wegen vollen Speichers nicht gesichert werden konnten (lib/client/sync-queue.ts).
+  const [unsavedCount, setUnsavedCount] = useState(0);
+  const [savedAgain, setSavedAgain] = useState(false);
+
+  useEffect(() => {
+    setUnsavedCount(getUnsavedSyncEventCount());
+    return onSyncQueueError((detail) => {
+      setSavedAgain(false);
+      setUnsavedCount(detail.unsavedCount);
+    });
+  }, []);
+
+  async function retryUnsaved() {
+    const remaining = await retryUnsavedSyncEvents().catch(() => getUnsavedSyncEventCount());
+    setUnsavedCount(remaining);
+    setSavedAgain(remaining === 0);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -126,11 +153,7 @@ export function OfflinePackageManager({
       setRecord(stored);
       setRemoteVersion(stored.version);
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : c_offlinePackageManager(locale).downloadFailed,
-      );
+      setError(downloadErrorText(e, locale));
     } finally {
       setDownloading(false);
       setProgress(null);
@@ -141,7 +164,31 @@ export function OfflinePackageManager({
     await deleteOfflinePackage(userId, certificationId);
     setRecord(null);
     setSelectedSectionId(null);
+    setError(null);
+    // Freigewordener Speicher: ungesicherte Ergebnisse gleich noch einmal sichern.
+    if (getUnsavedSyncEventCount() > 0) await retryUnsaved();
   }
+
+  const syncWarning =
+    unsavedCount > 0 ? (
+      <div role="alert" data-testid="sync-quota-warning" className="mb-4 rounded-lg border border-danger-text/40 bg-surface p-4 text-sm">
+        <p className="font-medium text-danger-text">
+          {c_offlinePackageManager(locale).unsavedResults}: {unsavedCount}
+        </p>
+        <p className="mt-1 text-muted">{c_offlinePackageManager(locale).storageFullSync}</p>
+        <button
+          type="button"
+          onClick={() => void retryUnsaved()}
+          className={`mt-3 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background ${TOUCH_TARGET}`}
+        >
+          {c_offlinePackageManager(locale).retrySave}
+        </button>
+      </div>
+    ) : savedAgain ? (
+      <p role="status" className="mb-4 text-sm text-success-text">
+        {c_offlinePackageManager(locale).resultsSavedAgain}
+      </p>
+    ) : null;
 
   const hasUpdate = !!(record && remoteVersion && record.version !== remoteVersion);
   const percent =
@@ -163,10 +210,11 @@ export function OfflinePackageManager({
   if (selected) {
     return (
       <div>
+        {syncWarning}
         <button
           type="button"
           onClick={() => setSelectedSectionId(null)}
-          className="mb-4 text-sm text-muted hover:text-foreground"
+          className={`mb-4 inline-flex items-center text-sm text-muted hover:text-foreground ${TOUCH_TARGET}`}
         >
           {c_offlinePackageManager(locale).backToOfflineOverview}
         </button>
@@ -188,10 +236,11 @@ export function OfflinePackageManager({
   if (showSession && record?.data.session && !locked) {
     return (
       <div>
+        {syncWarning}
         <button
           type="button"
           onClick={() => setShowSession(false)}
-          className="mb-4 text-sm text-muted hover:text-foreground"
+          className={`mb-4 inline-flex items-center text-sm text-muted hover:text-foreground ${TOUCH_TARGET}`}
         >
           {c_offlinePackageManager(locale).backToOfflineOverview}
         </button>
@@ -210,6 +259,7 @@ export function OfflinePackageManager({
   return (
     <div className="flex flex-col gap-4">
       <InstallBanner />
+      {syncWarning}
       {locked && (
         <div role="alert" data-testid="package-locked" className="rounded-lg border border-warning-text/40 bg-surface p-4 text-sm">
           {c_offlinePackageManager(locale).thisCourseIsLockedBecause}
@@ -299,10 +349,10 @@ export function OfflinePackageManager({
               <li>{c_offlinePackageManager(locale).chooseAddToHomeScreen}</li>
             </ol>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => void handleDownload(true)} data-testid="download-install-skip" className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background">
+              <button type="button" onClick={() => void handleDownload(true)} data-testid="download-install-skip" className={`rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background ${TOUCH_TARGET}`}>
                 {c_offlinePackageManager(locale).saveAnyway}
               </button>
-              <button type="button" onClick={() => setShowInstallStep(false)} className="rounded-md px-3 py-1.5 text-sm text-subtle hover:bg-background">
+              <button type="button" onClick={() => setShowInstallStep(false)} className={`rounded-md px-3 py-1.5 text-sm text-subtle hover:bg-background ${TOUCH_TARGET}`}>
                 {c_offlinePackageManager(locale).later}
               </button>
             </div>
@@ -314,7 +364,7 @@ export function OfflinePackageManager({
             type="button"
             onClick={() => void handleDownload()}
             disabled={downloading}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-on-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${TOUCH_TARGET}`}
           >
             {hasUpdate ? <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> : <CloudDownload className="h-3.5 w-3.5" aria-hidden="true" />}
             {record
@@ -327,7 +377,7 @@ export function OfflinePackageManager({
             <button
               type="button"
               onClick={handleDelete}
-              className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted hover:bg-background"
+              className={`flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted hover:bg-background ${TOUCH_TARGET}`}
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               {c_offlinePackageManager(locale).deleteOfflineData}
@@ -348,7 +398,7 @@ export function OfflinePackageManager({
           <button
             type="button"
             onClick={() => setShowSession(true)}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-on-primary hover:opacity-90"
+            className={`rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-on-primary hover:opacity-90 ${TOUCH_TARGET}`}
           >
             {c_offlinePackageManager(locale).startSession}
           </button>
@@ -373,7 +423,7 @@ export function OfflinePackageManager({
                           key={section.id}
                           type="button"
                           onClick={() => setSelectedSectionId(section.id)}
-                          className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-left text-sm hover:border-accent hover:bg-background"
+                          className={`flex items-center justify-between rounded-md border border-border px-3 py-2 text-left text-sm hover:border-accent hover:bg-background ${TOUCH_TARGET}`}
                         >
                           {section.title[locale]}
                         </button>

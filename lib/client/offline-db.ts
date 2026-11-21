@@ -79,6 +79,41 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
+/** Kennungen für „Speicher voll“: Standard, Legacy-Safari (`QUOTA_EXCEEDED_ERR`, Code 22), Firefox (`NS_ERROR_DOM_QUOTA_REACHED`, Code 1014). */
+const QUOTA_ERROR_NAMES = new Set(["QuotaExceededError", "QUOTA_EXCEEDED_ERR", "NS_ERROR_DOM_QUOTA_REACHED"]);
+const QUOTA_ERROR_CODES = new Set([22, 1014]);
+
+/**
+ * Der Speicher des Geräts ist voll (IndexedDB hat `QuotaExceededError` gemeldet). Wird von `withStore()` statt der rohen
+ * Browser-Meldung geworfen, damit Aufrufer (Download, Sync-Warteschlange) gezielt eine lokalisierte Meldung zeigen können.
+ */
+export class OfflineQuotaExceededError extends Error {
+  readonly code = "QUOTA_EXCEEDED" as const;
+  constructor(options?: { cause?: unknown }) {
+    super("Der Speicher des Geräts ist voll (IndexedDB-Quota überschritten).", options);
+    this.name = "OfflineQuotaExceededError";
+  }
+}
+
+/** Erkennt Speicher-voll-Fehler aller Browser, auch Legacy-Safari (`code === 22`) und Firefox (`NS_ERROR_DOM_QUOTA_REACHED`). */
+export function isQuotaExceededError(error: unknown): boolean {
+  if (error instanceof OfflineQuotaExceededError) return true;
+  if (typeof error !== "object" || error === null) return false;
+  const { name, code } = error as { name?: unknown; code?: unknown };
+  if (typeof name === "string" && QUOTA_ERROR_NAMES.has(name)) return true;
+  // Code 22 allein nur bei DOMException-artigen Fehlern werten, nicht bei beliebigen Objekten mit `code: 22`.
+  return typeof code === "number" && QUOTA_ERROR_CODES.has(code) && (name === undefined || (typeof DOMException !== "undefined" && error instanceof DOMException));
+}
+
+function storageError(error: DOMException | null | undefined): Error {
+  if (isQuotaExceededError(error)) return new OfflineQuotaExceededError({ cause: error });
+  return error ?? new Error("IndexedDB-Zugriff fehlgeschlagen.");
+}
+
+/**
+ * Ergebnis erst nach `oncomplete` der Transaktion liefern: ein `QuotaExceededError` tritt bei IndexedDB oft erst beim
+ * Festschreiben auf (Transaktion bricht ab, obwohl `request.onsuccess` schon kam). Vorher wurde er so still verschluckt.
+ */
 async function withStore<T>(
   storeName: string,
   mode: IDBTransactionMode,
@@ -90,9 +125,24 @@ async function withStore<T>(
       const tx = db.transaction(storeName, mode);
       const store = tx.objectStore(storeName);
       const request = fn(store);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error ?? new Error("IndexedDB-Zugriff fehlgeschlagen."));
+      let settled = false;
+      const fail = (error: DOMException | null | undefined) => {
+        if (settled) return;
+        settled = true;
+        reject(storageError(error));
+      };
+      request.onerror = () => fail(request.error);
+      tx.onabort = () => fail(tx.error ?? request.error);
+      tx.onerror = () => fail(tx.error ?? request.error);
+      tx.oncomplete = () => {
+        if (settled) return;
+        settled = true;
+        resolve(request.result);
+      };
     });
+  } catch (error) {
+    // z. B. synchron geworfen von `store.put()` (Safari meldet Speichermangel teils so)
+    throw isQuotaExceededError(error) && !(error instanceof OfflineQuotaExceededError) ? new OfflineQuotaExceededError({ cause: error }) : error;
   } finally {
     db.close();
   }

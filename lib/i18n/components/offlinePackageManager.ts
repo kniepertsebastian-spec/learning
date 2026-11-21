@@ -3,6 +3,11 @@ const texts = {
   de: {
     offlineStorageIsNotSupported: "Offline-Speicherung wird von diesem Browser nicht unterstützt.",
     downloadFailed: "Download fehlgeschlagen.",
+    storageFullDownload: "Nicht genug Speicherplatz auf diesem Gerät, um den Kurs offline zu speichern. Lösche nicht benötigte Offline-Kurse (oder andere Daten im Browser) und versuche es dann erneut.",
+    storageFullSync: "Dein Ergebnis konnte wegen Speichermangel nicht auf dem Gerät gesichert werden. Lass diese Seite geöffnet, lösche nicht benötigte Offline-Kurse und tippe dann auf „Erneut sichern“ – oder verbinde das Gerät mit dem Internet.",
+    unsavedResults: "Ungesicherte Ergebnisse",
+    retrySave: "Erneut sichern",
+    resultsSavedAgain: "Ergebnisse wurden gesichert.",
     backToOfflineOverview: "← Zurück zur Offline-Übersicht",
     thisCourseIsLockedBecause: "Dieser Kurs ist gesperrt, weil er zu lange nicht online geprüft wurde. Verbinde das Gerät mit dem Internet und öffne die App, dann ist er wieder nutzbar.",
     reviewedBy: "Fachlich geprüft von",
@@ -36,6 +41,11 @@ const texts = {
   en: {
     offlineStorageIsNotSupported: "Offline storage is not supported in this browser.",
     downloadFailed: "Download failed.",
+    storageFullDownload: "There is not enough storage on this device to save the course for offline use. Delete offline courses you no longer need (or other browser data) and try again.",
+    storageFullSync: "Your result could not be saved on this device because storage is full. Keep this page open, delete offline courses you no longer need and then tap “Save again” – or connect the device to the internet.",
+    unsavedResults: "Unsaved results",
+    retrySave: "Save again",
+    resultsSavedAgain: "Results have been saved.",
     backToOfflineOverview: "← Back to offline overview",
     thisCourseIsLockedBecause: "This course is locked because it has not been checked online for too long. Connect to the internet and open the app to unlock it.",
     reviewedBy: "Reviewed by",
