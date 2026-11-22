@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { buildContentSecurityPolicy, generateNonce } from "@/lib/server/csp";
-import { hasSessionCookie, isLocalHostname } from "@/lib/server/proxy-guards";
+import { hasSessionCookie, hostnameFromHostHeader, isLocalHostname } from "@/lib/server/proxy-guards";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -19,7 +19,9 @@ export function proxy(request: NextRequest) {
   // liest x-nonce für das Theme-Skript.
   const nonce = generateNonce();
   const isDev = process.env.NODE_ENV === "development";
-  const csp = buildContentSecurityPolicy(nonce, isDev, !isDev && !isLocalHostname(request.nextUrl.hostname));
+  // upgrade-insecure-requests nur für echte Domains, nicht für den http://localhost-Produktionsbuild in CI/E2E.
+  const hostname = hostnameFromHostHeader(request.headers.get("host")) ?? request.nextUrl.hostname;
+  const csp = buildContentSecurityPolicy(nonce, isDev, !isDev && !isLocalHostname(hostname));
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);

@@ -14,3 +14,17 @@ export function isLocalHostname(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   return host === "localhost" || host.endsWith(".localhost") || host === "::1" || /^127(?:\.\d{1,3}){3}$/.test(host);
 }
+
+/**
+ * Hostname aus dem Host-Header (ohne Port). `request.nextUrl.hostname` taugt dafür nicht: unter `next start` steht dort der
+ * Hostname, an den der Server gebunden ist (localhost), nicht der angefragte - hinter dem Cloudflare-Tunnel also nie die Domain.
+ */
+export function hostnameFromHostHeader(host: string | null | undefined): string | null {
+  const value = host?.trim();
+  if (!value) return null;
+  if (value.startsWith("[")) {
+    const end = value.indexOf("]");
+    return end > 1 ? value.slice(0, end + 1) : null;
+  }
+  return value.split(":")[0] || null;
+}
