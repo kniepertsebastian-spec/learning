@@ -9,6 +9,7 @@ if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 import { getAiBudgetStatus } from "@/lib/server/admin/ai-cost";
 import { getAiCostReport, recordAiUsage, withAiCost, type AiCostCourseRow } from "@/lib/server/admin/ai-ledger";
 import { getDb } from "@/lib/server/db/client";
+import { useAiLedgerLock } from "@/test-support/ai-ledger-lock";
 import { aiCostEntries, certifications, courseGenerationJobs } from "@/lib/server/db/schema";
 import { seedCourse } from "@/lib/server/psrp/test-db";
 
@@ -53,6 +54,9 @@ async function rowFor(certId: string): Promise<AiCostCourseRow | undefined> {
 const noCourse = async () => (await getAiCostReport()).courses.find((c) => c.certificationId === null);
 
 run("Kostenbuch (echte DB)", () => {
+  // Kostenbuch nur von einer Datei zugleich (test-support/ai-ledger-lock.ts).
+  useAiLedgerLock(TEST_DB);
+
   beforeAll(() => {
     delete process.env.GEMINI_BUDGET_USD;
   });
