@@ -76,18 +76,21 @@ jobs:
           name: playwright-traces
           path: test-results/
           if-no-files-found: ignore
-      # Lighthouse (Best Practices) nur als Warnung: ein Wert unter der Schwelle bricht CI nicht ab.
-      - name: Lighthouse (Warnung)
-        continue-on-error: true
+      # Lighthouse auf /login und /offline: Barrierefreiheit ist verbindlich (unter 90 wird CI rot), Performance und Best
+      # Practices melden nur eine Warnung (Messwerte auf geteilten Runnern schwanken). Kein continue-on-error: Läuft
+      # Lighthouse nicht oder fehlt eine Punktzahl, schlägt der Schritt ebenfalls fehl.
+      - name: Lighthouse
         env:
           DATABASE_URL: postgres://postgres:ci@localhost:5432/ci
           AUTH_SECRET: ci-only-secret
           AUTH_TRUST_HOST: "true"
+          LIGHTHOUSE_MIN_ACCESSIBILITY: "0.9"
+          LIGHTHOUSE_WARN_PERFORMANCE: "0.5"
+          LIGHTHOUSE_WARN_BEST_PRACTICES: "0.9"
         run: |
           node node_modules/next/dist/bin/next start -p 3100 &
           SERVER=$!
+          trap 'kill $SERVER' EXIT
           for i in $(seq 1 30); do curl -sf http://localhost:3100/login >/dev/null && break; sleep 1; done
-          CHROME_PATH="$(node -e "console.log(require('@playwright/test').chromium.executablePath())")" npm run lighthouse
-          STATUS=$?
-          kill $SERVER
-          exit $STATUS
+          curl -sf http://localhost:3100/login >/dev/null || { echo "::error::Server auf Port 3100 nicht erreichbar"; exit 1; }
+          CHROME_PATH="$(node -e "console.log(require('@playwright/test').chromium.executablePath())")" npm run lighthouse -- http://localhost:3100 /login /offline

@@ -1,12 +1,16 @@
 node_modules
 .next
 .git
-# Secrets gehören nicht ins Image: `next build` (output: "standalone") kopiert die .env sonst nach .next/standalone/.env, und
-# die Runtime-Stage übernimmt .next vollständig. Die Werte kommen zur Laufzeit über `environment:` in docker-compose.yml.
+# Secrets gehören nicht ins Image (auch nicht in die Builder-Layer): `COPY . .` nähme sie sonst mit. Die Werte kommen zur
+# Laufzeit über `environment:` in docker-compose.yml.
 .env
 .env*
 !.env.example
 !.env.minimal.example
+# Backup-Schlüssel/-Konfiguration und Datenbank-Dumps, die im Deploy-Verzeichnis liegen können (scripts/backup.sh)
+learning-backup.env
+learning-backup.key
+*.dump
 npm-debug.log*
 README.md
 docs/roadmaps

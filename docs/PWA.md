@@ -86,7 +86,7 @@ Erinnerungen als Push-Nachricht (Prüfungstermin, fällige Wiederholungen, Lerns
   - `update-flow.spec.ts`: Update-Toast nach neuem Worker, kein Reload ohne Klick.
   - `cache-privacy.spec.ts`: Admin-/Firmenseiten nie im Cache; Nutzerwechsel und Logout leeren den Seiten-Cache.
   - Die Tests laufen über ein schaltbares Gateway (`e2e/gateway.ts`), weil Playwrights `setOffline` Anfragen des Service Workers nicht sperrt.
-- **Lighthouse**: `npm run lighthouse` prüft die Best-Practices-Punktzahl der Login-Seite gegen den laufenden Server. In CI nur als Warnung (`continue-on-error`).
+- **Lighthouse**: `npm run lighthouse` prüft Performance, Barrierefreiheit und Best Practices auf `/login` und `/offline` gegen den laufenden Server. Barrierefreiheit unter 90 (`LIGHTHOUSE_MIN_ACCESSIBILITY`) lässt den Lauf und die CI scheitern; Performance und Best Practices melden nur Warnungen.
 
 ## Bekannte iOS-/Safari-Einschränkungen
 

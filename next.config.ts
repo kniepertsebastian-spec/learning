@@ -22,8 +22,10 @@ const securityHeaders = [
 const deploymentId = process.env.NEXT_DEPLOYMENT_ID || process.env.GITHUB_SHA || `b${Date.now().toString(36)}`;
 process.env.NEXT_DEPLOYMENT_ID = deploymentId;
 
+// Kein `output: "standalone"`: Das Image startet mit `npm start` (`next start`) und braucht neben der App auch die
+// Admin-Skripte und Migrationen (`docker compose exec app npm run ...`, drizzle-kit beim Start). `next start` verträgt sich
+// nicht mit standalone (Next.js warnt), und der standalone-Ordner würde nur ungenutzt mitgebaut (Roadmap Teil 5, AP-07).
 const nextConfig: NextConfig = {
-  output: "standalone",
   deploymentId,
   experimental: {
     // Enables next/navigation's forbidden()/unauthorized() so admin guards

@@ -77,11 +77,12 @@ export function OfflinePackageManager({
   const [showSession, setShowSession] = useState(false);
   const [storage, setStorage] = useState<StorageStatus | null>(null);
   // Offline beendete Quiz/Sessions, die wegen vollen Speichers nicht gesichert werden konnten (lib/client/sync-queue.ts).
-  const [unsavedCount, setUnsavedCount] = useState(0);
+  // Startwert direkt aus dem Speicher der Warteschlange: Nach einem harten Seitenaufruf ist er auf Server und Client 0
+  // (keine Abweichung beim Hydrieren), nach einer Client-Navigation zählt er bereits gescheiterte Einträge mit.
+  const [unsavedCount, setUnsavedCount] = useState(getUnsavedSyncEventCount);
   const [savedAgain, setSavedAgain] = useState(false);
 
   useEffect(() => {
-    setUnsavedCount(getUnsavedSyncEventCount());
     return onSyncQueueError((detail) => {
       setSavedAgain(false);
       setUnsavedCount(detail.unsavedCount);

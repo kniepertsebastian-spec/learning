@@ -148,4 +148,4 @@ Monitoring sind in den jeweiligen Anleitungen unter `docs/` beschrieben.
 | `stats:backfill-completions` | Anonyme Abschluss-Statistik einmalig aus alten Prüfungsversuchen nachtragen. |
 | `exams:audit-attempts` | Bestandene Prüfungsversuche aus der Zeit vor der serverseitigen Prüfung nachrechnen. Liest nur. |
 | `course:import-fixture`, `course:e2e` | Entwicklung: Kurs aus einer Fixture importieren bzw. die ganze Kursgenerierung mit Fake-KI gegen Postgres laufen lassen. |
-| `lighthouse` | Lighthouse-Check (Best Practices) gegen einen laufenden Server; läuft auch in der CI. |
+| `lighthouse` | Lighthouse-Check (Performance, Barrierefreiheit, Best Practices) auf `/login` und `/offline` gegen einen laufenden Server; Barrierefreiheit unter 90 ist ein Fehler. Läuft auch in der CI. |

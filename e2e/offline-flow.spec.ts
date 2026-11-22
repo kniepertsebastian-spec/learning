@@ -10,6 +10,23 @@ test("Kurs herunterladen → offline → /offline → Lektion + Quiz → online 
   await expect(page.getByText(/Available offline|Für offline verfügbar/).first()).toBeVisible();
   await waitForServiceWorkerReady(page);
 
+  // Sensible Seiten (Konto, Reviewer) dürfen auch im Lernablauf nie im Seiten-Cache landen; /catalog als Gegenprobe, dass
+  // der Service Worker Navigationen überhaupt in den pages-cache schreibt (das passiert asynchron, daher poll).
+  for (const path of ["/account", "/reviewer", "/catalog"]) {
+    await page.goto(`${gateway.url}${path}`);
+    await page.waitForLoadState("load");
+  }
+  const pagesCachePaths = () =>
+    page.evaluate(async () => {
+      const cache = await caches.open("pages-cache");
+      return (await cache.keys()).map((request) => new URL(request.url).pathname);
+    });
+  await expect.poll(pagesCachePaths).toContain("/catalog");
+  const cachedPaths = await pagesCachePaths();
+  for (const sensitive of ["/account", "/reviewer"]) {
+    expect(cachedPaths.filter((p) => p === sensitive || p.startsWith(`${sensitive}/`))).toEqual([]);
+  }
+
   // Flugmodus: Browser offline UND Gateway tot (der Service Worker ginge sonst weiter ins Netz)
   gateway.setOnline(false);
   await context.setOffline(true);

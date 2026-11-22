@@ -83,7 +83,7 @@ Begründung und Nachweise je Punkt in [`review-2026-11-19.md`](review-2026-11-19
 - [ ] Onboarding-Flow für neue Firmen (Gate 6: ein neuer Kunde kann ohne Hilfe starten).
 - [ ] Datensparsame Analytics.
 - [ ] E2E-Test des Kernflows Registrierung → Firma → Zuweisung → Lernpfad → Abschluss.
-- [ ] Accessibility-Check (Lighthouse läuft schon in der CI, aber nur „Best Practices“ und nur als Warnung: `scripts/lighthouse-check.mjs`).
+- [x] Accessibility-Check: Lighthouse prüft in der CI Performance, Barrierefreiheit und Best Practices auf `/login` und `/offline`; Barrierefreiheit unter 90 macht die CI rot (`scripts/lighthouse-check.mjs`).
 - [ ] Anleitung „Zum Home-Bildschirm hinzufügen“ für iOS (es gibt einen Hinweis im Push-Bereich, keine eigene Anleitung).
 
 **Prüfer** (`archiv/vision.md`)
@@ -98,7 +98,7 @@ Keine Pilot-Blocker, aber vor dem ersten Firmenkunden sinnvoll. Einzelheiten in 
 - [x] **R9a** `app/not-found.tsx` und `app/global-error.tsx` im App-Design.
 - [ ] **R9b** `loading.tsx` für Dashboard, Kurs, Lernsession und Firmenbereich. Erster Versuch (PR #215) zurückgenommen: Mit Ladegrenze standen Teile der Seite doppelt im DOM, einmal deutsch und einmal englisch (E2E `pause-session`, `unlock`). Ursache vermutlich ein Sprach-Unterschied zwischen Server und Client beim Hydrieren; erst den beheben, dann die Ladezustände wieder einbauen.
 - [ ] **R7** Bundle messen; KaTeX und Highlighting in `components/RichText.tsx` nur bei Bedarf laden, Markdown wo möglich auf dem Server rendern.
-- [ ] **R8** `output: "standalone"` im Image wirklich nutzen oder entfernen; `cloudflared` auf eine Version festlegen.
+- [ ] **R8** ~~`output: "standalone"` im Image wirklich nutzen oder entfernen~~ (entfernt: das Image braucht `npm start`, Admin-Skripte und Migrationen); offen: `cloudflared` auf eine Version festlegen.
 - [ ] **R10** Ein Weg für Übersetzungen, dazu ein Test, der jeden Text auf Deutsch und Englisch verlangt.
 - [ ] **R11** `npm run test:db` mit Wegwerf-Postgres für die 101 Datenbank-Testdateien; Logik aus `StudySession.tsx` und `CourseGenerationPanel.tsx` in testbare Funktionen ziehen; einmal Abdeckung messen; `vitest.config.ts` auf `oxc` umstellen.
 - [ ] **R12** `lib/server/db/schema.ts` nach Bereichen aufteilen; `session-service.ts` und `worker.ts` beim nächsten größeren Umbau zerlegen.
@@ -140,7 +140,7 @@ Regeln für alle Messwerte stehen in [`docs/MESSEN.md`](../MESSEN.md).
 
 Diese Punkte stehen in den archivierten Dateien noch als offen, `main` erfüllt sie aber. Sie zählen hier nicht mehr.
 
-- `output: "standalone"` in `next.config.ts`. War in `ROADMAP-TECHNISCH.md` und der Sammelroadmap offen. Achtung: Das `Dockerfile` nutzt es noch nicht (R8 in Abschnitt 4a).
+- `output: "standalone"` (`ROADMAP-TECHNISCH.md`, Sammelroadmap): bewusst verworfen und aus `next.config.ts` entfernt, siehe R8 in Abschnitt 4a.
 - Generische Fehlertexte der Admin-Routen `sources/[id]/blueprint` und `parse` (Aufgabe 11, Test `app/api/admin/sources/error-texts.test.ts`).
 - Fast alle Aufgaben aus dem Review vom 12.11.2026 (02 bis 18, 21a, 21b): in den Einzeldateien abgehakt, in `roadmap_review_messung.md` nicht nachgetragen.
 - Oberfläche aus der Sammelroadmap: Command-Palette, „Meine Schwachstellen“, Katalog-Gruppen, Skill-Abdeckung je Team (Commits vom 05.11.2026).
