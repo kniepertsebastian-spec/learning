@@ -124,8 +124,8 @@ export function PushSettings() {
             <fieldset className="mt-4 flex flex-col gap-2">
               <legend className="sr-only">{tx.settingsTitle}</legend>
               {rows.map((row) => (
-                <label key={row.key} className="flex items-start gap-3 text-sm">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4" checked={info.prefs[row.key]} onChange={(e) => void changePref(row.key, e.target.checked)} data-testid={`push-pref-${row.key}`} />
+                <label key={row.key} className="-mx-2 flex min-h-11 cursor-pointer items-start gap-3 rounded-md px-2 py-2.5 text-sm hover:bg-surface-2">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" checked={info.prefs[row.key]} onChange={(e) => void changePref(row.key, e.target.checked)} data-testid={`push-pref-${row.key}`} />
                   <span>
                     <span className="block font-medium">{row.label}</span>
                     {row.hint && <span className="text-subtle">{row.hint}</span>}

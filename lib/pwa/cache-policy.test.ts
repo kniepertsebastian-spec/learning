@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPageResponseCacheable, isRscRequest, isUncachedPagePath } from "@/lib/pwa/cache-policy";
+import { ASSETS_CACHE, isPageResponseCacheable, isRscRequest, isUncachedPagePath, LEGACY_CACHE, PAGES_CACHE, staleCacheNames } from "@/lib/pwa/cache-policy";
 
 describe("isUncachedPagePath", () => {
   it("nimmt Admin- und Firmenbereich aus dem Seiten-Cache aus", () => {
@@ -97,5 +97,17 @@ describe("isRscRequest", () => {
     expect(isRscRequest({ headers: new Headers({ RSC: "1" }) }, new URL("https://app.example/cert/x"))).toBe(true);
     expect(isRscRequest({ headers: new Headers() }, new URL("https://app.example/cert/x?_rsc=abc"))).toBe(true);
     expect(isRscRequest({ headers: new Headers() }, new URL("https://app.example/cert/x"))).toBe(false);
+  });
+});
+
+describe("staleCacheNames", () => {
+  it("löscht alles außer der Allowlist: alter gemeinsamer Cache, frühere Precache-Generationen, unbekannte Caches", () => {
+    const precache = "serwist-precache-v2-https://app.example/";
+    const existing = [PAGES_CACHE, ASSETS_CACHE, precache, LEGACY_CACHE, "serwist-precache-v1-https://app.example/", "old-pages-v0"];
+    expect(staleCacheNames(existing, [PAGES_CACHE, ASSETS_CACHE, precache])).toEqual([LEGACY_CACHE, "serwist-precache-v1-https://app.example/", "old-pages-v0"]);
+  });
+
+  it("lässt ohne fremde Caches nichts übrig", () => {
+    expect(staleCacheNames([PAGES_CACHE, ASSETS_CACHE], [PAGES_CACHE, ASSETS_CACHE, "x"])).toEqual([]);
   });
 });

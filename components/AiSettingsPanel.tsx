@@ -97,7 +97,7 @@ export function AiSettingsPanel({ settings, locale }: { settings: AiSettingsStat
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={settings.hasKey ? (c_aiSettingsPanel(de).enterANewKeyTo) : c_aiSettingsPanel(de).geminiApiKey}
               aria-label={c_aiSettingsPanel(de).apiKey}
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent"
             />
             {settings.hasKey && (
               <div>

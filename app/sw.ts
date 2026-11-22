@@ -1,5 +1,6 @@
 import {
   CacheableResponsePlugin,
+  cacheNames,
   ExpirationPlugin,
   NetworkFirst,
   NetworkOnly,
@@ -19,10 +20,10 @@ import {
   isPageResponseCacheable,
   isRscRequest,
   isUncachedPagePath,
-  LEGACY_CACHE,
   PAGES_CACHE,
   PAGES_CACHE_MAX_AGE_SECONDS,
   PAGES_CACHE_MAX_ENTRIES,
+  staleCacheNames,
 } from "../lib/pwa/cache-policy";
 
 declare global {
@@ -112,9 +113,17 @@ const serwist = new Serwist({
 
 serwist.addEventListeners();
 
-// Der frühere gemeinsame Cache (Seiten und Assets zusammen) wird nicht mehr genutzt.
+// Beim Aktivieren alle Caches entfernen, die diese Version nicht mehr nutzt: den früheren gemeinsamen Cache (LEGACY_CACHE),
+// umbenannte oder aufgegebene Caches älterer Versionen. Behalten werden nur die eigenen Caches und die von Serwist (der
+// räumt im Precache selbst die Einträge auf, die nicht mehr im Manifest stehen).
 self.addEventListener("activate", (event) => {
-  event.waitUntil(caches.delete(LEGACY_CACHE));
+  event.waitUntil(
+    (async () => {
+      const keep = [PAGES_CACHE, ASSETS_CACHE, cacheNames.precache, cacheNames.runtime];
+      const stale = staleCacheNames(await caches.keys(), keep);
+      await Promise.all(stale.map((name) => caches.delete(name)));
+    })().catch(() => undefined),
+  );
 });
 
 // Background Sync (Chrome/Android): die Warteschlange aus IndexedDB übertragen, auch wenn die App geschlossen ist. Die
@@ -155,7 +164,8 @@ self.addEventListener("push", (event) => {
       body: shown.body,
       tag: shown.tag,
       icon: "/icons/icon-192x192.png",
-      badge: "/icons/icon-192x192.png",
+      // Android zeigt das Badge in der Statusleiste nur als Maske (Alphakanal): ein volles Quadrat wäre ein weißer Klotz.
+      badge: "/icons/badge-96x96.png",
       data: { url: shown.url },
     }),
   );

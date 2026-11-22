@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/i18n";
 
 const inputClass =
-  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
+  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent";
 const buttonClass =
   "rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50";
 

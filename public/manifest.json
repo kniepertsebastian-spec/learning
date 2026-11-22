@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Knowvia",
   "short_name": "Knowvia",
-  "description": "Capture Knowledge. Empower People. Strengthen Business. KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
+  "description": "KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate – auch offline.",
   "lang": "de",
   "dir": "ltr",
   "start_url": "/",
@@ -70,8 +70,8 @@
       "url": "/",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
-          "sizes": "192x192",
+          "src": "/icons/shortcut-review-96x96.png",
+          "sizes": "96x96",
           "type": "image/png"
         }
       ]
@@ -83,8 +83,8 @@
       "url": "/offline",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
-          "sizes": "192x192",
+          "src": "/icons/shortcut-offline-96x96.png",
+          "sizes": "96x96",
           "type": "image/png"
         }
       ]
@@ -96,8 +96,8 @@
       "url": "/exams",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
-          "sizes": "192x192",
+          "src": "/icons/shortcut-exams-96x96.png",
+          "sizes": "96x96",
           "type": "image/png"
         }
       ]

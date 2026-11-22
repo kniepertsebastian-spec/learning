@@ -7,9 +7,12 @@
  * Die Nonce setzt proxy.ts; Next.js liest sie aus diesem Header und trägt sie
  * in seine eigenen Skripte ein (siehe node_modules/next/dist/docs, Guide
  * "Content Security Policy").
+ * `upgrade-insecure-requests` (http-Unterressourcen über https laden) gilt nur, wenn die Seite selbst
+ * über https ausgeliefert wird: Der Produktionsbuild läuft in CI/E2E auf http://localhost, dort würde
+ * die Direktive jeden Chunk auf https umbiegen und die Seite brechen.
  */
-export function buildContentSecurityPolicy(nonce: string, isDev: boolean): string {
-  return [
+export function buildContentSecurityPolicy(nonce: string, isDev: boolean, upgradeInsecureRequests = !isDev): string {
+  const directives = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
@@ -22,7 +25,9 @@ export function buildContentSecurityPolicy(nonce: string, isDev: boolean): strin
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-  ].join("; ");
+  ];
+  if (upgradeInsecureRequests && !isDev) directives.push("upgrade-insecure-requests");
+  return directives.join("; ");
 }
 
 export function generateNonce(): string {

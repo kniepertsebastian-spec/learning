@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { buildContentSecurityPolicy, generateNonce } from "@/lib/server/csp";
+import { hasSessionCookie, isLocalHostname } from "@/lib/server/proxy-guards";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/cert/")) {
-    const sessionToken =
-      request.cookies.get("authjs.session-token")?.value ??
-      request.cookies.get("__Secure-authjs.session-token")?.value;
-
-    if (!sessionToken) {
+    if (!hasSessionCookie(request.cookies.getAll())) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("from", pathname);
       return NextResponse.redirect(loginUrl);
@@ -21,7 +18,8 @@ export function proxy(request: NextRequest) {
   // Content-Security-Policy und trägt sie in seine Skripte ein; app/layout.tsx
   // liest x-nonce für das Theme-Skript.
   const nonce = generateNonce();
-  const csp = buildContentSecurityPolicy(nonce, process.env.NODE_ENV === "development");
+  const isDev = process.env.NODE_ENV === "development";
+  const csp = buildContentSecurityPolicy(nonce, isDev, !isDev && !isLocalHostname(request.nextUrl.hostname));
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);

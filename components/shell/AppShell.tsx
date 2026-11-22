@@ -30,7 +30,6 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
   const btn = "flex h-11 min-w-11 items-center gap-1.5 sm:h-10 sm:min-w-10 rounded-md border border-border-strong bg-control px-2.5 text-sm font-medium hover:bg-surface-2";
   return (
     <div data-context="personal" className="flex min-h-dvh flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <OfflineBanner />
       <header className="flex h-[calc(4rem+env(safe-area-inset-top))] items-center justify-between px-4 pt-[env(safe-area-inset-top)] sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 font-semibold">
           <LogoMark />
@@ -45,6 +44,8 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </header>
+      {/* Unter der Kopfzeile, nicht darüber: die Kopfzeile trägt den Abstand zur Statusleiste (iOS-Standalone, Notch). */}
+      <OfflineBanner />
       <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:px-6">{children}</main>
       <footer className="px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6"><LegalLinks /></footer>
     </div>
@@ -66,7 +67,6 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
   return (
     <div data-app-shell data-context={ctx} className="flex min-h-dvh flex-col bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-on-accent">{t.shell.skipToContent}</a>
-      <OfflineBanner />
 
       {ctx === "admin" && (
         <div role="note" className="z-40 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning/40 bg-warning-soft px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-sm text-warning-text md:sticky md:top-0 md:h-10 md:py-0 md:pt-0" data-testid="admin-strip">
@@ -101,6 +101,8 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
+          {/* Mobil unter der sticky Leiste (die den Notch-Abstand trägt, auch beim Scrollen), am Desktop über dem Inhalt. */}
+          <OfflineBanner />
           <div className="flex flex-wrap items-center gap-3 px-4 pt-4 sm:px-6 lg:px-8">
             <BackBar pathname={pathname} ctx={ctx} />
             <CommandPalette pages={navItems(ctx, shell.nav).map((item) => ({ href: item.href, label: t.shell[item.label] }))} />

@@ -23,7 +23,7 @@ export function SheetContent({ className, children, side = "right", closeLabel =
         {...props}
       >
         {children}
-        <DialogPrimitive.Close aria-label={closeLabel} className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] right-3 flex h-10 w-10 items-center justify-center rounded-md text-subtle hover:bg-surface-2 hover:text-foreground">
+        <DialogPrimitive.Close aria-label={closeLabel} className="absolute top-[calc(0.75rem+env(safe-area-inset-top))] right-3 flex h-11 w-11 items-center sm:h-10 sm:w-10 justify-center rounded-md text-subtle hover:bg-surface-2 hover:text-foreground">
           <X className="h-4 w-4" aria-hidden="true" />
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
@@ -32,7 +32,7 @@ export function SheetContent({ className, children, side = "right", closeLabel =
 }
 
 export function SheetTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title className={cn("pr-10 text-base font-semibold", className)} {...props} />;
+  return <DialogPrimitive.Title className={cn("pr-12 text-base font-semibold", className)} {...props} />;
 }
 
 export function SheetDescription({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {

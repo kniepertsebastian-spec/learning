@@ -17,6 +17,10 @@ server {
 	# ssl_certificate     /etc/letsencrypt/live/learning.pwa-tree.de/fullchain.pem;
 	# ssl_certificate_key /etc/letsencrypt/live/learning.pwa-tree.de/privkey.pem;
 
+	# Uploads (Quellen-PDFs im Admin-Bereich) - nginx erlaubt ohne diese Zeile nur 1 MB und antwortet sonst mit 413.
+	# Die App nimmt Dateien bis 25 MB an (lib/server/admin/sources.ts); 26m lässt Platz für den Multipart-Rahmen.
+	client_max_body_size 26m;
+
 	# Service Worker und Manifest: die App setzt die Cache-Header selbst (next.config.ts, headers()). Hier werden sie
 	# zusätzlich festgeschrieben, damit Proxy-Änderungen sie nicht lockern. Kein proxy_cache für diese Pfade aktivieren.
 	# Cloudflare übernimmt "no-store" aus Cache-Control/CDN-Cache-Control - Voraussetzung: keine Cache Rule mit

@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/server/audit/service";
 import { getDb } from "@/lib/server/db/client";
-import { accountTokens, users } from "@/lib/server/db/schema";
+import { accountTokens, pushSubscriptions, users } from "@/lib/server/db/schema";
 import { normalizeEmail } from "@/lib/server/email";
 import { appUrl, getMailConfig } from "@/lib/server/mail/config";
 import { sendMail } from "@/lib/server/mail/mailer";
@@ -82,6 +82,8 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
         emailVerifiedAt: sql`coalesce(${users.emailVerifiedAt}, now())`,
       })
       .where(eq(users.id, id));
+    // Wie beim Passwortwechsel: kein Gerät mit beendeter Sitzung bekommt weiter Benachrichtigungen.
+    await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, id));
     await tx
       .delete(accountTokens)
       .where(

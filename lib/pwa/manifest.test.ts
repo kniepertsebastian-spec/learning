@@ -13,7 +13,8 @@ const manifest = JSON.parse(readFileSync("public/manifest.json", "utf8")) as {
   background_color: string;
   icons: Entry[];
   screenshots: Entry[];
-  shortcuts: Array<{ name: string; url: string }>;
+  description: string;
+  shortcuts: Array<{ name: string; url: string; icons: Entry[] }>;
 };
 const file = (src: string) => join("public", src);
 
@@ -46,8 +47,27 @@ describe("Web-App-Manifest", () => {
     expect(manifest.screenshots.map((s) => s.form_factor).sort()).toEqual(["narrow", "wide"]);
   });
 
-  it("hat die drei Verknüpfungen", () => {
+  it("hat die drei Verknüpfungen, jede mit eigenem 96er-Symbol", async () => {
     expect(manifest.shortcuts.map((s) => s.url)).toEqual(["/", "/offline", "/exams"]);
+    const icons = manifest.shortcuts.map((s) => s.icons[0]);
+    expect(new Set(icons.map((i) => i.src)).size).toBe(3);
+    for (const icon of icons) {
+      expect(icon.sizes).toBe("96x96");
+      const meta = await sharp(file(icon.src)).metadata();
+      expect(`${meta.width}x${meta.height}`, icon.src).toBe("96x96");
+    }
+  });
+
+  it("hat eine knappe deutsche Beschreibung", () => {
+    expect(manifest.description.length).toBeLessThanOrEqual(100);
+    expect(manifest.description).not.toContain(" / ");
+  });
+
+  it("liefert ein Push-Badge mit Transparenz (Android nutzt nur den Alphakanal)", async () => {
+    const badge = await sharp(file("icons/badge-96x96.png")).metadata();
+    expect([badge.width, badge.height, badge.hasAlpha]).toEqual([96, 96, true]);
+    const { data } = await sharp(file("icons/badge-96x96.png")).raw().toBuffer({ resolveWithObject: true });
+    expect(data[3]).toBe(0); // Ecke links oben transparent
   });
 
   it("liefert das Apple-Symbol deckend und die iOS-Startbilder in Gerätegröße", async () => {
@@ -57,5 +77,9 @@ describe("Web-App-Manifest", () => {
     expect([splash.width, splash.height]).toEqual([1179, 2556]);
     const ipadLandscape = await sharp(file("splash/ipad-1194x834.png")).metadata();
     expect([ipadLandscape.width, ipadLandscape.height]).toEqual([2388, 1668]);
+    for (const [name, w, h] of [["iphone-402x874", 1206, 2622], ["iphone-440x956", 1320, 2868], ["ipad-1024x1366", 2048, 2732], ["ipad-1376x1032", 2752, 2064]] as const) {
+      const meta = await sharp(file(`splash/${name}.png`)).metadata();
+      expect([meta.width, meta.height], name).toEqual([w, h]);
+    }
   });
 });

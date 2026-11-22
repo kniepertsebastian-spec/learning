@@ -111,7 +111,7 @@ export function CourseRequestsPanel({
               required
               placeholder={c_courseRequestsPanel(de).whatShouldTheCourseCover}
               aria-label={c_courseRequestsPanel(de).wish}
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent"
             />
             <textarea
               value={description}
@@ -120,7 +120,7 @@ export function CourseRequestsPanel({
               rows={3}
               placeholder={c_courseRequestsPanel(de).audienceScopeSpecificsOptional}
               aria-label={c_courseRequestsPanel(de).description}
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent"
             />
           </>
         )}

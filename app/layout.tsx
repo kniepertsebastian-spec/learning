@@ -31,19 +31,26 @@ const THEME_BOOTSTRAP_SCRIPT = `
 })();
 `;
 
+// `display: "swap"` ausdrücklich (auch wenn next/font es heute als Standard setzt): Text erscheint sofort in der
+// Ausweichschrift, statt bis zum Laden der Webfont unsichtbar zu bleiben.
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 // Dateien erzeugt scripts/generate-icons.mjs (Gerät in Punkten und Pixelfaktor). device-width/-height meldet iOS immer im
 // Hochformat; das Querformat unterscheidet nur `orientation`.
 const IOS_STARTUP_IMAGES: { name: string; pw: number; ph: number; ratio: number; orientation: "portrait" | "landscape" }[] = [
+  { name: "iphone-440x956", pw: 440, ph: 956, ratio: 3, orientation: "portrait" },
+  { name: "iphone-420x912", pw: 420, ph: 912, ratio: 3, orientation: "portrait" },
+  { name: "iphone-402x874", pw: 402, ph: 874, ratio: 3, orientation: "portrait" },
   { name: "iphone-430x932", pw: 430, ph: 932, ratio: 3, orientation: "portrait" },
   { name: "iphone-393x852", pw: 393, ph: 852, ratio: 3, orientation: "portrait" },
   { name: "iphone-390x844", pw: 390, ph: 844, ratio: 3, orientation: "portrait" },
@@ -51,6 +58,10 @@ const IOS_STARTUP_IMAGES: { name: string; pw: number; ph: number; ratio: number;
   { name: "iphone-375x667", pw: 375, ph: 667, ratio: 2, orientation: "portrait" },
   { name: "ipad-834x1194", pw: 834, ph: 1194, ratio: 2, orientation: "portrait" },
   { name: "ipad-1194x834", pw: 834, ph: 1194, ratio: 2, orientation: "landscape" },
+  { name: "ipad-1024x1366", pw: 1024, ph: 1366, ratio: 2, orientation: "portrait" },
+  { name: "ipad-1366x1024", pw: 1024, ph: 1366, ratio: 2, orientation: "landscape" },
+  { name: "ipad-1032x1376", pw: 1032, ph: 1376, ratio: 2, orientation: "portrait" },
+  { name: "ipad-1376x1032", pw: 1032, ph: 1376, ratio: 2, orientation: "landscape" },
 ];
 
 export const metadata: Metadata = {

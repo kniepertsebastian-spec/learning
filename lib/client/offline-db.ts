@@ -242,6 +242,25 @@ export async function clearOfflineDataForUser(userId: string): Promise<void> {
   }
 }
 
+/** Kontolöschung: auch die Sync-Warteschlange der Person verwerfen - auf dem Server gibt es niemanden mehr, dem sie gehört. */
+export async function clearPendingSyncEventsForUser(userId: string): Promise<void> {
+  if (!isSupported()) return;
+  const events = await listPendingSyncEvents(userId).catch(() => []);
+  if (events.length === 0) return;
+  const db = await openDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(SYNC_EVENTS_STORE, "readwrite");
+      const store = tx.objectStore(SYNC_EVENTS_STORE);
+      for (const event of events) store.delete(event.clientEventId);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("IndexedDB-Zugriff fehlgeschlagen."));
+    });
+  } finally {
+    db.close();
+  }
+}
+
 export async function savePendingSyncEvent(event: PendingSyncEvent): Promise<void> {
   await withStore(SYNC_EVENTS_STORE, "readwrite", (store) => store.put(event));
 }

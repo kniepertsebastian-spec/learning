@@ -95,7 +95,7 @@ export function InvitationsPanel({
           onChange={(e) => setEmail(e.target.value)}
           placeholder={c_invitationsPanel(de).emailAddress}
           aria-label={c_invitationsPanel(de).emailAddress}
-          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent"
         />
         <select
           value={role}
