@@ -9,6 +9,7 @@ if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 import type { BatchClient } from "@/lib/ai/batch";
 import { TAGGING_MODEL } from "@/lib/gemini";
 import { getDb } from "@/lib/server/db/client";
+import { useAiLedgerLock } from "@/test-support/ai-ledger-lock";
 import { aiCostEntries, concepts, geminiBatchJobs, objectives, probeVariants, questionOptions, questions, users } from "@/lib/server/db/schema";
 import { objectivesToTag, type ConceptTagger, type TaggingInput } from "@/lib/server/psrp/concepts";
 import { seedCourse, seedUser } from "@/lib/server/psrp/test-db";
@@ -43,6 +44,9 @@ const answer = (body: unknown, usage = { promptTokenCount: 1_000_000, candidates
 });
 
 run("Konzept-Tagging als Batch (echte DB, Fake-Client)", () => {
+  // Kostenbuch nur von einer Datei zugleich (test-support/ai-ledger-lock.ts).
+  useAiLedgerLock(TEST_DB);
+
   let userId = "";
   let certId = "";
   let objectiveA = "";

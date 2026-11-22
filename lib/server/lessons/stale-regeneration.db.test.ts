@@ -9,6 +9,7 @@ if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
 import { recordAiUsage } from "@/lib/server/admin/ai-ledger";
 import { awaitBatch, BatchNothingToDoError, estimateBatch, getBatchStatus, startBatch } from "@/lib/server/course-editor/batch";
 import { getDb } from "@/lib/server/db/client";
+import { useAiLedgerLock } from "@/test-support/ai-ledger-lock";
 import {
   aiCostEntries,
   certificationSources,
@@ -60,6 +61,9 @@ const draftQuestion = (n: number, overrides: Partial<DraftQuestion> = {}): Draft
 });
 
 run("Veraltete Inhalte neu erzeugen (echte DB, gefälschte KI)", () => {
+  // Kostenbuch nur von einer Datei zugleich (test-support/ai-ledger-lock.ts).
+  useAiLedgerLock(TEST_DB);
+
   const tag = randomUUID().slice(0, 8);
   let userId = "";
   let certId = "";
