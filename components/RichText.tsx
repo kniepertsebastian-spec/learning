@@ -8,6 +8,7 @@ import { CodeBlock, TerminalBlock } from "@/components/richtext/CodeBlock";
 import { baseRehypePlugins, baseRemarkPlugins } from "@/components/richtext/markdown-plugins";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseLineRanges } from "@/lib/markdown/blocks";
+import { hasHighlightableCode } from "@/lib/markdown/code-fence";
 import { hasMath, normalizeMath } from "@/lib/markdown/math";
 import { nodeText } from "@/components/richtext/code-lines";
 import { slugify } from "@/lib/markdown/toc";
@@ -25,15 +26,17 @@ import type { CalloutTone } from "@/components/ui/callout";
  * Zeilenmarkierung ergänzen wir selbst (CodeBlock). Die Farben kommen aus den Tokens (`--code-*`). Nur eine feste
  * Sprachauswahl (lib/markdown/highlight.ts), nicht das ganze highlight.js-Paket.
  *
- * Bundle: KaTeX (Formeln) und die interaktiven Simulationen sind eigene Chunks (next/dynamic) und werden nur geladen, wenn
- * ein Text sie braucht. Beim ersten Seitenaufruf rendert der Server beides fertig mit (kein Layout-Sprung); bei
- * Client-Navigation steht bis zum Nachladen der Text ohne Formelsatz bzw. ein Platzhalter in Simulationsgröße da.
+ * Bundle: KaTeX (Formeln), das Syntax-Highlighting (lowlight + Grammatiken) und die interaktiven Simulationen sind eigene
+ * Chunks (next/dynamic) und werden nur geladen, wenn ein Text sie braucht. Beim ersten Seitenaufruf rendert der Server
+ * alles fertig mit (kein Layout-Sprung); bei Client-Navigation steht bis zum Nachladen der Text ohne Formelsatz bzw. der
+ * Code ungefärbt (gleiche Maße) bzw. ein Platzhalter in Simulationsgröße da.
  * Offline sind die Chunks über den Precache des Service Workers verfügbar.
  */
 const SimulationBlock = dynamic(() => import("@/components/richtext/Simulation").then((m) => m.SimulationBlock), {
   loading: () => <Skeleton className="my-4 h-64 rounded-2xl" data-testid="simulation-loading" />,
 });
 const MathMarkdown = dynamic(() => import("@/components/richtext/MathMarkdown").then((m) => m.MathMarkdown));
+const CodeMarkdown = dynamic(() => import("@/components/richtext/CodeMarkdown").then((m) => m.CodeMarkdown));
 
 function pickData(props: Record<string, unknown>): Record<string, string> {
   return Object.fromEntries(Object.entries(props).filter(([k, v]) => k.startsWith("data-") && typeof v === "string")) as Record<string, string>;
@@ -121,6 +124,11 @@ export const RichText = React.memo(function RichText({ text, inline = false, hea
         // Bis KaTeX geladen ist (nur bei Client-Navigation): derselbe Text ohne Formelsatz statt eines leeren Kastens.
         <React.Suspense fallback={plain}>
           <MathMarkdown text={normalized} components={components} />
+        </React.Suspense>
+      ) : hasHighlightableCode(normalized) ? (
+        // Bis das Highlighting geladen ist: derselbe Text mit ungefärbtem Code.
+        <React.Suspense fallback={plain}>
+          <CodeMarkdown text={normalized} components={components} />
         </React.Suspense>
       ) : (
         plain

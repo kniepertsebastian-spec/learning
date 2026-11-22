@@ -82,7 +82,7 @@ export function OfflineHome() {
   if (selected && state.userId) {
     return (
       <div data-testid="offline-reader">
-        <button type="button" onClick={() => setSelected(null)} className="mb-4 text-sm text-muted hover:text-foreground">
+        <button type="button" onClick={() => setSelected(null)} className="mb-4 inline-flex min-h-11 items-center py-2 text-sm text-muted hover:text-foreground">
           {t.pwa.offlineBack}
         </button>
         <OfflinePackageManager certificationId={selected.certificationId} certSlug={selected.certSlug} certName={selected.certName} userId={state.userId} locale={locale} />

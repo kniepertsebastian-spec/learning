@@ -85,7 +85,8 @@ jobs:
           AUTH_SECRET: ci-only-secret
           AUTH_TRUST_HOST: "true"
           LIGHTHOUSE_MIN_ACCESSIBILITY: "0.9"
-          LIGHTHOUSE_WARN_PERFORMANCE: "0.5"
+          # Stufenweise angehoben (PWA-Roadmap m-2): erst Warnung ab 0.8, als harte Grenze erst, wenn die Werte stabil darüber liegen.
+          LIGHTHOUSE_WARN_PERFORMANCE: "0.8"
           LIGHTHOUSE_WARN_BEST_PRACTICES: "0.9"
         run: |
           node node_modules/next/dist/bin/next start -p 3100 &

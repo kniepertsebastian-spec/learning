@@ -13,6 +13,20 @@ function lastSyncedKey(userId: string): string {
   return `certstudy-last-synced-at:${userId}`;
 }
 
+function conflictsRequeuedKey(userId: string): string {
+  return `certstudy-conflicts-requeued:${userId}`;
+}
+
+/** Kontolöschung: die Sync-Merker der Person im localStorage entfernen (Warteschlange selbst: clearPendingSyncEventsForUser). */
+export function clearSyncMetadata(userId: string): void {
+  try {
+    window.localStorage.removeItem(lastSyncedKey(userId));
+    window.localStorage.removeItem(conflictsRequeuedKey(userId));
+  } catch {
+    // ohne Speicherzugriff gibt es nichts zu entfernen
+  }
+}
+
 const QUEUE_CHANGED_EVENT = "certstudy:sync-queue-changed";
 
 /** SectionQuiz/StudySession reihen Ereignisse ein, ohne etwas von
@@ -243,7 +257,7 @@ export function runSync(userId: string): Promise<SyncQueueSummary> {
  * ihre Antworten jetzt als Wiederholungen: alte Konflikte werden deshalb einmalig je Gerät und Person erneut eingereiht.
  */
 async function requeueLegacyConflicts(userId: string): Promise<void> {
-  const key = `certstudy-conflicts-requeued:${userId}`;
+  const key = conflictsRequeuedKey(userId);
   try {
     if (window.localStorage.getItem(key)) return;
   } catch {

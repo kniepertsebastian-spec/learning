@@ -28,6 +28,7 @@ import {
   objectives,
   organizationMemberships,
   organizations,
+  pushSubscriptions,
   questionOptions,
   questions,
   quizAnswers,
@@ -222,6 +223,16 @@ run("Self-Service: Passwort, Löschen, Export (echte DB)", () => {
       const audit = await getDb().select().from(auditEvents).where(and(eq(auditEvents.actorUserId, id), eq(auditEvents.action, "account.password_changed")));
       expect(audit).toHaveLength(1);
       expect(JSON.stringify(audit[0])).not.toContain("neues-passwort");
+    });
+
+    it("Passwortwechsel beendet alle Push-Abos der Person, fremde bleiben", async () => {
+      const id = await makeUser("pw-push");
+      const other = await makeUser("pw-push-other");
+      const sub = (userId: string, n: string) => ({ userId, endpoint: `https://push.example/${randomUUID()}-${n}`, p256dh: "p", authKey: "a" });
+      await getDb().insert(pushSubscriptions).values([sub(id, "a"), sub(id, "b"), sub(other, "c")]);
+      expect(await changePassword(id, PASSWORD, "neues-passwort-1")).toBe("ok");
+      expect(await getDb().select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, id))).toHaveLength(0);
+      expect(await getDb().select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, other))).toHaveLength(1);
     });
 
     it("API: Eingaben und Rechte (401, 400, 403, 200)", async () => {

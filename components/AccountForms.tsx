@@ -5,11 +5,12 @@ import { fill } from "@/lib/i18n/fill";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearLocalUserData } from "@/lib/client/clear-local-data";
+import { removePushOnSignOut } from "@/lib/client/push";
 
 type Locale = "de" | "en";
 
 const inputClass =
-  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
+  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent";
 
 function Message({ kind, children }: { kind: "error" | "ok"; children: React.ReactNode }) {
   return (
@@ -44,22 +45,28 @@ export function ChangePasswordForm({ userId, locale }: { userId: string; locale:
       setPending(false);
       return;
     }
-    const res = await fetch("/api/account/password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        currentPassword: fd.get("currentPassword"),
-        newPassword: fd.get("newPassword"),
-      }),
-    });
-    if (res.ok) {
-      await clearLocalUserData(userId);
-      router.push("/login?passwordChanged=1");
-      router.refresh();
-      return;
+    try {
+      const res = await fetch("/api/account/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: fd.get("currentPassword"),
+          newPassword: fd.get("newPassword"),
+        }),
+      });
+      if (res.ok) {
+        // Der Server hat alle Push-Abos beendet; hier wird auch das Browser-Abo dieses Geräts gelöst.
+        await removePushOnSignOut();
+        await clearLocalUserData(userId);
+        router.push("/login?passwordChanged=1");
+        router.refresh();
+        return;
+      }
+      const body = await res.json().catch(() => null);
+      setError(body?.error ?? (c_accountForms(de).couldNotChangeThePassword));
+    } catch {
+      setError(c_accountForms(de).networkError);
     }
-    const body = await res.json().catch(() => null);
-    setError(body?.error ?? (c_accountForms(de).couldNotChangeThePassword));
     setPending(false);
   }
 
@@ -107,19 +114,25 @@ export function DeleteAccountForm({ userId, locale, confirmWith = "password" }: 
     setPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const res = await fetch("/api/account", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(confirmWith === "email" ? { email: fd.get("email") } : { password: fd.get("password") }),
-    });
-    if (res.ok) {
-      await clearLocalUserData(userId);
-      router.push("/login?accountDeleted=1");
-      router.refresh();
-      return;
+    try {
+      const res = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(confirmWith === "email" ? { email: fd.get("email") } : { password: fd.get("password") }),
+      });
+      if (res.ok) {
+        // Die Abos auf dem Server sind mit dem Konto gelöscht (CASCADE); hier wird das Browser-Abo gelöst.
+        await removePushOnSignOut();
+        await clearLocalUserData(userId, { includeSyncQueue: true });
+        router.push("/login?accountDeleted=1");
+        router.refresh();
+        return;
+      }
+      const body = await res.json().catch(() => null);
+      setError(body?.error ?? (c_accountForms(de).couldNotDeleteTheAccount));
+    } catch {
+      setError(c_accountForms(de).networkError);
     }
-    const body = await res.json().catch(() => null);
-    setError(body?.error ?? (c_accountForms(de).couldNotDeleteTheAccount));
     setPending(false);
   }
 
@@ -172,18 +185,23 @@ export function CompanyForm({ locale }: { locale: Locale }) {
     setPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const res = await fetch("/api/account/company", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyName: fd.get("companyName"), companyEmail: fd.get("companyEmail") }),
-    });
-    setPending(false);
-    if (res.ok) {
-      setSentTo(String(fd.get("companyEmail")));
-      return;
+    try {
+      const res = await fetch("/api/account/company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyName: fd.get("companyName"), companyEmail: fd.get("companyEmail") }),
+      });
+      if (res.ok) {
+        setSentTo(String(fd.get("companyEmail")));
+        return;
+      }
+      const body = await res.json().catch(() => null);
+      setError(body?.error ?? (c_accountForms(de).requestFailed));
+    } catch {
+      setError(c_accountForms(de).networkError);
+    } finally {
+      setPending(false);
     }
-    const body = await res.json().catch(() => null);
-    setError(body?.error ?? (c_accountForms(de).requestFailed));
   }
 
   if (sentTo) {

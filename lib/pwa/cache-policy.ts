@@ -10,6 +10,16 @@ export const ASSETS_CACHE = "assets-cache";
 /** Vor Phase 3 gemeinsamer Cache für beides; wird beim Aktivieren des neuen Service Workers entfernt. */
 export const LEGACY_CACHE = "ui-cache";
 
+/**
+ * Caches, die beim Aktivieren eines neuen Service Workers weg können: alles außer der Allowlist (eigene Caches plus der
+ * aktive Precache/Runtime-Cache von Serwist). Erfasst den früheren gemeinsamen Cache (LEGACY_CACHE) ebenso wie künftig
+ * umbenannte Caches, die sonst für immer Speicher belegen würden.
+ */
+export function staleCacheNames(existing: readonly string[], keep: readonly string[]): string[] {
+  const allowed = new Set(keep);
+  return existing.filter((name) => !allowed.has(name));
+}
+
 export const PAGES_CACHE_MAX_ENTRIES = 50;
 export const PAGES_CACHE_MAX_AGE_SECONDS = 14 * 24 * 60 * 60;
 export const ASSETS_CACHE_MAX_ENTRIES = 200;
@@ -45,7 +55,12 @@ export function isUncachedPagePath(pathname: string): boolean {
   return UNCACHED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-/** Eigenes Signal: eine Seite mit `X-SW-Cache: no-store` landet nie im Seiten-Cache, unabhängig von Cache-Control. */
+/**
+ * Eigenes Signal: eine Seite mit `X-SW-Cache: no-store` landet nie im Seiten-Cache, unabhängig von Cache-Control.
+ * Vorbereiteter Sicherheits-Hook: derzeit setzt ihn keine Route, die Sperrliste oben deckt alle bekannten Fälle ab. Eine
+ * neue Seite mit sensiblen Daten außerhalb dieser Präfixe lässt sich damit ausnehmen, ohne den Service Worker zu ändern:
+ * Antwort-Header `X-SW-Cache: no-store` setzen (next.config.ts `headers()` für den Pfad, proxy.ts oder Route-Handler).
+ */
 export const SW_CACHE_HEADER = "X-SW-Cache";
 
 /**

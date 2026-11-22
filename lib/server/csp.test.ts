@@ -20,6 +20,13 @@ describe("buildContentSecurityPolicy", () => {
       expect(csp).toContain(d);
     }
   });
+
+  it("upgrade-insecure-requests nur in Produktion und nicht, wenn ausdrücklich abgeschaltet (http://localhost)", () => {
+    expect(buildContentSecurityPolicy("n", false)).toContain("upgrade-insecure-requests");
+    expect(buildContentSecurityPolicy("n", false, false)).not.toContain("upgrade-insecure-requests");
+    expect(buildContentSecurityPolicy("n", true)).not.toContain("upgrade-insecure-requests");
+    expect(buildContentSecurityPolicy("n", true, true)).not.toContain("upgrade-insecure-requests");
+  });
 });
 
 describe("generateNonce", () => {
