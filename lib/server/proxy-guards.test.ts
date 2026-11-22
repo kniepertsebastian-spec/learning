@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasSessionCookie, isLocalHostname } from "./proxy-guards";
+import { hasSessionCookie, hostnameFromHostHeader, isLocalHostname } from "./proxy-guards";
 
 const c = (name: string, value = "x") => ({ name, value });
 
@@ -32,5 +32,19 @@ describe("isLocalHostname", () => {
 
   it("öffentliche Namen nicht", () => {
     for (const h of ["learning.pwa-tree.de", "localhost.evil.de", "128.0.0.1", "10.0.0.1"]) expect(isLocalHostname(h), h).toBe(false);
+  });
+});
+
+describe("hostnameFromHostHeader", () => {
+  it("schneidet den Port ab, auch bei IPv6", () => {
+    expect(hostnameFromHostHeader("learning.pwa-tree.de")).toBe("learning.pwa-tree.de");
+    expect(hostnameFromHostHeader("localhost:3000")).toBe("localhost");
+    expect(hostnameFromHostHeader("127.0.0.1:3000")).toBe("127.0.0.1");
+    expect(hostnameFromHostHeader("[::1]:3000")).toBe("[::1]");
+    expect(hostnameFromHostHeader("[::1]")).toBe("[::1]");
+  });
+
+  it("fehlender oder kaputter Header: null (Aufrufer fällt auf nextUrl zurück)", () => {
+    for (const h of [null, undefined, "", "  ", ":3000", "[]", "["]) expect(hostnameFromHostHeader(h), String(h)).toBeNull();
   });
 });
