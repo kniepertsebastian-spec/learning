@@ -9,6 +9,7 @@
  *
  * Usage: npm run lighthouse -- [basis-url] [pfad ...]   (Standard: http://localhost:3100, /login /offline)
  * Schwellen (0-1): LIGHTHOUSE_MIN_ACCESSIBILITY (Standard 0.9, hart), LIGHTHOUSE_WARN_PERFORMANCE (0.5),
+ *                  LIGHTHOUSE_MIN_PERFORMANCE (ungesetzt; gesetzt = harte Grenze statt Warnung),
  *                  LIGHTHOUSE_WARN_BEST_PRACTICES (0.9).
  * Chrome: CHROME_PATH (sonst findet Lighthouse ein installiertes Chrome/Chromium).
  */
@@ -31,9 +32,15 @@ function threshold(name, fallback) {
   return value;
 }
 
-/** kind "error" bricht ab, "warning" meldet nur. */
+/**
+ * kind "error" bricht ab, "warning" meldet nur. Performance wird zur harten Grenze, sobald LIGHTHOUSE_MIN_PERFORMANCE gesetzt
+ * ist (PWA-Roadmap AP-04, m-4: erst wenn die Werte in der CI stabil darüber liegen); die Warnschwelle gilt dann nicht mehr.
+ */
+const minPerformance = threshold("LIGHTHOUSE_MIN_PERFORMANCE", null);
 const CATEGORIES = [
-  { id: "performance", label: "Performance", min: threshold("LIGHTHOUSE_WARN_PERFORMANCE", 0.5), kind: "warning" },
+  minPerformance === null
+    ? { id: "performance", label: "Performance", min: threshold("LIGHTHOUSE_WARN_PERFORMANCE", 0.5), kind: "warning" }
+    : { id: "performance", label: "Performance", min: minPerformance, kind: "error" },
   { id: "accessibility", label: "Barrierefreiheit", min: threshold("LIGHTHOUSE_MIN_ACCESSIBILITY", 0.9), kind: "error" },
   { id: "best-practices", label: "Best Practices", min: threshold("LIGHTHOUSE_WARN_BEST_PRACTICES", 0.9), kind: "warning" },
 ];

@@ -40,12 +40,13 @@ Begründung und Nachweise je Punkt in [`review-2026-11-19.md`](review-2026-11-19
 
 **Entscheidungen des Betreibers**
 - [ ] Bestandene Prüfungsversuche aus der Zeit vor der serverseitigen Prüfung: korrigieren, markieren oder belassen. Das Skript `scripts/exam-attempts-audit.ts` zeigt sie an. (`archiv/review-2026-11-12/05b-pruefung-bestehende-versuche.md`)
-- [ ] Auth-Bibliothek: bei `next-auth` 5.0.0-beta.32 bleiben (Empfehlung) oder wechseln. (`archiv/ROADMAP-TECHNISCH.md`, Phase 2)
+- [ ] Auth-Bibliothek: bei `next-auth` 5.0.0-beta.32 bleiben (Empfehlung) oder wechseln. Bis zum Stable-Release von Auth.js v5 beobachten: Dependabot schlägt neue Versionen als eigene Gruppe `auth` vor (`.github/dependabot.yml`); vor dem PWA-Release kein Umbau. (`archiv/ROADMAP-TECHNISCH.md`, Phase 2; PWA-Roadmap AP-04, m-5)
 - [ ] Mailanbieter für den Kundenbetrieb: EU-Anbieter oder Google Workspace mit Auftragsverarbeitungsvertrag. (ebenda)
 
 **Sicherheit und PWA**
 - [ ] Service Worker: angemeldete Seiten gar nicht erst cachen. Heute sind Admin- und Firmenbereich ausgenommen (`lib/pwa/cache-policy.ts`), übrige angemeldete Seiten nicht. (`archiv/ROADMAP-TECHNISCH.md`, Phase 0)
 - [ ] Web Push auf einem echten Gerät ausprobieren (FCM, Mozilla, Apple). Die Tests laufen nur mit einem Fake-Sender. (`archiv/roadmap_pwa.md`, Phase 6)
+- [ ] Lighthouse-Performance verbindlich machen: Liegen `/login`, `/offline` und `/catalog` in 2–3 CI-Läufen stabil über 0.8, in `.github/workflows/ci.yml` `LIGHTHOUSE_WARN_PERFORMANCE` durch `LIGHTHOUSE_MIN_PERFORMANCE: "0.8"` ersetzen (harte Grenze, `scripts/lighthouse-check.mjs`). Eine Seite mit Codeblöcken (`RichText` → `CodeMarkdown`) misst die CI noch nicht: Lektionen gibt es nur angemeldet. (PWA-Roadmap AP-04, m-4)
 - [ ] Prüfung auf echten Geräten: iOS Safari (Safe-Area, Prüfungsmodus) und Android Chromium (`beforeinstallprompt`, Background Sync). (`archiv/pwa-hardening-review.md`, Phase 4)
 
 ## 3. Vor den ersten Personen außerhalb des Tests (Recht)

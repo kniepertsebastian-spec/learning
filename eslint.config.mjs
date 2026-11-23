@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "public/sw.js",
     "public/sw.js.map",
     "public/swe-worker*.js",
+    // Kompilierte Admin-Skripte (npm run build:scripts, nur für das Docker-Image).
+    "dist/**",
   ]),
 ]);
 

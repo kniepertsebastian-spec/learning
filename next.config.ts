@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 
@@ -58,10 +61,18 @@ const nextConfig: NextConfig = {
 // Offline-Einstieg vorab im Precache; die Revision wechselt mit jedem Build, damit er nach einem Deploy erneuert wird.
 const precacheRevision = deploymentId;
 
+// Icon und Badge der Push-Benachrichtigung (app/sw.ts, push-Handler), damit sie auch ohne Netz erscheinen. Achtung: Sobald
+// additionalPrecacheEntries gesetzt ist, nimmt Serwist KEINE Dateien aus public/ mehr automatisch auf; was der Service Worker
+// offline braucht, muss hier stehen. Revision = Inhalts-Hash: neu geladen wird nur, wenn sich die Datei ändert.
+// Geprüft in e2e/push.spec.ts (PWA-Roadmap AP-04, m-3).
+const PUSH_ICONS = ["/icons/icon-192x192.png", "/icons/badge-96x96.png"];
+const fileRevision = (url: string) => createHash("sha256").update(readFileSync(path.join(process.cwd(), "public", url))).digest("hex").slice(0, 16);
+
 const withSerwist = withSerwistInit({
   additionalPrecacheEntries: [
     { url: "/offline", revision: precacheRevision },
     { url: "/~offline", revision: precacheRevision },
+    ...PUSH_ICONS.map((url) => ({ url, revision: fileRevision(url) })),
   ],
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",

@@ -132,7 +132,10 @@ bisher (Registrierungen gelten sofort als bestätigt). Einrichtung, Gmail-App-Pa
 ## Skripte
 
 Alle Skripte stehen in `package.json` und laufen im Container mit `docker compose exec app npm run <name> -- …`.
-Ohne Argumente zeigen die meisten ihre Verwendung. Die Betriebsskripte für Wiederholungsplanung, Push, Backup und
+Ohne Argumente zeigen die meisten ihre Verwendung. Lokal laufen sie über `tsx` direkt aus `scripts/*.ts`; das Image
+enthält weder `tsx` noch `drizzle-kit`, dort startet `scripts/run.mjs` die beim Build kompilierte Fassung
+(`npm run build:scripts`), und `db:migrate` nutzt den Migrator von drizzle-orm (`scripts/migrate.mjs`). `db:generate`
+gibt es deshalb nur in der Entwicklungsumgebung. Die Betriebsskripte für Wiederholungsplanung, Push, Backup und
 Monitoring sind in den jeweiligen Anleitungen unter `docs/` beschrieben.
 
 | Skript | Zweck |
