@@ -2,6 +2,7 @@
 const texts = {
   de: {
     requestFailed: "Anfrage fehlgeschlagen.",
+    networkError: "Keine Verbindung zum Server. Bitte prüfe deine Internetverbindung und versuche es erneut.",
     emailAddress: "E-Mail-Adresse",
     backToSignIn: "Zurück zur Anmeldung",
     thePasswordsDoNotMatch: "Die Passwörter stimmen nicht überein.",
@@ -25,6 +26,7 @@ const texts = {
   },
   en: {
     requestFailed: "Request failed.",
+    networkError: "No connection to the server. Please check your internet connection and try again.",
     emailAddress: "Email address",
     backToSignIn: "Back to sign in",
     thePasswordsDoNotMatch: "The passwords do not match.",

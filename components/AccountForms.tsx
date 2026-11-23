@@ -91,7 +91,7 @@ export function ChangePasswordForm({ userId, locale }: { userId: string; locale:
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
+        className="self-start rounded-md bg-primary px-4 py-2 min-h-11 sm:min-h-9 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
       >
         {c_accountForms(de).changePassword}
       </button>
@@ -165,7 +165,7 @@ export function DeleteAccountForm({ userId, locale, confirmWith = "password" }: 
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded-md bg-danger px-4 py-2 text-sm font-medium text-on-danger hover:opacity-90 disabled:opacity-50"
+        className="self-start rounded-md bg-danger px-4 py-2 min-h-11 sm:min-h-9 text-sm font-medium text-on-danger hover:opacity-90 disabled:opacity-50"
       >
         {c_accountForms(de).deleteAccountPermanently}
       </button>
@@ -230,7 +230,7 @@ export function CompanyForm({ locale }: { locale: Locale }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
+        className="rounded-md bg-primary px-4 py-2 min-h-11 sm:min-h-9 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
       >
         {c_accountForms(de).sendConfirmationLink}
       </button>
