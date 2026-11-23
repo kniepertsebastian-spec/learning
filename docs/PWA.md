@@ -21,7 +21,7 @@ Der Service Worker ist im Dev-Server abgeschaltet (`disable` in `next.config.ts`
 - **Seiten (Navigationen)**: `NetworkFirst` (3 s) im `pages-cache` (max. 50 Einträge, 14 Tage). Nur Antworten mit Status 200.
 - **Admin- und Firmenbereich** (`/admin`, `/company`, `/confirm-company`): `NetworkOnly`, landen in keinem Cache.
 - **Statische Dateien** (Stil, Skript, Bild, Schrift): `StaleWhileRevalidate` im `assets-cache` (max. 200 Einträge, 30 Tage).
-- **Precache**: alle Build-Assets plus `/offline` und `/~offline` (Revision je Build).
+- **Precache**: alle Build-Assets plus `/offline` und `/~offline` (Revision je Build) sowie Icon und Badge der Push-Benachrichtigung (Revision = Inhalts-Hash). Dateien aus `public/` kommen nicht automatisch hinein: Serwist überspringt sie, sobald `additionalPrecacheEntries` gesetzt ist; was offline gebraucht wird, steht ausdrücklich in `next.config.ts` (geprüft in `e2e/push.spec.ts`).
 - **Besitzer**: Gecachte Seiten gehören genau einem Nutzer. Beim Logout (`clearLocalUserData`) und beim Anmelden mit einer anderen Nutzer-ID (auch nach abgelaufener Sitzung) wird der `pages-cache` geleert.
 - Der frühere gemeinsame Cache `ui-cache` wird beim Aktivieren des Service Workers gelöscht.
 
@@ -86,7 +86,7 @@ Erinnerungen als Push-Nachricht (Prüfungstermin, fällige Wiederholungen, Lerns
   - `update-flow.spec.ts`: Update-Toast nach neuem Worker, kein Reload ohne Klick.
   - `cache-privacy.spec.ts`: Admin-/Firmenseiten nie im Cache; Nutzerwechsel und Logout leeren den Seiten-Cache.
   - Die Tests laufen über ein schaltbares Gateway (`e2e/gateway.ts`), weil Playwrights `setOffline` Anfragen des Service Workers nicht sperrt.
-- **Lighthouse**: `npm run lighthouse` prüft Performance, Barrierefreiheit und Best Practices auf `/login` und `/offline` gegen den laufenden Server. Barrierefreiheit unter 90 (`LIGHTHOUSE_MIN_ACCESSIBILITY`) lässt den Lauf und die CI scheitern; Performance und Best Practices melden nur Warnungen.
+- **Lighthouse**: `npm run lighthouse` prüft Performance, Barrierefreiheit und Best Practices auf `/login` und `/offline` gegen den laufenden Server (die CI zusätzlich auf `/catalog`). Barrierefreiheit unter 90 (`LIGHTHOUSE_MIN_ACCESSIBILITY`) lässt den Lauf und die CI scheitern; Performance und Best Practices melden nur Warnungen. Mit `LIGHTHOUSE_MIN_PERFORMANCE` wird auch Performance zur harten Grenze.
 
 ## Bekannte iOS-/Safari-Einschränkungen
 

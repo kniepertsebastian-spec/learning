@@ -9,8 +9,9 @@ RUN npm ci
 # Copy source
 COPY . .
 
-# Build app
-RUN npm run build
+# Build app, then the admin scripts (scripts/*.ts -> dist/scripts/*.cjs) so the runtime stage needs neither tsx nor
+# drizzle-kit. build:scripts fails if a script imports a package that is not a runtime dependency.
+RUN npm run build && npm run build:scripts
 
 # Production stage
 FROM node:26-alpine
@@ -22,9 +23,9 @@ WORKDIR /app
 # Skia canvas binary that raised SIGILL on older x86 hosts during `next build`.
 RUN apk add --no-cache dumb-init poppler-utils
 
-# Only the production dependencies. drizzle-kit (db:migrate at every start), tsx and dotenv (the admin
-# scripts: `docker compose exec app npm run ...`) are regular dependencies for exactly that reason; the
-# test, lint and build tools (vitest, eslint, playwright, tailwind, types) stay in the builder stage.
+# Only the production dependencies. Development tools (tsx, drizzle-kit, esbuild, vitest, eslint, playwright,
+# tailwind, types) stay in the builder stage: migrations run through drizzle-orm's migrator (scripts/migrate.mjs)
+# and the admin scripts (`docker compose exec app npm run ...`) are precompiled, started by scripts/run.mjs.
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
@@ -32,12 +33,11 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 
-# Source needed by the admin scripts (not part of the Next.js build output)
-COPY --from=builder /app/lib ./lib
-COPY --from=builder /app/scripts ./scripts
+# Admin scripts and migrations (not part of the Next.js build output): the compiled scripts, the two plain-JS
+# entry points and the SQL migrations. No TypeScript sources are needed at runtime.
+COPY --from=builder /app/dist/scripts ./dist/scripts
+COPY --from=builder /app/scripts/run.mjs /app/scripts/migrate.mjs ./scripts/
 COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001

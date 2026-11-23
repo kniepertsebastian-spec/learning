@@ -62,6 +62,9 @@ jobs:
         env:
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
           AUTH_SECRET: ci-only-secret
+      # Admin-Skripte wie im Dockerfile kompilieren: bricht ab, wenn ein Skript ein Paket aus devDependencies importiert
+      # (das Produktions-Image hat weder tsx noch Entwicklungspakete, siehe scripts/build-scripts.mjs).
+      - run: npm run build:scripts
       # Nach dem Build: Next generiert dort die globalen Typen (z. B. LayoutProps).
       - run: npx tsc --noEmit
       # PWA-E2E gegen den Produktions-Build (Service Worker ist im Dev-Server abgeschaltet), siehe docs/PWA.md.
@@ -76,16 +79,18 @@ jobs:
           name: playwright-traces
           path: test-results/
           if-no-files-found: ignore
-      # Lighthouse auf /login und /offline: Barrierefreiheit ist verbindlich (unter 90 wird CI rot), Performance und Best
-      # Practices melden nur eine Warnung (Messwerte auf geteilten Runnern schwanken). Kein continue-on-error: Läuft
-      # Lighthouse nicht oder fehlt eine Punktzahl, schlägt der Schritt ebenfalls fehl.
+      # Lighthouse auf /login, /offline und /catalog (öffentlich, mit den Kursen aus dem E2E-Seeding gefüllt: eine echte
+      # Anwendungsseite statt nur Formular und Offline-Hinweis, PWA-Roadmap AP-04 m-4). Barrierefreiheit ist verbindlich
+      # (unter 90 wird CI rot), Performance und Best Practices melden nur eine Warnung (Messwerte auf geteilten Runnern
+      # schwanken). Kein continue-on-error: Läuft Lighthouse nicht oder fehlt eine Punktzahl, schlägt der Schritt ebenfalls fehl.
       - name: Lighthouse
         env:
           DATABASE_URL: postgres://postgres:ci@localhost:5432/ci
           AUTH_SECRET: ci-only-secret
           AUTH_TRUST_HOST: "true"
           LIGHTHOUSE_MIN_ACCESSIBILITY: "0.9"
-          # Stufenweise angehoben (PWA-Roadmap m-2): erst Warnung ab 0.8, als harte Grenze erst, wenn die Werte stabil darüber liegen.
+          # Stufenweise angehoben (PWA-Roadmap m-2): erst Warnung ab 0.8, als harte Grenze erst, wenn die Werte stabil darüber
+          # liegen. Dann diese Zeile durch LIGHTHOUSE_MIN_PERFORMANCE: "0.8" ersetzen (docs/roadmaps/ROADMAP.md).
           LIGHTHOUSE_WARN_PERFORMANCE: "0.8"
           LIGHTHOUSE_WARN_BEST_PRACTICES: "0.9"
         run: |
@@ -94,4 +99,4 @@ jobs:
           trap 'kill $SERVER' EXIT
           for i in $(seq 1 30); do curl -sf http://localhost:3100/login >/dev/null && break; sleep 1; done
           curl -sf http://localhost:3100/login >/dev/null || { echo "::error::Server auf Port 3100 nicht erreichbar"; exit 1; }
-          CHROME_PATH="$(node -e "console.log(require('@playwright/test').chromium.executablePath())")" npm run lighthouse -- http://localhost:3100 /login /offline
+          CHROME_PATH="$(node -e "console.log(require('@playwright/test').chromium.executablePath())")" npm run lighthouse -- http://localhost:3100 /login /offline /catalog

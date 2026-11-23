@@ -37,6 +37,11 @@ updates:
         patterns: ["next", "eslint-config-next"]
       react:
         patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      # Auth.js v5 läuft noch als Beta (exakt gepinnt, docs/roadmaps/ROADMAP.md). Jede neue Beta und vor allem das
+      # Stable-Release kommen als eigener Vorschlag, nicht versteckt im Sammel-PR: Login, Sessions und Passwort-Reset von
+      # Hand prüfen, bevor er gemergt wird (PWA-Roadmap AP-04, m-5).
+      auth:
+        patterns: ["next-auth", "@auth/*"]
       # Alles Übrige ohne Major-Sprung in einem Vorschlag pro Woche. Major-Updates kommen einzeln.
       minor-and-patch:
         update-types: ["minor", "patch"]

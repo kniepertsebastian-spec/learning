@@ -1,5 +1,8 @@
 import { USERS } from "./global-setup";
-import { expect, login, test } from "./fixtures";
+import { expect, login, test, waitForServiceWorkerReady } from "./fixtures";
+
+/** Icon und Badge der Push-Benachrichtigung (app/sw.ts, push-Handler). */
+const PUSH_ICONS = ["/icons/icon-192x192.png", "/icons/badge-96x96.png"];
 
 const ENDPOINT = "https://fcm.googleapis.com/fcm/send/e2e-device-1";
 const KEYS = { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" };
@@ -59,4 +62,24 @@ test("Web Push: Abo anlegen und beenden; erfundene und interne Adressen werden a
   const removed = await page.request.delete(`${gateway.url}/api/push/subscribe`, { data: { endpoint: ENDPOINT } });
   expect(removed.ok()).toBe(true);
   expect(await devices()).toBe(before);
+});
+
+test("Web Push: Icon und Badge der Benachrichtigung stehen im Precache des ausgelieferten Service Workers", async ({ page, gateway }) => {
+  // Der push-Handler nennt beide Pfade auch als Text; gezählt werden darum nur Einträge des Precache-Manifests
+  // ({ revision, url }), das Serwist beim Build in public/sw.js einsetzt (PWA-Roadmap AP-04, m-3).
+  const sw = await page.request.get(`${gateway.url}/sw.js`);
+  expect(sw.ok()).toBe(true);
+  const source = await sw.text();
+  const manifest = new Set([...source.matchAll(/["']?revision["']?\s*:\s*(?:null|["'][^"']*["'])\s*,\s*["']?url["']?\s*:\s*["']([^"']+)["']/g)].map((m) => m[1]));
+  expect(manifest.size, "Precache-Manifest in /sw.js nicht gefunden").toBeGreaterThan(0);
+  for (const icon of PUSH_ICONS) expect(manifest, icon).toContain(icon);
+
+  // Und der Browser legt sie beim Installieren wirklich ab: offline zeigt die Benachrichtigung sonst kein Icon.
+  await page.goto(`${gateway.url}/login`);
+  await waitForServiceWorkerReady(page);
+  const cached = await page.evaluate(async () => {
+    const name = (await caches.keys()).find((n) => n.startsWith("serwist-precache"));
+    return name ? (await (await caches.open(name)).keys()).map((r) => new URL(r.url).pathname) : [];
+  });
+  for (const icon of PUSH_ICONS) expect(cached, icon).toContain(icon);
 });

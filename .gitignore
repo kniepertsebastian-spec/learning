@@ -57,3 +57,4 @@ docker-compose.override.yml
 # playwright
 /test-results/
 /playwright-report/
+/dist
