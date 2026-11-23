@@ -54,17 +54,22 @@ export function EmailRequestForm({
     setState("pending");
     setError(null);
     const email = new FormData(e.currentTarget).get("email");
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    if (res.ok) {
-      setState("done");
-      return;
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        setState("done");
+        return;
+      }
+      const body = await res.json().catch(() => null);
+      setError(body?.error ?? (c_authRecovery(locale).requestFailed));
+    } catch {
+      // Offline oder Netzabbruch: fetch() wirft, statt eine Antwort zu liefern.
+      setError(c_authRecovery(locale).networkError);
     }
-    const body = await res.json().catch(() => null);
-    setError(body?.error ?? (c_authRecovery(locale).requestFailed));
     setState("idle");
   }
 
@@ -113,17 +118,22 @@ export function ResetPasswordForm({ token }: { token: string }) {
       return;
     }
     setPending(true);
-    const res = await fetch("/api/recovery/reset-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, newPassword: fd.get("newPassword") }),
-    });
-    if (res.ok) {
-      router.push("/login?passwordReset=1");
-      return;
+    try {
+      const res = await fetch("/api/recovery/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, newPassword: fd.get("newPassword") }),
+      });
+      if (res.ok) {
+        // Button bleibt bis zur Navigation deaktiviert, damit das Token nicht doppelt eingelöst wird.
+        router.push("/login?passwordReset=1");
+        return;
+      }
+      const body = await res.json().catch(() => null);
+      setError(body?.error ?? (c_authRecovery(de).resetFailed));
+    } catch {
+      setError(c_authRecovery(de).networkError);
     }
-    const body = await res.json().catch(() => null);
-    setError(body?.error ?? (c_authRecovery(de).resetFailed));
     setPending(false);
   }
 
@@ -157,17 +167,21 @@ export function VerifyEmailButton({ token }: { token: string }) {
   async function verify() {
     setState("pending");
     setError(null);
-    const res = await fetch("/api/recovery/verify-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    if (res.ok) {
-      setState("done");
-      return;
+    try {
+      const res = await fetch("/api/recovery/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (res.ok) {
+        setState("done");
+        return;
+      }
+      const body = await res.json().catch(() => null);
+      setError(body?.error ?? (c_authRecovery(de).verificationFailed));
+    } catch {
+      setError(c_authRecovery(de).networkError);
     }
-    const body = await res.json().catch(() => null);
-    setError(body?.error ?? (c_authRecovery(de).verificationFailed));
     setState("idle");
   }
 
@@ -208,19 +222,23 @@ export function ConfirmCompanyButton({ token }: { token: string }) {
   async function confirm() {
     setState("pending");
     setError(null);
-    const res = await fetch("/api/company/claim/confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/company/claim/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (res.ok) {
+        const body = await res.json().catch(() => null);
+        setCompany(body?.organizationName ?? "");
+        setState("done");
+        return;
+      }
       const body = await res.json().catch(() => null);
-      setCompany(body?.organizationName ?? "");
-      setState("done");
-      return;
+      setError(body?.error ?? (c_authRecovery(de).confirmationFailed));
+    } catch {
+      setError(c_authRecovery(de).networkError);
     }
-    const body = await res.json().catch(() => null);
-    setError(body?.error ?? (c_authRecovery(de).confirmationFailed));
     setState("idle");
   }
 

@@ -29,28 +29,34 @@ function RegisterForm() {
     setIsPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const res = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: fd.get("name"),
-        email: fd.get("email"),
-        password: fd.get("password"),
-        accountType,
-        companyName: accountType === "company" ? fd.get("companyName") : undefined,
-      }),
-    });
-    setIsPending(false);
-    if (res.ok) {
-      const created = await res.json().catch(() => null);
-      if (created?.verificationRequired) {
-        setSentTo(String(fd.get("email")));
-        return;
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: fd.get("name"),
+          email: fd.get("email"),
+          password: fd.get("password"),
+          accountType,
+          companyName: accountType === "company" ? fd.get("companyName") : undefined,
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json().catch(() => null);
+        if (created?.verificationRequired) {
+          setSentTo(String(fd.get("email")));
+          return;
+        }
+        router.push(from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`);
+      } else {
+        const body = await res.json().catch(() => null);
+        setError(body?.error ?? "Registration failed.");
       }
-      router.push(from === "/" ? "/login" : `/login?from=${encodeURIComponent(from)}`);
-    } else {
-      const body = await res.json().catch(() => null);
-      setError(body?.error ?? "Registration failed.");
+    } catch {
+      // Offline oder Netzabbruch: fetch() wirft, statt eine Antwort zu liefern.
+      setError("No connection to the server. Please check your internet connection and try again.");
+    } finally {
+      setIsPending(false);
     }
   }
 
@@ -88,7 +94,7 @@ function RegisterForm() {
         <h1 className="mb-6 text-xl font-semibold">Create account</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {error && (
-            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>
+            <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-text">{error}</p>
           )}
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-sm font-medium">I am registering as</legend>
@@ -124,7 +130,7 @@ function RegisterForm() {
                 required
                 maxLength={120}
                 autoComplete="organization"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent"
               />
               <p className="mt-1 text-xs text-subtle">
                 Use your company email address below. We send a confirmation link to it; the company is created once you confirm.
@@ -142,7 +148,7 @@ function RegisterForm() {
               required
               maxLength={200}
               autoComplete="name"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent"
             />
           </div>
           <div>
@@ -156,7 +162,7 @@ function RegisterForm() {
               required
               defaultValue={invitedEmail}
               autoComplete="email"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent"
             />
           </div>
           <div>
@@ -170,7 +176,7 @@ function RegisterForm() {
               required
               autoComplete="new-password"
               aria-describedby="password-rule"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent"
             />
             <p id="password-rule" className="mt-1 text-xs text-subtle">
               At least 8 characters, with upper and lower case letters, a digit and a special character.
