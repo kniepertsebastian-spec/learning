@@ -4,11 +4,13 @@ const texts = {
     examPlannerEmailReminders: "E-Mail-Erinnerungen des Prüfungsplaners",
     voucherExpiringExamComingUp: "Voucher läuft ab, Prüfung steht bevor, Wiederholungsversuch enthalten.",
     thatDidNotWork: "Das hat nicht geklappt.",
+    networkError: "Keine Verbindung zum Server. Die Änderung wurde nicht gespeichert – bitte prüfe deine Internetverbindung und versuche es erneut.",
   },
   en: {
     examPlannerEmailReminders: "Exam planner email reminders",
     voucherExpiringExamComingUp: "Voucher expiring, exam coming up, retake included.",
     thatDidNotWork: "That did not work.",
+    networkError: "No connection to the server. The change was not saved – please check your internet connection and try again.",
   },
 } as const;
 

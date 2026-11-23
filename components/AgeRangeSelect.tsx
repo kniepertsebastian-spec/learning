@@ -1,7 +1,7 @@
 "use client";
 
 import { c_ageRangeSelect } from "@/lib/i18n/components/ageRangeSelect";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useLocale } from "@/lib/i18n";
 
@@ -19,16 +19,30 @@ export function AgeRangeSelect({ initial }: { initial: string | null }) {
   const { locale } = useLocale();
   const de = locale === "de";
   const [value, setValue] = useState(initial ?? "");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<null | "failed" | "network">(null);
+  // Verhindert parallele Requests; bewusst kein `disabled`, damit der Tastaturfokus erhalten bleibt.
+  const pending = useRef(false);
+  const [busy, setBusy] = useState(false);
   async function change(next: string) {
-    setError(false);
-    const res = await fetch("/api/account/age-range", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ageRange: next === "" ? null : next }),
-    });
-    if (res.ok) setValue(next);
-    else setError(true);
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setError(null);
+    // Nicht optimistisch: `value` ändert sich erst nach Bestätigung des Servers, das Select springt sonst auf den letzten bestätigten Wert zurück.
+    try {
+      const res = await fetch("/api/account/age-range", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ageRange: next === "" ? null : next }),
+      });
+      if (res.ok) setValue(next);
+      else setError("failed");
+    } catch {
+      setError("network");
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
   }
   return (
     <Card data-testid="age-range">
@@ -37,14 +51,14 @@ export function AgeRangeSelect({ initial }: { initial: string | null }) {
         <span className="mb-2 block text-subtle">
           {c_ageRangeSelect(de).onlyUsedForTheStarting}
         </span>
-        <select value={value} onChange={(e) => void change(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+        <select value={value} aria-busy={busy} onChange={(e) => void change(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
           <option value="">{c_ageRangeSelect(de).preferNotToSay}</option>
           {OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </label>
-      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{c_ageRangeSelect(de).thatDidNotWork}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-danger-text">{error === "network" ? c_ageRangeSelect(de).networkError : c_ageRangeSelect(de).thatDidNotWork}</p>}
     </Card>
   );
 }
