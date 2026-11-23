@@ -59,7 +59,7 @@
     "lighthouse": "node scripts/lighthouse-check.mjs"
   },
   "dependencies": {
-    "@google/genai": "^3.3.0",
+    "@google/genai": "^3.6.1",
     "@open-spaced-repetition/binding": "^0.5.0",
     "@serwist/next": "9.5.15",
     "@tailwindcss/typography": "^0.5.20",
@@ -70,10 +70,10 @@
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.4",
     "highlight.js": "^11.12.0",
-    "jose": "^6.2.17",
+    "jose": "^6.2.18",
     "katex": "^0.19.1",
     "lowlight": "^3.3.0",
-    "lucide-react": "^1.73.0",
+    "lucide-react": "^1.76.0",
     "next": "16.4.6",
     "next-auth": "5.0.0-beta.32",
     "nodemailer": "^10.6.0",
@@ -89,7 +89,7 @@
     "remark-math": "^6.0.0",
     "serwist": "9.5.15",
     "sonner": "^2.0.8",
-    "tailwind-merge": "^3.7.0",
+    "tailwind-merge": "^3.7.1",
     "ts-fsrs": "^6.0.0",
     "tsx": "^4.23.15",
     "unist-util-visit": "^5.2.0",
@@ -115,7 +115,7 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vfile": "^6.0.3",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   },
   "overrides": {
     "next-auth": {
