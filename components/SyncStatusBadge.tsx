@@ -2,7 +2,7 @@
 
 import { c_syncStatusBadge } from "@/lib/i18n/components/syncStatusBadge";
 import { fill } from "@/lib/i18n/fill";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { CloudOff, RefreshCw, WifiOff } from "lucide-react";
 import type { Locale } from "@/lib/types";
 import type { PendingSyncEvent } from "@/lib/client/offline-db";
@@ -27,6 +27,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
   const [syncing, setSyncing] = useState(false);
   const [open, setOpen] = useState(false);
   const [rejected, setRejected] = useState<PendingSyncEvent[] | null>(null);
+  const panelId = useId();
 
   useEffect(() => {
     let cancelled = false;
@@ -97,12 +98,25 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
   };
   if (online && pendingTotal === 0 && !syncing && !summary?.partialApplied) return null;
 
+  // Das Icon ist aria-hidden: der Name sagt, was es zeigt (offline / Sync läuft) und wie viel noch aussteht.
+  const texts = c_syncStatusBadge(locale);
+  const labelParts = [
+    !online ? texts.offline : syncing ? texts.syncing : null,
+    pendingTotal > 0 ? fill(texts.n0Pending, pendingTotal) : null,
+  ].filter(Boolean);
+  const buttonLabel = `${texts.buttonLabel}: ${labelParts.length > 0 ? labelParts.join(", ") : texts.notice}`;
+
   return (
     <div className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm font-medium hover:bg-background"
+        aria-label={buttonLabel}
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
+        data-testid="sync-status-button"
+        // Mobil mindestens 44 × 44 px Tippfläche, ab sm die kompakte Größe der Kopfleiste.
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-sm font-medium hover:bg-background sm:min-h-9 sm:min-w-9"
       >
         {!online ? (
           <WifiOff className="h-4 w-4 text-subtle" aria-hidden="true" />
@@ -119,7 +133,7 @@ export function SyncStatusBadge({ userId, locale }: { userId: string; locale: Lo
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-md border border-border bg-surface p-3 text-sm shadow-overlay">
+        <div id={panelId} className="absolute right-0 top-full z-30 mt-2 w-64 rounded-md border border-border bg-surface p-3 text-sm shadow-overlay">
           <p className="mb-1 font-medium">
             {online
               ? c_syncStatusBadge(locale).online
