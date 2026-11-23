@@ -66,8 +66,9 @@ const IOS_STARTUP_IMAGES: { name: string; pw: number; ph: number; ratio: number;
 
 export const metadata: Metadata = {
   title: "Knowvia",
-  description:
-    "Capture Knowledge. Empower People. Strengthen Business. KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate / AI-powered study and exam prep for IT certifications",
+  // Gleich wie `description` in public/manifest.json (lang „de“). Bewusst statisch: die Offline-Shell wird vorab
+  // zwischengespeichert, eine von Cookie/Accept-Language abhängige Beschreibung würde dort eine Sprache festschreiben.
+  description: "KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate – auch offline.",
   manifest: "/manifest.json",
   appleWebApp: {
     // Next 16 rendert daraus <meta name="mobile-web-app-capable" content="yes"> (nicht mehr das veraltete apple-…-Gegenstück);
@@ -80,7 +81,8 @@ export const metadata: Metadata = {
       url: `/splash/${d.name}.png`,
       media: `(device-width: ${d.pw}px) and (device-height: ${d.ph}px) and (-webkit-device-pixel-ratio: ${d.ratio}) and (orientation: ${d.orientation})`,
     })),
-  },  icons: {
+  },
+  icons: {
     icon: [
       { url: "/icons/icon.svg", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "any" },

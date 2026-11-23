@@ -12,8 +12,10 @@ export function Toaster() {
     <Sonner
       theme={theme}
       position="bottom-right"
-      // Unter 600 px Breite liegen Toasts unten am Rand: über dem iOS-Home-Indicator bleiben (viewportFit „cover“).
+      // Über dem iOS-Home-Indicator bleiben (viewportFit „cover“): unter 600 px gilt `mobileOffset`, darüber `offset` –
+      // das betrifft iPads im Vollbild. Die übrigen Seiten behalten Sonners Standard (16 px mobil, 24 px sonst).
       mobileOffset={{ bottom: "calc(16px + env(safe-area-inset-bottom))" }}
+      offset={{ bottom: "calc(24px + env(safe-area-inset-bottom))" }}
       toastOptions={{
         style: { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border-strong)", borderRadius: "12px" },
       }}

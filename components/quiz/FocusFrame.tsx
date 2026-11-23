@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, House, LayoutGrid } from "lucide-react";
+import { ArrowLeft, House, LayoutGrid, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
@@ -10,6 +10,7 @@ import { SegmentedProgress, type SegmentState } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/lib/i18n";
+import { useOnlineStatus } from "@/lib/client/use-online-status";
 
 /**
  * Fokusmodus für Übung, Wiederholung, Kurz-Check und Prüfung: legt sich über die App-Shell (keine Navigation während der Sitzung).
@@ -40,6 +41,7 @@ export function FocusFrame({
   children: React.ReactNode;
 }) {
   const { t } = useLocale();
+  const online = useOnlineStatus();
   const router = useRouter();
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveTo, setLeaveTo] = useState(exitHref);
@@ -99,6 +101,14 @@ export function FocusFrame({
           <div className="flex items-center gap-2">
             {contextLabel && <p className="truncate text-sm font-semibold">{contextLabel}</p>}
             <Badge tone={mode === "exam" ? "warning" : "accent"}>{mode === "exam" ? t.quiz.examMode : t.quiz.practiceMode}</Badge>
+            {/* Die App-Shell mit dem OfflineBanner ist während der Sitzung verdeckt (inert): kompakter Hinweis hier. */}
+            {!online && (
+              <Badge tone="neutral" role="status" className="shrink-0" data-testid="focus-offline">
+                <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
+                <span aria-hidden="true">Offline</span>
+                <span className="sr-only">{t.pwa.offlineBanner}</span>
+              </Badge>
+            )}
           </div>
           <div className="mt-1.5 flex items-center gap-3">
             <SegmentedProgress segments={segments} label={counterText} className="max-w-md" />

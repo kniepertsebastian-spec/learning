@@ -15,6 +15,11 @@ const texts = {
     syncNow: "Jetzt synchronisieren",
     n0AnswerSWereFor: "{0} Antwort(en) betrafen Fragen, die es nicht mehr gibt, und wurden übersprungen.",
     n0ResultsCouldNotBe: "{0} Ergebnisse konnten nicht zugeordnet werden",
+    // Name des Badge-Knopfs für Screenreader: „Sync-Status: Offline, 3 ausstehend“.
+    buttonLabel: "Sync-Status",
+    syncing: "Synchronisierung läuft",
+    n0Pending: "{0} ausstehend",
+    notice: "Hinweis",
   },
   en: {
     never: "never",
@@ -31,6 +36,10 @@ const texts = {
     syncNow: "Sync now",
     n0AnswerSWereFor: "{0} answer(s) were for questions that no longer exist and were skipped.",
     n0ResultsCouldNotBe: "{0} results could not be matched",
+    buttonLabel: "Sync status",
+    syncing: "Syncing",
+    n0Pending: "{0} pending",
+    notice: "Notice",
   },
 } as const;
 
