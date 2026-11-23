@@ -8,6 +8,7 @@ const texts = {
     level: "Stufe",
     recency: "Aktualität",
     add: "Hinzufügen",
+    networkError: "Keine Verbindung zum Server. Die Änderung wurde nicht gespeichert – bitte prüfe deine Internetverbindung und versuche es erneut.",
   },
   en: {
     eGKubernetesItSecurity: "e.g. Kubernetes, IT security",
@@ -17,6 +18,7 @@ const texts = {
     level: "Level",
     recency: "Recency",
     add: "Add",
+    networkError: "No connection to the server. The change was not saved – please check your internet connection and try again.",
   },
 } as const;
 

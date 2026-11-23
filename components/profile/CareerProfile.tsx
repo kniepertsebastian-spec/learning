@@ -56,46 +56,97 @@ export function CareerProfile({ initial, courseNames }: { initial: ProfileData; 
     focusAreas: initial.profile.focusAreas ?? "",
     state: initial.profile.state ?? "",
   });
-  const [saved, setSaved] = React.useState<null | "ok" | "error">(null);
+  const [saved, setSaved] = React.useState<null | "ok" | "error" | "network">(null);
   const [skillError, setSkillError] = React.useState<string | null>(null);
 
   const LEVEL: Record<Level, string> = { basic: tr("Grundlagen", "Basics"), confident: tr("Sicher", "Confident"), expert: tr("Experte", "Expert") };
   const RECENCY: Record<Recency, string> = { current: tr("Aktueller Stand", "Up to date"), recent: tr("1–3 Jahre her", "1–3 years ago"), older: tr("Länger her", "Longer ago") };
   const SOURCE = { course: tr("aus Kurs", "from course"), certificate: tr("aus Zertifikat", "from certificate") } as const;
 
+  const t = c_profileCareerProfile(de);
+
+  /** Lädt den Serverstand neu. `false`, wenn das (z. B. offline) nicht geklappt hat. */
   const reload = async () => {
-    const res = await fetch("/api/profile", { cache: "no-store" });
-    if (res.ok) setData((await res.json()) as ProfileData);
+    try {
+      const res = await fetch("/api/profile", { cache: "no-store" });
+      if (!res.ok) return false;
+      setData((await res.json()) as ProfileData);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     setSaved(null);
-    const res = await fetch("/api/profile", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobTitle: form.jobTitle, targetRole: form.targetRole, jobDescription: form.jobDescription, focusAreas: form.focusAreas, state: form.state || null }),
-    });
-    setSaved(res.ok ? "ok" : "error");
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobTitle: form.jobTitle, targetRole: form.targetRole, jobDescription: form.jobDescription, focusAreas: form.focusAreas, state: form.state || null }),
+      });
+      setSaved(res.ok ? "ok" : "error");
+    } catch {
+      // Eingaben im Formular bleiben stehen, damit sie nach Rückkehr der Verbindung erneut gespeichert werden können.
+      setSaved("network");
+    }
   }
 
   async function addSkill(kind: Kind, name: string, level: Level, recency: Recency | null) {
     setSkillError(null);
-    const res = await fetch("/api/profile/skills", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, name, level, recency }) });
+    let res: Response;
+    try {
+      res = await fetch("/api/profile/skills", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, name, level, recency }) });
+    } catch {
+      // Nicht optimistisch: Ohne Serverantwort kommt nichts in die Liste, der Name bleibt im Eingabefeld.
+      return setSkillError(t.networkError), false;
+    }
     if (res.status === 409) return setSkillError(tr(`„${name}“ steht schon in deinem Profil.`, `“${name}” is already in your profile.`)), false;
     if (!res.ok) return setSkillError(tr("Das hat nicht geklappt.", "That did not work.")), false;
+    // Gespeichert ist der Eintrag schon; scheitert nur das Nachladen, erscheint er beim nächsten Laden.
     await reload();
     return true;
   }
   async function patchSkill(id: string, patch: { level?: Level; recency?: Recency }) {
+    setSkillError(null);
+    // Snapshot nur der geänderten Felder vor dem optimistischen Update (andere, parallel geänderte Felder bleiben unberührt).
+    const before = data.skills.find((s) => s.id === id);
+    if (!before) return;
+    const snapshot: Partial<Pick<ProfileSkill, "level" | "recency">> = {};
+    if (patch.level !== undefined) snapshot.level = before.level;
+    if (patch.recency !== undefined) snapshot.recency = before.recency;
+    const restore = () => setData((d) => ({ ...d, skills: d.skills.map((s) => (s.id === id ? { ...s, ...snapshot } : s)) }));
     setData((d) => ({ ...d, skills: d.skills.map((s) => (s.id === id ? { ...s, ...patch } : s)) }));
-    const res = await fetch(`/api/profile/skills/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
-    if (!res.ok) await reload();
+    try {
+      const res = await fetch(`/api/profile/skills/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      if (!res.ok && !(await reload())) restore();
+    } catch {
+      restore();
+      setSkillError(t.networkError);
+    }
   }
   async function removeSkill(id: string) {
+    setSkillError(null);
+    // Snapshot (Eintrag und Position) vor dem optimistischen Entfernen.
+    const index = data.skills.findIndex((s) => s.id === id);
+    if (index < 0) return;
+    const removed = data.skills[index];
+    const restore = () =>
+      setData((d) => {
+        if (d.skills.some((s) => s.id === id)) return d;
+        const skills = [...d.skills];
+        skills.splice(Math.min(index, skills.length), 0, removed);
+        return { ...d, skills };
+      });
     setData((d) => ({ ...d, skills: d.skills.filter((s) => s.id !== id) }));
-    const res = await fetch(`/api/profile/skills/${id}`, { method: "DELETE" });
-    if (!res.ok) await reload();
+    try {
+      const res = await fetch(`/api/profile/skills/${id}`, { method: "DELETE" });
+      if (!res.ok && !(await reload())) restore();
+    } catch {
+      restore();
+      setSkillError(t.networkError);
+    }
   }
 
   const list = (kind: Kind) => (
@@ -178,6 +229,7 @@ export function CareerProfile({ initial, courseNames }: { initial: ProfileData; 
           <Button type="submit" size="sm" iconLeft={<Save className="h-4 w-4" aria-hidden="true" />} data-testid="profile-save">{tr("Speichern", "Save")}</Button>
           {saved === "ok" && <span className="text-sm text-mint-text" role="status">{tr("Gespeichert.", "Saved.")}</span>}
           {saved === "error" && <span className="text-sm text-danger-text" role="alert">{tr("Bitte Angaben prüfen.", "Please check your input.")}</span>}
+          {saved === "network" && <span className="text-sm text-danger-text" role="alert">{t.networkError}</span>}
         </div>
       </form>
 
