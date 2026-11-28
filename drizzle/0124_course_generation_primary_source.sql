@@ -1,0 +1,1 @@
+ALTER TABLE "course_generation_jobs" ADD COLUMN "primary_source_url" text;

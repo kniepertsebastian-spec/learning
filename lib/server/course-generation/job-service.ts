@@ -26,6 +26,8 @@ export interface CreateCourseGenerationJobInput {
   /** Standard: Zertifikatskurs. "custom" = individuelles Training (freies Thema, keine Prüfung). */
   courseType?: "certification" | "custom";
   sourceUrls: string[];
+  /** Als Prüfungs-Blueprint markierte Quelle (eine aus sourceUrls); fehlt sie, wird der Leitfaden automatisch erkannt. */
+  primarySourceUrl?: string | null;
   autoPublish: boolean;
   initialCostLimitUsd: number;
   absoluteCostLimitUsd: number;
@@ -85,6 +87,7 @@ export async function createCourseGenerationJob(
       certificationVersion: input.courseType === "custom" ? undefined : input.certificationVersion,
       courseType: input.courseType ?? "certification",
       sourceUrls: input.sourceUrls,
+      primarySourceUrl: input.primarySourceUrl && input.sourceUrls.includes(input.primarySourceUrl) ? input.primarySourceUrl : null,
       organizationId: input.organizationId,
       documentId: input.documentId,
       categoryId: input.organizationId ? undefined : input.categoryId,
@@ -336,6 +339,7 @@ export async function createSplitPartJobs(
         certificationVersion: parent.certificationVersion,
         courseType: parent.courseType,
         sourceUrls: parent.sourceUrls,
+        primarySourceUrl: parent.primarySourceUrl,
         categoryId: parent.categoryId,
         includeSectionQuizzes: parent.includeSectionQuizzes,
         includeFinalExam: parent.includeFinalExam,

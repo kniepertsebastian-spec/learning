@@ -53,10 +53,41 @@ export function stripRepeatedBoilerplate(excerpts: SourceExcerpt[]): SourceExcer
   });
 }
 
-/** Bereinigt alle Quellen (siehe stripRepeatedBoilerplate) und lässt leere Ausschnitte weg. */
+/** Eintrag eines Verzeichnisses: Text, Füllpunkte (oder Unterstriche, „…“) und eine Seitenzahl am Zeilenende. */
+const LEADER_ENTRY = /\p{L}.*?(?:\.{4,}|(?:\s?\.){4,}|…{2,}|_{4,}|·{4,})\s*[\dIVXivx]{1,5}\s*$/u;
+/** Überschrift eines Verzeichnisses. */
+const LISTING_HEADING = /^\s*(?:inhaltsverzeichnis|inhalt|inhaltsübersicht|abbildungsverzeichnis|tabellenverzeichnis|abkürzungsverzeichnis|table of contents|contents|list of figures|list of tables)\s*$/imu;
+/** Auszufüllende Stelle eines Formulars: Unterstrich- oder Punktlinie ohne Seitenzahl danach, Ankreuzfeld. */
+const FORM_FIELD = /_{5,}|\.{8,}(?!\s*\d)|…{4,}|[☐□]/u;
+
+/**
+ * Seiten ohne Fachinhalt (Quellen-Roadmap AP-4.1): Inhalts-, Abbildungs- und Tabellenverzeichnisse (die meisten Zeilen sind
+ * Einträge mit Füllpunkten und Seitenzahl) und leere Formularseiten (wenig Text, überwiegend Ausfüllfelder). Bewusst
+ * vorsichtig: erst ab fünf Zeilen, und bleibt keine Seite übrig, bleibt alles, wie es war.
+ */
+export function isStructuralPage(text: string): boolean {
+  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  if (lines.length < 5) return false;
+  const leaders = lines.filter((l) => LEADER_ENTRY.test(l)).length / lines.length;
+  if (leaders >= 0.6 || (leaders >= 0.3 && LISTING_HEADING.test(text))) return true;
+  const letters = (text.match(/\p{L}/gu) ?? []).length;
+  const fields = lines.filter((l) => FORM_FIELD.test(l)).length / lines.length;
+  return letters < 400 && fields >= 0.5;
+}
+
+/** Lässt Verzeichnis- und leere Formularseiten weg (isStructuralPage), aber nie alle Seiten einer Quelle. */
+export function dropStructuralPages(excerpts: SourceExcerpt[]): SourceExcerpt[] {
+  const kept = excerpts.filter((e) => !isStructuralPage(e.text));
+  return kept.length > 0 ? kept : excerpts;
+}
+
+/**
+ * Bereinigt alle Quellen: Verzeichnis- und Formularseiten weg (dropStructuralPages), wiederkehrende Kopf- und Fußzeilen weg
+ * (stripRepeatedBoilerplate), leere Ausschnitte weg.
+ */
 export function cleanSources(sources: FetchedSource[]): FetchedSource[] {
   return sources.map((source) => {
-    const excerpts = stripRepeatedBoilerplate(source.excerpts).filter((e) => e.text.trim().length > 0);
+    const excerpts = stripRepeatedBoilerplate(dropStructuralPages(source.excerpts)).filter((e) => e.text.trim().length > 0);
     return excerpts.length > 0 ? { ...source, excerpts } : source;
   });
 }

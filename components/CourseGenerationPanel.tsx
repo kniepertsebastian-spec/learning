@@ -6,12 +6,22 @@ import { cn } from "@/lib/cn";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
-import { SourceUrlInput } from "@/components/SourceUrlInput";
+import { SourceUrlInput, type SourceCheckView } from "@/components/SourceUrlInput";
 import { toast } from "@/components/ui/toaster";
 import { useLocale } from "@/lib/i18n";
 import { fmt } from "@/lib/quiz/keys";
 import { useOnlineStatus } from "@/lib/client/use-online-status";
 import { readJson } from "@/lib/client/read-json";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+
+/** Ein Fund des Secret-Scanners beim Hochladen einer Quelle (ohne den Wert selbst). */
+type UploadFinding = { kind: string; label: string; pageNumber: number; line: number; suppressible: boolean };
+
+/** Antwort von „Quellen prüfen“ (lib/server/course-generation/check-sources.ts). */
+type SourceCheckReport = {
+  results: Array<SourceCheckView & { url: string }>;
+  budget: { totalChars: number; budgetChars: number; primaryUrl: string | null; unchecked: number };
+};
 
 interface Job {
   id: string;
@@ -97,8 +107,15 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
   const [sourceUrlList, setSourceUrlList] = useState<string[]>([]);
   /** Dateinamen der hochgeladenen Quellen (`upload:<id>` → Name) für Liste und Fehlermeldungen. */
   const [sourceLabels, setSourceLabels] = useState<Record<string, string>>({});
+  /** Die als Prüfungs-Blueprint markierte Quelle (Quellen-Roadmap AP-2.1); null = automatisch erkennen. */
+  const [primarySource, setPrimarySource] = useState<string | null>(null);
+  /** Letztes Ergebnis von „Quellen prüfen“ und für welche Quellenliste es gilt (ändert sich die Liste, ist die Summe veraltet). */
+  const [checkReport, setCheckReport] = useState<{ key: string; report: SourceCheckReport } | null>(null);
+  const [checkingSources, setCheckingSources] = useState(false);
   const sourceLabel = (ref: string) => sourceLabels[ref] ?? ref;
   const [loading, setLoading] = useState(false);
+  const cgp = c_courseGenerationPanel(locale);
+  const [confirm, confirmDialog] = useConfirm();
   const [requestError, setRequestError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(true);
   const [showObjectiveCosts, setShowObjectiveCosts] = useState(false);
@@ -234,6 +251,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
       shortCode: String(form.get("shortCode") ?? "").trim() || undefined,
       categoryId: String(form.get("categoryId") ?? "") || undefined,
       sourceUrls,
+      primarySourceRef: primarySource && sourceUrls.includes(primarySource) ? primarySource : undefined,
       autoPublish: form.get("autoPublish") === "on",
       initialCostLimitUsd: Number(form.get("initialCostLimitUsd")),
       absoluteCostLimitUsd: Number(form.get("absoluteCostLimitUsd")),
@@ -241,16 +259,11 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
 
     try {
       // Erst die Quellen prüfen: eine kaputte soll nicht den ganzen Lauf scheitern lassen, sondern gemeldet werden.
-      const check = await fetch("/api/admin/course-generation/check-sources", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrls }),
-      });
       // Antwortet die Prüfung nicht verwertbar (Zeitüberschreitung, HTML-Fehlerseite), gilt weiter der Preflight des Auftrags.
-      const checked = check.ok ? await readJson<{ results: { url: string; ok: boolean; error?: string }[] }>(check).catch(() => null) : null;
+      const checked = await requestSourceCheck(sourceUrls, payload.primarySourceRef ?? null);
       if (checked) {
         const { results } = checked;
-        const bad = results.filter((r) => !r.ok).map((r) => ({ url: r.url, error: r.error ?? "" }));
+        const bad = results.flatMap((r) => (r.ok ? [] : [{ url: r.url, error: r.error }]));
         if (bad.length > 0) {
           setBadSources(bad);
           setPendingPayload(payload);
@@ -271,6 +284,9 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     const bad = new Set(badSources.map((b) => b.url));
     const rest = (pendingPayload.sourceUrls as string[]).filter((u) => !bad.has(u));
     setSourceUrlList(rest);
+    const marked = pendingPayload.primarySourceRef;
+    const primaryLeft = typeof marked === "string" && !bad.has(marked) ? marked : undefined;
+    if (!primaryLeft) setPrimarySource(null);
     if (rest.length === 0) {
       setBadSources(null);
       setPendingPayload(null);
@@ -280,7 +296,7 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     setLoading(true);
     setRequestError(null);
     try {
-      await createJob({ ...pendingPayload, sourceUrls: rest });
+      await createJob({ ...pendingPayload, sourceUrls: rest, primarySourceRef: primaryLeft });
     } catch (error) {
       setRequestError(error instanceof Error ? error.message : "Auftrag konnte nicht gestartet werden.");
     } finally {
@@ -288,14 +304,55 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
     }
   }
 
-  /** Datei als Quelle hochladen: der Server liest den Text und gibt den Verweis für die Quellenliste zurück. */
-  async function uploadSourceFile(file: File): Promise<{ ref: string; filename: string }> {
+  const checkKey = (urls: string[], primary: string | null) => JSON.stringify([urls, primary]);
+
+  /** Quellen prüfen lassen (Abruf, Textmenge, Kürzung, Budget); null, wenn die Prüfung selbst nicht antwortet. */
+  async function requestSourceCheck(urls: string[], primary: string | null): Promise<SourceCheckReport | null> {
+    const response = await fetch("/api/admin/course-generation/check-sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceUrls: urls, ...(primary ? { primarySourceRef: primary } : {}) }),
+    }).catch(() => null);
+    const report = response?.ok ? await readJson<SourceCheckReport>(response).catch(() => null) : null;
+    if (report?.results && report.budget) setCheckReport({ key: checkKey(urls, primary), report });
+    return report?.results ? report : null;
+  }
+
+  /** „Quellen prüfen“ im Schritt Quellen: zeigt je Quelle Zeichen und Kürzung und die Auslastung des Budgets (AP-3.3). */
+  async function handleCheckSources() {
+    if (sourceUrlList.length === 0) return;
+    setCheckingSources(true);
+    setRequestError(null);
+    const report = await requestSourceCheck(sourceUrlList, primarySource);
+    setCheckingSources(false);
+    if (!report) setRequestError(cgp.sourceCheckFailed);
+  }
+
+  const checkCurrent = checkReport?.key === checkKey(sourceUrlList, primarySource) ? checkReport.report : null;
+  const checksByUrl = Object.fromEntries((checkReport?.report.results ?? []).map((r) => [r.url, r] as const));
+
+  /**
+   * Datei als Quelle hochladen: der Server liest den Text und gibt den Verweis für die Quellenliste zurück. Meldet der
+   * Secret-Scanner nur bestätigbare Funde (Beispielwerte in einer öffentlichen IT-Doku), fragt der Assistent nach und sendet
+   * die Datei mit der Bestätigung erneut (Quellen-Roadmap AP-1.3).
+   */
+  async function uploadSourceFile(file: File, suppressKinds: string[] = []): Promise<{ ref: string; filename: string }> {
     const body = new FormData();
     body.append("file", file);
+    for (const kind of suppressKinds) body.append("suppressKinds", kind);
     const response = await fetch("/api/admin/course-generation/uploads", { method: "POST", body });
-    const data = await readJson<{ upload?: { ref: string; filename: string }; error?: string }>(response, locale === "de");
-    if (!response.ok || !data.upload) throw new Error(data.error ?? `Status ${response.status}`);
-    return data.upload;
+    const data = await readJson<{ upload?: { ref: string; filename: string }; error?: string; code?: string; findings?: UploadFinding[] }>(response, locale === "de");
+    if (response.ok && data.upload) return data.upload;
+    const findings = data.findings ?? [];
+    if (data.code === "secrets_found" && suppressKinds.length === 0 && findings.length > 0 && findings.every((f) => f.suppressible)) {
+      const shown = findings.slice(0, 5).map((f) => fill(cgp.findingAt, f.label, f.pageNumber, f.line)).join("; ");
+      const more = findings.length > 5 ? ` (+${findings.length - 5})` : "";
+      if (await confirm(fill(cgp.secretsConfirmMessage, file.name, shown + more), { title: cgp.secretsConfirmTitle, confirmLabel: cgp.secretsConfirmAccept })) {
+        return uploadSourceFile(file, [...new Set(findings.map((f) => f.kind))]);
+      }
+      throw new Error(cgp.secretsNotUploaded);
+    }
+    throw new Error(data.error ?? `Status ${response.status}`);
   }
 
   async function handleCancel() {
@@ -420,8 +477,33 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
           </div>
 
           <div className={step === 1 ? "space-y-2" : "hidden"}>
-            <SourceUrlInput urls={sourceUrlList} onChange={setSourceUrlList} locale={locale} max={30} uploadFile={uploadSourceFile} labels={sourceLabels} onLabel={(ref, filename) => setSourceLabels((l) => ({ ...l, [ref]: filename }))} />
+            <SourceUrlInput
+              urls={sourceUrlList}
+              onChange={setSourceUrlList}
+              locale={locale}
+              max={30}
+              uploadFile={uploadSourceFile}
+              labels={sourceLabels}
+              onLabel={(ref, filename) => setSourceLabels((l) => ({ ...l, [ref]: filename }))}
+              primary={primarySource}
+              onPrimaryChange={setPrimarySource}
+              checks={checksByUrl}
+            />
             <p className="text-xs text-faint">{fmt(ac.sourcesCount, { n: sourceUrlList.length })}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleCheckSources()}
+                disabled={checkingSources || sourceUrlList.length === 0}
+                data-testid="check-sources"
+                className="flex min-h-11 items-center gap-1.5 rounded-md border border-border-strong bg-control px-3 text-sm font-medium hover:bg-surface-2 disabled:opacity-40"
+              >
+                {checkingSources && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                {checkingSources ? cgp.checkingSources : cgp.checkSources}
+              </button>
+              {checkReport && !checkCurrent && !checkingSources && <span className="text-xs text-subtle">{cgp.sourceCheckOutdated}</span>}
+            </div>
+            {checkCurrent && <SourceBudgetMeter budget={checkCurrent.budget} locale={locale} />}
           </div>
 
           <div className={step === 2 ? "space-y-3" : "hidden"}>
@@ -692,6 +774,32 @@ export function CourseGenerationPanel({ locale, categories = [], bare = false }:
         </div>
       )}
       {requestError && <p className="mt-3 text-sm text-danger-text">{requestError}</p>}
+      {confirmDialog}
     </section>
+  );
+}
+
+/** Auslastung des Quellenpakets gegen das Cache-Budget (FULL_CONTEXT_MAX_CHARS) nach „Quellen prüfen“. */
+function SourceBudgetMeter({ budget, locale }: { budget: SourceCheckReport["budget"]; locale: "de" | "en" }) {
+  const t = c_courseGenerationPanel(locale);
+  const format = new Intl.NumberFormat(locale === "de" ? "de-DE" : "en-GB");
+  const percent = budget.budgetChars > 0 ? Math.round((budget.totalChars / budget.budgetChars) * 100) : 0;
+  const over = budget.totalChars > budget.budgetChars;
+  return (
+    <div className="rounded-md border border-border p-3 text-xs" data-testid="source-budget" data-over={over || undefined}>
+      <p className="font-medium">{fill(t.budgetLine, format.format(budget.totalChars), format.format(budget.budgetChars), percent)}</p>
+      <div
+        className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-2"
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={budget.budgetChars}
+        aria-valuenow={Math.min(budget.totalChars, budget.budgetChars)}
+        aria-label={t.budgetLabel}
+      >
+        <div className={cn("h-full rounded-full", over ? "bg-warning" : "bg-accent")} style={{ width: `${Math.min(100, percent)}%` }} />
+      </div>
+      <p className={cn("mt-1.5", over ? "text-warning-text" : "text-subtle")}>{over ? t.budgetOver : t.budgetOk}</p>
+      {budget.unchecked > 0 && <p className="mt-1 text-subtle">{fill(t.budgetUnchecked, budget.unchecked)}</p>}
+    </div>
   );
 }

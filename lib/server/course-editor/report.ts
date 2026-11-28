@@ -61,7 +61,7 @@ export type CoverageView = {
   /** Quellen, die beim Start nicht verwendbar waren: der Kurs entstand ohne sie. */
   skipped: NonNullable<SourceReport["skipped"]>;
   /** Als Prüfungsleitfaden erkannte Quelle (vollständig gelesen). */
-  primary: { title: string; url: string } | null;
+  primary: { title: string; url: string; marked?: boolean } | null;
   /** Hat sich die Quelle seit der Kurserstellung (bzw. dem letzten bestätigten Stand) geändert? */
   change: SourceChange | null;
   result: CoverageResult | null;
@@ -260,7 +260,7 @@ export class CoverageRefreshError extends Error {}
  * Quellen des Erzeugungsauftrags neu abrufen und die erkannten offiziellen Lernziele speichern („Quelle prüfen“). Für Kurse,
  * die vor dem Quellenbericht entstanden sind, und wenn sich die Quelle geändert hat.
  */
-export async function refreshCoverage(certId: string, fetcher: (urls: string[]) => Promise<FetchedSource[]> = fetchSources, now = new Date()): Promise<SourceChange | null> {
+export async function refreshCoverage(certId: string, fetcher: (urls: string[], markedUrl?: string | null) => Promise<FetchedSource[]> = fetchSources, now = new Date()): Promise<SourceChange | null> {
   await editableCourse(certId);
   const job = await latestJob(certId);
   if (!job || job.sourceUrls.length === 0) throw new CoverageRefreshError("Zu diesem Kurs ist keine Quelle hinterlegt.");
@@ -272,7 +272,8 @@ export async function refreshCoverage(certId: string, fetcher: (urls: string[]) 
   if (urls.length === 0) throw new CoverageRefreshError("Zu diesem Kurs ist keine verwendbare Quelle hinterlegt.");
   let sources: FetchedSource[];
   try {
-    sources = await fetcher(urls);
+    // Die beim Start als Blueprint markierte Quelle bleibt der Leitfaden (sonst wieder die automatische Erkennung).
+    sources = await fetcher(urls, job.primarySourceUrl);
   } catch (error) {
     if (error instanceof SourceFetchError) throw new CoverageRefreshError(`Quelle nicht abrufbar: ${error.message}`);
     throw error;

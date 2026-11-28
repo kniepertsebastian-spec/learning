@@ -2071,8 +2071,11 @@ export type SourceReport = {
   sourceCount: number;
   /** Quellen, die sich beim Start nicht verwenden ließen (nicht erreichbar, zu wenig Text, defekt): der Kurs entstand ohne sie. Fehlt, wenn alle funktionierten. */
   skipped?: Array<{ url: string; error: string }>;
-  /** Als Prüfungsleitfaden erkannte Quelle (wird nicht auf 60.000 Zeichen gekürzt); fehlt bei älteren Berichten. */
-  primary?: { title: string; url: string } | null;
+  /**
+   * Prüfungsleitfaden (wird nicht auf den Anteil der Fachquellen gekürzt); fehlt bei älteren Berichten. `marked`: im
+   * Assistenten als Blueprint markiert statt automatisch erkannt.
+   */
+  primary?: { title: string; url: string; marked?: boolean } | null;
   /** Fingerabdruck des Quelltexts (Leitfaden, sonst alle Quellen) und darin genannte Prüfungsversionen („SY0-701“, „Version 7.0“). */
   fingerprint?: string;
   versions?: string[];
@@ -2200,6 +2203,11 @@ export const courseGenerationJobs = pgTable(
     provider: text("provider").notNull(),
     certificationVersion: text("certification_version"),
     sourceUrls: jsonb("source_urls").$type<string[]>().notNull().default([]),
+    /**
+     * Die im Assistenten als Prüfungs-Blueprint markierte Quelle (eine aus sourceUrls). Gesetzt geht sie der automatischen
+     * Erkennung (meiste nummerierte Lernziele, primarySourceIndex) vor; NULL = automatisch (Quellen-Roadmap AP-2.1).
+     */
+    primarySourceUrl: text("primary_source_url"),
     autoPublish: boolean("auto_publish").notNull().default(false),
     initialCostLimitUsd: numeric("initial_cost_limit_usd", { precision: 10, scale: 2 }).notNull(),
     absoluteCostLimitUsd: numeric("absolute_cost_limit_usd", { precision: 10, scale: 2 }).notNull(),

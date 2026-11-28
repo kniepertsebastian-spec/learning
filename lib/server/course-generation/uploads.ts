@@ -3,6 +3,7 @@ import { getDb } from "@/lib/server/db/client";
 import { courseGenerationUploads } from "@/lib/server/db/schema";
 import { splitIntoSections, type SourceExcerpt } from "@/lib/server/documents/sections";
 import { cleanFilename, inspectUpload, type UploadRejection } from "@/lib/server/documents/upload";
+import type { SecretKind } from "@/lib/server/documents/secret-scanner";
 import { isUploadRef, UPLOAD_REF_PREFIX, uploadRef } from "@/lib/course-generation/source-refs";
 
 export { isUploadRef, UPLOAD_REF_PREFIX, uploadRef };
@@ -16,12 +17,19 @@ export interface SavedUpload {
 }
 
 /**
- * Prüft eine hochgeladene Quelldatei (Typ, lesbarer Text, Zugangsdaten wie bei Firmendokumenten) und speichert ihren Text.
- * Die Datei selbst wird nicht aufbewahrt, nur der gelesene Text je Seite.
+ * Höchstgröße einer hochgeladenen Kursquelle: wie beim Abruf per Adresse (MAX_SOURCE_BYTES in sources.ts), nicht die 10 MB
+ * der Firmendokumente. Gespeichert wird nur der gelesene Text, nicht die Datei (Quellen-Roadmap AP-1.3).
  */
-export async function saveCourseGenerationUpload(input: { userId: string; filename: string; mimeType: string; data: Buffer }): Promise<{ ok: true; upload: SavedUpload } | UploadRejection> {
+export const MAX_COURSE_SOURCE_UPLOAD_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Prüft eine hochgeladene Quelldatei (Typ, lesbarer Text, Zugangsdaten wie bei Firmendokumenten) und speichert ihren Text.
+ * Die Datei selbst wird nicht aufbewahrt, nur der gelesene Text je Seite. `suppressKinds`: Fund-Arten, die der Betreiber als
+ * Fehlalarm bestätigt hat (z. B. Beispiel-Zugangsdaten in einer öffentlichen IT-Dokumentation); nur bestätigbare Arten wirken.
+ */
+export async function saveCourseGenerationUpload(input: { userId: string; filename: string; mimeType: string; data: Buffer; suppressKinds?: readonly SecretKind[] }): Promise<{ ok: true; upload: SavedUpload } | UploadRejection> {
   const filename = cleanFilename(input.filename);
-  const inspection = await inspectUpload({ filename, mimeType: input.mimeType, data: input.data });
+  const inspection = await inspectUpload({ filename, mimeType: input.mimeType, data: input.data }, { maxBytes: MAX_COURSE_SOURCE_UPLOAD_BYTES, suppressKinds: input.suppressKinds });
   if (!inspection.ok) return inspection;
   const [row] = await getDb()
     .insert(courseGenerationUploads)

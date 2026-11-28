@@ -55,7 +55,7 @@ import {
 } from "./schemas";
 import { looksLikeOutline } from "./outline";
 import { partTitle, splitBlueprint } from "./split";
-import { fetchSourcesTolerant, noUsableSourceMessage, type FetchedSource, type FetchSourcesResult, type SkippedSource } from "./sources";
+import { fetchSource, fetchSourcesTolerant, FULL_CONTEXT_MAX_CHARS, noUsableSourceMessage, type FetchedSource, type FetchSourcesResult, type SkippedSource } from "./sources";
 import { buildSourceReport } from "./coverage";
 import { autoFixObjectiveContent, missingQuestionsOnly, pickCanaryIndex, validateBlueprint, validateObjectiveContent } from "./validation";
 import { getDb } from "@/lib/server/db/client";
@@ -100,7 +100,8 @@ const GENERATION_CONCURRENCY = Math.max(1, envInt("COURSE_GEN_CONCURRENCY", 5));
  * (Roadmap Stufe 2, über implizites Caching zu 5 % des Eingabepreises). Darüber, oder mit COURSE_GEN_CONTEXT_MODE=excerpts,
  * nur die gemappten Ausschnitte: Ein Cache-Fehltreffer mit sehr großem Paket wäre sonst teuer. `full` erzwingt das Paket.
  */
-const FULL_CONTEXT_MAX_CHARS = envInt("COURSE_GEN_FULL_CONTEXT_MAX_CHARS", 400_000);
+// FULL_CONTEXT_MAX_CHARS (COURSE_GEN_FULL_CONTEXT_MAX_CHARS, Standard 400.000) steht in sources.ts: dieselbe Grenze verteilt
+// dort das Budget auf die Quellen (fitSourceBudget) und zeigt die Quellenprüfung im Assistenten an.
 
 export function shouldUseFullSourceContext(sources: FetchedSource[], mode = process.env.COURSE_GEN_CONTEXT_MODE?.trim().toLowerCase()): boolean {
   if (mode === "excerpts") return false;
@@ -170,7 +171,8 @@ export interface CourseGenerationDeps {
   contentProvider: CourseContentProvider;
   repairProvider: CourseContentProvider;
   /** Liefert die brauchbaren Quellen und die übersprungenen; der Worker bricht nur ab, wenn keine einzige brauchbar ist. */
-  fetchSourcesFn: (urls: string[]) => Promise<FetchSourcesResult>;
+  /** `markedUrl`: die im Assistenten als Blueprint markierte Quelle (job.primarySourceUrl). */
+  fetchSourcesFn: (urls: string[], markedUrl?: string | null) => Promise<FetchSourcesResult>;
   /** Interne Lernpfade: Text des Firmendokuments (geschwärzt und gescannt). */
   loadDocumentSourcesFn: (organizationId: string, jobId: string, describeImage?: ImageDescriber, legacyDocumentId?: string | null) => Promise<FetchedSource[]>;
   /** Interne Lernpfade: beschreibt Screenshots über den KI-Zugang der Firma. */
@@ -186,7 +188,7 @@ async function defaultDeps(
   job: CourseGenerationJob,
   override?: Partial<CourseGenerationDeps>,
 ): Promise<CourseGenerationDeps> {
-  const base = { fetchSourcesFn: fetchSourcesTolerant, loadDocumentSourcesFn: loadJobSources };
+  const base = { fetchSourcesFn: (urls: string[], markedUrl?: string | null) => fetchSourcesTolerant(urls, fetchSource, markedUrl), loadDocumentSourcesFn: loadJobSources };
   if (!job.organizationId) {
     return {
       blueprintProvider: resolveBlueprintProvider(job.blueprintProvider),
@@ -627,7 +629,7 @@ export async function executeCourseGenerationJob(
       if (job.organizationId && (job.documentId || (await hasJobDocuments(jobId)))) {
         sources = await deps.loadDocumentSourcesFn(job.organizationId, jobId, deps.describeImageFn, job.documentId);
       } else {
-        ({ sources, skipped: skippedSources } = await deps.fetchSourcesFn(job.sourceUrls));
+        ({ sources, skipped: skippedSources } = await deps.fetchSourcesFn(job.sourceUrls, job.primarySourceUrl));
       }
     } catch (error) {
       if (error instanceof DocumentSourceError) throw new PreflightError(error.message);

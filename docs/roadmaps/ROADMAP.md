@@ -21,6 +21,15 @@ Begründung und Nachweise je Punkt in [`review-2026-11-19.md`](review-2026-11-19
 - [x] **R2** Kein stiller, prozessweiter Wegfall von `maxOutputTokens` und Denkbudget nach einem allgemeinen „invalid argument“ (`modelsWithoutLimits`); den Wechsel im Auftrag anzeigen. Erledigt: erst nur ohne Denk-Einstellung, dann ohne Limit, gemerkt 1 Stunde; Hinweis in der Meldung des Auftrags und `configFallback=` in der `USAGE`-Zeile.
 - [ ] **Erster echter Lauf der neuen Kursgenerierung (PR #213)** mit kleinem Kurs und niedrigem Kostenlimit: `USAGE`-Zeilen und `finishReason` mitschreiben, Kosten mit der Google-Abrechnung abgleichen, dabei R3 beobachten (`PROCESS`-Zeilen im Log, Anleitung in [`docs/MONITORING.md`](../MONITORING.md), Abschnitt „Erster echter Kurslauf“).
 
+## 1b. Quellen-Ingestion und Blueprint (Roadmap vom 28.11.2026)
+
+- [x] Weiterleitungen (301/302/303/307/308) bis 5 Hops, jeder Hop mit eigener Adressprüfung (`lib/server/network/fetch-url.ts`); Accept/Accept-Language für Firewalls, bei 403/406 ein Zweitversuch mit Browser-User-Agent. PDFs auch hinter `.php`-Downloads (Signatur `%PDF-`). SSO folgt weiterhin keiner Weiterleitung.
+- [x] Kursquellen-Uploads bis 25 MB, PDFs auch mit leerem oder allgemeinem MIME-Typ; Beispiel-Zugangsdaten (bestätigbare Funde) lassen sich im Assistenten bestätigen.
+- [x] Genau eine Quelle als Prüfungs-Blueprint markierbar (Stern, Spalte `primary_source_url`, Migration `0124`); die Markierung geht der Trefferzählung vor, auch bei „Quelle prüfen“. Lernziele nur aus dem Blueprint, römische Hauptkapitel (`I.` + `1.` → `1.1`), alte NaN-Codes werden ignoriert.
+- [x] HTML: nur `<main>`/`<article>`/`role="main"` lesen, wenn darin genug Text steht. Budget: Fachquellen fair bis 120.000 Zeichen (`COURSE_GEN_MAX_SOURCE_CHARS`), Gesamtbudget bleibt 400.000. „Quellen prüfen“ zeigt Zeichen, Kürzung und Auslastung. Verzeichnis- und leere Formularseiten fallen aus PDFs heraus.
+- [ ] Mit echten Quellen ausprobieren (BIBB-Download mit Weiterleitung, `.php`-Artikel hinter einer Firewall): in der Entwicklungsumgebung ohne Netz nur mit lokalem Testserver geprüft.
+- [ ] Skill `kurs-quellen-recherchieren` auf das Zielbild bringen (Abschnitt 4 der Roadmap): liegt nicht in diesem Repository.
+
 ## 2a. Aus dem Review vom 19.11.2026: Betrieb
 
 - [x] **R3a** Messen und Pool: Event-Loop-Verzögerung, Speicher und laufende Aufträge in `/api/monitor` und als `PROCESS`-Zeile während einer Kursgenerierung; `monitor.sh` meldet ab 500 ms. Pool mit `max`, `idle_timeout`, `statement_timeout` und `idle_in_transaction_session_timeout` (`lib/server/db/client.ts`).

@@ -15,6 +15,20 @@ describe("Upload-Prüfung (ohne Datenbank)", () => {
     expect(r).toMatchObject({ ok: true, kind: "pdf", pageCount: 2, mimeType: "application/pdf" });
   });
 
+  it("nimmt ein PDF auch ohne oder mit allgemeinem MIME-Typ an; die Signatur entscheidet", async () => {
+    for (const mimeType of ["", "application/octet-stream", "application/x-pdf"]) {
+      const r = await inspectUpload({ filename: "Plan.PDF", mimeType, data: makePdf([["Prüfungsordnung mit genug Text."]]) });
+      expect(r, mimeType).toMatchObject({ ok: true, kind: "pdf", mimeType: "application/pdf" });
+    }
+    expect(await inspectUpload({ filename: "fake.pdf", mimeType: "application/octet-stream", data: text("kein PDF, nur Text genug") })).toMatchObject({ code: "invalid_content" });
+  });
+
+  it("nimmt eine eigene Höchstgröße an (Kursquellen des Betreibers)", async () => {
+    const big = Buffer.alloc(MAX_DOCUMENT_BYTES + 1, 97);
+    expect(await inspectUpload({ filename: "a.txt", mimeType: "text/plain", data: big }, { maxBytes: 25 * 1024 * 1024 })).toMatchObject({ ok: true });
+    expect(await inspectUpload({ filename: "a.txt", mimeType: "text/plain", data: big }, { maxBytes: 1024 })).toMatchObject({ code: "too_large" });
+  });
+
   it("nimmt .txt und .md an (auch ohne oder mit allgemeinem MIME-Typ)", async () => {
     for (const [filename, mimeType, expected] of [
       ["a.txt", "text/plain", "text/plain"], ["b.md", "text/markdown", "text/markdown"], ["c.md", "", "text/markdown"], ["d.txt", "application/octet-stream", "text/plain"],
