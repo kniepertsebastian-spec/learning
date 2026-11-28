@@ -19,9 +19,9 @@ Der Service Worker ist im Dev-Server abgeschaltet (`disable` in `next.config.ts`
 
 - **API (`/api/*`)**: nie im Cache (`NetworkOnly`). Offline-Daten liegen ausschließlich in IndexedDB, nicht im Service-Worker-Cache.
 - **Seiten (Navigationen)**: `NetworkFirst` (3 s) im `pages-cache` (max. 50 Einträge, 14 Tage). Nur Antworten mit Status 200.
-- **Admin- und Firmenbereich** (`/admin`, `/company`, `/confirm-company`): `NetworkOnly`, landen in keinem Cache.
+- **Nie im Seiten-Cache** (`NetworkOnly`, `isUncachedPagePath` in `lib/pwa/cache-policy.ts`): Admin-, Firmen- und Reviewerbereich, Konto, Profil, Karriere (`/career`), Prüfungsplan (`/exams`), „Wie ich lerne“ (`/how-i-learn`), Nachweise, persönliche Kurs-Auswertungen (`/cert/[id]/history`, `weaknesses`, `final-exam`, `restart`) sowie alle Token-Adressen (Anmeldung, Passwort-Reset, Einladungen). Eine neue sensible Seite außerhalb dieser Liste nimmt der Header `X-SW-Cache: no-store` aus.
 - **Statische Dateien** (Stil, Skript, Bild, Schrift): `StaleWhileRevalidate` im `assets-cache` (max. 200 Einträge, 30 Tage).
-- **Precache**: alle Build-Assets plus `/offline` und `/~offline` (Revision je Build) sowie Icon und Badge der Push-Benachrichtigung (Revision = Inhalts-Hash). Dateien aus `public/` kommen nicht automatisch hinein: Serwist überspringt sie, sobald `additionalPrecacheEntries` gesetzt ist; was offline gebraucht wird, steht ausdrücklich in `next.config.ts` (geprüft in `e2e/push.spec.ts`).
+- **Precache**: alle Build-Assets plus `/offline` und `/~offline` (Revision je Build) sowie Icon und Badge der Push-Benachrichtigung und das Seiten-Icon `/icons/icon.svg` (Revision = Inhalts-Hash). Dateien aus `public/` kommen nicht automatisch hinein: Serwist überspringt sie, sobald `additionalPrecacheEntries` gesetzt ist; was offline gebraucht wird, steht ausdrücklich in `next.config.ts` (geprüft in `e2e/push.spec.ts`).
 - **Besitzer**: Gecachte Seiten gehören genau einem Nutzer. Beim Logout (`clearLocalUserData`) und beim Anmelden mit einer anderen Nutzer-ID (auch nach abgelaufener Sitzung) wird der `pages-cache` geleert.
 - Der frühere gemeinsame Cache `ui-cache` wird beim Aktivieren des Service Workers gelöscht.
 
@@ -61,6 +61,8 @@ Plan: `roadmap_datenintegritaet.md`. Offline erbrachte Lernleistung soll auch na
 
 `skipWaiting` ist aus. Nach einem Deploy installiert sich der neue Service Worker und **wartet**. `ServiceWorkerManager` zeigt den Toast „Neue Version verfügbar“. Erst der Klick auf „Neu laden“ sendet `SKIP_WAITING`; beim `controllerchange` lädt die Seite neu. Ohne Klick läuft die alte Version weiter, es gibt keinen erzwungenen Reload. Fehlende Skript-Chunks eines alten Tabs (`ChunkLoadError`) fängt `app/error.tsx` ab: einmal neu laden, dann Fehlerseite.
 
+Die Build-Kennung (`deploymentId`, `?dpl=` an den Assets, Revision des Offline-Einstiegs) kommt aus `NEXT_DEPLOYMENT_ID`, im Docker-Build als Build-Argument (Commit, siehe `docs/DEPLOY-UPDATE.md`), in der CI aus `GITHUB_SHA`.
+
 ## Web Push
 
 Erinnerungen als Push-Nachricht (Prüfungstermin, fällige Wiederholungen, Lernserie in Gefahr), zusätzlich zur E-Mail (`npm run exams:remind`).
@@ -73,6 +75,27 @@ Erinnerungen als Push-Nachricht (Prüfungstermin, fällige Wiederholungen, Lerns
 - **CSP.** Geprüft: `connect-src 'self'` genügt (der Service Worker nutzt `PushManager`; nur die eigenen Schnittstellen unter `/api/push` werden aufgerufen), `worker-src 'self' blob:` deckt den Service Worker ab. Es war keine Änderung nötig.
 - **iOS.** Push gibt es nur für zum Home-Bildschirm hinzugefügte Apps (ab iOS 16.4); die Einstellungen zeigen den Hinweis.
 - **Nicht in der Pipeline getestet:** die Zustellung über einen echten Push-Dienst (FCM, Mozilla, Apple). Tests laufen mit einem Fake-Sender; der Weg bis zum Gerät braucht einen Versuch auf einem echten Gerät.
+
+Rotiert der Browser den Push-Endpunkt (`pushsubscriptionchange`, v. a. Firefox und Safari/iOS), holt der Service Worker das neue Abo, meldet es an `/api/push/subscribe` und das alte ab (`lib/pwa/push-resubscribe.ts`). Kaputte Push-Daten werfen keine Ausnahme: es erscheint die neutrale Rückfall-Benachrichtigung.
+
+## Speicher im Browser
+
+Die Schlüssel tragen noch frühere Produktnamen (`certstudy-*`, `proofpath-*`). **Nicht umbenennen** ohne Migration: Bei `certstudy-offline` gingen sonst heruntergeladene Kurse und nicht übertragene Lernergebnisse verloren, bei den übrigen Einstellungen der Personen.
+
+| Schlüssel | Ort | Inhalt | Code |
+| :--- | :--- | :--- | :--- |
+| `certstudy-offline` | IndexedDB | Kurspakete und Sync-Warteschlange | `lib/client/offline-db.ts` |
+| `certstudy-last-synced-at:<userId>` | localStorage | Zeitpunkt der letzten Übertragung | `lib/client/sync-queue.ts` |
+| `certstudy-conflicts-requeued:<userId>` | localStorage | einmalige Neueinreihung alter Konflikte | `lib/client/sync-queue.ts` |
+| `certstudy-theme` | localStorage | Hell/Dunkel/System | `lib/theme.tsx` |
+| `certstudy-locale` | localStorage + Cookie | Sprache | `lib/i18n.tsx`, `lib/server/locale.ts` |
+| `certstudy-install-dismissed-at`, `certstudy-installed-at` | localStorage | Installationshinweis | `lib/pwa/install.ts` |
+| `proofpath-cache-owner` | localStorage | Besitzer des `pages-cache` | `lib/client/cache-owner.ts` |
+| `proofpath-last-user` | localStorage | zuletzt angemeldete Person (Offline-Einstieg) | `lib/client/last-user.ts` |
+| `proofpath-session-feedback`, `proofpath-think-first`, `proofpath-self-explanations` | localStorage | Lerneinstellungen und Selbsterklärungen | `lib/client/use-feedback-mode.ts`, `use-think-first.ts`, `self-explanations.ts` |
+| `proofpath-chunk-reload` | sessionStorage | Sperre gegen Reload-Schleifen bei `ChunkLoadError` | `lib/client/chunk-error.ts` |
+
+Ereignisnamen (`certstudy:packages-changed`, `certstudy:sync-queue-changed`, `certstudy:sync-queue-error`, `proofpath:feedback-mode-changed`, `proofpath:think-first-changed`) sind nur Signale innerhalb der Seite und könnten gefahrlos umbenannt werden.
 
 ## Tests
 

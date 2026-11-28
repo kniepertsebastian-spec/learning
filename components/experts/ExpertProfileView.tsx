@@ -22,6 +22,7 @@ export function ExpertProfileView({ profile, courses, locale }: { profile: Publi
     <article className="mx-auto flex w-full max-w-3xl flex-col gap-6" data-testid="expert-profile">
       <header>
         {profile.photoUrl && (
+          // Bewusst ohne loading="lazy": das Foto steht oben im ersten Bildschirm, verzögertes Laden verschlechtert dort LCP.
           // eslint-disable-next-line @next/next/no-img-element -- kleines Profilbild aus eigener Route, nicht optimierbar
           <img src={profile.photoUrl} alt={`${c_expertsExpertProfileView(de).photoOf} ${profile.name}`} width={96} height={96} decoding="async" className="mb-3 h-24 w-24 rounded-full border border-border object-cover" data-testid="expert-photo" />
         )}

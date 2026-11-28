@@ -68,7 +68,7 @@ export const metadata: Metadata = {
   title: "Knowvia",
   // Gleich wie `description` in public/manifest.json (lang „de“). Bewusst statisch: die Offline-Shell wird vorab
   // zwischengespeichert, eine von Cookie/Accept-Language abhängige Beschreibung würde dort eine Sprache festschreiben.
-  description: "KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate – auch offline.",
+  description: "KI-gestützte Lern- und Prüfungsvorbereitung für Zertifikate und Weiterbildungen – auch offline.",
   manifest: "/manifest.json",
   appleWebApp: {
     // Next 16 rendert daraus <meta name="mobile-web-app-capable" content="yes"> (nicht mehr das veraltete apple-…-Gegenstück);

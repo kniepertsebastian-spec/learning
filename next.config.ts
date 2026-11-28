@@ -66,13 +66,15 @@ const precacheRevision = deploymentId;
 // offline braucht, muss hier stehen. Revision = Inhalts-Hash: neu geladen wird nur, wenn sich die Datei ändert.
 // Geprüft in e2e/push.spec.ts (PWA-Roadmap AP-04, m-3).
 const PUSH_ICONS = ["/icons/icon-192x192.png", "/icons/badge-96x96.png"];
+// Das Seiten-Icon aus app/layout.tsx (metadata.icons): auch der Offline-Einstieg fragt es an, beim Start ohne Netz sonst 404.
+const SHELL_ICONS = ["/icons/icon.svg"];
 const fileRevision = (url: string) => createHash("sha256").update(readFileSync(path.join(process.cwd(), "public", url))).digest("hex").slice(0, 16);
 
 const withSerwist = withSerwistInit({
   additionalPrecacheEntries: [
     { url: "/offline", revision: precacheRevision },
     { url: "/~offline", revision: precacheRevision },
-    ...PUSH_ICONS.map((url) => ({ url, revision: fileRevision(url) })),
+    ...[...PUSH_ICONS, ...SHELL_ICONS].map((url) => ({ url, revision: fileRevision(url) })),
   ],
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
