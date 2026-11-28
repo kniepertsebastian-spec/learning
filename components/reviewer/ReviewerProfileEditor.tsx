@@ -95,7 +95,7 @@ export function ReviewerProfileEditor({ initial, courses, locale }: { initial: O
     );
 
   const consentBox = (field: ReviewerProfileField, label: string) => (
-    <label className="mt-1 flex items-center gap-2 text-xs text-subtle">
+    <label className="mt-1 flex min-h-11 items-center gap-2 text-xs text-subtle">
       <input type="checkbox" checked={form.consent[field]} onChange={(e) => setForm({ ...form, consent: { ...form.consent, [field]: e.target.checked } })} data-testid={`consent-${field}`} />
       {label}
     </label>
@@ -177,7 +177,7 @@ export function ReviewerProfileEditor({ initial, courses, locale }: { initial: O
               <div className="flex flex-wrap items-center gap-3">
                 {data.photoVersion ? (
                   // eslint-disable-next-line @next/next/no-img-element -- eigenes Foto, nicht optimierbar und nur für die Person selbst
-                  <img src={`/api/reviewer/profile/photo?v=${data.photoVersion}`} alt={c_reviewerReviewerProfileEditor(de).yourProfilePhoto} width={72} height={72} decoding="async" className="h-[72px] w-[72px] rounded-full border border-border object-cover" data-testid="photo-preview" />
+                  <img src={`/api/reviewer/profile/photo?v=${data.photoVersion}`} alt={c_reviewerReviewerProfileEditor(de).yourProfilePhoto} width={72} height={72} loading="lazy" decoding="async" className="h-[72px] w-[72px] rounded-full border border-border object-cover" data-testid="photo-preview" />
                 ) : (
                   <span className="text-sm text-subtle">{c_reviewerReviewerProfileEditor(de).noPhotoYet}</span>
                 )}
@@ -323,7 +323,7 @@ function ExperienceSection({ experience, de, busy, run }: { experience: Experien
             <span className="mb-1 block font-medium">{c_reviewerReviewerProfileEditor(de).shortDescriptionOptional}</span>
             <textarea className={fieldCls} rows={2} maxLength={800} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
           </label>
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <label className="flex min-h-11 items-center gap-2 text-sm sm:col-span-2">
             <input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} data-testid="experience-public" />
             {c_reviewerReviewerProfileEditor(de).showPublicly}
           </label>
@@ -402,7 +402,7 @@ function CertificationSection({ certifications, de, busy, run }: { certification
             <span className="mb-1 block font-medium">{c_reviewerReviewerProfileEditor(de).proofLinkHttps}</span>
             <input className={fieldCls} value={f.verificationUrl} onChange={(e) => setF({ ...f, verificationUrl: e.target.value })} data-testid="cert-url" />
           </label>
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <label className="flex min-h-11 items-center gap-2 text-sm sm:col-span-2">
             <input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} data-testid="cert-public" />
             {c_reviewerReviewerProfileEditor(de).showPublicly}
           </label>

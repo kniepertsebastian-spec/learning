@@ -3,8 +3,9 @@
  * und /offline.
  *
  * - Barrierefreiheit ist eine harte Grenze: Liegt eine Seite darunter, endet das Skript mit Exit-Code 1 (CI wird rot).
- * - Performance und Best Practices sind Warnschwellen (GitHub Actions: ::warning::), weil die Messwerte auf geteilten
- *   CI-Rechnern schwanken; sie brechen nichts ab.
+ * - Performance ist eine harte Grenze, sobald LIGHTHOUSE_MIN_PERFORMANCE gesetzt ist (CI: 0.75), sonst eine Warnschwelle.
+ * - Best Practices ist eine Warnschwelle (GitHub Actions: ::warning::).
+ * - Lighthouse kommt aus den devDependencies (feste Version in package.json), nicht per `npx --yes` zur Laufzeit.
  * - Exit-Code 1 auch, wenn Lighthouse selbst nicht lief oder keine Punktzahl lieferte: nichts wird stumm übersprungen.
  *
  * Usage: npm run lighthouse -- [basis-url] [pfad ...]   (Standard: http://localhost:3100, /login /offline)
@@ -15,8 +16,20 @@
  */
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+
+// Die CLI der installierten, in package.json festgelegten Version: reproduzierbar und ohne Download während des Laufs.
+const require = createRequire(import.meta.url);
+let lighthouseCli;
+try {
+  const pkgPath = require.resolve("lighthouse/package.json");
+  lighthouseCli = join(dirname(pkgPath), JSON.parse(readFileSync(pkgPath, "utf8")).bin.lighthouse);
+} catch {
+  console.error("Lighthouse ist nicht installiert (devDependency). Erst `npm ci` ausführen.");
+  process.exit(1);
+}
 
 const baseUrl = (process.argv[2] ?? "http://localhost:3100").replace(/\/$/, "");
 const paths = process.argv.length > 3 ? process.argv.slice(3) : ["/login", "/offline"];
@@ -56,10 +69,9 @@ for (const [index, path] of paths.entries()) {
   const out = join(dir, `report-${index}.json`);
   try {
     execFileSync(
-      "npx",
+      process.execPath,
       [
-        "--yes",
-        "lighthouse@12.8.2",
+        lighthouseCli,
         url,
         `--only-categories=${CATEGORIES.map((c) => c.id).join(",")}`,
         "--output=json",
@@ -67,7 +79,7 @@ for (const [index, path] of paths.entries()) {
         "--quiet",
         "--chrome-flags=--headless --no-sandbox --disable-gpu",
       ],
-      { stdio: ["ignore", "inherit", "inherit"], shell: process.platform === "win32" },
+      { stdio: ["ignore", "inherit", "inherit"] },
     );
   } catch (error) {
     annotate("error", `Lighthouse konnte für ${url} nicht ausgeführt werden: ${error instanceof Error ? error.message : error}`);

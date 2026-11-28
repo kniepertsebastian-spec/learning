@@ -73,6 +73,8 @@ test("Web Push: Icon und Badge der Benachrichtigung stehen im Precache des ausge
   const manifest = new Set([...source.matchAll(/["']?revision["']?\s*:\s*(?:null|["'][^"']*["'])\s*,\s*["']?url["']?\s*:\s*["']([^"']+)["']/g)].map((m) => m[1]));
   expect(manifest.size, "Precache-Manifest in /sw.js nicht gefunden").toBeGreaterThan(0);
   for (const icon of PUSH_ICONS) expect(manifest, icon).toContain(icon);
+  // Das Seiten-Icon gehört ebenfalls dazu: der Offline-Einstieg fragt es beim Start ohne Netz an (PWA-Review 28.11.2026, AP-4.1).
+  expect(manifest, "/icons/icon.svg").toContain("/icons/icon.svg");
 
   // Und der Browser legt sie beim Installieren wirklich ab: offline zeigt die Benachrichtigung sonst kein Icon.
   await page.goto(`${gateway.url}/login`);

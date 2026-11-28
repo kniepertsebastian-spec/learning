@@ -110,6 +110,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^10",
     "eslint-config-next": "16.4.6",
+    "lighthouse": "12.8.2",
     "mailparser": "^3.15.0",
     "sharp": "^0.35.5",
     "smtp-server": "^3.21.7",

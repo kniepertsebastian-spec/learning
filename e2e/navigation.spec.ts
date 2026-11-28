@@ -27,3 +27,21 @@ test("Fokusmodus: beschriftete Knöpfe zum Kurs und zum Dashboard", async ({ pag
   await page.getByTestId("focus-dashboard").click();
   await page.waitForURL(`${gateway.url}/`);
 });
+
+/**
+ * PWA-Review 28.11.2026 (AP-2.1): Auch ohne Anmeldung ist der erste Tab-Stop der Skip-Link; er wird sichtbar und führt zum
+ * Inhalt (WCAG 2.4.1). Vorher gab es ihn nur im angemeldeten Layout.
+ */
+for (const path of ["/login", "/offline", "/catalog"]) {
+  test(`${path}: erster Tab-Stop ist der sichtbare Skip-Link`, async ({ page, gateway }) => {
+    await page.goto(`${gateway.url}${path}`);
+    await expect(page.locator("main#main")).toBeVisible();
+    await page.keyboard.press("Tab");
+    const skip = page.getByTestId("skip-link");
+    await expect(skip).toBeFocused();
+    await expect(skip).toBeVisible();
+    await expect(skip).toHaveAttribute("href", "#main");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/#main$/);
+  });
+}

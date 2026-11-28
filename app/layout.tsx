@@ -68,7 +68,7 @@ export const metadata: Metadata = {
   title: "Knowvia",
   // Gleich wie `description` in public/manifest.json (lang „de“). Bewusst statisch: die Offline-Shell wird vorab
   // zwischengespeichert, eine von Cookie/Accept-Language abhängige Beschreibung würde dort eine Sprache festschreiben.
-  description: "KI-gestützte Lern- und Prüfungsvorbereitung für IT-Zertifikate – auch offline.",
+  description: "KI-gestützte Lern- und Prüfungsvorbereitung für Zertifikate und Weiterbildungen – auch offline.",
   manifest: "/manifest.json",
   appleWebApp: {
     // Next 16 rendert daraus <meta name="mobile-web-app-capable" content="yes"> (nicht mehr das veraltete apple-…-Gegenstück);
@@ -108,11 +108,19 @@ export const viewport: Viewport = {
   ],
 };
 
+/**
+ * Dynamisch gerendert, auch für öffentliche Seiten: die Nonce-CSP aus proxy.ts verlangt das für jede Seite (Next.js-Doku
+ * „Content Security Policy“). Ohne Anmeldung kostet das Layout keine Datenbankabfrage (getCurrentUser endet ohne
+ * Sitzungs-Cookie sofort); mit Anmeldung laufen die Abfragen für Firma und Lernstand parallel (PWA-Review AP-2.3).
+ */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const requestHeaders = await headers();
   // Offline-Einstieg (/offline, /~offline): wird vorab zwischengespeichert und darf keinen Nutzer enthalten.
-  const pathname = (await headers()).get("x-pathname") ?? "";
-  const user = isOfflineShellPath(pathname) ? null : await getCurrentUser();
-  const membership = user ? await getCompanyMembership(user.id) : null;
+  const pathname = requestHeaders.get("x-pathname") ?? "";
+  const [user, locale] = await Promise.all([isOfflineShellPath(pathname) ? null : getCurrentUser(), getServerLocale()]);
+  const [membership, learning] = user
+    ? await Promise.all([getCompanyMembership(user.id), getLearningContext(user.id).catch(() => null)])
+    : [null, null];
   const hasCompanyAccess = isRoleAllowed(membership, STATUS_VIEW_ROLES);
   // Kontexte ermittelt der Server aus den Rechten; die Seiten prüfen ihre Rechte zusätzlich selbst.
   const contexts: ShellContext[] = availableContexts({ hasCompanyAccess, isAdmin: user?.role === "admin" });
@@ -125,12 +133,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       }
     : null;
   // Wochenziel statt Tagesserie; die Serie (mit Serienschutz) nur, wenn die Person sie eingeschaltet hat.
-  const learning = user ? await getLearningContext(user.id).catch(() => null) : null;
   const streak = learning?.preferences.showStreak ? learning.streak : 0;
   const weekly = learning ? { days: learning.weekly.daysLearned, goal: learning.weekly.goal } : null;
   // Nonce aus proxy.ts (CSP ohne 'unsafe-inline' für Skripte).
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const locale = await getServerLocale();
+  const nonce = requestHeaders.get("x-nonce") ?? undefined;
 
   return (
     <html

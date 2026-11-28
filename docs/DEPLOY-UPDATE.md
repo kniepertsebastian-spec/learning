@@ -76,8 +76,12 @@ AUTH_SECRET=<mindestens 32 Zeichen, z. B. openssl rand -base64 48>
 
 ```bash
 git pull
-docker compose up -d --build
+NEXT_DEPLOYMENT_ID="$(git rev-parse --short=12 HEAD)" docker compose up -d --build
 ```
+
+`NEXT_DEPLOYMENT_ID` ist die Build-Kennung (Asset-Adressen `?dpl=`, Precache-Revision von `/offline`). Mit dem Commit
+ergibt derselbe Stand immer dieselbe Kennung; ohne die Variable nimmt der Build einen Zeitstempel, das funktioniert auch,
+lässt offene Tabs aber nach jedem Neubau einmal neu laden.
 
 Die App führt beim Start die Migrationen aus. Prüfen:
 

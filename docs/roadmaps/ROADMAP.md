@@ -44,9 +44,9 @@ Begründung und Nachweise je Punkt in [`review-2026-11-19.md`](review-2026-11-19
 - [ ] Mailanbieter für den Kundenbetrieb: EU-Anbieter oder Google Workspace mit Auftragsverarbeitungsvertrag. (ebenda)
 
 **Sicherheit und PWA**
-- [ ] Service Worker: angemeldete Seiten gar nicht erst cachen. Heute sind Admin- und Firmenbereich ausgenommen (`lib/pwa/cache-policy.ts`), übrige angemeldete Seiten nicht. (`archiv/ROADMAP-TECHNISCH.md`, Phase 0)
+- [ ] Service Worker: angemeldete Seiten gar nicht erst cachen. Heute sind Admin-, Firmen-, Reviewer-, Konto-, Profil-, Karriere-, Prüfungsplan- und Lernprofilseiten sowie persönliche Kurs-Auswertungen (`/cert/[id]/history|weaknesses|final-exam|restart`) ausgenommen (`lib/pwa/cache-policy.ts`, PWA-Review 28.11.2026 AP-1.1); die Lernseiten selbst bleiben bewusst offline nutzbar. (`archiv/ROADMAP-TECHNISCH.md`, Phase 0)
 - [ ] Web Push auf einem echten Gerät ausprobieren (FCM, Mozilla, Apple). Die Tests laufen nur mit einem Fake-Sender. (`archiv/roadmap_pwa.md`, Phase 6)
-- [ ] Lighthouse-Performance verbindlich machen: Liegen `/login`, `/offline` und `/catalog` in 2–3 CI-Läufen stabil über 0.8, in `.github/workflows/ci.yml` `LIGHTHOUSE_WARN_PERFORMANCE` durch `LIGHTHOUSE_MIN_PERFORMANCE: "0.8"` ersetzen (harte Grenze, `scripts/lighthouse-check.mjs`). Eine Seite mit Codeblöcken (`RichText` → `CodeMarkdown`) misst die CI noch nicht: Lektionen gibt es nur angemeldet. (PWA-Roadmap AP-04, m-4)
+- [x] Lighthouse-Performance verbindlich machen: `LIGHTHOUSE_MIN_PERFORMANCE: "0.75"` in `.github/workflows/ci.yml` (zuletzt gemessen 84–86 auf `/login`, `/offline`, `/catalog`), Lighthouse fest in den devDependencies statt `npx --yes`. Offen: auf 0.8 anheben, sobald stabil; eine Seite mit Codeblöcken (`RichText` → `CodeMarkdown`) misst die CI noch nicht: Lektionen gibt es nur angemeldet. (PWA-Review 28.11.2026, AP-2.2)
 - [ ] Prüfung auf echten Geräten: iOS Safari (Safe-Area, Prüfungsmodus) und Android Chromium (`beforeinstallprompt`, Background Sync). (`archiv/pwa-hardening-review.md`, Phase 4)
 
 ## 3. Vor den ersten Personen außerhalb des Tests (Recht)

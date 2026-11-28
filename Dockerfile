@@ -9,6 +9,12 @@ RUN npm ci
 # Copy source
 COPY . .
 
+# Build ID for Next.js (`deploymentId` in next.config.ts, `?dpl=` on assets, precache revision of /offline). Pass the commit
+# (`NEXT_DEPLOYMENT_ID=$(git rev-parse --short=12 HEAD) docker compose up -d --build`, docs/DEPLOY-UPDATE.md) so the same
+# commit always yields the same ID. Empty: next.config.ts falls back to a timestamp (every build counts as a new version).
+ARG NEXT_DEPLOYMENT_ID=""
+ENV NEXT_DEPLOYMENT_ID=${NEXT_DEPLOYMENT_ID}
+
 # Build app, then the admin scripts (scripts/*.ts -> dist/scripts/*.cjs) so the runtime stage needs neither tsx nor
 # drizzle-kit. build:scripts fails if a script imports a package that is not a runtime dependency.
 RUN npm run build && npm run build:scripts

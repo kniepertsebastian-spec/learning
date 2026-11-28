@@ -93,7 +93,7 @@ function DocumentImages({ documentId, count, de }: { documentId: string; count: 
         )}
         <form onSubmit={(e) => void add(e)} className="flex flex-col gap-2">
           <input ref={fileRef} type="file" multiple required accept=".png,.jpg,.jpeg,.webp" aria-label={c_documentsPanel(de).screenshots} />
-          <label className="flex items-start gap-2">
+          <label className="flex min-h-11 items-start gap-2">
             <input type="checkbox" checked={attest} onChange={(e) => setAttest(e.target.checked)} className="mt-0.5" />
             <span>
               {c_documentsPanel(de).theImagesShowNoPasswords}
@@ -196,7 +196,7 @@ export function DocumentsPanel({
           aria-label={c_documentsPanel(de).title}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent"
         />
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-11 items-center gap-2 text-sm">
           <input type="checkbox" checked={excludeFromAi} onChange={(e) => setExcludeFromAi(e.target.checked)} />
           {c_documentsPanel(de).doNotLetAiProcess}
         </label>

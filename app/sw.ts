@@ -9,6 +9,7 @@ import {
 } from "serwist";
 import { OFFLINE_FALLBACK_PATH } from "../lib/pwa/offline-routes";
 import { parsePush, safeAppPath } from "../lib/pwa/push-payload";
+import { originOf, readPushText, resubscribePush } from "../lib/pwa/push-resubscribe";
 import { userIdFromSyncTag } from "../lib/pwa/sync-tag";
 import { deletePendingSyncEvent, listPendingSyncEvents, savePendingSyncEvent } from "../lib/client/offline-db";
 import { transferPendingEvents } from "../lib/client/sync-core";
@@ -158,7 +159,8 @@ self.addEventListener("sync", ((event: SyncLikeEvent) => {
 // nur, wenn die Person es in den Einstellungen selbst eingeschaltet hat (components/PushSettings.tsx). Der Inhalt wird geprüft
 // (lib/pwa/push-payload.ts); das Ziel ist immer ein Pfad der eigenen App.
 self.addEventListener("push", (event) => {
-  const shown = parsePush(event.data ? event.data.text() : null);
+  // Kaputte Daten dürfen keine Ausnahme werfen: jede Push-Nachricht muss etwas anzeigen, sonst entziehen Browser die Berechtigung.
+  const shown = parsePush(readPushText(event.data));
   event.waitUntil(
     self.registration.showNotification(shown.title, {
       body: shown.body,
@@ -177,7 +179,7 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      const existing = windows.find((w) => new URL(w.url).origin === self.location.origin);
+      const existing = windows.find((w) => originOf(w.url) === self.location.origin);
       if (existing) {
         await existing.focus();
         await existing.navigate(target).catch(() => undefined);
@@ -187,3 +189,20 @@ self.addEventListener("notificationclick", (event) => {
     })(),
   );
 });
+
+// Der Browser hat das Push-Abo erneuert oder verworfen (Endpunkt-Rotation, v. a. Firefox und Safari/iOS): neues Abo holen,
+// dem Server melden und das alte abmelden (lib/pwa/push-resubscribe.ts). Ohne vorheriges Abo passiert nichts.
+type PushSubscriptionChangeLikeEvent = ExtendableEvent & {
+  oldSubscription?: PushSubscription | null;
+  newSubscription?: PushSubscription | null;
+};
+self.addEventListener("pushsubscriptionchange", ((event: PushSubscriptionChangeLikeEvent) => {
+  event.waitUntil(
+    resubscribePush({
+      oldSubscription: event.oldSubscription,
+      newSubscription: event.newSubscription,
+      subscribe: (options) => self.registration.pushManager.subscribe(options),
+      fetch: (input, init) => fetch(input, init),
+    }),
+  );
+}) as EventListener);

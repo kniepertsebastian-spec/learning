@@ -71,7 +71,7 @@ export function ReviewerApprovalPanel({ certId, data, locale, canApprove = true 
       ) : (
         <div className="mt-3 flex flex-col gap-2 rounded-md border border-border bg-background p-3" data-testid="reviewer-approval-form">
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} aria-label={c_reviewerReviewerApprovalPanel(de).nameShownWithTheApproval} placeholder={c_reviewerReviewerApprovalPanel(de).yourNameShown} className="rounded-md border border-border bg-surface px-2 py-1" />
-          <label className="flex items-start gap-2">
+          <label className="flex min-h-11 items-start gap-2">
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4" data-testid="reviewer-confirm" />
             <span>{c_reviewerReviewerApprovalPanel(de).iHaveProfessionallyReviewedThe}</span>
           </label>

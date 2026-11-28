@@ -27,8 +27,9 @@ export const ASSETS_CACHE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 /**
  * Navigationen dorthin laufen nie über den Seiten-Cache: Bereiche mit Daten anderer Personen (Admin, Firma, Reviewer,
- * öffentliche Nachweis-Prüfung), persönliche Konto- und Profilseiten sowie alle Seiten, deren Adresse ein Token enthalten
- * kann (Anmeldung, Passwort-Reset, Einladungen, E-Mail-Bestätigung, Abmeldung von E-Mails).
+ * öffentliche Nachweis-Prüfung), persönliche Konto-, Profil-, Karriere-, Prüfungsplan- und Lernprofilseiten sowie alle
+ * Seiten, deren Adresse ein Token enthalten kann (Anmeldung, Passwort-Reset, Einladungen, E-Mail-Bestätigung, Abmeldung
+ * von E-Mails).
  */
 const UNCACHED_PREFIXES = [
   "/admin",
@@ -37,6 +38,9 @@ const UNCACHED_PREFIXES = [
   "/reviewer",
   "/account",
   "/profile",
+  "/career",
+  "/exams",
+  "/how-i-learn",
   "/certificates",
   "/verify",
   "/login",
@@ -51,8 +55,14 @@ const UNCACHED_PREFIXES = [
   "/unsubscribe",
 ];
 
+/**
+ * Persönliche Auswertungen innerhalb eines Kurses: Verlauf, Schwächen, Abschlussprüfung und Neustart. Die eigentlichen
+ * Lernseiten (`/cert/[id]`, Kapitel, Sessions) bleiben offline nutzbar und dürfen in den Seiten-Cache.
+ */
+const UNCACHED_CERT_SUBPATH = /^\/cert\/[^/]+\/(history|weaknesses|final-exam|restart)(\/|$)/;
+
 export function isUncachedPagePath(pathname: string): boolean {
-  return UNCACHED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return UNCACHED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) || UNCACHED_CERT_SUBPATH.test(pathname);
 }
 
 /**

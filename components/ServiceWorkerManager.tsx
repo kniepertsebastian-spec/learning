@@ -122,16 +122,24 @@ export function ServiceWorkerManager({ userId }: { userId: string | null }) {
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
     let cancelled = false;
+    // Alle hier angemeldeten Listener auf Registrierung und Workern, damit der Cleanup sie wieder abmeldet (sonst sammeln sich
+    // bei jedem Neu-Mount, z. B. Nutzerwechsel ohne Reload, weitere Listener an und der Hinweis käme mehrfach).
+    const detach: Array<() => void> = [];
     const watch = (registration: ServiceWorkerRegistration) => {
       // Es gibt nur dann etwas zu „aktualisieren“, wenn schon ein Worker die Seite steuert (nicht bei der Erstinstallation).
       const hasController = () => Boolean(navigator.serviceWorker.controller);
       if (registration.waiting && hasController()) announce(registration.waiting);
-      registration.addEventListener("updatefound", () => {
+      const onUpdateFound = () => {
         const installing = registration.installing;
-        installing?.addEventListener("statechange", () => {
+        if (!installing) return;
+        const onStateChange = () => {
           if (installing.state === "installed" && hasController() && registration.waiting) announce(registration.waiting);
-        });
-      });
+        };
+        installing.addEventListener("statechange", onStateChange);
+        detach.push(() => installing.removeEventListener("statechange", onStateChange));
+      };
+      registration.addEventListener("updatefound", onUpdateFound);
+      detach.push(() => registration.removeEventListener("updatefound", onUpdateFound));
     };
     // Vordergrund-Wechsel: neue Version suchen. Offline zählt nicht als Versuch, damit der nächste Online-Wechsel prüft.
     let activeRegistration: ServiceWorkerRegistration | null = null;
@@ -160,6 +168,7 @@ export function ServiceWorkerManager({ userId }: { userId: string | null }) {
 
     return () => {
       cancelled = true;
+      for (const remove of detach.splice(0)) remove();
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };

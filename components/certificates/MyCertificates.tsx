@@ -82,7 +82,7 @@ export function MyCertificates({ certs, vouchers, catalog, companyName }: { cert
                 {x.evidenceUrl && <a href={x.evidenceUrl} target="_blank" rel="noopener noreferrer" className="truncate text-xs text-link hover:underline">{x.evidenceUrl}</a>}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3">
                   {companyName ? (
-                    <label className="flex items-center gap-2 text-sm">
+                    <label className="flex min-h-11 items-center gap-2 text-sm">
                       <input type="checkbox" className="h-4 w-4" checked={x.shared} onChange={(e) => void toggleShare(x.id, e.target.checked)} data-testid={`share-${x.id}`} />
                       {fmt(c.shareFor, { name: companyName })}
                     </label>

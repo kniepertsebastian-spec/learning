@@ -19,7 +19,7 @@ export function ReactivationToggle({ initialOptOut }: { initialOptOut: boolean }
   }
   return (
     <Card data-testid="reactivation-toggle">
-      <label className="flex items-start gap-3 text-sm">
+      <label className="flex min-h-11 items-start gap-3 text-sm">
         <input type="checkbox" className="mt-0.5 h-4 w-4" checked={!optOut} onChange={(e) => void change(!e.target.checked)} />
         <span>
           <span className="block font-medium">{c_reactivationToggle(de).friendlyNudgeAfterABreak}</span>

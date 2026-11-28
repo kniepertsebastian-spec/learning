@@ -25,6 +25,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Build-Kennung = Commit (docs/DEPLOY-UPDATE.md); leer fällt next.config.ts auf einen Zeitstempel zurück.
+        NEXT_DEPLOYMENT_ID: ${NEXT_DEPLOYMENT_ID:-}
     # Genau eine App-Instanz (siehe DOCKER_DEPLOYMENT.md, "Exactly one app instance"): Rate-Limits und Job-Tracking liegen im
     # Speicher des Prozesses. Der feste container_name verhindert `docker compose up --scale app=2`; bitte nicht entfernen.
     container_name: learning-app

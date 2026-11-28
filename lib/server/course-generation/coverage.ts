@@ -19,14 +19,57 @@ const LINE = new RegExp(`^\\s*(?:${LABEL}\\s+)?(\\d{1,3}\\.\\d{1,2})(?!\\.?\\d)[
 // Keine Lernziele, sondern Zahlen im Text: Einheiten, Versionen, Preise, Seiten.
 const NOT_A_TITLE = /^(?:ghz|mhz|gb|mb|tb|kb|mbit|gbit|%|prozent|percent|euro|eur|usd|seite|page|abb|fig|tabelle|table|version|v\d|release|sec|min|ms)\b/i;
 
-/** Lernziel-Code ohne Zusätze, z. B. „1.2“. Führende Nullen entfallen („01.2“ → „1.2“). */
+const ROMAN: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10 };
+/** Längstes passendes Zahlwort zuerst, damit „III“ nicht als „I“ erkannt wird. */
+const ROMAN_PATTERN = Object.keys(ROMAN).sort((a, b) => b.length - a.length).join("|");
+/**
+ * Ein Code im Text: erstes Segment arabisch oder römisch (nur Großbuchstaben), weitere Segmente arabisch. Weder direkt vor
+ * noch direkt nach dem Code darf ein Buchstabe oder eine Ziffer stehen: „K2 1.3“ liefert 1.3, „Objective“ kein „I“.
+ */
+const CODE_TOKEN = new RegExp(`(?<![A-Za-z0-9.])((?:\\d{1,4}|${ROMAN_PATTERN})(?:\\.\\d{1,4})*)(?!\\.?[A-Za-z0-9])`, "g");
+/** Zwischen zwei Codes: ein Bereich („5.1–5.7“, „5.1 - 5.7“, „5.1 bis 5.7“, „5.1 to 5.7“). */
+const RANGE_BETWEEN = /^\s*(?:–|—|-|bis|to)\s*$/i;
+/** Obergrenze für aufgelöste Bereiche: „1.1–1.99“ ist ein Tippfehler, kein Kurs mit hundert Lernzielen. */
+const MAX_RANGE = 30;
+
+function segments(token: string): number[] {
+  return token.split(".").map((p) => ROMAN[p] ?? Number(p));
+}
+
+function codeTokens(code: string): Array<{ segments: number[]; index: number; length: number }> {
+  return [...code.matchAll(CODE_TOKEN)]
+    .map((m) => ({ segments: segments(m[1]), index: m.index ?? 0, length: m[0].length }))
+    .filter((t) => t.segments.every((n) => Number.isInteger(n)));
+}
+
+/**
+ * Lernziel-Code ohne Zusätze, z. B. „1.2“. Führende Nullen entfallen („01.2“ → „1.2“), Kurzzeichen davor ebenso
+ * („Objective 3.4“, „KF 4.4.0“ → „4.4.0“), römische Ziffern werden zu Zahlen („II.3“ → „2.3“). Ohne lesbaren Code
+ * gibt es "" statt eines Codes mit „NaN“.
+ */
 export function normalizeCode(code: string): string {
-  return code
-    .trim()
-    .replace(/^(?:objective|task\s+statement|task|lernziel)\s+/i, "")
-    .split(".")
-    .map((p) => String(Number(p)))
-    .join(".");
+  return codeTokens(code)[0]?.segments.join(".") ?? "";
+}
+
+/**
+ * Alle Codes, die ein Lernziel des Kurses abdeckt. Ein Bereich „5.1–5.7“ (auch „5.1-7“, „5.1 bis 5.7“) steht für jedes
+ * Lernziel dazwischen; ein Code, der sich nicht lesen lässt, deckt nichts ab (und erscheint nicht als „NaN“ im Bericht).
+ */
+export function expandCourseCode(code: string): string[] {
+  const tokens = codeTokens(code);
+  const [a, b] = tokens;
+  if (!a) return [];
+  const isRange = b !== undefined && RANGE_BETWEEN.test(code.slice(a.index + a.length, b.index));
+  if (!isRange) return [a.segments.join(".")];
+  const start = a.segments;
+  // „5.1–7“: das Ende nennt nur den letzten Teil.
+  const end = b.segments.length < start.length ? [...start.slice(0, start.length - b.segments.length), ...b.segments] : b.segments;
+  const head = start.slice(0, -1);
+  const sameHead = end.length === start.length && head.every((n, i) => n === end[i]);
+  const first = start[start.length - 1];
+  const last = end[end.length - 1];
+  if (!sameHead || last < first || last - first >= MAX_RANGE) return [start.join("."), end.join(".")];
+  return Array.from({ length: last - first + 1 }, (_, i) => [...head, first + i].join("."));
 }
 
 /** Nummerierte Lernziele aus den Quellenausschnitten; je Code der erste (längste Titel gewinnt bei Wiederholung). */
@@ -54,7 +97,7 @@ export type CoverageResult =
 /** Vergleich der offiziellen Lernziele mit den Lernziel-Codes des Kurses. */
 export function compareCoverage(official: OfficialObjective[], courseCodes: string[]): CoverageResult {
   if (official.length < MIN_RECOGNISED) return { status: "not_numbered", recognised: official.length };
-  const have = new Set(courseCodes.map(normalizeCode));
+  const have = new Set(courseCodes.flatMap(expandCourseCode));
   const known = new Set(official.map((o) => o.code));
   return {
     status: "ok",
@@ -70,8 +113,11 @@ export function compareCoverage(official: OfficialObjective[], courseCodes: stri
  * („Bild: …“) zählen nicht mit, sie sind KI-Text und keine Gliederung der Quelle.
  */
 export function buildSourceReport(sources: FetchedSource[], now: Date = new Date(), skipped: Array<{ url: string; error: string }> = []): SourceReport {
-  const excerpts = sources.flatMap((s) => s.excerpts.filter((e) => !e.locator.startsWith("Bild:")));
   const main = sources.find((s) => s.primary) ?? null;
+  // Offizielle Lernziele nur aus dem Prüfungsleitfaden (der Quelle mit den meisten nummerierten Lernzielen,
+  // primarySourceIndex in sources.ts), wenn es einen gibt: Kapitelnummern aus Lehrbüchern, Prüferhandreichungen oder
+  // Didaktik-Unterlagen („7.3 Feedback geben“) sind keine Lernziele der Prüfung.
+  const excerpts = (main ? [main] : sources).flatMap((s) => s.excerpts.filter((e) => !e.locator.startsWith("Bild:")));
   const tracked = (main ? main.excerpts : excerpts).map((e) => e.text).join("\n");
   return {
     ...(skipped.length > 0 ? { skipped } : {}),

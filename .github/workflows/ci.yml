@@ -80,18 +80,18 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
       # Lighthouse auf /login, /offline und /catalog (öffentlich, mit den Kursen aus dem E2E-Seeding gefüllt: eine echte
-      # Anwendungsseite statt nur Formular und Offline-Hinweis, PWA-Roadmap AP-04 m-4). Barrierefreiheit ist verbindlich
-      # (unter 90 wird CI rot), Performance und Best Practices melden nur eine Warnung (Messwerte auf geteilten Runnern
-      # schwanken). Kein continue-on-error: Läuft Lighthouse nicht oder fehlt eine Punktzahl, schlägt der Schritt ebenfalls fehl.
+      # Anwendungsseite statt nur Formular und Offline-Hinweis, PWA-Roadmap AP-04 m-4). Barrierefreiheit (unter 90) und
+      # Performance (unter 75) sind verbindlich und machen CI rot, Best Practices meldet nur eine Warnung. Kein
+      # continue-on-error: Läuft Lighthouse nicht oder fehlt eine Punktzahl, schlägt der Schritt ebenfalls fehl.
       - name: Lighthouse
         env:
           DATABASE_URL: postgres://postgres:ci@localhost:5432/ci
           AUTH_SECRET: ci-only-secret
           AUTH_TRUST_HOST: "true"
           LIGHTHOUSE_MIN_ACCESSIBILITY: "0.9"
-          # Stufenweise angehoben (PWA-Roadmap m-2): erst Warnung ab 0.8, als harte Grenze erst, wenn die Werte stabil darüber
-          # liegen. Dann diese Zeile durch LIGHTHOUSE_MIN_PERFORMANCE: "0.8" ersetzen (docs/roadmaps/ROADMAP.md).
-          LIGHTHOUSE_WARN_PERFORMANCE: "0.8"
+          # Harte Grenze seit dem PWA-Review vom 28.11.2026 (AP-2.2). Gemessen zuletzt 84-86; der Abstand fängt Schwankungen
+          # geteilter Runner ab. Liegen die Läufe weiter stabil darüber, auf "0.8" anheben.
+          LIGHTHOUSE_MIN_PERFORMANCE: "0.75"
           LIGHTHOUSE_WARN_BEST_PRACTICES: "0.9"
         run: |
           node node_modules/next/dist/bin/next start -p 3100 &
