@@ -44,6 +44,26 @@ describe("isUncachedPagePath", () => {
       expect(isUncachedPagePath(path)).toBe(true);
     }
   });
+  it("nimmt Karriere-, Prüfungsplan- und Lernprofilseiten aus", () => {
+    for (const path of ["/career", "/career/x", "/exams", "/exams/aws", "/how-i-learn"]) {
+      expect(isUncachedPagePath(path)).toBe(true);
+    }
+  });
+  it("nimmt persönliche Kurs-Auswertungen aus, aber nicht die Lernseiten des Kurses", () => {
+    for (const path of [
+      "/cert/aws/history",
+      "/cert/aws/history/2",
+      "/cert/aws/weaknesses",
+      "/cert/aws/final-exam",
+      "/cert/aws/final-exam/result",
+      "/cert/aws/restart",
+    ]) {
+      expect(isUncachedPagePath(path)).toBe(true);
+    }
+    for (const path of ["/cert/aws", "/cert/aws/chapter/1", "/cert/aws/session", "/cert/aws/historyx", "/cert/history", "/cert/aws/section/weaknesses"]) {
+      expect(isUncachedPagePath(path)).toBe(false);
+    }
+  });
   it("lässt Lernseiten cachen und trifft keine ähnlich beginnenden Pfade", () => {
     for (const path of [
       "/",
@@ -58,6 +78,8 @@ describe("isUncachedPagePath", () => {
       "/inviteme",
       "/verifyx",
       "/loginhelp",
+      "/careers",
+      "/examsx",
     ]) {
       expect(isUncachedPagePath(path)).toBe(false);
     }
