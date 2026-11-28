@@ -57,7 +57,8 @@ function decoderFor(encoding: string): zlib.Gunzip | zlib.Inflate | zlib.BrotliD
 /**
  * HTTP(S)-Abruf einer Adresse, die ein Nutzer angeben kann (Quellenimport, SSO-Anbieter).
  * - Die Adressprüfung läuft beim Verbindungsaufbau (createGuardedLookup), nicht nur vorab: kein DNS-Rebinding.
- * - Weiterleitungen werden nicht verfolgt; ein Ziel nach der Weiterleitung wäre sonst ungeprüft.
+ * - Weiterleitungen werden hier nicht verfolgt (ein Hop je Aufruf). Wer ihnen folgen will, ruft guardedRequest() für jedes
+ *   Ziel erneut auf, damit auch das Ziel geprüft ist: so macht es fetchUrlSafely() für Quellen (fetch-url.ts); SSO folgt nie.
  * - Die Antwort wird gestreamt und bei Überschreiten von maxBytes abgebrochen, statt erst komplett im Speicher zu landen
  *   (gilt auch nach dem Entpacken, das schützt vor Zip-Bomben).
  * - Zeitgrenze für Verbindung und Pausen, dazu eine Obergrenze für die Gesamtdauer (langsame Quellen, die Byte für Byte schicken).

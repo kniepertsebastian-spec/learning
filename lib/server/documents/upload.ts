@@ -56,13 +56,18 @@ export function cleanFilename(filename: string): string {
  */
 export async function inspectUpload(
   input: { filename: string; mimeType: string; data: Buffer },
-  /** Fund-Arten, die der Aufrufer als Fehlalarm bestätigt hat (nur Arten aus SUPPRESSIBLE_KINDS wirken). */
-  options: { suppressKinds?: readonly SecretKind[] } = {},
+  options: {
+    /** Fund-Arten, die der Aufrufer als Fehlalarm bestätigt hat (nur Arten aus SUPPRESSIBLE_KINDS wirken). */
+    suppressKinds?: readonly SecretKind[];
+    /** Höchstgröße in Byte; Standard MAX_DOCUMENT_BYTES (Firmendokumente). Kursquellen des Betreibers dürfen größer sein. */
+    maxBytes?: number;
+  } = {},
 ): Promise<UploadInspection> {
   const { data } = input;
+  const maxBytes = options.maxBytes ?? MAX_DOCUMENT_BYTES;
   if (data.byteLength === 0) return { ok: false, code: "empty", message: "Die Datei ist leer." };
-  if (data.byteLength > MAX_DOCUMENT_BYTES) {
-    return { ok: false, code: "too_large", message: `Die Datei ist größer als ${MAX_DOCUMENT_BYTES / (1024 * 1024)} MB.` };
+  if (data.byteLength > maxBytes) {
+    return { ok: false, code: "too_large", message: `Die Datei ist größer als ${maxBytes / (1024 * 1024)} MB.` };
   }
 
   const ext = extensionOf(input.filename);
@@ -71,7 +76,8 @@ export async function inspectUpload(
   let structuredKind: StructuredKind | null = null;
   let mimeType: string;
   if (ext === "pdf") {
-    if (mime !== "application/pdf") return unsupported();
+    // Manche Browser und Betriebssysteme schicken für PDFs keinen oder einen allgemeinen Typ; maßgeblich ist danach die Signatur.
+    if (!["application/pdf", "application/x-pdf", "application/octet-stream", ""].includes(mime)) return unsupported();
     kind = "pdf";
     mimeType = "application/pdf";
   } else if (ext === "txt" || ext === "md") {

@@ -8,7 +8,7 @@ import {
   type CertificationSourceType,
 } from "@/lib/server/db/schema";
 import { readSourceFile, sha256Hex, storageKeyForChecksum, writeSourceFile } from "@/lib/server/storage/local-disk";
-import { fetchUrlSafely, UrlFetchError } from "@/lib/server/network/fetch-url";
+import { fetchUrlSafely, looksLikePdf, UrlFetchError } from "@/lib/server/network/fetch-url";
 import { UnsafeUrlError } from "@/lib/server/network/ssrf-guard";
 
 export type CertificationSource = typeof certificationSources.$inferSelect;
@@ -370,12 +370,14 @@ export async function registerCertificationSourceFromUrl(input: {
   const shapeError = validateSourceUrlShape(input.url);
   if (shapeError) throw new UnsafeUrlError(shapeError.message);
 
-  const { buffer, contentType } = await fetchUrlSafely(input.url, {
+  const fetched = await fetchUrlSafely(input.url, {
     timeoutMs: URL_FETCH_TIMEOUT_MS,
     maxBytes: MAX_URL_SOURCE_BYTES,
   });
+  const { buffer } = fetched;
 
-  const isPdf = contentType.includes(PDF_CONTENT_TYPE) || input.url.toLowerCase().endsWith(".pdf");
+  // Auch nach einer Weiterleitung (z. B. /download.php?id=… -> /files/plan.pdf) oder als application/octet-stream.
+  const isPdf = looksLikePdf(fetched, input.url);
   const mimeType = isPdf ? PDF_CONTENT_TYPE : "text/html";
   if (isPdf && !buffer.subarray(0, PDF_MAGIC.length).equals(PDF_MAGIC)) {
     throw new UrlFetchError(
