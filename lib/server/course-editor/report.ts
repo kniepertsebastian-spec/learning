@@ -13,7 +13,7 @@ import {
   sections,
   type SourceReport,
 } from "@/lib/server/db/schema";
-import { baselineFor, buildSourceReport, compareCoverage, sourceChange, type CoverageResult, type SourceChange } from "@/lib/server/course-generation/coverage";
+import { baselineFor, buildSourceReport, compareCoverage, expandCourseCode, sourceChange, type CoverageResult, type SourceChange } from "@/lib/server/course-generation/coverage";
 import { fetchSources, SourceFetchError, type FetchedSource } from "@/lib/server/course-generation/sources";
 import { isHandsOn } from "@/lib/markdown/toc";
 import { CHAPTER_POOL_MIN, distributeMissingQuestions } from "@/lib/chapters/logic";
@@ -231,7 +231,8 @@ export async function getCourseReport(certId: string): Promise<CourseReport> {
       canRefresh: job.sourceUrls.length > 0,
     };
     if (coverage.result?.status === "ok") {
-      const domainOfPrefix = new Map(objs.map((o) => [o.code.split(".")[0], o.domainId]));
+      // Gleiche Lesart wie im Abgleich: „KF 4.4.0“ und „II.3“ gehören zu Bereich 4 bzw. 2, nicht zu „KF 4“/„II“.
+      const domainOfPrefix = new Map(objs.flatMap((o) => expandCourseCode(o.code).map((code) => [code.split(".")[0], o.domainId] as const)));
       for (const m of coverage.result.missing) push({ kind: "missing_objective", severity: "high", objectiveId: null, objectiveCode: m.code, sectionId: null, missing: { code: m.code, title: m.title, domainId: domainOfPrefix.get(m.code.split(".")[0]) ?? doms[0]?.id ?? null }, text: { de: `Offizielles Lernziel ${m.code} „${m.title}“ fehlt im Kurs.`, en: `Official objective ${m.code} “${m.title}” is missing from the course.` } });
     }
   }
