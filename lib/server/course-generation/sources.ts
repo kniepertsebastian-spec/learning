@@ -1,6 +1,6 @@
 import { extractPdfPages } from "@/lib/server/admin/source-extraction";
 import { splitIntoSections, type SourceExcerpt } from "@/lib/server/documents/sections";
-import { fetchUrlSafely, UrlFetchError } from "@/lib/server/network/fetch-url";
+import { fetchUrlSafely, looksLikePdf, UrlFetchError, type FetchedUrlContent } from "@/lib/server/network/fetch-url";
 import { UnsafeUrlError } from "@/lib/server/network/ssrf-guard";
 import { extractOfficialObjectives, MIN_RECOGNISED } from "./coverage";
 import { isUploadRef, loadCourseGenerationUpload } from "./uploads";
@@ -12,9 +12,28 @@ export class SourceFetchError extends Error {}
 
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 30_000;
-/** Bewusst knapp gehalten wie buildSourceText() in lib/server/admin/blueprint.ts
- * (Kostenschutz + Kontextgrenze), pro Quelle statt für alle Quellen zusammen. */
-const MAX_EXCERPT_CHARS_PER_SOURCE = 60_000;
+
+const envChars = (name: string, fallback: number) => {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+};
+
+/**
+ * Mindestanteil je Quelle (Fachquelle, nicht der Prüfungsleitfaden). So viel bekommt jede Quelle immer, auch wenn das
+ * Gesamtbudget schon voll ist - der frühere feste Deckel, bewusst knapp wie buildSourceText() in lib/server/admin/blueprint.ts.
+ */
+export const MIN_EXCERPT_CHARS_PER_SOURCE = 60_000;
+/**
+ * Höchstanteil je Fachquelle (COURSE_GEN_MAX_SOURCE_CHARS, Standard 120.000). Unterhalb davon verteilt fitSourceBudget()
+ * das freie Gesamtbudget fair: kleine Quellen bleiben ganz, große teilen sich den Rest (Quellen-Roadmap AP-3.2).
+ */
+export const MAX_EXCERPT_CHARS_PER_SOURCE = Math.max(MIN_EXCERPT_CHARS_PER_SOURCE, envChars("COURSE_GEN_MAX_SOURCE_CHARS", 120_000));
+/**
+ * Gesamtbudget des Quellenpakets in Zeichen (COURSE_GEN_FULL_CONTEXT_MAX_CHARS, Standard 400.000 ≈ 100.000 Token). Bis zu
+ * dieser Größe bekommt jedes Lernziel das komplette Paket und trifft den günstigen impliziten Gemini-Cache (worker.ts,
+ * shouldUseFullSourceContext). Aus Kostengründen bewusst nicht höher (Quellen-Roadmap AP-3.2, Abschnitt 3).
+ */
+export const FULL_CONTEXT_MAX_CHARS = envChars("COURSE_GEN_FULL_CONTEXT_MAX_CHARS", 400_000);
 /**
  * Der Prüfungsleitfaden (die Quelle mit den meisten nummerierten Lernzielen) wird nicht bei 60.000 Zeichen gekappt: aus
  * ihm kommen Gliederung und Abdeckungsprüfung, ein abgeschnittener Rest hieße fehlende Lernziele. Nur eine großzügige
@@ -31,17 +50,63 @@ export interface FetchedSource {
   truncated: boolean;
   /** Hinweise zur Aufbereitung (z. B. ein ausgelassenes Bild), nie Inhalt. */
   warnings?: string[];
-  /** Als Prüfungsleitfaden erkannt (meiste nummerierte Lernziele): mit PRIMARY_SOURCE_MAX_CHARS statt der normalen Grenze. */
+  /** Der Prüfungsleitfaden (markiert oder erkannt): mit PRIMARY_SOURCE_MAX_CHARS statt der normalen Grenze. */
   primary?: boolean;
+  /** Im Assistenten ausdrücklich als Blueprint markiert, nicht nur an den meisten Lernziel-Nummern erkannt. */
+  primaryMarked?: boolean;
+}
+
+/**
+ * Mindestmenge Text (nach dem Entfernen der Tags) in <main>/<article>, damit nur dieser Block gelesen wird. Darunter ist der
+ * Block vermutlich nur ein Teaser oder leer (Inhalt per JavaScript), dann zählt die ganze Seite.
+ */
+export const MIN_MAIN_CONTENT_CHARS = 500;
+
+/**
+ * Hauptinhalt einer HTML-Seite (Quellen-Roadmap AP-3.1): das erste <main> (bzw. role="main"), sonst alle <article> zusammen,
+ * wenn darin genug Text steht. Navigationsleisten, Breadcrumbs, Seitenleisten und Cookie-Banner in <div>-Containern außerhalb
+ * fallen damit weg. Ohne passenden Block: null (dann die ganze Seite).
+ */
+export function mainContentHtml(html: string): string | null {
+  const withoutComments = html.replace(/<!--[\s\S]*?-->/g, " ");
+  const main = /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(withoutComments)?.[1] ?? roleMainContent(withoutComments);
+  if (main !== null && visibleTextLength(main) >= MIN_MAIN_CONTENT_CHARS) return main;
+  const articles = [...withoutComments.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)].map((m) => m[1]).join("\n");
+  if (articles && visibleTextLength(articles) >= MIN_MAIN_CONTENT_CHARS) return articles;
+  return null;
+}
+
+/** Länge des sichtbaren Texts eines HTML-Ausschnitts (ohne Skripte, Styles und Tags, Leerraum zusammengefasst). */
+function visibleTextLength(fragment: string): number {
+  return fragment
+    .replace(/<(script|style|noscript|template)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim().length;
+}
+
+/** Inhalt von `<div role="main">…</div>` (oder section) bis zum passenden schließenden Tag; verschachtelte werden mitgezählt. */
+function roleMainContent(html: string): string | null {
+  const open = /<(div|section)\b[^>]*\brole\s*=\s*["']?main["']?[^>]*>/i.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tags = new RegExp(`<(/?)${open[1]}\\b[^>]*>`, "gi");
+  tags.lastIndex = start;
+  let depth = 1;
+  for (let m = tags.exec(html); m; m = tags.exec(html)) {
+    depth += m[1] ? -1 : 1;
+    if (depth === 0) return html.slice(start, m.index);
+  }
+  return null;
 }
 
 /** Grobe HTML-Text-Extraktion für Nicht-PDF-Quellen - bewusst einfach
  * (Hobbyprojekt-Scope, siehe course_generation.md Abschnitt 22), kein
- * vollständiger Readability-Parser. Entfernt Skripte/Styles, Navigation, Fußbereiche, Seitenleisten, Formulare
- * und Kommentare (token_architektur_roadmap Stufe 0: Ballast kostet Eingabe-Token und lenkt ab) sowie die Tags,
- * lässt Absätze als Zeilenumbrüche erkennbar. */
+ * vollständiger Readability-Parser. Liest bevorzugt nur den Hauptinhalt (mainContentHtml). Entfernt Skripte/Styles,
+ * Navigation, Fußbereiche, Seitenleisten, Formulare und Kommentare (token_architektur_roadmap Stufe 0: Ballast kostet
+ * Eingabe-Token und lenkt ab) sowie die Tags, lässt Absätze als Zeilenumbrüche erkennbar. */
 export function stripHtml(html: string): string {
-  return html
+  return (mainContentHtml(html) ?? html)
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<(script|style|noscript|svg|template|iframe|nav|footer|aside|form)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
     // Überschriften bleiben als Markdown-Überschrift erkennbar: daran zerlegt splitIntoSections() den Text.
@@ -57,8 +122,8 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
-/** Kappt die Ausschnitte einer Quelle bei MAX_EXCERPT_CHARS_PER_SOURCE (Kostenschutz). */
-export function capExcerpts(excerpts: SourceExcerpt[], maxChars = MAX_EXCERPT_CHARS_PER_SOURCE): { excerpts: SourceExcerpt[]; truncated: boolean } {
+/** Kappt die Ausschnitte einer Quelle (Kostenschutz); ohne Angabe beim Mindestanteil MIN_EXCERPT_CHARS_PER_SOURCE. */
+export function capExcerpts(excerpts: SourceExcerpt[], maxChars = MIN_EXCERPT_CHARS_PER_SOURCE): { excerpts: SourceExcerpt[]; truncated: boolean } {
   let truncated = false;
   let budget = maxChars;
   const capped: SourceExcerpt[] = [];
@@ -111,10 +176,10 @@ export function capTotalChars(sources: FetchedSource[], maxTotal: number): Fetch
  * Dateitypen der Quellen" + "erfolgreiche Text- und PDF-Extraktion" +
  * "Mindestmenge verwertbaren Quelltexts" - ruft eine einzelne Quell-URL ab
  * und liefert seitenweise/abschnittsweise referenzierbare Ausschnitte,
- * gekappt bei MAX_EXCERPT_CHARS_PER_SOURCE (Kostenschutz, wie
+ * gekappt bei `maxChars` (Standard MIN_EXCERPT_CHARS_PER_SOURCE; Kostenschutz, wie
  * buildSourceText() in lib/server/admin/blueprint.ts).
  */
-export async function fetchSource(id: string, url: string, maxChars = MAX_EXCERPT_CHARS_PER_SOURCE): Promise<FetchedSource> {
+export async function fetchSource(id: string, url: string, maxChars = MIN_EXCERPT_CHARS_PER_SOURCE): Promise<FetchedSource> {
   // Hochgeladene Datei (im Assistenten neben den Links): Text liegt schon gelesen in der Datenbank.
   if (isUploadRef(url)) {
     const upload = await loadCourseGenerationUpload(url);
@@ -124,13 +189,12 @@ export async function fetchSource(id: string, url: string, maxChars = MAX_EXCERP
     const { excerpts, truncated } = capExcerpts(upload.excerpts, maxChars);
     return { id, title: upload.filename, url, retrievedAt: new Date().toISOString(), excerpts, truncated };
   }
-  let contentType: string;
-  let buffer: Buffer;
+  let fetched: FetchedUrlContent;
   try {
-    ({ buffer, contentType } = await fetchUrlSafely(url, {
+    fetched = await fetchUrlSafely(url, {
       timeoutMs: FETCH_TIMEOUT_MS,
       maxBytes: MAX_SOURCE_BYTES,
-    }));
+    });
   } catch (error) {
     if (error instanceof UrlFetchError || error instanceof UnsafeUrlError) {
       throw new SourceFetchError(error.message);
@@ -138,7 +202,8 @@ export async function fetchSource(id: string, url: string, maxChars = MAX_EXCERP
     throw error;
   }
 
-  const isPdf = contentType.includes("application/pdf") || url.toLowerCase().endsWith(".pdf");
+  const { buffer } = fetched;
+  const isPdf = looksLikePdf(fetched, url);
   let excerpts: SourceExcerpt[];
   if (isPdf) {
     const pages = await extractPdfPages(buffer);
@@ -168,10 +233,15 @@ export async function fetchSource(id: string, url: string, maxChars = MAX_EXCERP
 }
 
 /**
- * Index der Quelle, die der Prüfungsleitfaden ist: die mit den meisten nummerierten Lernzielen (mindestens
- * MIN_RECOGNISED), sonst keine (-1).
+ * Index der Quelle, die der Prüfungsleitfaden ist. Vorrang hat die im Assistenten markierte Quelle (`markedUrl`, AP-2.1),
+ * sofern sie abgerufen werden konnte; sonst die mit den meisten nummerierten Lernzielen (mindestens MIN_RECOGNISED), sonst
+ * keine (-1).
  */
-export function primarySourceIndex(sources: Array<Pick<FetchedSource, "excerpts">>): number {
+export function primarySourceIndex(sources: Array<Pick<FetchedSource, "excerpts"> & { url?: string }>, markedUrl?: string | null): number {
+  if (markedUrl) {
+    const marked = sources.findIndex((s) => s.url === markedUrl);
+    if (marked >= 0) return marked;
+  }
   let best = -1;
   let bestCount = MIN_RECOGNISED - 1;
   sources.forEach((s, i) => {
@@ -184,20 +254,67 @@ export function primarySourceIndex(sources: Array<Pick<FetchedSource, "excerpts"
   return best;
 }
 
-/** Der Prüfungsleitfaden unter den Quellen wird bis PRIMARY_SOURCE_MAX_CHARS gelesen, die übrigen werden wie bisher gekappt. */
-function markPrimaryAndCap(full: FetchedSource[]): FetchedSource[] {
-  const primary = primarySourceIndex(full);
+const sizeOf = (excerpts: SourceExcerpt[] | undefined) => (excerpts ?? []).reduce((n, e) => n + e.text.length, 0);
+
+/** Wie viel jede Quelle behalten darf: Grenze je Quelle, Summe der behaltenen Zeichen und das Gesamtbudget. */
+export interface SourceBudgetPlan {
+  /** Zeichengrenze je Quelle (Index wie die Eingabe); beim Leitfaden PRIMARY_SOURCE_MAX_CHARS. */
+  limits: number[];
+  /** Summe der Zeichen nach dem Kappen. */
+  totalChars: number;
+  budgetChars: number;
+}
+
+/**
+ * Verteilt das Gesamtbudget (AP-3.2): Der Prüfungsleitfaden behält bis PRIMARY_SOURCE_MAX_CHARS, der Rest des Budgets geht
+ * fair an die übrigen Quellen („Wasserstand“: kleine bleiben ganz, die großen teilen sich, was übrig ist), jede bekommt
+ * dabei mindestens MIN_EXCERPT_CHARS_PER_SOURCE und höchstens MAX_EXCERPT_CHARS_PER_SOURCE. Reicht das Budget wegen der
+ * Mindestanteile nicht, wird es überschritten; der Worker schaltet dann auf gezielte Ausschnitte um.
+ */
+export function fitSourceBudget(sizes: number[], primary: number, budget = FULL_CONTEXT_MAX_CHARS): SourceBudgetPlan {
+  const primaryChars = primary >= 0 ? Math.min(sizes[primary], PRIMARY_SOURCE_MAX_CHARS) : 0;
+  const others = sizes.map((size, i) => ({ size, i })).filter((o) => o.i !== primary).sort((a, b) => a.size - b.size);
+  let remaining = Math.max(0, budget - primaryChars);
+  let level = MAX_EXCERPT_CHARS_PER_SOURCE;
+  for (let k = 0; k < others.length; k++) {
+    const share = remaining / (others.length - k);
+    if (others[k].size <= share) {
+      remaining -= others[k].size;
+      continue;
+    }
+    level = Math.floor(share);
+    break;
+  }
+  const cap = Math.min(MAX_EXCERPT_CHARS_PER_SOURCE, Math.max(MIN_EXCERPT_CHARS_PER_SOURCE, level));
+  const limits = sizes.map((_, i) => (i === primary ? PRIMARY_SOURCE_MAX_CHARS : cap));
+  const totalChars = sizes.reduce((n, size, i) => n + Math.min(size, limits[i]), 0);
+  return { limits, totalChars, budgetChars: budget };
+}
+
+/** Den Prüfungsleitfaden markieren und alle Quellen nach fitSourceBudget() kappen. */
+function markPrimaryAndCap(full: FetchedSource[], markedUrl?: string | null): FetchedSource[] {
+  const primary = primarySourceIndex(full, markedUrl);
+  const { limits } = fitSourceBudget(full.map((s) => sizeOf(s.excerpts)), primary);
   return full.map((source, i) => {
-    if (i === primary) return { ...source, primary: true };
-    const { excerpts, truncated } = capExcerpts(source.excerpts);
-    return { ...source, excerpts, truncated: source.truncated || truncated };
+    const { excerpts, truncated } = capExcerpts(source.excerpts, limits[i]);
+    const marked = i === primary && !!markedUrl && source.url === markedUrl;
+    return {
+      ...source,
+      excerpts,
+      truncated: source.truncated || truncated,
+      ...(i === primary ? { primary: true } : {}),
+      ...(marked ? { primaryMarked: true } : {}),
+    };
   });
 }
 
-/** Alle Quellen abrufen, sonst Fehler: eine einzige kaputte Quelle bricht ab. Für den Vergleich mit dem Stand der Kurserstellung („Quelle prüfen“), der nur mit allen Quellen stimmt. */
-export async function fetchSources(urls: string[]): Promise<FetchedSource[]> {
+/**
+ * Alle Quellen abrufen, sonst Fehler: eine einzige kaputte Quelle bricht ab. Für den Vergleich mit dem Stand der
+ * Kurserstellung („Quelle prüfen“), der nur mit allen Quellen stimmt. `markedUrl`: die als Blueprint markierte Quelle.
+ */
+export async function fetchSources(urls: string[], markedUrl?: string | null): Promise<FetchedSource[]> {
   const full = await Promise.all(urls.map((url, index) => fetchSource(`src-${index + 1}`, url, PRIMARY_SOURCE_MAX_CHARS)));
-  return markPrimaryAndCap(full);
+  return markPrimaryAndCap(full, markedUrl);
 }
 
 /** Eine Quelle, die sich nicht verwenden ließ: Adresse und Grund (kurz, nie Inhalt). */
@@ -231,7 +348,7 @@ export function describeFetchError(error: unknown): string {
  * (der Worker bricht nur ab, wenn keine einzige brauchbar ist). Die Kennungen („src-3“) folgen der Stelle in der Eingabe und
  * bleiben deshalb auch dann stabil, wenn davor eine Quelle ausfällt.
  */
-export async function fetchSourcesTolerant(urls: string[], fetchOne: typeof fetchSource = fetchSource): Promise<FetchSourcesResult> {
+export async function fetchSourcesTolerant(urls: string[], fetchOne: typeof fetchSource = fetchSource, markedUrl?: string | null): Promise<FetchSourcesResult> {
   const settled = await Promise.allSettled(urls.map((url, index) => fetchOne(`src-${index + 1}`, url, PRIMARY_SOURCE_MAX_CHARS)));
   const fetched: FetchedSource[] = [];
   const skipped: SkippedSource[] = [];
@@ -239,5 +356,5 @@ export async function fetchSourcesTolerant(urls: string[], fetchOne: typeof fetc
     if (result.status === "fulfilled") fetched.push(result.value);
     else skipped.push({ url: urls[index], error: describeFetchError(result.reason) });
   });
-  return { sources: markPrimaryAndCap(fetched), skipped };
+  return { sources: markPrimaryAndCap(fetched, markedUrl), skipped };
 }

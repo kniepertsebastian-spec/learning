@@ -33,13 +33,17 @@ const createJobSchema = z.object({
   provider: z.string().trim().max(100).default(""),
   certificationVersion: z.string().min(1).max(50).optional(),
   sourceUrls: z.array(z.string().refine(isValidSourceRef, "Ungültige Quelle (Adresse oder hochgeladene Datei erwartet).")).min(1).max(MAX_SOURCE_URLS),
+  /** Optional: die Quelle, die der Prüfungs-Blueprint ist (Quellen-Roadmap AP-2.1); muss in sourceUrls stehen. */
+  primarySourceRef: z.string().optional(),
   autoPublish: z.boolean().default(false),
   initialCostLimitUsd: z.number().min(0.1).max(1000).default(2),
   absoluteCostLimitUsd: z.number().min(0.1).max(1000).default(5),
   categoryId: z.string().uuid().optional(),
   shortCode: z.string().trim().min(1).max(6).optional(),
   blueprintProvider: z.enum(["anthropic-sonnet", "claude-routine-sonnet"]).default("anthropic-sonnet"),
-}).refine((v) => v.courseType === "custom" || v.provider.length > 0, { message: "Anbieter ist beim Zertifikatskurs Pflicht.", path: ["provider"] });
+})
+  .refine((v) => v.courseType === "custom" || v.provider.length > 0, { message: "Anbieter ist beim Zertifikatskurs Pflicht.", path: ["provider"] })
+  .refine((v) => !v.primarySourceRef || v.sourceUrls.includes(v.primarySourceRef), { message: "Der markierte Blueprint steht nicht in der Quellenliste.", path: ["primarySourceRef"] });
 
 /**
  * course_generation.md Abschnitt 7: Admin-API.
@@ -125,6 +129,7 @@ export async function POST(request: Request) {
       certificationVersion: input.certificationVersion,
       courseType: input.courseType,
       sourceUrls: input.sourceUrls,
+      primarySourceUrl: input.primarySourceRef ?? null,
       autoPublish: input.autoPublish,
       initialCostLimitUsd: input.initialCostLimitUsd,
       absoluteCostLimitUsd: input.absoluteCostLimitUsd,
