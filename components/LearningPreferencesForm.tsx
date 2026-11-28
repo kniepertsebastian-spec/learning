@@ -34,7 +34,7 @@ export function LearningPreferencesForm({ initial, locale }: { initial: Prefs; l
   }
 
   const toggle = (id: string, label: string, hint: string, checked: boolean, onChange: (v: boolean) => void) => (
-    <label className="flex items-start gap-3 py-2 text-sm" htmlFor={id}>
+    <label className="flex min-h-11 items-start gap-3 py-2 text-sm" htmlFor={id}>
       <input id={id} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-1 h-4 w-4" data-testid={id} />
       <span>
         <span className="font-medium">{label}</span>

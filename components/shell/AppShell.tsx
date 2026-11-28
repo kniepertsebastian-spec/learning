@@ -21,6 +21,15 @@ import { useSwitchLocale } from "@/lib/client/use-switch-locale";
 import { contextForPath, isPublicPath, navItems } from "@/lib/shell/nav";
 import { useTheme } from "@/lib/theme";
 
+/** Erster Tab-Stop jeder Seite: springt an der Kopfzeile vorbei zum Inhalt (WCAG 2.4.1). Ziel ist `<main id="main">`. */
+function SkipLink({ label }: { label: string }) {
+  return (
+    <a href="#main" data-testid="skip-link" className="sr-only focus:not-sr-only focus:fixed focus:top-[calc(0.5rem+env(safe-area-inset-top))] focus:left-[calc(0.5rem+env(safe-area-inset-left))] focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-on-accent">
+      {label}
+    </a>
+  );
+}
+
 /** Seiten ohne Anmeldung (Login, Einladung, …): schlanke Leiste mit Sprache und Theme, keine Navigation. */
 function PublicFrame({ children }: { children: React.ReactNode }) {
   const { locale, t } = useLocale();
@@ -30,6 +39,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
   const btn = "flex h-11 min-w-11 items-center gap-1.5 sm:h-10 sm:min-w-10 rounded-md border border-border-strong bg-control px-2.5 text-sm font-medium hover:bg-surface-2";
   return (
     <div data-context="personal" className="flex min-h-dvh flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <SkipLink label={t.shell.skipToContent} />
       <header className="flex h-[calc(4rem+env(safe-area-inset-top))] items-center justify-between px-4 pt-[env(safe-area-inset-top)] sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 font-semibold">
           <LogoMark />
@@ -66,7 +76,7 @@ export function AppShell({ shell, streak, weekly = null, children }: { shell: Sh
 
   return (
     <div data-app-shell data-context={ctx} className="flex min-h-dvh flex-col bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-on-accent">{t.shell.skipToContent}</a>
+      <SkipLink label={t.shell.skipToContent} />
 
       {ctx === "admin" && (
         <div role="note" className="z-40 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning/40 bg-warning-soft px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-sm text-warning-text md:sticky md:top-0 md:h-10 md:py-0 md:pt-0" data-testid="admin-strip">

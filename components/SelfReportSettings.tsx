@@ -32,7 +32,7 @@ export function SelfReportSettings({ initial, locale }: { initial: SelfReportSet
       <ul className="mt-3 flex flex-col gap-3">
         {settings.map((s) => (
           <li key={s.kind}>
-            <label className="flex items-start gap-3 text-sm">
+            <label className="flex min-h-11 items-start gap-3 text-sm">
               <input type="checkbox" className="mt-0.5 h-4 w-4" checked={s.enabled} onChange={(e) => void change(s.kind, e.target.checked)} data-testid={`self-report-${s.kind}`} />
               <span>
                 <span className="block font-medium">{t.kinds[s.kind].label}</span>

@@ -156,7 +156,7 @@ export function DeleteAccountForm({ userId, locale, confirmWith = "password" }: 
           <input name="password" type="password" required autoComplete="current-password" className={`${inputClass} mt-1`} />
         </label>
       )}
-      <label className="flex items-start gap-2 text-sm">
+      <label className="flex min-h-11 items-start gap-2 text-sm">
         <input name="confirm" type="checkbox" required className="mt-0.5" />
         <span>
           {c_accountForms(de).iUnderstandMyAccountAnd}

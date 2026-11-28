@@ -93,7 +93,7 @@ export function ExamPlanner({ data }: { data: PlannerOverview }) {
                   <Button size="sm" variant="ghost" onClick={() => setEditFor({ cert: next.cert })}>{p.editDate}</Button>
                 </div>
                 {data.companyName && (
-                  <label className="mt-3 flex items-center gap-2 text-sm">
+                  <label className="mt-3 flex min-h-11 items-center gap-2 text-sm">
                     <input type="checkbox" className="h-4 w-4" checked={next.cert.plan!.shareWithCompany} onChange={(e) => void share(next.cert.plan!.id, e.target.checked)} data-testid="share-plan" />
                     {fmt(p.shareFor, { name: data.companyName })}
                   </label>
@@ -280,7 +280,7 @@ function PlanDialog({ certs, initial, onClose }: { certs: PlannerCert[]; initial
             </select>
           </label>
           <label className="block text-sm"><span className="mb-1 block font-medium">{p.fVoucher}</span><input type="date" value={voucher} onChange={(e) => setVoucher(e.target.value)} className={field} /></label>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={retake} onChange={(e) => setRetake(e.target.checked)} />{p.fRetake}</label>
+          <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={retake} onChange={(e) => setRetake(e.target.checked)} />{p.fRetake}</label>
           <label className="block text-sm"><span className="mb-1 block font-medium">{p.fHours}</span><input type="number" min={1} max={40} value={hours} onChange={(e) => setHours(Number(e.target.value))} className={field} /></label>
         </div>
         {error && <p role="alert" className="mt-3 text-sm text-danger-text">{error}</p>}
